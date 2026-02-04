@@ -50,6 +50,18 @@
 
     const ACCESS_PASSWORD = 'conversionaudit';
 
+    const saveToNotion = async (data) => {
+      try {
+        const res = await fetch('/api/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        return json.reportId || null;
+      } catch (e) { console.error('Save error:', e); return null; }
+    };
+
     const validatePassword = (pwd) => {
       if (!pwd) return { valid: false, error: 'Password is required' };
       if (pwd.trim().toLowerCase() !== ACCESS_PASSWORD) {
@@ -75,6 +87,8 @@
       const [error, setError] = useState(null);
       const [loading, setLoading] = useState(false);
       const [isSharedView, setIsSharedView] = useState(false);
+      const [shareableLink, setShareableLink] = useState('');
+      const [savingLink, setSavingLink] = useState(false);
       const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.landingCopy.trim();
       const canProceed = platform && offerType && icp.length > 10;
 
@@ -548,13 +562,43 @@
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
                   <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="link" className="w-5 h-5" style={{ color: '#0a66c2' }} /> Save Your Report</h2></div>
                   <div className="p-4">
-                    <p className="text-gray-600 text-sm mb-4">Copy this link to access your report later or share it.</p>
-                    <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
-                      <input type="text" readOnly value={(() => { const data = { result, icp, platform, offerType }; const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data)))); return window.location.origin + window.location.pathname + '?r=' + encoded; })()} className="flex-1 bg-transparent text-xs text-gray-600 outline-none truncate" />
-                      <button onClick={() => { const data = { result, icp, platform, offerType }; const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data)))); const link = window.location.origin + window.location.pathname + '?r=' + encoded; navigator.clipboard.writeText(link); setCopied({...copied, shareLink: true}); setTimeout(() => setCopied({...copied, shareLink: false}), 2000); }} className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors" style={{ backgroundColor: copied.shareLink ? '#22c55e' : '#0a66c2', color: 'white' }}>
-                        {copied.shareLink ? <><Icon name="check" className="w-4 h-4 inline mr-1" />Copied!</> : <><Icon name="copy" className="w-4 h-4 inline mr-1" />Copy Link</>}
-                      </button>
-                    </div>
+                    {shareableLink ? (
+                      <>
+                        <p className="text-gray-600 text-sm mb-4">Here's your short link:</p>
+                        <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
+                          <input type="text" readOnly value={shareableLink} className="flex-1 bg-transparent text-sm text-gray-600 outline-none" />
+                          <button onClick={() => { navigator.clipboard.writeText(shareableLink); setCopied({...copied, shareLink: true}); setTimeout(() => setCopied({...copied, shareLink: false}), 2000); }} className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors" style={{ backgroundColor: copied.shareLink ? '#22c55e' : '#0a66c2', color: 'white' }}>
+                            {copied.shareLink ? <><Icon name="check" className="w-4 h-4 inline mr-1" />Copied!</> : <><Icon name="copy" className="w-4 h-4 inline mr-1" />Copy</>}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-gray-600 text-sm mb-4">Generate a short link to access your report later.</p>
+                        <button 
+                          onClick={async () => {
+                            setSavingLink(true);
+                            const reportId = await saveToNotion({
+                              platform: platform,
+                              adScore: result.overall_score,
+                              lpScore: result.landing_page_roast?.overall_score || null,
+                              matchScore: result.ad_landing_mismatch?.alignment_score || null,
+                              roastData: result,
+                              icp: icp
+                            });
+                            if (reportId) {
+                              setShareableLink(`${window.location.origin}/?id=${reportId}`);
+                            }
+                            setSavingLink(false);
+                          }}
+                          disabled={savingLink}
+                          className="w-full py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                          style={{ backgroundColor: '#0a66c2', color: 'white' }}
+                        >
+                          {savingLink ? <><span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> Generating...</> : <><Icon name="link" className="w-4 h-4" /> Get Short Link</>}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
