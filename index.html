@@ -364,10 +364,10 @@
               {mismatch.disconnects && mismatch.disconnects.length > 0 && (
                 <div className="bg-white rounded-lg border border-amber-300 shadow-sm overflow-hidden relative">
                   <div className="px-4 py-3 border-b border-amber-200 bg-amber-50 flex items-center justify-between">
-                    <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-amber-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
+                    <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                   </div>
-                  <div className={`p-4 ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
-                    <div className="">
+                  <div className="p-4 relative">
+                    <div className={!premiumUnlocked ? 'blur-sm' : ''}>
                       <p className="text-sm text-gray-800 mb-3">{mismatch.verdict}</p>
                       {mismatch.message_match_issues && <p className="text-sm text-gray-600 mb-4">{mismatch.message_match_issues}</p>}
                     </div>
@@ -375,21 +375,21 @@
                       {mismatch.disconnects.map((d, i) => (
                         <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200 relative">
                           <p className="text-red-600 text-sm font-medium mb-2">⚠️ Problem {i + 1}</p>
-                          <div className=""><p className="text-sm text-gray-600">{d.problem}</p></div>
+                          <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-600">{d.problem}</p></div>
                           <p className="text-green-600 text-sm font-medium mt-3">✓ Fix</p>
-                          <div className=""><p className="text-sm text-gray-600">{d.fix}</p></div>
+                          <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-600">{d.fix}</p></div>
                         </div>
                       ))}
                     </div>
-                    <div className="mt-4 pt-4 border-t border-gray-200 text-center">
-                      
-                    </div>
                   </div>
                   {!premiumUnlocked && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95">
-                      <button onClick={handlePremiumClick} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="px-8 py-3 rounded-full font-semibold text-lg hover:opacity-90 transition-opacity flex items-center gap-2">
-                        <Icon name="sparkles" className="w-5 h-5" /> Get Full Report
-                      </button>
+                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
+                      <div className="text-center p-6">
+                        <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
+                        <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
+                          Get Full Report
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -443,11 +443,11 @@
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">Fix Kit {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                 </div>
-                <div className={`p-4 grid sm:grid-cols-2 gap-4 ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
+                <div className="p-4 grid sm:grid-cols-2 gap-4">
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad Headlines</h3>
-                      <div className="space-y-2">
+                      <div className={`space-y-2 ${!premiumUnlocked ? 'blur-sm' : ''}`}>
                         {result.fix_kit.headlines.map((h, i) => (
                           <div key={i} className="p-2.5 bg-gray-50 rounded border border-gray-200">
                             <div className=""><span className="text-sm text-gray-800">{h}</span></div>
@@ -457,7 +457,7 @@
                     </div>
                     <div>
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad Body</h3>
-                      <div className="p-2.5 bg-gray-50 rounded border border-gray-200">
+                      <div className={`p-2.5 bg-gray-50 rounded border border-gray-200 ${!premiumUnlocked ? 'blur-sm' : ''}`}>
                         <div className=""><p className="text-sm text-gray-700">{result.fix_kit.body}</p></div>
                       </div>
                     </div>
@@ -465,7 +465,7 @@
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">CTAs</h3>
-                      <div className="flex flex-wrap gap-3">
+                      <div className={`flex flex-wrap gap-3 ${!premiumUnlocked ? 'blur-sm' : ''}`}>
                         {result.fix_kit.ctas.map((cta, i) => (
                           <div key={i} style={{ borderColor: '#0a66c2' }} className="px-5 py-2.5 bg-white border-2 rounded-full">
                             <div className=""><span style={{ color: '#0a66c2' }} className="text-base font-semibold">{cta}</span></div>
@@ -476,7 +476,7 @@
                     {result.fix_kit.landing_page_headline && (
                       <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="p-4 rounded-lg border">
                         <h3 style={{ color: '#0a66c2' }} className="text-xs font-bold uppercase tracking-wide mb-3">Landing Page Copy</h3>
-                        <div className="space-y-2">
+                        <div className={`space-y-2 ${!premiumUnlocked ? 'blur-sm' : ''}`}>
                           <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border">
                             <span className="text-xs text-gray-500">Headline</span>
                             <div className=""><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_headline}</p></div>
@@ -492,8 +492,8 @@
                     )}
                   </div>
                 </div>
-                <div className={`px-4 pb-4 ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
-                  <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="px-4 pb-4">
+                  <div className={`p-3 bg-gray-50 rounded border border-gray-200 ${!premiumUnlocked ? 'blur-sm' : ''}`}>
                     <span style={{ color: '#0a66c2' }} className="font-semibold text-sm">Why this works:</span>
                     <div className=" inline"><span className="text-sm text-gray-600 ml-1">{result.fix_kit.rationale}</span></div>
                   </div>
@@ -502,10 +502,13 @@
                   
                 </div>
                 {!premiumUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95">
-                    <button onClick={handlePremiumClick} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="px-8 py-3 rounded-full font-semibold text-lg hover:opacity-90 transition-opacity flex items-center gap-2">
-                      <Icon name="sparkles" className="w-5 h-5" /> Get Full Report
-                    </button>
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
+                    <div className="text-center p-6">
+                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
+                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
+                        Get Full Report
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -513,16 +516,16 @@
               {/* Experiments - Premium section */}
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden relative">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">3 Experiments to Run {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-green-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
+                  <h2 className="font-semibold text-gray-900">3 Experiments to Run {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                 </div>
-                <div className={`p-4 grid sm:grid-cols-3 gap-3 ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
+                <div className="p-4 grid sm:grid-cols-3 gap-3">
                   {result.experiments.map((exp, i) => (
                     <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="flex items-center gap-2 mb-2">
                         <div style={{ backgroundColor: '#e8f3ff', color: '#0a66c2' }} className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{i + 1}</div>
                         <h3 className="font-semibold text-gray-900 text-sm">{exp.title}</h3>
                       </div>
-                      <div className=""><p className="text-sm text-gray-600">{exp.description}</p></div>
+                      <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-600">{exp.description}</p></div>
                     </div>
                   ))}
                 </div>
@@ -530,10 +533,13 @@
                   
                 </div>
                 {!premiumUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95">
-                    <button onClick={handlePremiumClick} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="px-8 py-3 rounded-full font-semibold text-lg hover:opacity-90 transition-opacity flex items-center gap-2">
-                      <Icon name="sparkles" className="w-5 h-5" /> Get Full Report
-                    </button>
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
+                    <div className="text-center p-6">
+                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
+                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
+                        Get Full Report
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -541,13 +547,13 @@
               {/* Next Steps - Premium section */}
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden relative">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Next Steps {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
+                  <h2 className="font-semibold text-gray-900">Next Steps {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                 </div>
-                <div className={`p-4 space-y-2 ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
+                <div className="p-4 space-y-2">
                   {result.next_steps.map((step, i) => (
                     <label key={i} className="flex items-start gap-3 p-2 rounded">
                       <input type="checkbox" disabled className="mt-0.5 w-4 h-4 rounded border-gray-400" />
-                      <div className=""><span className="text-sm text-gray-700">{step}</span></div>
+                      <div className={!premiumUnlocked ? 'blur-sm' : ''}><span className="text-sm text-gray-700">{step}</span></div>
                     </label>
                   ))}
                 </div>
@@ -555,10 +561,13 @@
                   
                 </div>
                 {!premiumUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95">
-                    <button onClick={handlePremiumClick} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="px-8 py-3 rounded-full font-semibold text-lg hover:opacity-90 transition-opacity flex items-center gap-2">
-                      <Icon name="sparkles" className="w-5 h-5" /> Get Full Report
-                    </button>
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
+                    <div className="text-center p-6">
+                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
+                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
+                        Get Full Report
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
