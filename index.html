@@ -339,11 +339,11 @@
                 </div>
                 <div className={`bg-white rounded-lg border ${getScoreBorder(lp.overall_score || 0)} shadow-sm p-4`}>
                   <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-gray-500">Landing Page</span><span className={`text-2xl font-bold ${lp.overall_score > 0 ? getScoreText(lp.overall_score) : 'text-gray-400'}`}>{lp.overall_score > 0 ? `${lp.overall_score}/10` : 'N/A'}</span></div>
-                  <p className="text-sm text-gray-700">{lp.headline_feedback || 'No landing page provided'}</p>
+                  <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-700">{lp.headline_feedback || 'No landing page provided'}</p></div>
                 </div>
                 <div className={`bg-white rounded-lg border ${getScoreBorder(mismatch.alignment_score || 0)} shadow-sm p-4`}>
                   <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-gray-500">Ad↔LP Match</span><span className={`text-2xl font-bold ${mismatch.alignment_score > 0 ? getScoreText(mismatch.alignment_score) : 'text-gray-400'}`}>{mismatch.alignment_score > 0 ? `${mismatch.alignment_score}/10` : 'N/A'}</span></div>
-                  <p className="text-sm text-gray-700">{mismatch.verdict || 'N/A'}</p>
+                  <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-700">{mismatch.verdict || 'N/A'}</p></div>
                 </div>
               </div>
 
@@ -362,18 +362,18 @@
 
               {/* Message Mismatch - Premium section */}
               {mismatch.disconnects && mismatch.disconnects.length > 0 && (
-                <div className="bg-white rounded-lg border border-amber-300 shadow-sm overflow-hidden relative">
+                <div className="bg-white rounded-lg border border-amber-300 shadow-sm overflow-hidden">
                   <div className="px-4 py-3 border-b border-amber-200 bg-amber-50 flex items-center justify-between">
                     <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                   </div>
-                  <div className="p-4 relative">
+                  <div className="p-4">
                     <div className={!premiumUnlocked ? 'blur-sm' : ''}>
                       <p className="text-sm text-gray-800 mb-3">{mismatch.verdict}</p>
                       {mismatch.message_match_issues && <p className="text-sm text-gray-600 mb-4">{mismatch.message_match_issues}</p>}
                     </div>
                     <div className="grid sm:grid-cols-2 gap-3 mt-4">
                       {mismatch.disconnects.map((d, i) => (
-                        <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200 relative">
+                        <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                           <p className="text-red-600 text-sm font-medium mb-2">⚠️ Problem {i + 1}</p>
                           <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-600">{d.problem}</p></div>
                           <p className="text-green-600 text-sm font-medium mt-3">✓ Fix</p>
@@ -383,13 +383,11 @@
                     </div>
                   </div>
                   {!premiumUnlocked && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
-                      <div className="text-center p-6">
-                        <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
-                        <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
-                          Get Full Report
-                        </button>
-                      </div>
+                    <div className="px-4 pb-4 text-center border-t border-gray-200">
+                      <button onClick={handlePremiumClick} className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
+                        <Icon name="lock" className="w-4 h-4" />
+                        Get Full Report
+                      </button>
                     </div>
                   )}
                 </div>
@@ -397,10 +395,9 @@
 
               {/* Landing Page Roast - Full version */}
               {lp.overall_score != null && (
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden relative">
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                     <h2 className="font-semibold text-gray-900">Landing Page Analysis {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
-                    
                   </div>
                   <div className="p-4">
                     <div className="grid sm:grid-cols-2 gap-3 mb-4">
@@ -433,20 +430,18 @@
                     )}
                   </div>
                   {!premiumUnlocked && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
-                      <div className="text-center p-6">
-                        <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
-                        <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
-                          Get Full Report
-                        </button>
-                      </div>
+                    <div className="px-4 pb-4 text-center border-t border-gray-200">
+                      <button onClick={handlePremiumClick} className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
+                        <Icon name="lock" className="w-4 h-4" />
+                        Get Full Report
+                      </button>
                     </div>
                   )}
                 </div>
               )}
 
               {/* Fix Kit - Premium section */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden relative">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">Fix Kit {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                 </div>
@@ -505,23 +500,19 @@
                     <div className=" inline"><span className="text-sm text-gray-600 ml-1">{result.fix_kit.rationale}</span></div>
                   </div>
                 </div>
-                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
-                  
-                </div>
                 {!premiumUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
-                    <div className="text-center p-6">
-                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
-                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
-                        Get Full Report
-                      </button>
-                    </div>
+                  <div className="px-4 pb-4 text-center border-t border-gray-200">
+                    <button onClick={handlePremiumClick} className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
+                      <Icon name="lock" className="w-4 h-4" />
+                      Get Full Report
+                    </button>
                   </div>
                 )}
               </div>
+              </div>
 
               {/* Experiments - Premium section */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden relative">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">3 Experiments to Run {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                 </div>
@@ -536,23 +527,18 @@
                     </div>
                   ))}
                 </div>
-                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
-                  
-                </div>
                 {!premiumUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
-                    <div className="text-center p-6">
-                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
-                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
-                        Get Full Report
-                      </button>
-                    </div>
+                  <div className="px-4 pb-4 text-center border-t border-gray-200">
+                    <button onClick={handlePremiumClick} className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
+                      <Icon name="lock" className="w-4 h-4" />
+                      Get Full Report
+                    </button>
                   </div>
                 )}
               </div>
 
               {/* Next Steps - Premium section */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden relative">
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">Next Steps {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                 </div>
@@ -564,17 +550,12 @@
                     </label>
                   ))}
                 </div>
-                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
-                  
-                </div>
                 {!premiumUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
-                    <div className="text-center p-6">
-                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
-                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
-                        Get Full Report
-                      </button>
-                    </div>
+                  <div className="px-4 pb-4 text-center border-t border-gray-200">
+                    <button onClick={handlePremiumClick} className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
+                      <Icon name="lock" className="w-4 h-4" />
+                      Get Full Report
+                    </button>
                   </div>
                 )}
               </div>
