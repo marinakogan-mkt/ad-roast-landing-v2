@@ -136,10 +136,20 @@
       };
 
       const reset = () => {
-        setView('landing'); setPlatform(null); setOfferType(null); setIcp('');
-        setLinkedin(''); setLinkedinErr(null); setResult(null); setError(null);
+        setView('landing'); 
+        setPlatform(null); 
+        setOfferType(null); 
+        setIcp('');
+        setResult(null); 
+        setError(null);
         setInputs({ url: '', copy: '', visual: '', landingCopy: '' });
-        setReportEmail(''); setReportEmailErr(null); setPdfStatus(null);
+        setShareableLink('');
+        setSavingLink(false);
+        setPremiumUnlocked(false);
+        setShowPremiumModal(false);
+        setPremiumPassword('');
+        setPremiumPasswordErr(null);
+        setIsSharedView(false);
       };
 
       const handlePremiumClick = () => {
@@ -339,11 +349,11 @@
                 </div>
                 <div className={`bg-white rounded-lg border ${getScoreBorder(lp.overall_score || 0)} shadow-sm p-4`}>
                   <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-gray-500">Landing Page</span><span className={`text-2xl font-bold ${lp.overall_score > 0 ? getScoreText(lp.overall_score) : 'text-gray-400'}`}>{lp.overall_score > 0 ? `${lp.overall_score}/10` : 'N/A'}</span></div>
-                  <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-700">{lp.headline_feedback || 'No landing page provided'}</p></div>
+                  <p className="text-sm text-gray-700">{lp.headline_feedback || 'No landing page provided'}</p>
                 </div>
                 <div className={`bg-white rounded-lg border ${getScoreBorder(mismatch.alignment_score || 0)} shadow-sm p-4`}>
                   <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-gray-500">Ad↔LP Match</span><span className={`text-2xl font-bold ${mismatch.alignment_score > 0 ? getScoreText(mismatch.alignment_score) : 'text-gray-400'}`}>{mismatch.alignment_score > 0 ? `${mismatch.alignment_score}/10` : 'N/A'}</span></div>
-                  <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-700">{mismatch.verdict || 'N/A'}</p></div>
+                  <p className="text-sm text-gray-700">{mismatch.verdict || 'N/A'}</p>
                 </div>
               </div>
 
@@ -364,7 +374,7 @@
               {mismatch.disconnects && mismatch.disconnects.length > 0 && (
                 <div className="bg-white rounded-lg border border-amber-300 shadow-sm overflow-hidden">
                   <div className="px-4 py-3 border-b border-amber-200 bg-amber-50 flex items-center justify-between">
-                    <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
+                    <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-amber-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                   </div>
                   <div className="p-4">
                     <div className={!premiumUnlocked ? 'blur-sm' : ''}>
@@ -449,18 +459,18 @@
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad Headlines</h3>
-                      <div className={`space-y-2 ${!premiumUnlocked ? 'blur-sm' : ''}`}>
+                      <div className="space-y-2">
                         {result.fix_kit.headlines.map((h, i) => (
                           <div key={i} className="p-2.5 bg-gray-50 rounded border border-gray-200">
-                            <div className=""><span className="text-sm text-gray-800">{h}</span></div>
+                            <div className={!premiumUnlocked ? 'blur-sm' : ''}><span className="text-sm text-gray-800">{h}</span></div>
                           </div>
                         ))}
                       </div>
                     </div>
                     <div>
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad Body</h3>
-                      <div className={`p-2.5 bg-gray-50 rounded border border-gray-200 ${!premiumUnlocked ? 'blur-sm' : ''}`}>
-                        <div className=""><p className="text-sm text-gray-700">{result.fix_kit.body}</p></div>
+                      <div className="p-2.5 bg-gray-50 rounded border border-gray-200">
+                        <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-700">{result.fix_kit.body}</p></div>
                       </div>
                     </div>
                   </div>
@@ -469,8 +479,8 @@
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">CTAs</h3>
                       <div className="flex flex-wrap gap-3">
                         {result.fix_kit.ctas.map((cta, i) => (
-                          <div key={i} style={{ borderColor: '#0a66c2' }} className="px-5 py-2.5 bg-white border-2 rounded-full">
-                            <div className=""><span style={{ color: '#0a66c2' }} className="text-base font-semibold">{cta}</span></div>
+                          <div key={i} className="px-5 py-2.5 bg-blue-600 border-2 border-blue-600 rounded-full">
+                            <div className={!premiumUnlocked ? 'blur-sm' : ''}><span className="text-white text-base font-semibold">{cta}</span></div>
                           </div>
                         ))}
                       </div>
@@ -478,15 +488,15 @@
                     {result.fix_kit.landing_page_headline && (
                       <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="p-4 rounded-lg border">
                         <h3 style={{ color: '#0a66c2' }} className="text-xs font-bold uppercase tracking-wide mb-3">Landing Page Copy</h3>
-                        <div className={`space-y-2 ${!premiumUnlocked ? 'blur-sm' : ''}`}>
+                        <div className="space-y-2">
                           <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border">
                             <span className="text-xs text-gray-500">Headline</span>
-                            <div className=""><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_headline}</p></div>
+                            <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_headline}</p></div>
                           </div>
                           {result.fix_kit.landing_page_subhead && (
                             <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border">
                               <span className="text-xs text-gray-500">Subheadline</span>
-                              <div className=""><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_subhead}</p></div>
+                              <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_subhead}</p></div>
                             </div>
                           )}
                         </div>
@@ -495,9 +505,9 @@
                   </div>
                 </div>
                 <div className="px-4 pb-4">
-                  <div className={`p-3 bg-gray-50 rounded border border-gray-200 ${!premiumUnlocked ? 'blur-sm' : ''}`}>
+                  <div className="p-3 bg-gray-50 rounded border border-gray-200">
                     <span style={{ color: '#0a66c2' }} className="font-semibold text-sm">Why this works:</span>
-                    <div className=" inline"><span className="text-sm text-gray-600 ml-1">{result.fix_kit.rationale}</span></div>
+                    <div className={!premiumUnlocked ? 'blur-sm' : ''}><span className="text-sm text-gray-600 ml-1">{result.fix_kit.rationale}</span></div>
                   </div>
                 </div>
                 {!premiumUnlocked && (
@@ -569,7 +579,7 @@
                         <p className="text-gray-600 text-sm mb-4">Here's your short link:</p>
                         <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
                           <input type="text" readOnly value={shareableLink} className="flex-1 bg-transparent text-sm text-gray-600 outline-none" />
-                          <button onClick={() => { navigator.clipboard.writeText(shareableLink); setCopied({...copied, shareLink: true}); setTimeout(() => setCopied({...copied, shareLink: false}), 2000); }} className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors" style={{ backgroundColor: copied.shareLink ? '#22c55e' : '#0a66c2', color: 'white' }}>
+                          <button onClick={() => copy(shareableLink, 'shareLink')} className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors" style={{ backgroundColor: copied.shareLink ? '#22c55e' : '#0a66c2', color: 'white' }}>
                             {copied.shareLink ? <><Icon name="check" className="w-4 h-4 inline mr-1" />Copied!</> : <><Icon name="copy" className="w-4 h-4 inline mr-1" />Copy</>}
                           </button>
                         </div>
@@ -614,66 +624,67 @@
                 </a>
               </div>
             </main>
+
+            {/* Premium Password Modal */}
+            {showPremiumModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
+                <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+                  <div className="p-6">
+                    <div className="text-center mb-6">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-blue-100">
+                        <Icon name="lock" className="w-8 h-8 text-blue-600" />
+                      </div>
+                      <h1 className="text-2xl font-semibold text-gray-900 mb-2">Premium Access</h1>
+                      <p className="text-gray-500 text-sm">Enter the premium password to unlock full report</p>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <div className="relative">
+                        <input 
+                          type={showPassword ? "text" : "password"} 
+                          placeholder="Enter premium password" 
+                          value={premiumPassword} 
+                          onChange={(e) => { setPremiumPassword(e.target.value); setPremiumPasswordErr(null); }} 
+                          className={`w-full px-4 py-3 pr-12 bg-white border-2 rounded-lg text-sm focus:outline-none ${premiumPasswordErr ? 'border-red-400' : 'border-gray-300 focus:border-blue-500'}`} 
+                          onKeyDown={(e) => e.key === 'Enter' && premiumPassword && submitPremiumPassword()}
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          <Icon name={showPassword ? "eyeOff" : "eye"} className="w-5 h-5" />
+                        </button>
+                      </div>
+                      {premiumPasswordErr && <p className="text-red-500 text-sm mt-2">{premiumPasswordErr}</p>}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => setShowPremiumModal(false)}
+                        className="flex-1 py-3 px-4 rounded-lg font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={submitPremiumPassword}
+                        disabled={!premiumPassword}
+                        className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${premiumPassword ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                      >
+                        Unlock Report
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         );
       }
 
       return (
-        <>
-          {/* Premium Password Modal */}
-          {showPremiumModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-                <div className="p-6">
-                  <div className="text-center mb-6">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-blue-100">
-                      <Icon name="lock" className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <h1 className="text-2xl font-semibold text-gray-900 mb-2">Premium Access</h1>
-                    <p className="text-gray-500 text-sm">Enter the premium password to unlock full report</p>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <div className="relative">
-                      <input 
-                        type={showPassword ? "text" : "password"} 
-                        placeholder="Enter premium password" 
-                        value={premiumPassword} 
-                        onChange={(e) => { setPremiumPassword(e.target.value); setPremiumPasswordErr(null); }} 
-                        className={`w-full px-4 py-3 pr-12 bg-white border-2 rounded-lg text-sm focus:outline-none ${premiumPasswordErr ? 'border-red-400' : 'border-gray-300 focus:border-blue-500'}`} 
-                        onKeyPress={(e) => e.key === 'Enter' && submitPremiumPassword()}
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded transition-colors"
-                      >
-                        <Icon name={showPassword ? "eyeOff" : "eye"} className="w-4 h-4 text-gray-500" />
-                      </button>
-                    </div>
-                    {premiumPasswordErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{premiumPasswordErr}</p>}
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button 
-                      onClick={() => setShowPremiumModal(false)}
-                      className="flex-1 py-3 px-4 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={submitPremiumPassword}
-                      disabled={!premiumPassword}
-                      className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${premiumPassword ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                    >
-                      Unlock Report
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
+        <div>Error: Unknown view</div>
       );
     }
 
