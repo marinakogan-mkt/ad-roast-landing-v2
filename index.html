@@ -44,11 +44,14 @@
         linkedin: <svg className={className} style={style} fill="#0a66c2" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
         download: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>,
         mail: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
+        lock: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>,
+        eye: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>,
+        eyeOff: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" /></svg>,
       };
       return icons[name] || null;
     };
 
-    const ACCESS_PASSWORD = 'conversionaudit';
+    const ACCESS_PASSWORD = 'ConversionAudit26!';
 
     const saveToNotion = async (data) => {
       try {
@@ -64,7 +67,7 @@
 
     const validatePassword = (pwd) => {
       if (!pwd) return { valid: false, error: 'Password is required' };
-      if (pwd.trim().toLowerCase() !== ACCESS_PASSWORD) {
+      if (pwd.trim() !== ACCESS_PASSWORD) {
         return { valid: false, error: 'Incorrect password' };
       }
       return { valid: true };
@@ -89,6 +92,11 @@
       const [isSharedView, setIsSharedView] = useState(false);
       const [shareableLink, setShareableLink] = useState('');
       const [savingLink, setSavingLink] = useState(false);
+      const [showPremiumModal, setShowPremiumModal] = useState(false);
+      const [premiumPassword, setPremiumPassword] = useState('');
+      const [premiumPasswordErr, setPremiumPasswordErr] = useState(null);
+      const [showPassword, setShowPassword] = useState(false);
+      const [premiumUnlocked, setPremiumUnlocked] = useState(false);
       const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.landingCopy.trim();
       const canProceed = platform && offerType && icp.length > 10;
 
@@ -106,6 +114,7 @@
                 setIcp(data.icp || '');
                 setPlatform(data.platform || 'meta');
                 setIsSharedView(true);
+                setPremiumUnlocked(true);
                 setView('results');
               } else {
                 setError('Report not found');
@@ -133,11 +142,18 @@
         setReportEmail(''); setReportEmailErr(null); setPdfStatus(null);
       };
 
-      const submitPassword = () => {
-        const v = validatePassword(password);
-        if (!v.valid) { setPasswordErr(v.error); return; }
-        setPasswordErr(null);
-        setView('results');
+      const handlePremiumClick = () => {
+        setShowPremiumModal(true);
+        setPremiumPassword('');
+        setPremiumPasswordErr(null);
+      };
+
+      const submitPremiumPassword = () => {
+        const v = validatePassword(premiumPassword);
+        if (!v.valid) { setPremiumPasswordErr(v.error); return; }
+        setPremiumPasswordErr(null);
+        setPremiumUnlocked(true);
+        setShowPremiumModal(false);
       };
 
       const generate = async () => {
@@ -151,7 +167,7 @@
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'API error');
-          setResult(data); setView('password');
+          setResult(data); setPremiumUnlocked(false); setView('results');
         } catch (err) { setError(err.message); setView('input'); }
         setLoading(false);
       };
@@ -298,40 +314,6 @@
         </div>
       );
 
-      /* ─── LINKEDIN GATE ─── */
-      if (view === 'password') {
-        const v = password ? validatePassword(password) : { valid: false };
-        return (
-          <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
-            <div className="max-w-md w-full">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#e8f3ff' }}><Icon name="sparkles" className="w-8 h-8" style={{ color: '#0a66c2' }} /></div>
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Your Roast is Ready!</h1>
-                <p className="text-gray-500 text-sm">Enter the access password</p>
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#e8f3ff' }}><Icon name="zap" className="w-5 h-5" style={{ color: '#0a66c2' }} /></div>
-                  <div><h3 className="font-semibold text-gray-900">Access Password</h3><p className="text-gray-500 text-xs">Enter the password provided to you</p></div>
-                </div>
-                <input type="password" placeholder="Enter password" value={password} onChange={(e) => { setPassword(e.target.value); setPasswordErr(null); }} className={`w-full px-4 py-3 bg-white border-2 rounded-lg text-sm focus:outline-none ${passwordErr ? 'border-red-400' : v.valid ? 'border-green-400' : 'border-gray-300 focus:border-blue-500'}`} />
-                {passwordErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{passwordErr}</p>}
-                {v.valid && !passwordErr && <p className="text-green-600 text-xs mt-2 flex items-center gap-1"><Icon name="check" className="w-3 h-3" />Password correct</p>}
-              </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                <p className="text-gray-500 text-xs mb-3">Preview:</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"><span className="text-xs text-gray-500 block">Ad</span><span className={`text-lg font-bold ${getScoreText(result?.overall_score)}`}>{result?.overall_score}/10</span></div>
-                  <div className="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"><span className="text-xs text-gray-500 block">Landing</span><span className={`text-lg font-bold ${result?.landing_page_roast?.overall_score > 0 ? getScoreText(result.landing_page_roast.overall_score) : 'text-gray-400'}`}>{result?.landing_page_roast?.overall_score > 0 ? `${result.landing_page_roast.overall_score}/10` : 'N/A'}</span></div>
-                  <div className="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"><span className="text-xs text-gray-500 block">Match</span><span className={`text-lg font-bold ${result?.ad_landing_mismatch?.alignment_score > 0 ? getScoreText(result.ad_landing_mismatch.alignment_score) : 'text-gray-400'}`}>{result?.ad_landing_mismatch?.alignment_score > 0 ? `${result.ad_landing_mismatch.alignment_score}/10` : 'N/A'}</span></div>
-                </div>
-              </div>
-              <button onClick={submitPassword} disabled={!password} style={password ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`w-full py-3 rounded-full font-semibold flex items-center justify-center gap-2 transition-all ${password ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}><Icon name="sparkles" className="w-5 h-5" style={{ color: 'white' }} /> See My Full Roast</button>
-            </div>
-          </div>
-        );
-      }
-
       /* ─── RESULTS ─── */
       if (view === 'results' && result) {
         const lp = result.landing_page_roast || {};
@@ -378,14 +360,13 @@
                 </div>
               </div>
 
-              {/* Message Mismatch - Full version */}
+              {/* Message Mismatch - Premium section */}
               {mismatch.disconnects && mismatch.disconnects.length > 0 && (
                 <div className="bg-white rounded-lg border border-amber-300 shadow-sm overflow-hidden">
                   <div className="px-4 py-3 border-b border-amber-200 bg-amber-50 flex items-center justify-between">
-                    <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch</h2>
-                    
+                    <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-amber-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                   </div>
-                  <div className="p-4 relative">
+                  <div className={`p-4 relative ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
                     <div className="">
                       <p className="text-sm text-gray-800 mb-3">{mismatch.verdict}</p>
                       {mismatch.message_match_issues && <p className="text-sm text-gray-600 mb-4">{mismatch.message_match_issues}</p>}
@@ -404,6 +385,16 @@
                       
                     </div>
                   </div>
+                  {!premiumUnlocked && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
+                      <div className="text-center p-6">
+                        <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-amber-600" />
+                        <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-amber-600 text-white rounded-full font-semibold hover:bg-amber-700 transition-colors">
+                          Get Full Report
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -450,13 +441,12 @@
                 </div>
               )}
 
-              {/* Fix Kit - Full version */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              {/* Fix Kit - Premium section */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden relative">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Fix Kit</h2>
-                  
+                  <h2 className="font-semibold text-gray-900">Fix Kit {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                 </div>
-                <div className="p-4 grid sm:grid-cols-2 gap-4">
+                <div className={`p-4 grid sm:grid-cols-2 gap-4 ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad Headlines</h3>
@@ -505,7 +495,7 @@
                     )}
                   </div>
                 </div>
-                <div className="px-4 pb-4">
+                <div className={`px-4 pb-4 ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
                   <div className="p-3 bg-gray-50 rounded border border-gray-200">
                     <span style={{ color: '#0a66c2' }} className="font-semibold text-sm">Why this works:</span>
                     <div className=" inline"><span className="text-sm text-gray-600 ml-1">{result.fix_kit.rationale}</span></div>
@@ -514,15 +504,24 @@
                 <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
                   
                 </div>
+                {!premiumUnlocked && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
+                    <div className="text-center p-6">
+                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
+                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
+                        Get Full Report
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Experiments - Full version */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              {/* Experiments - Premium section */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden relative">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">3 Experiments to Run</h2>
-                  
+                  <h2 className="font-semibold text-gray-900">3 Experiments to Run {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-green-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                 </div>
-                <div className="p-4 grid sm:grid-cols-3 gap-3">
+                <div className={`p-4 grid sm:grid-cols-3 gap-3 ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
                   {result.experiments.map((exp, i) => (
                     <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="flex items-center gap-2 mb-2">
@@ -536,15 +535,24 @@
                 <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
                   
                 </div>
+                {!premiumUnlocked && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
+                    <div className="text-center p-6">
+                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-green-600" />
+                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 transition-colors">
+                        Get Full Report
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Next Steps - Full version */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              {/* Next Steps - Premium section */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden relative">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Next Steps</h2>
-                  
+                  <h2 className="font-semibold text-gray-900">Next Steps {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                 </div>
-                <div className="p-4 space-y-2">
+                <div className={`p-4 space-y-2 ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
                   {result.next_steps.map((step, i) => (
                     <label key={i} className="flex items-start gap-3 p-2 rounded">
                       <input type="checkbox" disabled className="mt-0.5 w-4 h-4 rounded border-gray-400" />
@@ -555,6 +563,16 @@
                 <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
                   
                 </div>
+                {!premiumUnlocked && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
+                    <div className="text-center p-6">
+                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-purple-600" />
+                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-purple-600 text-white rounded-full font-semibold hover:bg-purple-700 transition-colors">
+                        Get Full Report
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Copy Link */}
@@ -616,7 +634,63 @@
         );
       }
 
-      return null;
+      return (
+        <>
+          {/* Premium Password Modal */}
+          {showPremiumModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div className="p-6">
+                  <div className="text-center mb-6">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-blue-100">
+                      <Icon name="lock" className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <h1 className="text-2xl font-semibold text-gray-900 mb-2">Premium Access</h1>
+                    <p className="text-gray-500 text-sm">Enter the premium password to unlock full report</p>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <div className="relative">
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="Enter premium password" 
+                        value={premiumPassword} 
+                        onChange={(e) => { setPremiumPassword(e.target.value); setPremiumPasswordErr(null); }} 
+                        className={`w-full px-4 py-3 pr-12 bg-white border-2 rounded-lg text-sm focus:outline-none ${premiumPasswordErr ? 'border-red-400' : 'border-gray-300 focus:border-blue-500'}`} 
+                        onKeyPress={(e) => e.key === 'Enter' && submitPremiumPassword()}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded transition-colors"
+                      >
+                        <Icon name={showPassword ? "eyeOff" : "eye"} className="w-4 h-4 text-gray-500" />
+                      </button>
+                    </div>
+                    {premiumPasswordErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{premiumPasswordErr}</p>}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setShowPremiumModal(false)}
+                      className="flex-1 py-3 px-4 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={submitPremiumPassword}
+                      disabled={!premiumPassword}
+                      className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${premiumPassword ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                    >
+                      Unlock Report
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      );
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
