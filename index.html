@@ -362,11 +362,11 @@
 
               {/* Message Mismatch - Premium section */}
               {mismatch.disconnects && mismatch.disconnects.length > 0 && (
-                <div className="bg-white rounded-lg border border-amber-300 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-lg border border-amber-300 shadow-sm overflow-hidden relative">
                   <div className="px-4 py-3 border-b border-amber-200 bg-amber-50 flex items-center justify-between">
                     <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-amber-600 text-white text-xs rounded-full font-medium ml-2">PREMIUM</span>}</h2>
                   </div>
-                  <div className={`p-4 relative ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
+                  <div className={`p-4 ${!premiumUnlocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
                     <div className="">
                       <p className="text-sm text-gray-800 mb-3">{mismatch.verdict}</p>
                       {mismatch.message_match_issues && <p className="text-sm text-gray-600 mb-4">{mismatch.message_match_issues}</p>}
@@ -386,13 +386,10 @@
                     </div>
                   </div>
                   {!premiumUnlocked && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
-                      <div className="text-center p-6">
-                        <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-amber-600" />
-                        <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-amber-600 text-white rounded-full font-semibold hover:bg-amber-700 transition-colors">
-                          Get Full Report
-                        </button>
-                      </div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95">
+                      <button onClick={handlePremiumClick} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="px-8 py-3 rounded-full font-semibold text-lg hover:opacity-90 transition-opacity flex items-center gap-2">
+                        <Icon name="sparkles" className="w-5 h-5" /> Get Full Report
+                      </button>
                     </div>
                   )}
                 </div>
@@ -505,13 +502,10 @@
                   
                 </div>
                 {!premiumUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
-                    <div className="text-center p-6">
-                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-blue-600" />
-                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors">
-                        Get Full Report
-                      </button>
-                    </div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95">
+                    <button onClick={handlePremiumClick} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="px-8 py-3 rounded-full font-semibold text-lg hover:opacity-90 transition-opacity flex items-center gap-2">
+                      <Icon name="sparkles" className="w-5 h-5" /> Get Full Report
+                    </button>
                   </div>
                 )}
               </div>
@@ -536,13 +530,10 @@
                   
                 </div>
                 {!premiumUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
-                    <div className="text-center p-6">
-                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-green-600" />
-                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-green-600 text-white rounded-full font-semibold hover:bg-green-700 transition-colors">
-                        Get Full Report
-                      </button>
-                    </div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95">
+                    <button onClick={handlePremiumClick} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="px-8 py-3 rounded-full font-semibold text-lg hover:opacity-90 transition-opacity flex items-center gap-2">
+                      <Icon name="sparkles" className="w-5 h-5" /> Get Full Report
+                    </button>
                   </div>
                 )}
               </div>
@@ -564,13 +555,10 @@
                   
                 </div>
                 {!premiumUnlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90">
-                    <div className="text-center p-6">
-                      <Icon name="lock" className="w-8 h-8 mx-auto mb-3 text-purple-600" />
-                      <button onClick={handlePremiumClick} className="px-6 py-2.5 bg-purple-600 text-white rounded-full font-semibold hover:bg-purple-700 transition-colors">
-                        Get Full Report
-                      </button>
-                    </div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95">
+                    <button onClick={handlePremiumClick} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="px-8 py-3 rounded-full font-semibold text-lg hover:opacity-90 transition-opacity flex items-center gap-2">
+                      <Icon name="sparkles" className="w-5 h-5" /> Get Full Report
+                    </button>
                   </div>
                 )}
               </div>
