@@ -3,25 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AdRoast - Brutally Honest Ad Feedback for AI Founders</title>
+  <title>Brands with Purpose</title>
   <meta name="description" content="Get a brutally honest AI roast of your ads and landing pages — analyzed against YOUR specific ICP.">
-  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEMElEQVR4nO2XTYiVVRjHf89zzn3fOzofzjCFilKohPaB0Cwi6AOsRYuIWgUtaijaBrUqN7ltEQkuEtvVphYSYRHMKLbQxKAgTNRGS4dEy/nQUWfm3nnf87Q4975zv/IDb7npgcN7Oc+5z/M/z/mf/zlHANNHnoFn38T6h/kvTOamYP8nhGMHEH14m/HyDgyDrArIv5zewCcIAl/sQPTtz82G1kC1AqoRoYCTCMQMcrPuYggBkhSZuYC3/uE484bkITdCJYtonaKpx7oJQhWyKtY/jI89spw8CwyUPaOPr2dNX8r4mWkOnJpGU0d3C1HP+f5+qycnGAOJ4+AbI2xd3V8MfeubE+w6NInvKZGH7i6H1n84EcJixmsja9m6up9KFqjmhgE7tm1koC8lzwLSZY5qa8d9A2WyYIgIJScEM/oSz8AKjwXr+h4pAJgBTvl2YhqvQuIEs1iZny7McX56AS0pXV6BZQC5GS71jJ2aYvv4BDMLVfIQOPrHZUb3Hic34t69WUARnMamt7BeBQmLDiBUMu4ZLLOqXGJieh5yQ0vuhltRRTCMUA2Qh9jpFCkpKnEpO5lv7TBAU8+luSqXrlTAK+q1KXkrEK9KVs1B4ME1vWwa6gHg99kFjv15jTwzXNkTOqxfAUAF8iywfrDMvle24jWutwqMnZnhna9PAfDExkF2P7+ZzCyqqgqjXx5n7voSH7+4hafvH8JpXUWNH85f4b2x0xycmMH1tINoroBB6rVJA+JMFqmr0EDqeeje3ib/S1uGef3RdazuTZukW0V4bN0qxkZHeO7THznw6wy+7Ju0pG0bmkE1zwlmVPNAMGMxC4U/MyOYsRSiLw/G9qc2FMlFIo9UImWXguFV2P3CFsqJI7Rs5TYAdeSNrZHM0uJ3KtRDZiFwtZIVyQFKKuRmbBpayZMbBgmVDNXlgB0B3I4Fi6A+OHSWzTsP88DOw7y69xeuV3NqNCm+I2v74FYqcKuWB0MF9p38i3e/OsFvlxe5OJ/x2aFz7Do6iQjFegswvCJpi3FHAOpU2nviEuqUNPEkTnA9JcbPzMQEDdPtJExtOnA7Vg83u7hEoMZ+gxy4tpTXxkgD1Ha7Yw7ADePf1LoD4A7sfwB3HUDH0zALBljt23wtN4v+OuPrQvNPcRrPhk5HchsAJ0LZu+isbeKBdHlY4gWvgm/Qs9RL204oqRT/L9XG9ia+bVwR2QBUmF1Y4sPvzxWXCCfCzxevgotBTk8vsPPIZDErJ8LJqXko6XIlnHB+rsJHRyZrMhzjfHd2FlqudbUbkVGXFTODxaylLIoksSqWG1Rb/IlHWqpgwaDSMs7X4lh9yoKXuSkan2YqglvZrNlNZ7wXXKnZn5u18UC1PU6wGg8anmbK+J4ol0lKLFYkT2PrRMLGdiMSNrZIQovJEdi/Jwr13Xye/w03QRo87IlzkAAAAABJRU5ErkJggg==">
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEMElEQVR4nO2XTYiVVRjHf89zzn3fOzofzjCFilKohPaB0Cwi6AOsRYuIWgUtaijaBrUqN7ltEQkuEtvVphYSYRHMKLbQxKAgTNRGS4dEy/nQUWfm3nnf87Q4975zv/IDb7npgcN7Oc+5z/M/z/mf/zlHANNHnoFn38T6h/kvTOamYP8nhGMHEH14m/HyDgyDrArIv5zewCcIAl/sQPTtz82G1kC1AqoRoYCTCMQMcrPuYggBkhSZuYC3/uE484bkITdCJYtonaKpx7oJQhWyKtY/jI89spw8CwyUPaOPr2dNX8r4mWkOnJpGU0d3C1HP+f5+qycnGAOJ4+AbI2xd3V8MfeubE+w6NInvKZGH7i6H1n84EcJixmsja9m6up9KFqjmhgE7tm1koC8lzwLSZY5qa8d9A2WyYIgIJScEM/oSz8AKjwXr+h4pAJgBTvl2YhqvQuIEs1iZny7McX56AS0pXV6BZQC5GS71jJ2aYvv4BDMLVfIQOPrHZUb3Hic34t69WUARnMamt7BeBQmLDiBUMu4ZLLOqXGJieh5yQ0vuhltRRTCMUA2Qh9jpFCkpKnEpO5lv7TBAU8+luSqXrlTAK+q1KXkrEK9KVs1B4ME1vWwa6gHg99kFjv15jTwzXNkTOqxfAUAF8iywfrDMvle24jWutwqMnZnhne9PAfDExkF2P7+ZzCyqqgqjXx5n7voSH7+4hafvH8JpXUWNH85f4b2x0xycmMH1tINoroBB6rVJA+JMFqmr0EDqeeje3ib/S1uGef3RdazuTZukW0V4bN0qxkZLeO7THznw6wy+7Ju0pG0bmkE1zwlmVPNAMGMxC4U/MyOYsRSiLw/G9qc2FMlFIo9UImWXguFV2P3CFsqJI7Rs5TYAdeSNrZHM0uJ3KtRDZiFwtZIVyQFKKuRmbBpayZMbBgmVDNXlgB0B3I4Fi6A+OHSWzTsP88DOw7y69xeuV3NqNCm+I2v74FYqcKuWB0MF9p38i3e/OsFvlxe5OJ/x2aFz7Do6iQjFegswvCJpi3FHAOpU2nviEuqUNPEkTnA9JcbPzMQEDdPtJExtOnA7Vg83u7hEoMZ+gxy4tpTXxkgD1Ha7Yw7ADePf1LoD4A7sfwB3HUDH0zALBljt23wtN4v+OuPrQvNPcRrPhk5HchsAJ0LZu+isbeKBdHlY4gWvgm/Qs9RL204oqRT/L9XG9ia+bVwR2QBUmF1Y4sPvzxWXCCfCzxevgotBTk8vsPPIZDErJ8LJqXko6XIlnHB+rsJHRyZrMhzjfHd2FlqudbUbkVGXFTODxaylLIoksSqWG1Rb/IlHWqpgwaDSMs7X4lh9yoKXuSkan2YqglvZrNlNZ7wXXKnZn5u18UC1PU6wGg8anmbK+J4ol0lKLFYkT2PrRMLGdiMSNrZIQovJEdi/Jwr13Xye/w03QRo87IlzkAAAAABJRU5ErkJggg==">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet" />
   <style>
     body { font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .animate-spin { animation: spin 1s linear infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    /* Portal styles */
+    :root {
+      --ink: #1a1a2e; --ink-light: #3d3d56; --slate: #64648b; --mist: #f4f4f8;
+      --cloud: #e8e8f0; --accent: #2d5be3; --accent-hover: #1d4ac7;
+      --accent-light: #eef2ff; --accent-faint: #f6f8ff;
+      --success: #16a34a; --success-light: #f0fdf4;
+      --warning: #d97706; --warning-light: #fffbeb;
+      --danger: #dc2626; --danger-light: #fef2f2;
+    }
+    .portal-mode * { font-family: 'DM Sans', system-ui, sans-serif; }
+    .portal-mode h1, .portal-mode h2, .portal-mode h3, .portal-mode .serif { font-family: 'DM Serif Display', Georgia, serif; }
+    .portal-mode { background: var(--mist); color: var(--ink); }
+    .fade-in { animation: fadeIn 0.35s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .card-lift { transition: transform 0.2s, box-shadow 0.2s; }
+    .card-lift:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState } = React;
+    const { useState, useEffect } = React;
 
     const Icon = ({ name, className = "w-5 h-5", style = {} }) => {
       const icons = {
@@ -44,14 +63,36 @@
         linkedin: <svg className={className} style={style} fill="#0a66c2" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
         download: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>,
         mail: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
-        lock: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>,
-        eye: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>,
-        eyeOff: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" /></svg>,
       };
       return icons[name] || null;
     };
 
-    const ACCESS_PASSWORD = 'ConversionAudit26!';
+    const EMAIL_CONFIG = { service_id: 'service_ywioabe', template_id: 'template_gtqow85', public_key: '964Wa83HevoEa5KnS', notify_email: 'marina.kogan@brandswithpurpose.us' };
+    const PAYMENT_URL = 'https://buy.stripe.com/5kQ4gy45SdXwgvsaz7ew801';
+
+    const notifyCtaClick = async (leadLinkedIn, section) => {
+      try {
+        await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_id: EMAIL_CONFIG.service_id,
+            template_id: EMAIL_CONFIG.template_id,
+            user_id: EMAIL_CONFIG.public_key,
+            template_params: {
+              to_email: EMAIL_CONFIG.notify_email,
+              subject: '💰 AdRoast: Someone clicked to buy Full Report!',
+              message: `A lead clicked "Get Full Report" on the ${section} section.\n\nTheir LinkedIn: ${leadLinkedIn || 'Unknown'}\n\nThey were redirected to Stripe checkout - check if payment comes through!`
+            }
+          })
+        });
+      } catch (e) { console.error('CTA notification error:', e); }
+    };
+
+    const handleCtaClick = (leadLinkedIn, section) => {
+      notifyCtaClick(leadLinkedIn, section);
+      window.open(PAYMENT_URL, '_blank');
+    };
 
     const saveToNotion = async (data) => {
       try {
@@ -62,13 +103,13 @@
         });
         const json = await res.json();
         return json.reportId || null;
-      } catch (e) { console.error('Save error:', e); return null; }
+      } catch (e) { console.error('Notion error:', e); return null; }
     };
 
-    const validatePassword = (pwd) => {
-      if (!pwd) return { valid: false, error: 'Password is required' };
-      if (pwd.trim() !== ACCESS_PASSWORD) {
-        return { valid: false, error: 'Incorrect password' };
+    const validateLinkedIn = (url) => {
+      if (!url) return { valid: false, error: 'LinkedIn URL is required' };
+      if (!/^(https?:\/\/)?(www\.)?linkedin\.com\/in\/[\w-]{3,100}\/?$/i.test(url.trim())) {
+        return { valid: false, error: url.includes('linkedin.com') ? 'Use your profile URL (linkedin.com/in/yourname)' : 'Enter a valid LinkedIn URL' };
       }
       return { valid: true };
     };
@@ -77,26 +118,25 @@
     const getScoreBorder = (s) => s <= 3 ? 'border-red-200' : s <= 6 ? 'border-amber-200' : 'border-green-200';
     const getScoreText = (s) => s <= 3 ? 'text-red-600' : s <= 6 ? 'text-amber-600' : 'text-green-600';
 
-    function App() {
+
+    function AdRoastApp() {
       const [view, setView] = useState('landing');
       const [platform, setPlatform] = useState(null);
       const [offerType, setOfferType] = useState(null);
       const [icp, setIcp] = useState('');
-      const [password, setPassword] = useState('');
-      const [passwordErr, setPasswordErr] = useState(null);
+      const [linkedin, setLinkedin] = useState('');
+      const [linkedinErr, setLinkedinErr] = useState(null);
+      const [sending, setSending] = useState(false);
       const [inputs, setInputs] = useState({ url: '', copy: '', visual: '', landingCopy: '' });
       const [result, setResult] = useState(null);
       const [copied, setCopied] = useState({});
       const [error, setError] = useState(null);
       const [loading, setLoading] = useState(false);
-      const [isSharedView, setIsSharedView] = useState(false);
+      const [reportEmail, setReportEmail] = useState('');
+      const [reportEmailErr, setReportEmailErr] = useState(null);
+      const [pdfStatus, setPdfStatus] = useState(null);
       const [shareableLink, setShareableLink] = useState('');
-      const [savingLink, setSavingLink] = useState(false);
-      const [showPremiumModal, setShowPremiumModal] = useState(false);
-      const [premiumPassword, setPremiumPassword] = useState('');
-      const [premiumPasswordErr, setPremiumPasswordErr] = useState(null);
-      const [showPassword, setShowPassword] = useState(false);
-      const [premiumUnlocked, setPremiumUnlocked] = useState(false);
+      const [isSharedView, setIsSharedView] = useState(false);
       const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.landingCopy.trim();
       const canProceed = platform && offerType && icp.length > 10;
 
@@ -114,7 +154,6 @@
                 setIcp(data.icp || '');
                 setPlatform(data.platform || 'meta');
                 setIsSharedView(true);
-                setPremiumUnlocked(true);
                 setView('results');
               } else {
                 setError('Report not found');
@@ -136,34 +175,97 @@
       };
 
       const reset = () => {
-        setView('landing'); 
-        setPlatform(null); 
-        setOfferType(null); 
-        setIcp('');
-        setResult(null); 
-        setError(null);
+        setView('landing'); setPlatform(null); setOfferType(null); setIcp('');
+        setLinkedin(''); setLinkedinErr(null); setResult(null); setError(null);
         setInputs({ url: '', copy: '', visual: '', landingCopy: '' });
-        setShareableLink('');
-        setSavingLink(false);
-        setPremiumUnlocked(false);
-        setShowPremiumModal(false);
-        setPremiumPassword('');
-        setPremiumPasswordErr(null);
-        setIsSharedView(false);
+        setReportEmail(''); setReportEmailErr(null); setPdfStatus(null);
       };
 
-      const handlePremiumClick = () => {
-        setShowPremiumModal(true);
-        setPremiumPassword('');
-        setPremiumPasswordErr(null);
+      const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+      const sendReportLink = async () => {
+        if (!validateEmail(reportEmail)) { setReportEmailErr('Please enter a valid email address'); return; }
+        setReportEmailErr(null); setPdfStatus('sending');
+        
+        const adScore = result.overall_score;
+        const lpScore = result.landing_page_roast?.overall_score || 'N/A';
+        const matchScore = result.ad_landing_mismatch?.alignment_score || 'N/A';
+        
+        // Save to Notion and get report ID
+        const reportId = await saveToNotion({
+          email: reportEmail,
+          linkedin: linkedin,
+          platform: platform,
+          adScore: adScore,
+          lpScore: lpScore,
+          matchScore: matchScore,
+          roastData: result,
+          icp: icp
+        });
+        
+        const shareLink = reportId 
+          ? `${window.location.origin}${window.location.pathname}?id=${reportId}`
+          : window.location.href;
+        
+        // Send link to user
+        try {
+          await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              service_id: EMAIL_CONFIG.service_id, template_id: EMAIL_CONFIG.template_id, user_id: EMAIL_CONFIG.public_key,
+              template_params: { 
+                to_email: reportEmail, 
+                subject: '🔥 Your AdRoast Report is Ready!', 
+                message: `Here's your personalized ad roast report:\n\n${shareLink}\n\nYour Scores:\n• Ad Score: ${adScore}/10\n• Landing Page: ${lpScore}/10\n• Ad-LP Match: ${matchScore}/10\n\nBookmark this link to access your report anytime.\n\nWant help fixing your ads? Connect with me on LinkedIn:\nhttps://www.linkedin.com/in/koganmarinamkt`
+              }
+            })
+          });
+        } catch (e) { console.error('Email to user error:', e); }
+        
+        setShareableLink(shareLink);
+        setPdfStatus('sent');
       };
 
-      const submitPremiumPassword = () => {
-        const v = validatePassword(premiumPassword);
-        if (!v.valid) { setPremiumPasswordErr(v.error); return; }
-        setPremiumPasswordErr(null);
-        setPremiumUnlocked(true);
-        setShowPremiumModal(false);
+      const submitLinkedIn = async () => {
+        const v = validateLinkedIn(linkedin);
+        if (!v.valid) { setLinkedinErr(v.error); return; }
+        setLinkedinErr(null); setSending(true);
+        
+        const adScore = result.overall_score;
+        const lpScore = result.landing_page_roast?.overall_score || 'N/A';
+        const matchScore = result.ad_landing_mismatch?.alignment_score || 'N/A';
+        
+        // Save to Notion first and get report ID
+        const reportId = await saveToNotion({
+          linkedin: linkedin,
+          platform: platform,
+          adScore: adScore,
+          lpScore: lpScore,
+          matchScore: matchScore,
+          roastData: result,
+          icp: icp
+        });
+        
+        const shareLink = reportId 
+          ? `${window.location.origin}${window.location.pathname}?id=${reportId}`
+          : window.location.href;
+        
+        // ONE email to Marina with LinkedIn + roast info + short link
+        try {
+          await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              service_id: EMAIL_CONFIG.service_id, template_id: EMAIL_CONFIG.template_id, user_id: EMAIL_CONFIG.public_key,
+              template_params: { 
+                to_email: EMAIL_CONFIG.notify_email, 
+                subject: `🔥 AdRoast: ${linkedin.split('/in/')[1]?.replace(/\/$/, '') || 'New'} | Ad:${adScore}/10 | LP:${lpScore}/10`, 
+                message: `🔗 LINKEDIN: ${linkedin}\n📱 PLATFORM: ${platform}\n🎯 OFFER: ${offerType}\n🌐 LANDING URL: ${inputs.url}\n\n📊 SCORES\n• Ad: ${adScore}/10\n• LP: ${lpScore}/10\n• Match: ${matchScore}/10\n\n👥 ICP\n${icp}\n\n🎯 AD VERDICT\n${result.icp_mismatch}\n\n🔗 AD-LANDING MISMATCH\n${result.ad_landing_mismatch?.verdict || 'N/A'}\n${result.ad_landing_mismatch?.disconnects?.map(d => '• ' + d.problem).join('\n') || ''}\n\n🌐 LANDING PAGE ISSUES\n${result.landing_page_roast?.top_issues?.join('\n') || 'N/A'}\n\n✏️ FIX KIT\nHeadlines:\n${result.fix_kit.headlines.join('\n')}\n\nBody: ${result.fix_kit.body}\nCTAs: ${result.fix_kit.ctas.join(', ')}\n\nLP Headline: ${result.fix_kit.landing_page_headline || 'N/A'}\nLP Subhead: ${result.fix_kit.landing_page_subhead || 'N/A'}\n\n🔗 REPORT LINK\n${shareLink}`
+              }
+            })
+          });
+        } catch (e) { console.error('LinkedIn notify error:', e); }
+        
+        setSending(false); setView('results');
       };
 
       const generate = async () => {
@@ -177,7 +279,7 @@
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'API error');
-          setResult(data); setPremiumUnlocked(false); setView('results');
+          setResult(data); setView('linkedin');
         } catch (err) { setError(err.message); setView('input'); }
         setLoading(false);
       };
@@ -192,7 +294,7 @@
                 <span className="text-gray-300 text-lg font-light">|</span>
                 <span className="text-lg text-gray-800 font-semibold">AdRoast</span>
               </div>
-              <button onClick={() => setView('onboarding')} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="px-4 py-1 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors">Roast my Ad</button>
+              <a href="#portal" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="px-4 py-1 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors no-underline">Partner Portal</a>
             </div>
           </header>
           <main className="flex-1 flex flex-col justify-center items-center px-4 pb-8">
@@ -324,6 +426,40 @@
         </div>
       );
 
+      /* ─── LINKEDIN GATE ─── */
+      if (view === 'linkedin') {
+        const v = linkedin ? validateLinkedIn(linkedin) : { valid: false };
+        return (
+          <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+            <div className="max-w-md w-full">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#e8f3ff' }}><Icon name="sparkles" className="w-8 h-8" style={{ color: '#0a66c2' }} /></div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Your Roast is Ready!</h1>
+                <p className="text-gray-500 text-sm">One last step</p>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#e8f3ff' }}><Icon name="linkedin" className="w-5 h-5" /></div>
+                  <div><h3 className="font-semibold text-gray-900">Drop your LinkedIn</h3><p className="text-gray-500 text-xs">I review every roast personally. No spam.</p></div>
+                </div>
+                <input type="url" placeholder="https://linkedin.com/in/yourprofile" value={linkedin} onChange={(e) => { setLinkedin(e.target.value); setLinkedinErr(null); }} className={`w-full px-4 py-3 bg-white border-2 rounded-lg text-sm focus:outline-none ${linkedinErr ? 'border-red-400' : v.valid ? 'border-green-400' : 'border-gray-300 focus:border-blue-500'}`} />
+                {linkedinErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{linkedinErr}</p>}
+                {v.valid && !linkedinErr && <p className="text-green-600 text-xs mt-2 flex items-center gap-1"><Icon name="check" className="w-3 h-3" />Valid LinkedIn URL</p>}
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                <p className="text-gray-500 text-xs mb-3">Preview:</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"><span className="text-xs text-gray-500 block">Ad</span><span className={`text-lg font-bold ${getScoreText(result?.overall_score)}`}>{result?.overall_score}/10</span></div>
+                  <div className="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"><span className="text-xs text-gray-500 block">Landing</span><span className={`text-lg font-bold ${result?.landing_page_roast?.overall_score > 0 ? getScoreText(result.landing_page_roast.overall_score) : 'text-gray-400'}`}>{result?.landing_page_roast?.overall_score > 0 ? `${result.landing_page_roast.overall_score}/10` : 'N/A'}</span></div>
+                  <div className="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"><span className="text-xs text-gray-500 block">Match</span><span className={`text-lg font-bold ${result?.ad_landing_mismatch?.alignment_score > 0 ? getScoreText(result.ad_landing_mismatch.alignment_score) : 'text-gray-400'}`}>{result?.ad_landing_mismatch?.alignment_score > 0 ? `${result.ad_landing_mismatch.alignment_score}/10` : 'N/A'}</span></div>
+                </div>
+              </div>
+              <button onClick={submitLinkedIn} disabled={!linkedin || sending} style={linkedin && !sending ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`w-full py-3 rounded-full font-semibold flex items-center justify-center gap-2 transition-all ${linkedin && !sending ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>{sending ? 'Unlocking...' : <><Icon name="sparkles" className="w-5 h-5" style={{ color: 'white' }} /> See My Full Roast</>}</button>
+            </div>
+          </div>
+        );
+      }
+
       /* ─── RESULTS ─── */
       if (view === 'results' && result) {
         const lp = result.landing_page_roast || {};
@@ -370,44 +506,41 @@
                 </div>
               </div>
 
-              {/* Message Mismatch - Premium section */}
+              {/* Message Mismatch - PREMIUM */}
               {mismatch.disconnects && mismatch.disconnects.length > 0 && (
                 <div className="bg-white rounded-lg border border-amber-300 shadow-sm overflow-hidden">
                   <div className="px-4 py-3 border-b border-amber-200 bg-amber-50 flex items-center justify-between">
-                    <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-amber-600 text-white text-xs font-medium ml-2">PREMIUM</span>}</h2>
+                    <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch</h2>
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>
                   </div>
-                  <div className="p-4">
-                    <div className={!premiumUnlocked ? 'blur-sm' : ''}>
+                  <div className="p-4 relative">
+                    <div className="blur-sm pointer-events-none select-none">
                       <p className="text-sm text-gray-800 mb-3">{mismatch.verdict}</p>
                       {mismatch.message_match_issues && <p className="text-sm text-gray-600 mb-4">{mismatch.message_match_issues}</p>}
                     </div>
                     <div className="grid sm:grid-cols-2 gap-3 mt-4">
                       {mismatch.disconnects.map((d, i) => (
-                        <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200 relative">
                           <p className="text-red-600 text-sm font-medium mb-2">⚠️ Problem {i + 1}</p>
-                          <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-600">{d.problem}</p></div>
+                          <div className="blur-sm pointer-events-none select-none"><p className="text-sm text-gray-600">{d.problem}</p></div>
                           <p className="text-green-600 text-sm font-medium mt-3">✓ Fix</p>
-                          <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-600">{d.fix}</p></div>
+                          <div className="blur-sm pointer-events-none select-none"><p className="text-sm text-gray-600">{d.fix}</p></div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                  {!premiumUnlocked && (
-                    <div className="px-4 pb-4 text-center border-t border-gray-200">
-                      <button onClick={handlePremiumClick} className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
-                        <Icon name="lock" className="w-4 h-4" />
-                        Get Full Report
-                      </button>
+                    <div className="mt-4 pt-4 border-t border-gray-200 text-center">
+                      <button onClick={() => handleCtaClick(icp, 'Message Mismatch')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get Full Report</button>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
 
-              {/* Landing Page Roast - Full version */}
+              {/* Landing Page Roast - PREMIUM */}
               {lp.overall_score != null && (
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                    <h2 className="font-semibold text-gray-900">Landing Page Analysis {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-amber-600 text-white text-xs font-medium ml-2">PREMIUM</span>}</h2>
+                    <h2 className="font-semibold text-gray-900">Landing Page Analysis</h2>
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>
                   </div>
                   <div className="p-4">
                     <div className="grid sm:grid-cols-2 gap-3 mb-4">
@@ -422,7 +555,7 @@
                             <span className="font-semibold text-sm text-gray-900">{item.label}</span>
                             <span className={`px-2 py-0.5 rounded text-xs font-bold ${getScoreColor(item.score)}`}>{item.score}/10</span>
                           </div>
-                          <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-600">{item.feedback}</p></div>
+                          <div className="blur-sm pointer-events-none select-none"><p className="text-sm text-gray-600">{item.feedback}</p></div>
                         </div>
                       ))}
                     </div>
@@ -430,30 +563,26 @@
                       <div className="grid sm:grid-cols-2 gap-3">
                         <div className="p-3 bg-red-50 rounded-lg border border-red-200">
                           <h4 className="font-semibold text-red-700 text-sm mb-2">🚨 Top Issues</h4>
-                          <div className={!premiumUnlocked ? 'blur-sm' : ''}><ul className="space-y-1">{lp.top_issues.map((issue, i) => <li key={i} className="text-sm text-red-600">• {issue}</li>)}</ul></div>
+                          <div className="blur-sm pointer-events-none select-none"><ul className="space-y-1">{lp.top_issues.map((issue, i) => <li key={i} className="text-sm text-red-600">• {issue}</li>)}</ul></div>
                         </div>
                         <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                           <h4 className="font-semibold text-green-700 text-sm mb-2">⚡ Quick Wins</h4>
-                          <div className={!premiumUnlocked ? 'blur-sm' : ''}><ul className="space-y-1">{(lp.quick_wins || []).map((win, i) => <li key={i} className="text-sm text-green-600">• {win}</li>)}</ul></div>
+                          <div className="blur-sm pointer-events-none select-none"><ul className="space-y-1">{(lp.quick_wins || []).map((win, i) => <li key={i} className="text-sm text-green-600">• {win}</li>)}</ul></div>
                         </div>
                       </div>
                     )}
                   </div>
-                  {!premiumUnlocked && (
-                    <div className="px-4 pb-4 text-center border-t border-gray-200">
-                      <button onClick={handlePremiumClick} className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
-                        <Icon name="lock" className="w-4 h-4" />
-                        Get Full Report
-                      </button>
-                    </div>
-                  )}
+                  <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
+                    <button onClick={() => handleCtaClick(icp, 'Landing Page Analysis')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get Full Report</button>
+                  </div>
                 </div>
               )}
 
-              {/* Fix Kit - Premium section */}
+              {/* Fix Kit - PREMIUM */}
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Fix Kit {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-amber-600 text-white text-xs font-medium ml-2">PREMIUM</span>}</h2>
+                  <h2 className="font-semibold text-gray-900">Fix Kit</h2>
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>
                 </div>
                 <div className="p-4 grid sm:grid-cols-2 gap-4">
                   <div className="space-y-4">
@@ -462,7 +591,7 @@
                       <div className="space-y-2">
                         {result.fix_kit.headlines.map((h, i) => (
                           <div key={i} className="p-2.5 bg-gray-50 rounded border border-gray-200">
-                            <div className={!premiumUnlocked ? 'blur-sm' : ''}><span className="text-sm text-gray-800">{h}</span></div>
+                            <div className="blur-sm pointer-events-none select-none"><span className="text-sm text-gray-800">{h}</span></div>
                           </div>
                         ))}
                       </div>
@@ -470,7 +599,7 @@
                     <div>
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad Body</h3>
                       <div className="p-2.5 bg-gray-50 rounded border border-gray-200">
-                        <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-700">{result.fix_kit.body}</p></div>
+                        <div className="blur-sm pointer-events-none select-none"><p className="text-sm text-gray-700">{result.fix_kit.body}</p></div>
                       </div>
                     </div>
                   </div>
@@ -479,8 +608,8 @@
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">CTAs</h3>
                       <div className="flex flex-wrap gap-3">
                         {result.fix_kit.ctas.map((cta, i) => (
-                          <div key={i} className="px-5 py-2.5 bg-white border-2 border-blue-600 rounded">
-                            <div className={!premiumUnlocked ? 'blur-sm' : ''}><span className="text-blue-600 text-base font-semibold">{cta}</span></div>
+                          <div key={i} style={{ borderColor: '#0a66c2' }} className="px-5 py-2.5 bg-white border-2 rounded-full">
+                            <div className="blur-sm pointer-events-none select-none"><span style={{ color: '#0a66c2' }} className="text-base font-semibold">{cta}</span></div>
                           </div>
                         ))}
                       </div>
@@ -491,12 +620,12 @@
                         <div className="space-y-2">
                           <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border">
                             <span className="text-xs text-gray-500">Headline</span>
-                            <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_headline}</p></div>
+                            <div className="blur-sm pointer-events-none select-none"><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_headline}</p></div>
                           </div>
                           {result.fix_kit.landing_page_subhead && (
                             <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border">
                               <span className="text-xs text-gray-500">Subheadline</span>
-                              <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_subhead}</p></div>
+                              <div className="blur-sm pointer-events-none select-none"><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_subhead}</p></div>
                             </div>
                           )}
                         </div>
@@ -507,108 +636,84 @@
                 <div className="px-4 pb-4">
                   <div className="p-3 bg-gray-50 rounded border border-gray-200">
                     <span style={{ color: '#0a66c2' }} className="font-semibold text-sm">Why this works:</span>
-                    <div className={!premiumUnlocked ? 'blur-sm' : ''}><span className="text-sm text-gray-600 ml-1">{result.fix_kit.rationale}</span></div>
+                    <div className="blur-sm pointer-events-none select-none inline"><span className="text-sm text-gray-600 ml-1">{result.fix_kit.rationale}</span></div>
                   </div>
                 </div>
-                {!premiumUnlocked && (
-                  <div className="px-4 pb-4 text-center border-t border-gray-200">
-                    <button onClick={handlePremiumClick} className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
-                      <Icon name="lock" className="w-4 h-4" />
-                      Get Full Report
-                    </button>
-                  </div>
-                )}
+                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
+                  <button onClick={() => handleCtaClick(icp, 'Fix Kit')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get Full Report</button>
+                </div>
               </div>
 
-              {/* Experiments - Premium section */}
+              {/* Experiments - PREMIUM */}
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">3 Experiments to Run {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-amber-600 text-white text-xs font-medium ml-2">PREMIUM</span>}</h2>
+                  <h2 className="font-semibold text-gray-900">3 Experiments to Run</h2>
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>
                 </div>
                 <div className="p-4 grid sm:grid-cols-3 gap-3">
                   {result.experiments.map((exp, i) => (
                     <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="flex items-center gap-2 mb-2">
-                        <div style={{ backgroundColor: '#e8f3ff', color: '#0a66c2' }} className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold">{i + 1}</div>
+                        <div style={{ backgroundColor: '#e8f3ff', color: '#0a66c2' }} className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{i + 1}</div>
                         <h3 className="font-semibold text-gray-900 text-sm">{exp.title}</h3>
                       </div>
-                      <div className={!premiumUnlocked ? 'blur-sm' : ''}><p className="text-sm text-gray-600">{exp.description}</p></div>
+                      <div className="blur-sm pointer-events-none select-none"><p className="text-sm text-gray-600">{exp.description}</p></div>
                     </div>
                   ))}
                 </div>
-                {!premiumUnlocked && (
-                  <div className="px-4 pb-4 text-center border-t border-gray-200">
-                    <button onClick={handlePremiumClick} className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
-                      <Icon name="lock" className="w-4 h-4" />
-                      Get Full Report
-                    </button>
-                  </div>
-                )}
+                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
+                  <button onClick={() => handleCtaClick(icp, 'Experiments')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get Full Report</button>
+                </div>
               </div>
 
-              {/* Next Steps - Premium section */}
+              {/* Next Steps - PREMIUM */}
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Next Steps {!premiumUnlocked && <span className="inline-block px-2 py-0.5 bg-amber-600 text-white text-xs font-medium ml-2">PREMIUM</span>}</h2>
+                  <h2 className="font-semibold text-gray-900">Next Steps</h2>
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>
                 </div>
                 <div className="p-4 space-y-2">
                   {result.next_steps.map((step, i) => (
                     <label key={i} className="flex items-start gap-3 p-2 rounded">
                       <input type="checkbox" disabled className="mt-0.5 w-4 h-4 rounded border-gray-400" />
-                      <div className={!premiumUnlocked ? 'blur-sm' : ''}><span className="text-sm text-gray-700">{step}</span></div>
+                      <div className="blur-sm pointer-events-none select-none"><span className="text-sm text-gray-700">{step}</span></div>
                     </label>
                   ))}
                 </div>
-                {!premiumUnlocked && (
-                  <div className="px-4 pb-4 text-center border-t border-gray-200">
-                    <button onClick={handlePremiumClick} className="mt-4 px-6 py-2.5 bg-blue-600 text-white rounded font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto">
-                      <Icon name="lock" className="w-4 h-4" />
-                      Get Full Report
-                    </button>
-                  </div>
-                )}
+                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
+                  <button onClick={() => handleCtaClick(icp, 'Next Steps')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get Full Report</button>
+                </div>
               </div>
 
-              {/* Copy Link */}
+              {/* Save & Share Report */}
               {!isSharedView && (
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
                   <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="link" className="w-5 h-5" style={{ color: '#0a66c2' }} /> Save Your Report</h2></div>
                   <div className="p-4">
-                    {shareableLink ? (
-                      <>
-                        <p className="text-gray-600 text-sm mb-4">Here's your short link:</p>
-                        <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
-                          <input type="text" readOnly value={shareableLink} className="flex-1 bg-transparent text-sm text-gray-600 outline-none" />
-                          <button onClick={() => copy(shareableLink, 'shareLink')} className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors" style={{ backgroundColor: copied.shareLink ? '#22c55e' : '#0a66c2', color: 'white' }}>
-                            {copied.shareLink ? <><Icon name="check" className="w-4 h-4 inline mr-1" />Copied!</> : <><Icon name="copy" className="w-4 h-4 inline mr-1" />Copy</>}
+                    {pdfStatus === 'sent' ? (
+                      <div className="text-center py-2">
+                        <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3"><Icon name="check" className="w-6 h-6 text-green-600" /></div>
+                        <p className="text-green-700 font-semibold mb-1">Here's your link!</p>
+                        <p className="text-gray-500 text-sm mb-3">Also sent to {reportEmail}</p>
+                        <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 mb-3">
+                          <input type="text" readOnly value={shareableLink} className="flex-1 bg-transparent text-xs text-gray-600 outline-none truncate" />
+                          <button onClick={() => copy(shareableLink, 'shareLink')} className="p-2 hover:bg-gray-200 rounded transition-colors">
+                            {copied.shareLink ? <Icon name="check" className="w-4 h-4 text-green-600" /> : <Icon name="copy" className="w-4 h-4 text-gray-500" />}
                           </button>
                         </div>
-                      </>
+                        <button onClick={() => { setPdfStatus(null); setShareableLink(''); }} className="text-sm hover:underline" style={{ color: '#0a66c2' }}>Get a new link</button>
+                      </div>
                     ) : (
                       <>
-                        <p className="text-gray-600 text-sm mb-4">Generate a short link to access your report later.</p>
-                        <button 
-                          onClick={async () => {
-                            setSavingLink(true);
-                            const reportId = await saveToNotion({
-                              platform: platform,
-                              adScore: result.overall_score,
-                              lpScore: result.landing_page_roast?.overall_score || null,
-                              matchScore: result.ad_landing_mismatch?.alignment_score || null,
-                              roastData: result,
-                              icp: icp
-                            });
-                            if (reportId) {
-                              setShareableLink(`${window.location.origin}/?id=${reportId}`);
-                            }
-                            setSavingLink(false);
-                          }}
-                          disabled={savingLink}
-                          className="w-full py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                          style={{ backgroundColor: '#0a66c2', color: 'white' }}
-                        >
-                          {savingLink ? <><span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> Generating...</> : <><Icon name="link" className="w-4 h-4" /> Get Short Link</>}
+                        <p className="text-gray-600 text-sm mb-4">Enter your email to get a permanent link to your report.</p>
+                        <div className="mb-4">
+                          <input type="email" placeholder="your@email.com" value={reportEmail} onChange={(e) => { setReportEmail(e.target.value); setReportEmailErr(null); }} className={`w-full px-3 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-1 ${reportEmailErr ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'}`} />
+                          {reportEmailErr && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{reportEmailErr}</p>}
+                        </div>
+                        <button onClick={sendReportLink} disabled={pdfStatus === 'sending'} style={reportEmail ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`w-full py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 transition-all ${reportEmail ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
+                          {pdfStatus === 'sending' ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Icon name="link" className="w-4 h-4" />} Get My Link
                         </button>
+                        <p className="text-gray-400 text-xs mt-3 text-center">Your email stays between us. No spam, ever.</p>
                       </>
                     )}
                   </div>
@@ -616,79 +721,1344 @@
               )}
 
               {/* CTA */}
-              <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="rounded-lg border p-6 text-center">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Need help understanding your audit?</h2>
-                <p className="text-gray-600 mb-4">Book a free 30-minute call to walk through your results and get a clear action plan.</p>
-                <a href="https://calendly.com/marina-kogan-brandswithpurpose/30min" target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold hover:opacity-90 transition-opacity">
+              <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="rounded-lg border p-8 text-center">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Need help understanding your audit?</h2>
+                <p className="text-gray-600 mb-5">Book a free 30-minute call to walk through your results and get a clear action plan.</p>
+                <a href="https://calendly.com/marina-kogan-brandswithpurpose/30min" target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-base hover:opacity-90 transition-opacity">
                   <Icon name="zap" className="w-5 h-5" /> Book a Free Call
                 </a>
               </div>
             </main>
-
-            {/* Premium Password Modal */}
-            {showPremiumModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
-                <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-                  <div className="p-6">
-                    <div className="text-center mb-6">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-blue-100">
-                        <Icon name="lock" className="w-8 h-8 text-blue-600" />
-                      </div>
-                      <h1 className="text-2xl font-semibold text-gray-900 mb-2">Premium Access</h1>
-                      <p className="text-gray-500 text-sm">Enter the premium password to unlock full report</p>
-                    </div>
-                    
-                    <div className="mb-4">
-                      <div className="relative">
-                        <input 
-                          type={showPassword ? "text" : "password"} 
-                          placeholder="Enter premium password" 
-                          value={premiumPassword} 
-                          onChange={(e) => { setPremiumPassword(e.target.value); setPremiumPasswordErr(null); }} 
-                          className={`w-full px-4 py-3 pr-12 bg-white border-2 rounded-lg text-sm focus:outline-none ${premiumPasswordErr ? 'border-red-400' : 'border-gray-300 focus:border-blue-500'}`} 
-                          onKeyDown={(e) => e.key === 'Enter' && premiumPassword && submitPremiumPassword()}
-                        />
-                        <button 
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                          <Icon name={showPassword ? "eyeOff" : "eye"} className="w-5 h-5" />
-                        </button>
-                      </div>
-                      {premiumPasswordErr && <p className="text-red-500 text-sm mt-2">{premiumPasswordErr}</p>}
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button 
-                        onClick={() => setShowPremiumModal(false)}
-                        className="flex-1 py-3 px-4 rounded-lg font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        onClick={submitPremiumPassword}
-                        disabled={!premiumPassword}
-                        className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${premiumPassword ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                      >
-                        Unlock Report
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
           </div>
         );
       }
 
-      return (
-        <div>Error: Unknown view</div>
-      );
+      return null;
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    /* ============================================================
+       PORTAL DATA & COMPONENTS
+       ============================================================ */
+        const portalData = {
+            partners: {
+                "fractional-demand": {
+                    name: "Fractional Demand",
+                    description: "Strategic consulting deliverables and campaign analysis for Fractional Demand partner engagements.",
+                    clients: {
+                        "nudge-security": {
+                            name: "Nudge Security",
+                            description: "Campaign audit analysis and strategic positioning recommendations",
+                            positioning: {
+                                title: "Evidence-Backed Audit Synthesis & Strategic Recommendations",
+                                subtitle: "Positioning report based on 5 AdRoast audits + Call2 strategic direction",
+                                summary: "Comprehensive analysis synthesizing all 5 ad campaign audits into actionable positioning, messaging pillars, ICP segmentation, CTA direction, and a prioritized 2-week testing plan for Nudge Security.",
+                                content: {
+                                    executiveSummary: "Ad-to-LP mismatch is the #1 conversion killer. Match scores average 5.6/10 across all audits. Every audit identifies tone shift, buried value props, or narrative discontinuity between ad and landing page.",
+                                    keyFindings: [
+                                        "Best ads (7/10) die on generic landing pages (4-6/10). AUDIT-5 has the strongest ad hook (\"CISO nightmare\") but the lowest LP match (4/10).",
+                                        "Spend-focused messaging is fundamentally misaligned. AUDIT-3 scores 4/10 because \"both pieces are optimized for CFOs worried about budget, not CISOs worried about visibility.\"",
+                                        "\"Day One visibility\" is the strongest value prop, and it is consistently buried. AUDIT-1, AUDIT-2, and AUDIT-5 all identify this as the key differentiator.",
+                                        "CTAs are generic and friction-heavy. \"Learn more\" appears in multiple ads and is called \"the laziest CTA in B2B.\""
+                                    ],
+                                    recommendations: [
+                                        "Create dedicated landing pages for each ad narrative. Do not send all traffic to one generic LP.",
+                                        "Lead with Day One visibility as the hero headline on all landing pages.",
+                                        "Replace all \"Learn more\" CTAs with action-oriented alternatives like \"Get my shadow inventory.\"",
+                                        "Add trust signals (logos, testimonials, ratings) to ads targeting security professionals.",
+                                        "Pause or deprioritize spend-focused ads. Reallocate budget to discovery-focused campaigns."
+                                    ]
+                                }
+                            },
+                            audits: {
+                                1: {
+                                    title: "SaaS Sprawl Cat Meme Campaign Analysis",
+                                    summary: "Audit of playful cat metaphor ad and shadow SaaS inventory landing page messaging alignment.",
+                                    findings: "The playful cat energy works in the ad (7/10) but dies on a corporate landing page. Tone inconsistency kills conversion potential.",
+                                    recommendations: "Carry the metaphor forward to the landing page. Use relatable language IT teams actually use internally.",
+                                    auditUrl: "https://www.brandswithpurpose.us/?id=A45fRcsN",
+                                    adUrl: "https://www.linkedin.com/ad-library/detail/1021588116",
+                                    landingPageUrl: "https://www.nudgesecurity.com/try-nudge/free-shadow-saas-inventory?utm_medium=paid_social&utm_source=linkedin&utm_content=tof&utm_campaign=saas_sprawl&utm_term=meme_saas_sprawl_cat-laser-beam_og&trk=ad_library_ad_preview_headline_content"
+                                },
+                                2: {
+                                    title: "SaaS Discovery Feature-Focused Campaign",
+                                    summary: "Analysis of discovery-focused messaging and feature education landing page conversion potential.",
+                                    findings: "Ad emphasizes 'Day One visibility' but landing page buries this key differentiator below the fold.",
+                                    recommendations: "Make 'Day One visibility' the hero headline. Add specific results numbers like 'discover 3x more apps than expected.'",
+                                    auditUrl: "https://www.brandswithpurpose.us/?id=zqTSNdfF",
+                                    adUrl: "https://www.linkedin.com/ad-library/detail/856848906",
+                                    landingPageUrl: "https://www.nudgesecurity.com/features/saas-discovery?utm_medium=paid_social&utm_source=linkedin&utm_content=mof&utm_campaign=saas_discovery&utm_term=image_find-every-saas-button&hsa_acc=509483795&hsa_cam=766701946&hsa_grp=414445406&hsa_ad=856848906&hsa_net=linkedin&hsa_ver=3&trk=ad_library_ad_preview_headline_content"
+                                },
+                                3: {
+                                    title: "Spend Management Value Proposition Test",
+                                    summary: "Evaluation of cost savings messaging versus security-first positioning for IT decision makers.",
+                                    findings: "Major disconnect. ICP's primary pain is visibility, not cost. Both ad and LP are optimized for CFOs, not CISOs.",
+                                    recommendations: "Deprioritize spend messaging. Focus on security outcomes and compliance readiness instead.",
+                                    auditUrl: "https://www.brandswithpurpose.us/?id=gzvxQUzr",
+                                    adUrl: "https://www.linkedin.com/ad-library/detail/744052366",
+                                    landingPageUrl: "https://www.nudgesecurity.com/use-cases/saas-spend-management?utm_medium=paid_social&utm_source=linkedin&utm_content=mof&utm_campaign=saas_spend&utm_term=image_saas-spend-mgmt&hsa_acc=509483795&hsa_cam=766701946&hsa_grp=414445406&hsa_ad=744052366&hsa_net=linkedin&hsa_ver=3&trk=ad_library_ad_preview_headline_content"
+                                },
+                                4: {
+                                    title: "Free Shadow Inventory Offer Campaign",
+                                    summary: "Assessment of free inventory offer messaging and lead generation landing page effectiveness.",
+                                    findings: "Strong offer but generic execution. Zero trust signals in a 15-word ad targeting security professionals.",
+                                    recommendations: "Add credibility markers and security team logos. Make the inventory feel like proof of a problem, not just an asset.",
+                                    auditUrl: "https://www.brandswithpurpose.us/?id=jeGGBXMg",
+                                    adUrl: "https://www.linkedin.com/ad-library/detail/743863956",
+                                    landingPageUrl: "https://www.nudgesecurity.com/free-shadow-saas-inventory?utm_medium=paid_social&utm_source=linkedin&utm_content=tof&utm_campaign=saas_discovery&utm_term=meme_shadowsaas_wrestling&trk=ad_library_ad_preview_headline_content"
+                                },
+                                5: {
+                                    title: "CISO Nightmare Scenario Campaign",
+                                    summary: "Analysis of fear-based messaging and security professional onboarding flow conversion.",
+                                    findings: "Best ad (7/10) with brilliant problem agitation, but worst handoff (4/10). Compelling narrative evaporates on arrival.",
+                                    recommendations: "Create a CISO-specific landing page that continues the nightmare scenario. Do not abandon the urgency.",
+                                    auditUrl: "https://www.brandswithpurpose.us/?id=FSuv7GVr",
+                                    adUrl: "https://www.linkedin.com/posts/russell-spitler_if-i-were-a-ciso-trying-to-secure-a-modern-activity-7422674209866158080-YpyX/?utm_source=share&utm_medium=member_desktop&rcm=ACoAAALZYHsBKlGcVjgVV6ogTBO7ymVFdwET_r4",
+                                    landingPageUrl: "https://www.nudgesecurity.com/getting-started"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            directClients: {}
+        };
+
+        const LOGO_SRC = "data:image/png;base64,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";
+
+        const Logo = () => (
+            <div className="flex items-center space-x-2.5">
+                <img src={LOGO_SRC} alt="Brands with Purpose" className="w-8 h-8 rounded-lg object-cover" />
+                <span className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>Brands with Purpose</span>
+            </div>
+        );
+
+        const BackButton = ({ label, onClick }) => (
+            <button onClick={onClick} className="group inline-flex items-center text-sm font-medium mb-6 transition-colors" style={{ color: 'var(--accent)' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--accent-hover)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--accent)'}
+            >
+                <svg className="h-4 w-4 mr-1.5 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                {label}
+            </button>
+        );
+
+        const ChevronRight = () => (
+            <svg className="h-4 w-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+        );
+
+        const ExternalIcon = () => (
+            <svg className="h-4 w-4 ml-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+        );
+
+        const Badge = ({ children, color = 'accent' }) => {
+            const colors = {
+                accent: { bg: 'var(--accent-light)', text: 'var(--accent)' },
+                success: { bg: 'var(--success-light)', text: 'var(--success)' },
+                warning: { bg: 'var(--warning-light)', text: 'var(--warning)' },
+            };
+            const c = colors[color] || colors.accent;
+            return <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full tracking-wide uppercase" style={{ background: c.bg, color: c.text }}>{children}</span>;
+        };
+
+        // Breadcrumb header
+        const PortalHeader = ({ crumbs, onNavigate }) => {
+            return (
+                <header className="bg-white border-b" style={{ borderColor: 'var(--cloud)' }}>
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+                        <div className="flex items-center flex-wrap gap-y-2">
+                            <div className="cursor-pointer" onClick={() => onNavigate && onNavigate('portal-root')}>
+                                <Logo />
+                            </div>
+                            {crumbs && crumbs.length > 0 && (
+                                <nav className="ml-4 flex items-center text-sm" style={{ color: 'var(--slate)' }}>
+                                    {crumbs.map((crumb, i) => (
+                                        <span key={i} className="flex items-center">
+                                            <span className="mx-2 select-none">/</span>
+                                            {crumb.onClick ? (
+                                                <button onClick={crumb.onClick} className="hover:underline transition-colors" style={{ color: i === crumbs.length - 1 ? 'var(--ink)' : 'var(--slate)' }}>
+                                                    {crumb.label}
+                                                </button>
+                                            ) : (
+                                                <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{crumb.label}</span>
+                                            )}
+                                        </span>
+                                    ))}
+                                </nav>
+                            )}
+                        </div>
+                    </div>
+                </header>
+            );
+        };
+
+        const PageShell = ({ crumbs, onNavigate, children }) => (
+            <div className="min-h-screen fade-in" style={{ background: 'var(--mist)' }}>
+                <PortalHeader crumbs={crumbs} onNavigate={onNavigate} />
+                <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+                    {children}
+                </main>
+            </div>
+        );
+
+        /* ============================================================
+           PASSWORD GATE
+           No access code, no hints, no portal content visible.
+           ============================================================ */
+        // Password registry — single gate, destination depends on password
+        // Each password maps to an access level and route
+        const PASSWORD_ROUTES = {
+            'CreativeerOU9590': { mode: 'master' },
+            'PositioningFD90': { mode: 'partner', partnerId: 'fractional-demand' }
+            // Future client passwords:
+            // 'ClientPW123': { mode: 'client', partnerId: 'fractional-demand', clientId: 'nudge-security' }
+        };
+
+        const PasswordGate = ({ onUnlock }) => {
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [show, setShow] = useState(false);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const trimmed = password.trim();
+                const route = PASSWORD_ROUTES[trimmed];
+                if (route) {
+                    onUnlock(route);
+                    return;
+                }
+                setError('Invalid access code. Please try again.');
+                setPassword('');
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center px-4 fade-in" style={{ background: 'var(--mist)' }}>
+                    <div className="w-full max-w-sm">
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="text-center mb-2">
+                                <div className="mx-auto mb-3">
+                                    <img src={LOGO_SRC} alt="Brands with Purpose" className="w-12 h-12 rounded-lg object-cover mx-auto" />
+                                </div>
+                                <h1 className="text-lg font-bold serif" style={{ color: 'var(--ink)' }}>Brands with Purpose</h1>
+                                <p className="text-sm mt-1" style={{ color: 'var(--slate)' }}>Enter your access code to continue</p>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    type={show ? 'text' : 'password'}
+                                    required
+                                    autoFocus
+                                    className="w-full px-4 py-3 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-shadow"
+                                    style={{ borderColor: error ? 'var(--danger)' : 'var(--cloud)', background: '#fff' }}
+                                    placeholder="Access code"
+                                    value={password}
+                                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                                />
+                                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-1" onClick={() => setShow(!show)} tabIndex={-1}>
+                                    <svg className="h-4 w-4" style={{ color: 'var(--slate)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        {show
+                                            ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                            : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        }
+                                    </svg>
+                                </button>
+                            </div>
+                            {error && <p className="text-xs text-center" style={{ color: 'var(--danger)' }}>{error}</p>}
+                            <button type="submit" className="w-full py-3 text-white text-sm font-semibold rounded-lg transition-colors" style={{ background: 'var(--accent)' }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                            >Continue</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        /* ============================================================
+           PORTAL ROOT  /portal
+           ============================================================ */
+        const PortalRoot = ({ onNavigate }) => {
+            const partnerCount = Object.keys(portalData.partners).length;
+            const directCount = Object.keys(portalData.directClients).length;
+
+            return (
+                <PageShell crumbs={[{ label: 'Portal' }]} onNavigate={onNavigate}>
+                    <div className="mb-12">
+                        <h1 className="text-3xl sm:text-4xl font-bold mb-3 serif" style={{ color: 'var(--ink)' }}>Protected Workspace for Strategic Consulting Deliverables</h1>
+                        <p className="text-lg" style={{ color: 'var(--slate)' }}>Private access to client specific assets and reports</p>
+                    </div>
+
+                    {/* Partner Workspaces section */}
+                    <section className="mb-14">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-semibold serif" style={{ color: 'var(--ink)' }}>Partner Workspaces</h2>
+                            <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--cloud)', color: 'var(--slate)' }}>{partnerCount} {partnerCount === 1 ? 'partner' : 'partners'}</span>
+                        </div>
+                        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                            {Object.entries(portalData.partners).map(([pid, partner]) => (
+                                <div key={pid} onClick={() => onNavigate('partner-workspace', pid)}
+                                    className="bg-white rounded-xl border p-6 cursor-pointer card-lift group"
+                                    style={{ borderColor: 'var(--cloud)' }}
+                                >
+                                    <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: 'var(--accent-light)' }}>
+                                        <svg className="w-5 h-5" style={{ color: 'var(--accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    </div>
+                                    <h3 className="text-lg font-semibold mb-1 group-hover:text-blue-700 transition-colors" style={{ color: 'var(--ink)' }}>{partner.name}</h3>
+                                    <p className="text-sm mb-4 leading-relaxed" style={{ color: 'var(--slate)' }}>{partner.description}</p>
+                                    <span className="inline-flex items-center text-sm font-medium" style={{ color: 'var(--accent)' }}>
+                                        Open workspace<ChevronRight />
+                                    </span>
+                                </div>
+                            ))}
+
+                            {/* Placeholder for future partners */}
+                            <div className="rounded-xl border-2 border-dashed p-6 flex flex-col items-center justify-center text-center min-h-[180px]" style={{ borderColor: 'var(--cloud)' }}>
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: 'var(--cloud)' }}>
+                                    <svg className="w-5 h-5" style={{ color: 'var(--slate)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                </div>
+                                <p className="text-sm font-medium" style={{ color: 'var(--slate)' }}>Additional partner workspaces</p>
+                                <p className="text-xs mt-1" style={{ color: 'var(--slate)', opacity: 0.7 }}>New partners will appear here</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Direct Client Workspaces section */}
+                    <section>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-semibold serif" style={{ color: 'var(--ink)' }}>Client Workspaces</h2>
+                            <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--cloud)', color: 'var(--slate)' }}>{directCount} {directCount === 1 ? 'client' : 'clients'}</span>
+                        </div>
+                        {directCount === 0 ? (
+                            <div className="rounded-xl border-2 border-dashed p-8 text-center" style={{ borderColor: 'var(--cloud)' }}>
+                                <p className="text-sm" style={{ color: 'var(--slate)' }}>Direct client workspaces will appear here as they are added.</p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                                {Object.entries(portalData.directClients).map(([cid, client]) => (
+                                    <div key={cid} onClick={() => onNavigate('direct-client', null, cid)}
+                                        className="bg-white rounded-xl border p-6 cursor-pointer card-lift group" style={{ borderColor: 'var(--cloud)' }}>
+                                        <h3 className="text-lg font-semibold mb-1 group-hover:text-blue-700 transition-colors">{client.name}</h3>
+                                        <p className="text-sm mb-4" style={{ color: 'var(--slate)' }}>{client.description}</p>
+                                        <span className="inline-flex items-center text-sm font-medium" style={{ color: 'var(--accent)' }}>Open workspace<ChevronRight /></span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                </PageShell>
+            );
+        };
+
+        /* ============================================================
+           PARTNER WORKSPACE  /portal/partner-workspaces/{partnerId}
+           ============================================================ */
+        const PartnerWorkspace = ({ partnerId, onNavigate, accessMode }) => {
+            const partner = portalData.partners[partnerId];
+            if (!partner) return null;
+            const clientEntries = Object.entries(partner.clients);
+
+            const crumbs = accessMode === 'master'
+                ? [
+                    { label: 'Portal', onClick: () => onNavigate('portal-root') },
+                    { label: 'Partner Workspaces', onClick: () => onNavigate('portal-root') },
+                    { label: partner.name }
+                ]
+                : [{ label: partner.name }];
+
+            return (
+                <PageShell crumbs={crumbs} onNavigate={accessMode === 'master' ? onNavigate : undefined}>
+                    {accessMode === 'master' && <BackButton label="Back to Portal" onClick={() => onNavigate('portal-root')} />}
+                    <div className="mb-10">
+                        <Badge>Partner workspace</Badge>
+                        <h1 className="text-3xl sm:text-4xl font-bold mt-4 mb-3 serif" style={{ color: 'var(--ink)' }}>{partner.name}</h1>
+                        <p className="text-lg" style={{ color: 'var(--slate)' }}>{partner.description}</p>
+                    </div>
+
+                    <h2 className="text-xl font-semibold mb-6 serif" style={{ color: 'var(--ink)' }}>Client Spaces</h2>
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                        {clientEntries.map(([cid, client]) => {
+                            const auditCount = Object.keys(client.audits).length;
+                            return (
+                                <div key={cid} onClick={() => onNavigate('client-hub', partnerId, cid)}
+                                    className="bg-white rounded-xl border p-6 cursor-pointer card-lift group" style={{ borderColor: 'var(--cloud)' }}>
+                                    <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: 'var(--accent-light)' }}>
+                                        <svg className="w-5 h-5" style={{ color: 'var(--accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                    </div>
+                                    <h3 className="text-lg font-semibold mb-1 group-hover:text-blue-700 transition-colors" style={{ color: 'var(--ink)' }}>{client.name}</h3>
+                                    <p className="text-sm mb-3 leading-relaxed" style={{ color: 'var(--slate)' }}>{client.description}</p>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs" style={{ color: 'var(--slate)' }}>{auditCount} audits, 1 report</span>
+                                        <span className="inline-flex items-center text-sm font-medium" style={{ color: 'var(--accent)' }}>Open<ChevronRight /></span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {/* Scalability placeholder */}
+                        <div className="rounded-xl border-2 border-dashed p-6 flex flex-col items-center justify-center text-center min-h-[180px]" style={{ borderColor: 'var(--cloud)' }}>
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: 'var(--cloud)' }}>
+                                <svg className="w-5 h-5" style={{ color: 'var(--slate)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                            </div>
+                            <p className="text-sm font-medium" style={{ color: 'var(--slate)' }}>Additional client spaces</p>
+                            <p className="text-xs mt-1" style={{ color: 'var(--slate)', opacity: 0.7 }}>New clients will appear here</p>
+                        </div>
+                    </div>
+                </PageShell>
+            );
+        };
+
+        /* ============================================================
+           CLIENT HUB  /portal/partner-workspaces/{partnerId}/{clientId}
+           ============================================================ */
+        const ClientHub = ({ partnerId, clientId, onNavigate, accessMode }) => {
+            const partner = portalData.partners[partnerId];
+            if (!partner) return null;
+            const client = partner.clients[clientId];
+            if (!client) return null;
+
+            const crumbs = accessMode === 'master'
+                ? [
+                    { label: 'Portal', onClick: () => onNavigate('portal-root') },
+                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
+                    { label: client.name }
+                ]
+                : accessMode === 'partner'
+                ? [
+                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
+                    { label: client.name }
+                ]
+                : [{ label: client.name }];
+
+            return (
+                <PageShell crumbs={crumbs} onNavigate={onNavigate}>
+                    {accessMode !== 'client' && <BackButton label={`Back to ${partner.name}`} onClick={() => onNavigate('partner-workspace', partnerId)} />}
+                    <div className="mb-10">
+                        <h1 className="text-3xl sm:text-4xl font-bold mb-3 serif" style={{ color: 'var(--ink)' }}>{client.name}</h1>
+                        <p className="text-lg" style={{ color: 'var(--slate)' }}>{client.description}</p>
+                    </div>
+
+                    {/* Primary deliverable */}
+                    <section className="mb-14">
+                        <h2 className="text-xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Primary Deliverable</h2>
+                        <div onClick={() => onNavigate('positioning', partnerId, clientId)}
+                            className="rounded-xl p-7 sm:p-8 cursor-pointer transition-all hover:shadow-xl card-lift text-white"
+                            style={{ background: 'linear-gradient(135deg, var(--accent) 0%, #1a3fa0 100%)' }}>
+                            <Badge color="accent"><span style={{ color: '#fff' }}>Strategic Analysis</span></Badge>
+                            <h3 className="text-2xl sm:text-3xl font-bold mt-4 mb-3 serif">{client.positioning.title}</h3>
+                            <p className="text-blue-100 leading-relaxed mb-6 max-w-2xl">{client.positioning.summary}</p>
+                            <span className="inline-flex items-center px-5 py-2.5 bg-white font-semibold text-sm rounded-lg transition-colors" style={{ color: 'var(--accent)' }}>
+                                Read Full Report<ChevronRight />
+                            </span>
+                        </div>
+                    </section>
+
+                    {/* Supporting audits */}
+                    <section>
+                        <h2 className="text-xl font-semibold mb-2 serif" style={{ color: 'var(--ink)' }}>Supporting Analysis</h2>
+                        <p className="text-sm mb-6" style={{ color: 'var(--slate)' }}>Individual campaign audits that inform the strategic recommendations</p>
+                        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                            {Object.entries(client.audits).map(([aid, audit]) => (
+                                <div key={aid} onClick={() => onNavigate('audit', partnerId, clientId, aid)}
+                                    className="bg-white rounded-xl border p-5 cursor-pointer card-lift group" style={{ borderColor: 'var(--cloud)' }}>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <Badge>Audit {aid}</Badge>
+                                        <svg className="h-4 w-4 transition-colors" style={{ color: 'var(--slate)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                    </div>
+                                    <h3 className="text-base font-semibold mb-2 group-hover:text-blue-700 transition-colors leading-snug" style={{ color: 'var(--ink)' }}>{audit.title}</h3>
+                                    <p className="text-sm leading-relaxed" style={{ color: 'var(--slate)' }}>{audit.summary}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </PageShell>
+            );
+        };
+
+        /* ============================================================
+           POSITIONING REPORT (dedicated on-page report)
+           ============================================================ */
+        const PositioningReportPage = ({ partnerId, clientId, onNavigate, accessMode }) => {
+            const partner = portalData.partners[partnerId];
+            const client = partner.clients[clientId];
+            const [openSections, setOpenSections] = useState({});
+            const toggleSection = (id) => setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
+            const isOpen = (id) => openSections[id] !== false; // default open
+
+            const crumbs = accessMode === 'master'
+                ? [
+                    { label: 'Portal', onClick: () => onNavigate('portal-root') },
+                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
+                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                    { label: 'Positioning Report' }
+                ]
+                : accessMode === 'partner'
+                ? [
+                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
+                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                    { label: 'Positioning Report' }
+                ]
+                : [
+                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                    { label: 'Positioning Report' }
+                ];
+
+            const SectionToggle = ({ id, title, defaultOpen = true }) => {
+                if (openSections[id] === undefined && defaultOpen) {
+                    // initialize
+                }
+                const open = openSections[id] !== undefined ? openSections[id] : defaultOpen;
+                return (
+                    <button onClick={() => setOpenSections(prev => ({ ...prev, [id]: !open }))}
+                        className="w-full flex items-center justify-between py-1 group">
+                        <h2 className="text-2xl font-semibold serif text-left" style={{ color: 'var(--ink)' }}>{title}</h2>
+                        <svg className={`w-5 h-5 transition-transform flex-shrink-0 ml-4 ${open ? 'rotate-180' : ''}`} style={{ color: 'var(--slate)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                );
+            };
+
+            const isSectionOpen = (id, defaultOpen = true) => {
+                return openSections[id] !== undefined ? openSections[id] : defaultOpen;
+            };
+
+            const SimpleTable = ({ headers, rows }) => (
+                <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'var(--cloud)' }}>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr style={{ background: 'var(--mist)' }}>
+                                {headers.map((h, i) => (
+                                    <th key={i} className="px-4 py-3 text-left font-semibold" style={{ color: 'var(--ink)', borderBottom: '1px solid var(--cloud)' }}>{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row, ri) => (
+                                <tr key={ri} style={{ borderBottom: ri < rows.length - 1 ? '1px solid var(--cloud)' : 'none' }}>
+                                    {row.map((cell, ci) => (
+                                        <td key={ci} className="px-4 py-3 leading-relaxed" style={{ color: ci === 0 ? 'var(--ink)' : 'var(--ink-light)' }}>
+                                            {typeof cell === 'object' && cell.bold ? <strong>{cell.text}</strong> : cell}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+
+            const Quote = ({ text, source }) => (
+                <div className="border-l-4 pl-4 py-2 my-3" style={{ borderColor: 'var(--accent)', background: 'var(--accent-faint)' }}>
+                    <p className="text-sm italic leading-relaxed" style={{ color: 'var(--ink-light)' }}>{text}</p>
+                    {source && <p className="text-xs mt-1 font-medium" style={{ color: 'var(--slate)' }}>{source}</p>}
+                </div>
+            );
+
+            return (
+                <PageShell crumbs={crumbs} onNavigate={onNavigate}>
+                    <div className="max-w-3xl mx-auto">
+                        <BackButton label={`Back to ${client.name} Hub`} onClick={() => onNavigate('client-hub', partnerId, clientId)} />
+                        <Badge>Strategic Analysis</Badge>
+                        <h1 className="text-3xl sm:text-4xl font-bold mt-4 mb-2 serif" style={{ color: 'var(--ink)' }}>Evidence-Backed Audit Synthesis &amp; Strategic Recommendations</h1>
+                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm mt-3 mb-4" style={{ color: 'var(--slate)' }}>
+                            <span><strong style={{ color: 'var(--ink-light)' }}>Prepared for:</strong> Chris Godwin, Fractional Demand</span>
+                            <span><strong style={{ color: 'var(--ink-light)' }}>Date:</strong> February 5, 2026</span>
+                            <span><strong style={{ color: 'var(--ink-light)' }}>Prepared by:</strong> Marina Kogan, Brands with Purpose</span>
+                        </div>
+
+                        {/* TOC */}
+                        <div className="rounded-xl border p-5 mb-10" style={{ background: '#fff', borderColor: 'var(--cloud)' }}>
+                            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--slate)' }}>Report Sections</p>
+                            <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                                {[
+                                    ['A', 'Executive Summary (Key Findings)'],
+                                    ['B', 'What the Audits Agree On'],
+                                    ['C', 'Inconsistencies & How to Resolve'],
+                                    ['D', 'Recommended Positioning'],
+                                    ['E', 'ICP & Segmentation'],
+                                    ['F', 'Messaging Pillars + Proof Points'],
+                                    ['G', 'Offer & CTA Direction'],
+                                    ['H', 'Do/Don\'t Messaging Rules'],
+                                    ['I', 'Next 10 Actions + Testing Plan'],
+                                    ['X', 'Appendix: Audit Score Summary'],
+                                ].map(([id, label]) => (
+                                    <button key={id} onClick={() => {
+                                        const el = document.getElementById(`section-${id}`);
+                                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }} className="text-left hover:underline" style={{ color: 'var(--accent)' }}>
+                                        {id !== 'X' ? `${id}) ` : ''}{label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--cloud)' }}>
+                            <div className="p-6 sm:p-8 space-y-14">
+
+                                {/* ===== SECTION A: Executive Summary ===== */}
+                                <section id="section-A">
+                                    <SectionToggle id="A" title="A) Executive Summary (Key Findings)" />
+                                    {isSectionOpen('A') && (
+                                        <div className="mt-5 space-y-4">
+                                            <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
+                                                <p className="font-semibold mb-2" style={{ color: 'var(--ink)' }}>Ad-to-LP mismatch is the #1 conversion killer.</p>
+                                                <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>Match scores average 5.6/10 across all audits. Every audit identifies tone shift, buried value props, or narrative discontinuity between ad and landing page.</p>
+                                            </div>
+                                            {[
+                                                { title: "Best ads (7/10) die on generic landing pages (4-6/10).", desc: "AUDIT-5 has the strongest ad hook (\"CISO nightmare\") but the lowest LP match (4/10). The compelling narrative evaporates on arrival." },
+                                                { title: "Spend-focused messaging is fundamentally misaligned.", desc: "AUDIT-3 scores 4/10 on the ad because \"the fundamental issue is both pieces are optimized for CFOs worried about budget, not CISOs worried about visibility.\" This confirms Chris's direction to deprioritize spend." },
+                                                { title: "\"Day One visibility\" is the strongest value prop, and it is consistently buried.", desc: "AUDIT-1, AUDIT-2, and AUDIT-5 all identify this as the key differentiator that gets lost between ad and LP." },
+                                                { title: "CTAs are generic and friction-heavy.", desc: "\"Learn more\" appears in multiple ads and is called \"the laziest CTA in B2B\" (AUDIT-4). Action-oriented CTAs like \"See your hidden SaaS footprint\" consistently recommended." },
+                                                { title: "Zero trust signals in ads targeting security professionals.", desc: "AUDIT-3, AUDIT-4 score 2-3/10 on trust signals. \"For IT security buyers evaluating a new vendor, this is table stakes\" (AUDIT-5)." },
+                                                { title: "Landing page headlines lose ad momentum.", desc: "\"'See all the SaaS' is painfully generic\" (AUDIT-2). \"'Chaos to control' is bland startup speak\" (AUDIT-5). \"'SaaS Spend Management' doubles down on wrong value prop\" (AUDIT-3)." },
+                                                { title: "The ICP is well-defined but messaging does not reflect it.", desc: "All audits use the same ICP definition, yet ads score 4-7/10 on actually speaking to that ICP's primary pain." },
+                                                { title: "Tone inconsistency kills conversion.", desc: "\"Your ad's playful cat energy dies on a corporate landing page\" (AUDIT-1). \"Ad creates urgency... landing page feels like any other trial signup\" (AUDIT-5)." },
+                                                { title: "Problem agitation works, but gets abandoned.", desc: "AUDIT-5's ad \"does brilliant problem agitation with specific, visceral language\" but \"the landing page greets them with generic copy.\"" },
+                                            ].map((item, i) => (
+                                                <div key={i} className="flex items-start space-x-4">
+                                                    <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: 'var(--accent)' }}>{i + 1}</div>
+                                                    <div>
+                                                        <p className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{item.title}</p>
+                                                        <p className="text-sm leading-relaxed mt-0.5" style={{ color: 'var(--ink-light)' }}>{item.desc}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ===== SECTION B: Patterns + Evidence ===== */}
+                                <section id="section-B">
+                                    <SectionToggle id="B" title="B) What the Audits Agree On (Patterns + Evidence)" />
+                                    {isSectionOpen('B') && (
+                                        <div className="mt-5 space-y-10">
+
+                                            {/* Pattern 1 */}
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--ink)' }}>Pattern 1: Ad-to-Landing Page Message Mismatch</h3>
+                                                <p className="text-xs font-medium mb-3" style={{ color: 'var(--danger)' }}>Frequency: 5/5 audits (100%)</p>
+                                                <SimpleTable
+                                                    headers={['Audit', 'Match Score', 'Core Problem']}
+                                                    rows={[
+                                                        ['AUDIT-1', '5/10', '"Ad\'s playful cat energy dies on corporate landing page"'],
+                                                        ['AUDIT-2', '6/10', '"Ad promises \'Day One visibility\'... landing page buries these key differentiators"'],
+                                                        ['AUDIT-3', '7/10', '"Decent consistency but wrong shared focus" (both wrong)'],
+                                                        ['AUDIT-4', '6/10', '"Ad undersells what the landing page delivers"'],
+                                                        ['AUDIT-5', '4/10', '"Major messaging disconnect... ad creates urgency... landing page feels generic"'],
+                                                    ]}
+                                                />
+                                                <Quote text="The ad does brilliant problem agitation with specific, visceral language about tools 'I didn't approve'... but the landing page's 'chaos to control' headline could apply to literally any SaaS tool." source="AUDIT-5" />
+                                                <Quote text="It's like promising a Ferrari and delivering a Honda." source="AUDIT-2" />
+                                            </div>
+
+                                            {/* Pattern 2 */}
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--ink)' }}>Pattern 2: Generic/Weak Landing Page Headlines</h3>
+                                                <p className="text-xs font-medium mb-3" style={{ color: 'var(--danger)' }}>Frequency: 5/5 audits (100%)</p>
+                                                <SimpleTable
+                                                    headers={['Audit', 'LP Headline Score', 'Critique']}
+                                                    rows={[
+                                                        ['AUDIT-1', '4/10', '"\'Secure Shadow SaaS\' sounds like vendor-speak"'],
+                                                        ['AUDIT-2', '4/10', '"\'See all the SaaS\' is painfully generic and sounds like a middle schooler wrote it"'],
+                                                        ['AUDIT-3', '5/10', '"\'SaaS Spend Management\' doubles down on wrong primary value prop"'],
+                                                        ['AUDIT-4', '6/10', '"Functional but lacks urgency"'],
+                                                        ['AUDIT-5', '4/10', '"\'Chaos to control in 14 days\' is bland startup speak"'],
+                                                    ]}
+                                                />
+                                                <Quote text="Your ICP is feeling pressure from 'audits, security incidents, compliance reviews' - your headline should reflect that urgency, not sound like a productivity app." source="AUDIT-4" />
+                                                <Quote text="After such a compelling ad about CISO nightmares, this is like being invited to an exciting party and arriving at a corporate webinar." source="AUDIT-5" />
+                                            </div>
+
+                                            {/* Pattern 3 */}
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--ink)' }}>Pattern 3: "Day One Visibility" Buried or Missing</h3>
+                                                <p className="text-xs font-medium mb-3" style={{ color: 'var(--danger)' }}>Frequency: 4/5 audits (80%)</p>
+                                                <Quote text="Ad emphasizes 'Day One visibility' as key benefit, landing page headline ignores this completely" source="AUDIT-2 Problem #1" />
+                                                <Quote text="Ad promises 'complete visibility from day one' but landing page buries this key benefit" source="AUDIT-1 Problem #3" />
+                                                <Quote text="'Find every SaaS app on Day One' is gold... why didn't that make it to the headline?" source="AUDIT-2" />
+                                                <div className="rounded-lg p-4 mt-3" style={{ background: 'var(--success-light)' }}>
+                                                    <p className="text-sm font-semibold" style={{ color: 'var(--success)' }}>Recommended Fix (consistent across audits):</p>
+                                                    <p className="text-sm mt-1" style={{ color: 'var(--ink-light)' }}>"Make Day One visibility the hero headline on landing page"</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Pattern 4 */}
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--ink)' }}>Pattern 4: Weak/Generic CTAs</h3>
+                                                <p className="text-xs font-medium mb-3" style={{ color: 'var(--danger)' }}>Frequency: 4/5 audits (80%)</p>
+                                                <SimpleTable
+                                                    headers={['Audit', 'CTA Score', 'Problem']}
+                                                    rows={[
+                                                        ['AUDIT-1', '5/10', '"\'Learn more\' is generic death"'],
+                                                        ['AUDIT-4', '5/10', '"\'Learn more\' is the laziest CTA in B2B"'],
+                                                        ['AUDIT-5', '6/10', '"\'See how you can get started today\' is generic LinkedIn speak"'],
+                                                        ['AUDIT-2', '8/10', 'Strong - "Find every SaaS account now"'],
+                                                    ]}
+                                                />
+                                                <Quote text="Your ICP wants to 'regain SaaS visibility quickly' - so give them 'Get my SaaS inventory' not 'Learn more'" source="AUDIT-4" />
+                                                <Quote text="After such a compelling problem statement, you need an equally specific CTA like 'See your hidden SaaS footprint' or 'Discover what you're missing'" source="AUDIT-5" />
+                                            </div>
+
+                                            {/* Pattern 5 */}
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--ink)' }}>Pattern 5: Missing Trust Signals in Ads</h3>
+                                                <p className="text-xs font-medium mb-3" style={{ color: 'var(--danger)' }}>Frequency: 4/5 audits (80%)</p>
+                                                <SimpleTable
+                                                    headers={['Audit', 'Trust Score', 'Issue']}
+                                                    rows={[
+                                                        ['AUDIT-1', '4/10', '"Zero social proof, logos, or credibility markers"'],
+                                                        ['AUDIT-3', '3/10', '"Zero trust signals in the ad"'],
+                                                        ['AUDIT-4', '2/10', '"Zero trust signals in a 15-word ad targeting security professionals"'],
+                                                        ['AUDIT-5', '5/10', '"\'Security leaders keep telling me\' is weak social proof"'],
+                                                    ]}
+                                                />
+                                                <Quote text="IT teams are skeptical by nature - they need evidence this isn't another security vendor promising the moon." source="AUDIT-1" />
+                                                <Quote text="For IT security buyers evaluating a new vendor, this is table stakes." source="AUDIT-5" />
+                                            </div>
+
+                                            {/* Pattern 6 */}
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--ink)' }}>Pattern 6: Spend Messaging = Wrong ICP</h3>
+                                                <p className="text-xs font-medium mb-3" style={{ color: 'var(--danger)' }}>Frequency: Explicit in 1 audit, implicit in 2 others</p>
+                                                <Quote text="Major disconnect. Your ICP's PRIMARY pain is 'lack visibility into apps employees are using' and 'cannot confidently answer which tools have access to company data.' This ad leads with cost savings - a secondary concern at best." source="AUDIT-3" />
+                                                <Quote text="The fundamental issue is both pieces are optimized for CFOs worried about budget, not CISOs worried about visibility." source="AUDIT-3" />
+                                                <Quote text="Feature list could prioritize security benefits over spend management" source="AUDIT-4" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ===== SECTION C: Contradictions ===== */}
+                                <section id="section-C">
+                                    <SectionToggle id="C" title="C) What's Inconsistent/Contradictory (And How to Resolve)" />
+                                    {isSectionOpen('C') && (
+                                        <div className="mt-5 space-y-8">
+                                            {[
+                                                {
+                                                    title: "Contradiction 1: Strong Ads vs. Weak Landing Pages",
+                                                    tension: "AUDIT-5 has ad score 7/10 but LP score 5/10 and match score 4/10. The ad works; the LP kills conversions.",
+                                                    resolution: "The problem is not ad quality, it is handoff. Strong ads need landing pages that continue their narrative, not generic trial pages.",
+                                                    rec: "Create dedicated landing pages for each ad narrative. Do not send all traffic to one generic LP."
+                                                },
+                                                {
+                                                    title: "Contradiction 2: Inventory Positioning (Primary vs. Secondary)",
+                                                    tension: "AUDIT-4 criticizes the ad for not emphasizing the \"free shadow SaaS inventory\" value, while AUDIT-3 says \"inventory\" is secondary to security/visibility.",
+                                                    resolution: "Inventory is the tangible artifact of discovery. When framed as \"proof you have a problem\" (security), it is primary. When framed as \"asset for management\" (ops), it is secondary.",
+                                                    rec: "Use \"inventory\" in CTAs tied to security outcomes: \"Get your free shadow inventory\" = good. Do not lead with inventory as an asset management benefit."
+                                                },
+                                                {
+                                                    title: "Contradiction 3: Tone (Playful vs. Serious)",
+                                                    tension: "AUDIT-1's cat metaphor worked (ad 7/10) but died on a corporate LP. AUDIT-4's \"lurking in shadows\" was called \"cheesy horror movie tagline\" (ad 3/10 on headline clarity).",
+                                                    resolution: "Playful works when it is relatable metaphor (cat chasing apps). It fails when it is theatrical (\"lurking in shadows\"). The key is authenticity to ICP experience.",
+                                                    rec: "Use relatable metaphors that IT teams actually use internally (\"chasing,\" \"drowning,\" \"blind spots\"). Avoid theatrical language that sounds like marketing."
+                                                },
+                                            ].map((c, i) => (
+                                                <div key={i} className="rounded-lg border p-5" style={{ borderColor: 'var(--cloud)' }}>
+                                                    <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--ink)' }}>{c.title}</h3>
+                                                    <div className="space-y-2 text-sm" style={{ color: 'var(--ink-light)' }}>
+                                                        <p><strong style={{ color: 'var(--ink)' }}>The tension:</strong> {c.tension}</p>
+                                                        <p><strong style={{ color: 'var(--ink)' }}>Resolution:</strong> {c.resolution}</p>
+                                                        <div className="rounded-lg p-3 mt-2" style={{ background: 'var(--success-light)' }}>
+                                                            <p className="text-sm"><strong style={{ color: 'var(--success)' }}>Recommendation:</strong> {c.rec}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ===== SECTION D: Recommended Positioning ===== */}
+                                <section id="section-D">
+                                    <SectionToggle id="D" title="D) Recommended Positioning" />
+                                    {isSectionOpen('D') && (
+                                        <div className="mt-5 space-y-6">
+                                            <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--accent-faint)', borderColor: 'var(--accent)' }}>
+                                                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--accent)' }}>Core Positioning Statement</p>
+                                                <p className="text-base font-semibold leading-relaxed" style={{ color: 'var(--ink)' }}>
+                                                    For IT and IT security teams at SaaS-heavy mid-market companies who cannot answer "what apps have access to our data," Nudge Security delivers complete SaaS visibility on Day One, so you can stop reacting to shadow IT and start controlling it.
+                                                </p>
+                                            </div>
+                                            {[
+                                                { label: "Variant 1: Problem-Led", tag: "Strongest for cold traffic", text: "\"You're responsible for data in tools you didn't approve, used by people you didn't train, for purposes you don't understand. Get complete visibility in 5 minutes.\"", evidence: "AUDIT-5 rates this problem framing 8/10 on headline clarity" },
+                                                { label: "Variant 2: Outcome-Led", tag: "For aware buyers", text: "\"Day One visibility into every SaaS and AI app your employees are using, even the ones IT never approved.\"", evidence: "\"Day One visibility\" identified as key differentiator in AUDIT-1, AUDIT-2, AUDIT-5" },
+                                                { label: "Variant 3: Proof-Led", tag: "For skeptical buyers", text: "\"Most companies discover 3x more SaaS apps than they thought. Find every app, user, and integration in 5 minutes, no agents, no network changes.\"", evidence: "AUDIT-2 recommends \"add specific results numbers like 'discover 10x more apps than traditional methods'\"" },
+                                            ].map((v, i) => (
+                                                <div key={i} className="rounded-lg border p-5" style={{ borderColor: 'var(--cloud)' }}>
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <h3 className="font-semibold" style={{ color: 'var(--ink)' }}>{v.label}</h3>
+                                                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>{v.tag}</span>
+                                                    </div>
+                                                    <p className="text-sm leading-relaxed mb-2" style={{ color: 'var(--ink-light)' }}>{v.text}</p>
+                                                    <p className="text-xs italic" style={{ color: 'var(--slate)' }}>Evidence: {v.evidence}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ===== SECTION E: ICP & Segmentation ===== */}
+                                <section id="section-E">
+                                    <SectionToggle id="E" title="E) ICP & Segmentation" />
+                                    {isSectionOpen('E') && (
+                                        <div className="mt-5 space-y-8">
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--ink)' }}>Primary ICP (Who)</h3>
+                                                <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--accent-faint)', borderColor: 'var(--accent)' }}>
+                                                    <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>
+                                                        <strong style={{ color: 'var(--ink)' }}>IT and IT security teams (IT managers, IT security managers, SecOps leaders, and CISOs) at SaaS-heavy mid-market companies with 500-1,500 employees</strong> who lack visibility into the apps employees are using, cannot confidently answer which tools have access to company data, and feel growing pressure to regain SaaS visibility quickly before shadow IT, audits, or security incidents expose those gaps.
+                                                    </p>
+                                                    <p className="text-xs mt-3 italic" style={{ color: 'var(--slate)' }}>Note: All 5 audits use this exact ICP definition as the benchmark for scoring.</p>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--ink)' }}>Why Now (Trigger Events from Audits)</h3>
+                                                <SimpleTable
+                                                    headers={['Trigger', 'Evidence']}
+                                                    rows={[
+                                                        ['Audit pressure', '"Before your next audit" - AUDIT-4 recommended headline'],
+                                                        ['Security incident fear', '"Shadow IT putting your audit at risk?" - AUDIT-4'],
+                                                        ['Compliance gaps', '"Before compliance gaps become security incidents" - AUDIT-4'],
+                                                        ['CISO accountability', '"I\'m responsible for data inside tools I didn\'t approve" - AUDIT-5'],
+                                                    ]}
+                                                />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--ink)' }}>Why Nudge (Differentiators from Audits)</h3>
+                                                <SimpleTable
+                                                    headers={['Differentiator', 'Evidence']}
+                                                    rows={[
+                                                        ['Day One visibility', 'Cited in AUDIT-1, AUDIT-2, AUDIT-5 as key value prop'],
+                                                        ['No agents/network changes', '"Deploy in 5 minutes. No agents. No network changes" - AUDIT-5, 7/10 specificity'],
+                                                        ['Patented discovery', '"Patented discovery method adds differentiation" - AUDIT-2'],
+                                                        ['Collaborative governance', '"Collaborative governance vs traditional blocking" - AUDIT-5'],
+                                                    ]}
+                                                />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--ink)' }}>Who to Exclude (from messaging)</h3>
+                                                <SimpleTable
+                                                    headers={['Persona', 'Why Exclude']}
+                                                    rows={[
+                                                        ['CFOs/Finance', '"Optimized for CFOs worried about budget, not CISOs worried about visibility" - AUDIT-3'],
+                                                        ['Data engineers', '"Not for data engineering workflows" - CHAT analysis'],
+                                                        ['Procurement', 'Secondary buyer, not primary pain owner'],
+                                                    ]}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ===== SECTION F: Messaging Pillars ===== */}
+                                <section id="section-F">
+                                    <SectionToggle id="F" title="F) Messaging Pillars (3-5) + Proof Points Needed" />
+                                    {isSectionOpen('F') && (
+                                        <div className="mt-5 space-y-6">
+                                            {[
+                                                {
+                                                    num: 1, title: "Complete Discovery (Day One Visibility)",
+                                                    message: "\"See every SaaS and AI app on Day One, even the ones IT never approved.\"",
+                                                    state: "Buried or missing in 4/5 landing pages despite being the strongest differentiator.",
+                                                    proof: ["Average number of apps discovered per customer", "Time to complete discovery (minutes, not months)", "\"3x more apps than expected\" stat referenced in recommendations"]
+                                                },
+                                                {
+                                                    num: 2, title: "Security-First Visibility",
+                                                    message: "\"Know which apps have access to your data before attackers do.\"",
+                                                    state: "Diluted by spend messaging in AUDIT-3; generic in AUDIT-2.",
+                                                    proof: ["Types of risky integrations found (OAuth, MFA gaps)", "Customer quote about finding critical exposure", "\"Breach histories\" mentioned as ICP concern in AUDIT-2"]
+                                                },
+                                                {
+                                                    num: 3, title: "Fast, Frictionless Deployment",
+                                                    message: "\"5 minutes to complete visibility. No agents. No network changes.\"",
+                                                    state: "Strong when mentioned (AUDIT-5: 7/10 benefit specificity) but inconsistently emphasized.",
+                                                    proof: ["Exact deployment time benchmark", "Comparison to competitor deployment requirements", "\"No agents, no network changes\" already resonates, quantify it"]
+                                                },
+                                                {
+                                                    num: 4, title: "Audit/Compliance Readiness (Secondary)",
+                                                    message: "\"Stop shadow IT before your next audit.\"",
+                                                    state: "Recommended but not currently prominent in messaging.",
+                                                    proof: ["Compliance frameworks supported", "Time saved on audit prep", "Customer quote about audit confidence"]
+                                                },
+                                            ].map((pillar) => (
+                                                <div key={pillar.num} className="rounded-lg border p-5" style={{ borderColor: 'var(--cloud)' }}>
+                                                    <div className="flex items-center gap-3 mb-3">
+                                                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: 'var(--accent)' }}>{pillar.num}</div>
+                                                        <h3 className="font-semibold" style={{ color: 'var(--ink)' }}>Pillar {pillar.num}: {pillar.title}</h3>
+                                                    </div>
+                                                    <p className="text-sm font-medium mb-1" style={{ color: 'var(--accent)' }}>Message: {pillar.message}</p>
+                                                    <p className="text-sm mb-3" style={{ color: 'var(--ink-light)' }}>Current State: {pillar.state}</p>
+                                                    <div className="rounded-lg p-3" style={{ background: 'var(--warning-light)' }}>
+                                                        <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--warning)' }}>Proof needed:</p>
+                                                        {pillar.proof.map((p, i) => (
+                                                            <p key={i} className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>- {p}</p>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ===== SECTION G: Offer & CTA Direction ===== */}
+                                <section id="section-G">
+                                    <SectionToggle id="G" title="G) Offer & CTA Direction (What to Test First)" />
+                                    {isSectionOpen('G') && (
+                                        <div className="mt-5 space-y-6">
+                                            <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--success-light)', borderColor: 'var(--success)' }}>
+                                                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--success)' }}>Primary Offer (Test First)</p>
+                                                <p className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>"Get your free shadow SaaS inventory"</p>
+                                                <Quote text="Get your free shadow SaaS inventory today is functional" source="AUDIT-4 (LP 7/10)" />
+                                                <Quote text="Your ICP wants to 'regain SaaS visibility quickly' - give them 'Get my SaaS inventory'" source="AUDIT-4" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--ink)' }}>Recommended CTA Variants (from Fix Kits)</h3>
+                                                <SimpleTable
+                                                    headers={['Source', 'Recommended CTA']}
+                                                    rows={[
+                                                        ['AUDIT-1', '"Get my shadow inventory" / "See what I\'m missing"'],
+                                                        ['AUDIT-2', '"Get Day One visibility now" / "Find every hidden SaaS tool"'],
+                                                        ['AUDIT-3', '"See your complete SaaS inventory" / "Discover your hidden apps now"'],
+                                                        ['AUDIT-4', '"Start free security audit" / "Discover shadow apps now"'],
+                                                        ['AUDIT-5', '"See your hidden SaaS footprint" / "Discover what you can\'t see"'],
+                                                    ]}
+                                                />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--danger)' }}>CTAs to Eliminate</h3>
+                                                <SimpleTable
+                                                    headers={['CTA', 'Why', 'Source']}
+                                                    rows={[
+                                                        ['"Learn more"', '"Generic death" / "laziest CTA in B2B"', 'AUDIT-1, AUDIT-4'],
+                                                        ['"Start saving money today"', 'Wrong ICP pain', 'AUDIT-3'],
+                                                        ['"See how you can get started"', '"Generic LinkedIn speak"', 'AUDIT-5'],
+                                                    ]}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ===== SECTION H: Do/Don't Rules ===== */}
+                                <section id="section-H">
+                                    <SectionToggle id="H" title="H) Do/Don't Messaging Rules (Tight, Specific)" />
+                                    {isSectionOpen('H') && (
+                                        <div className="mt-5 space-y-6">
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--success)' }}>DO (Evidence-Based)</h3>
+                                                <SimpleTable
+                                                    headers={['Rule', 'Evidence']}
+                                                    rows={[
+                                                        ['Lead with Day One visibility', 'Recommended in AUDIT-1, AUDIT-2, AUDIT-5'],
+                                                        ['Use specific time claims ("5 minutes," "Day One")', '7/10+ on benefit specificity when used'],
+                                                        ['Match ad tone to landing page tone', 'Match scores drop 2+ points on tone shifts'],
+                                                        ['Name the problem before the solution', 'AUDIT-5 ad (problem-first) scores 8/10 on headline clarity'],
+                                                        ['Use action-oriented CTAs with specific benefits', '"Get my shadow inventory" vs "Learn more"'],
+                                                        ['Add trust signals (logos, testimonials, ratings)', '2-4/10 trust scores when missing'],
+                                                    ]}
+                                                />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--danger)' }}>DON'T (Evidence-Based)</h3>
+                                                <SimpleTable
+                                                    headers={['Rule', 'Evidence']}
+                                                    rows={[
+                                                        ['Do not lead with spend/cost savings', 'AUDIT-3 "Optimized for CFOs... not CISOs" (4/10 ad score)'],
+                                                        ['Do not use "Learn more" as CTA', 'Called "generic death" and "laziest CTA"'],
+                                                        ['Do not use theatrical language ("lurking in shadows")', 'AUDIT-4 3/10 headline clarity'],
+                                                        ['Do not shift from playful ad to corporate LP', 'AUDIT-1 "Cat energy dies on corporate landing page"'],
+                                                        ['Do not bury Day One visibility below fold', 'Identified as critical error in 4/5 audits'],
+                                                        ['Do not use generic headlines ("See all the SaaS," "Chaos to control")', '4-5/10 headline scores consistently'],
+                                                    ]}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ===== SECTION I: Next 10 Actions ===== */}
+                                <section id="section-I">
+                                    <SectionToggle id="I" title="I) Next 10 Actions (Prioritized) + 2-Week Testing Plan" />
+                                    {isSectionOpen('I') && (
+                                        <div className="mt-5 space-y-8">
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--ink)' }}>Immediate Actions (Week 1)</h3>
+                                                <div className="space-y-5">
+                                                    {[
+                                                        { num: 1, day: "Day 1-2", title: "Rewrite LP headlines to match ad narratives", details: ["AUDIT-1 LP: \"Stop chasing shadow SaaS\" (carry metaphor forward)", "AUDIT-2 LP: \"Get Day One visibility into your entire SaaS estate\"", "AUDIT-5 LP: \"See every tool accessing your company data\""] },
+                                                        { num: 2, day: "Day 2", title: "Replace all \"Learn more\" CTAs", details: ["Swap to: \"Get my shadow inventory\" / \"See what I'm missing\" / \"Discover hidden apps now\""] },
+                                                        { num: 3, day: "Day 2", title: "Pause or deprioritize spend-focused ads", details: ["AUDIT-3 scores 4/10. Reallocate budget to discovery-focused ads (AUDIT-1, AUDIT-5 = 7/10)."] },
+                                                        { num: 4, day: "Day 3", title: "Add trust signals to ads", details: ["Include: Gartner rating, G2 score, or customer logo. Currently 2-4/10 on trust."] },
+                                                        { num: 5, day: "Day 3-5", title: "Create dedicated LPs for top-performing ad narratives", details: ["CISO nightmare ad: CISO-focused LP (problem-first)", "Cat metaphor ad: Relatable, conversational LP", "Stop current practice of sending all traffic to generic trial page"] },
+                                                    ].map((action) => (
+                                                        <div key={action.num} className="flex gap-4">
+                                                            <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: 'var(--accent)' }}>{action.num}</div>
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{action.title}</span>
+                                                                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--warning-light)', color: 'var(--warning)' }}>{action.day}</span>
+                                                                </div>
+                                                                {action.details.map((d, i) => (
+                                                                    <p key={i} className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>- {d}</p>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--ink)' }}>Testing Actions (Week 2)</h3>
+                                                <div className="space-y-5">
+                                                    {[
+                                                        { num: 6, day: "Day 6-9", title: "A/B test Day One visibility headline", details: ["Test: \"Get Day One visibility into every SaaS app\" vs current headlines. Measure: bounce rate, conversion rate."] },
+                                                        { num: 7, day: "Day 6-9", title: "A/B test problem-first vs solution-first LP", details: ["AUDIT-5 recommends: \"Lead with 'Responsible for data in tools you can't see?'\" Test against current \"Chaos to control.\""] },
+                                                        { num: 8, day: "Day 8-10", title: "Test security-specific social proof", details: ["AUDIT-5: \"Test adding CISO testimonials and security team logos above the fold instead of generic customer stories.\""] },
+                                                        { num: 9, day: "Day 8-10", title: "Test urgency-driven headlines", details: ["AUDIT-2: \"Test 'Your shadow SaaS attack surface is growing right now' vs current headline to increase urgency.\""] },
+                                                        { num: 10, day: "Day 10-14", title: "Document baseline + results", details: ["Record: CTR by ad, conversion rate by LP, demo quality score. Compare against pre-optimization baseline."] },
+                                                    ].map((action) => (
+                                                        <div key={action.num} className="flex gap-4">
+                                                            <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: 'var(--accent)' }}>{action.num}</div>
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{action.title}</span>
+                                                                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--warning-light)', color: 'var(--warning)' }}>{action.day}</span>
+                                                                </div>
+                                                                {action.details.map((d, i) => (
+                                                                    <p key={i} className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>- {d}</p>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--ink)' }}>2-Week Testing Plan Summary</h3>
+                                                <SimpleTable
+                                                    headers={['Day', 'Action', 'Source', 'Success Metric']}
+                                                    rows={[
+                                                        ['1-2', 'Rewrite LP headlines', 'AUDIT-1,2,5 Fix Kits', 'Headlines live'],
+                                                        ['2', 'Replace "Learn more" CTAs', 'AUDIT-1,4', 'All CTAs updated'],
+                                                        ['2', 'Pause spend ads', 'AUDIT-3', 'Budget reallocated'],
+                                                        ['3', 'Add trust signals to ads', 'AUDIT-1,3,4', 'Trust score improvement'],
+                                                        ['3-5', 'Create dedicated LPs', 'All audits', 'LPs live'],
+                                                        ['6-9', 'A/B test Day One headline', 'AUDIT-2', 'Statistical significance'],
+                                                        ['6-9', 'A/B test problem-first LP', 'AUDIT-5', 'Conversion rate delta'],
+                                                        ['8-10', 'Test security social proof', 'AUDIT-5', 'Above-fold engagement'],
+                                                        ['8-10', 'Test urgency headlines', 'AUDIT-2', 'CTR improvement'],
+                                                        ['10-14', 'Document results', 'All', 'Baseline vs post data'],
+                                                    ]}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+
+                                {/* ===== APPENDIX: Audit Score Summary ===== */}
+                                <section id="section-X">
+                                    <SectionToggle id="X" title="Appendix: Audit Score Summary" />
+                                    {isSectionOpen('X') && (
+                                        <div className="mt-5 space-y-6">
+                                            <SimpleTable
+                                                headers={['Audit', 'Ad', 'LP', 'Match', 'Top Issue']}
+                                                rows={[
+                                                    ['AUDIT-1', '7/10', '6/10', '5/10', 'Tone shift kills momentum'],
+                                                    ['AUDIT-2', '7/10', '6/10', '6/10', '"Day One" buried'],
+                                                    ['AUDIT-3', '4/10', '6/10', '7/10', 'Wrong ICP (spend vs security)'],
+                                                    ['AUDIT-4', '4/10', '7/10', '6/10', 'Ad undersells LP value'],
+                                                    ['AUDIT-5', '7/10', '5/10', '4/10', 'Best ad, worst handoff'],
+                                                    [{ bold: true, text: 'AVG' }, { bold: true, text: '5.8' }, { bold: true, text: '6.0' }, { bold: true, text: '5.6' }, { bold: true, text: 'Handoff is the gap' }],
+                                                ]}
+                                            />
+                                            <div>
+                                                <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--ink)' }}>Final Diagnosis</h3>
+                                                <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
+                                                    <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--ink-light)' }}>
+                                                        <strong style={{ color: 'var(--ink)' }}>The pattern is clear:</strong> Nudge Security has strong ad concepts (3 of 5 score 7/10) that die on generic landing pages (average 6/10) with poor message handoff (average 5.6/10).
+                                                    </p>
+                                                    <p className="text-sm font-semibold mb-2" style={{ color: 'var(--ink)' }}>The fix is not new ads. The fix is:</p>
+                                                    <div className="space-y-1 text-sm" style={{ color: 'var(--ink-light)' }}>
+                                                        <p>1. Landing pages that continue ad narratives</p>
+                                                        <p>2. CTAs that match ICP urgency</p>
+                                                        <p>3. Trust signals for skeptical security buyers</p>
+                                                        <p>4. Day One visibility as the hero message everywhere</p>
+                                                    </div>
+                                                </div>
+                                                <Quote text="The ad creates urgency... the landing page feels like any other trial signup." source="AUDIT-5" />
+                                                <p className="text-sm font-semibold mt-3" style={{ color: 'var(--ink)' }}>Stop creating urgency and then abandoning it. Carry the narrative through.</p>
+                                            </div>
+                                            <div className="pt-6 border-t text-sm" style={{ borderColor: 'var(--cloud)', color: 'var(--slate)' }}>
+                                                <p className="italic">Report prepared by Marina Kogan | Brands with Purpose</p>
+                                                <p className="italic">Based on 5 AdRoast audits + Call2 strategic direction</p>
+                                                <p className="italic">Confidential: For Chris Godwin / Fractional Demand use only</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+
+                            </div>
+
+                            {/* Page nav */}
+                            <ContentNav current="positioning" partnerId={partnerId} clientId={clientId} onNavigate={onNavigate} />
+                        </div>
+                    </div>
+                </PageShell>
+            );
+        };
+
+        /* ============================================================
+           AUDIT PAGE
+           ============================================================ */
+        const AuditPage = ({ partnerId, clientId, auditId, onNavigate, accessMode }) => {
+            const partner = portalData.partners[partnerId];
+            const client = partner.clients[clientId];
+            const audit = client.audits[auditId];
+            if (!audit) return null;
+
+            const crumbs = accessMode === 'master'
+                ? [
+                    { label: 'Portal', onClick: () => onNavigate('portal-root') },
+                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
+                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                    { label: `Audit ${auditId}` }
+                ]
+                : accessMode === 'partner'
+                ? [
+                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
+                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                    { label: `Audit ${auditId}` }
+                ]
+                : [
+                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                    { label: `Audit ${auditId}` }
+                ];
+
+            return (
+                <PageShell crumbs={crumbs} onNavigate={onNavigate}>
+                    <div className="max-w-3xl mx-auto">
+                        <BackButton label={`Back to ${client.name} Hub`} onClick={() => onNavigate('client-hub', partnerId, clientId)} />
+                        <Badge>Campaign Audit</Badge>
+                        <h1 className="text-3xl sm:text-4xl font-bold mt-4 mb-2 serif" style={{ color: 'var(--ink)' }}>{audit.title}</h1>
+                        <p className="text-lg mb-10" style={{ color: 'var(--slate)' }}>{audit.summary}</p>
+
+                        <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--cloud)' }}>
+                            <div className="p-6 sm:p-8 space-y-12">
+
+                                {/* Campaign overview + full audit link */}
+                                <section>
+                                    <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Campaign Overview</h2>
+                                    <p className="text-base leading-relaxed mb-5" style={{ color: 'var(--ink-light)' }}>{audit.summary}</p>
+                                    <div className="rounded-lg p-5" style={{ background: 'var(--accent-faint)' }}>
+                                        <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--ink)' }}>Access Full Analysis</h3>
+                                        <a href={audit.auditUrl} target="_blank" rel="noopener noreferrer"
+                                            className="inline-flex items-center px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
+                                            style={{ background: 'var(--accent)' }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                                        >
+                                            Open Complete Audit Report<ExternalIcon />
+                                        </a>
+                                    </div>
+                                </section>
+
+                                {/* Creative assets (single buttons only, no previews) */}
+                                <section>
+                                    <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Creative Assets</h2>
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="border rounded-lg p-5 flex flex-col items-center justify-center text-center" style={{ borderColor: 'var(--cloud)' }}>
+                                            <p className="text-sm font-semibold mb-3" style={{ color: 'var(--ink)' }}>LinkedIn Ad Creative</p>
+                                            <a href={audit.adUrl} target="_blank" rel="noopener noreferrer"
+                                                className="inline-flex items-center px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors"
+                                                style={{ background: 'var(--accent)' }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                                            >View LinkedIn Ad<ExternalIcon /></a>
+                                        </div>
+                                        <div className="border rounded-lg p-5 flex flex-col items-center justify-center text-center" style={{ borderColor: 'var(--cloud)' }}>
+                                            <p className="text-sm font-semibold mb-3" style={{ color: 'var(--ink)' }}>Landing Page</p>
+                                            <a href={audit.landingPageUrl} target="_blank" rel="noopener noreferrer"
+                                                className="inline-flex items-center px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors"
+                                                style={{ background: 'var(--accent)' }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                                            >View Landing Page<ExternalIcon /></a>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Key findings */}
+                                <section>
+                                    <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Key Findings</h2>
+                                    <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
+                                        <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{audit.findings}</p>
+                                    </div>
+                                </section>
+
+                                {/* Recommendations */}
+                                <section>
+                                    <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Recommendations</h2>
+                                    <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--success-light)', borderColor: 'var(--success)' }}>
+                                        <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{audit.recommendations}</p>
+                                    </div>
+                                </section>
+                            </div>
+
+                            {/* Return to Audit 1 button on Audit 5 */}
+                            {String(auditId) === '5' && (
+                                <div className="px-6 sm:px-8 py-5 border-t flex justify-center" style={{ borderColor: 'var(--cloud)' }}>
+                                    <button onClick={() => onNavigate('audit', partnerId, clientId, '1')}
+                                        className="inline-flex items-center px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
+                                        style={{ background: 'var(--accent)' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                                    >
+                                        <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                        Return to Audit 1
+                                    </button>
+                                </div>
+                            )}
+
+                            <ContentNav current={auditId} partnerId={partnerId} clientId={clientId} onNavigate={onNavigate} />
+                        </div>
+                    </div>
+                </PageShell>
+            );
+        };
+
+        /* ============================================================
+           CONTENT NAVIGATION (prev / next within client)
+           ============================================================ */
+        const ContentNav = ({ current, partnerId, clientId, onNavigate }) => {
+            const client = portalData.partners[partnerId].clients[clientId];
+            const auditIds = Object.keys(client.audits);
+            const isPositioning = String(current) === 'positioning';
+
+            let prev = null;
+            let next = null;
+
+            if (isPositioning) {
+                // Positioning report: no prev, next = first audit
+                next = auditIds[0];
+            } else {
+                // Audit pages: circular loop among audits
+                const aidx = auditIds.indexOf(String(current));
+                prev = aidx === 0 ? auditIds[auditIds.length - 1] : auditIds[aidx - 1];
+                next = aidx === auditIds.length - 1 ? auditIds[0] : auditIds[aidx + 1];
+            }
+
+            const label = (p) => p === 'positioning' ? 'Positioning Report' : `Audit ${p}`;
+            const go = (p) => p === 'positioning'
+                ? onNavigate('positioning', partnerId, clientId)
+                : onNavigate('audit', partnerId, clientId, p);
+
+            return (
+                <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-t" style={{ borderColor: 'var(--cloud)' }}>
+                    <div>
+                        {prev && (
+                            <button onClick={() => go(prev)} className="inline-flex items-center text-sm font-medium transition-colors" style={{ color: 'var(--accent)' }}>
+                                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                {label(prev)}
+                            </button>
+                        )}
+                    </div>
+                    <div>
+                        {next && (
+                            <button onClick={() => go(next)} className="inline-flex items-center text-sm font-medium transition-colors" style={{ color: 'var(--accent)' }}>
+                                {label(next)}
+                                <svg className="h-4 w-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        /* ============================================================
+           APP ROUTER
+           ============================================================ */
+        function PortalApp() {
+            const [state, setState] = useState({ mode: null, view: 'portal-root', partnerId: null, clientId: null, auditId: null });
+
+            const nav = (v, pid, cid, aid) => {
+                setState(prev => {
+                    const next = { ...prev, view: v };
+                    // In client mode, block everything except client-hub and below
+                    if (prev.mode === 'client' && (v === 'portal-root' || v === 'partner-workspace')) {
+                        next.view = 'client-hub';
+                        return next;
+                    }
+                    // In partner mode, block portal-root
+                    if (prev.mode === 'partner' && v === 'portal-root') {
+                        next.view = 'partner-workspace';
+                        return next;
+                    }
+                    if (pid !== undefined) next.partnerId = pid;
+                    if (cid !== undefined) next.clientId = cid;
+                    if (aid !== undefined) next.auditId = aid;
+                    return next;
+                });
+                window.scrollTo(0, 0);
+            };
+
+            const handleUnlock = (auth) => {
+                if (auth.mode === 'client') {
+                    setState({ mode: 'client', view: 'client-hub', partnerId: auth.partnerId, clientId: auth.clientId, auditId: null });
+                } else if (auth.mode === 'partner') {
+                    setState({ mode: 'partner', view: 'partner-workspace', partnerId: auth.partnerId, clientId: null, auditId: null });
+                } else {
+                    setState({ mode: 'master', view: 'portal-root', partnerId: null, clientId: null, auditId: null });
+                }
+            };
+
+            const { mode, view, partnerId, clientId, auditId } = state;
+
+            if (!mode) return <PasswordGate onUnlock={handleUnlock} />;
+
+            switch (view) {
+                case 'portal-root':
+                    return mode === 'master'
+                        ? <PortalRoot onNavigate={nav} />
+                        : mode === 'partner'
+                        ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
+                        : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                case 'partner-workspace':
+                    return (mode === 'master' || mode === 'partner')
+                        ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
+                        : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                case 'client-hub':
+                    return <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                case 'positioning':
+                    return <PositioningReportPage partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                case 'audit':
+                    return <AuditPage partnerId={partnerId} clientId={clientId} auditId={auditId} onNavigate={nav} accessMode={mode} />;
+                default:
+                    return mode === 'master'
+                        ? <PortalRoot onNavigate={nav} />
+                        : mode === 'partner'
+                        ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
+                        : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+            }
+        }
+
+        // Portal render handled by RootRouter below
+
+
+    /* ============================================================
+       ROOT ROUTER - Serves main site or portal based on URL hash
+       ============================================================ */
+    function RootRouter() {
+      const [route, setRoute] = useState(window.location.hash);
+
+      useEffect(() => {
+        const onHash = () => setRoute(window.location.hash);
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+
+      if (route === '#portal') {
+        return <div className="portal-mode"><PortalApp /></div>;
+      }
+      return <AdRoastApp />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<RootRouter />);
   </script>
 </body>
 </html>
