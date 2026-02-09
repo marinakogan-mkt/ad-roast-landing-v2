@@ -318,8 +318,8 @@
               {[
                 { icon: 'users', title: "ICP-Specific", desc: "Roast based on YOUR customer" },
                 { icon: 'alertCircle', title: "5 Issues", desc: "Scored 1-10 with quotes" },
-                { icon: 'zap', title: "Fix Kit", desc: "Ready-to-paste copy" },
-                { icon: 'sparkles', title: "Experiments", desc: "3 testable ideas" }
+                { icon: 'zap', title: "Ad-LP Match", desc: "Landing page alignment" },
+                { icon: 'sparkles', title: "Quick Wins", desc: "Top fixes to try now" }
               ].map((f, i) => (
                 <div key={i} className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md hover:border-gray-300 transition-all">
                   <Icon name={f.icon} className="w-6 h-6 mb-2" style={{ color: '#0a66c2' }} />
@@ -584,11 +584,11 @@
                 </div>
               )}
 
-              {/* Fix Kit - PREMIUM */}
+              {/* Fix Kit - FULL VERSION ONLY (portal/admin) */}
+{isPortalView && (
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">Fix Kit</h2>
-                  {!isPortalView && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                 </div>
                 <div className="p-4 grid sm:grid-cols-2 gap-4">
                   <div className="space-y-4">
@@ -597,7 +597,7 @@
                       <div className="space-y-2">
                         {result.fix_kit.headlines.map((h, i) => (
                           <div key={i} className="p-2.5 bg-gray-50 rounded border border-gray-200">
-                            <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><span className="text-sm text-gray-800">{h}</span></div>
+                            <span className="text-sm text-gray-800">{h}</span>
                           </div>
                         ))}
                       </div>
@@ -605,7 +605,7 @@
                     <div>
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad Body</h3>
                       <div className="p-2.5 bg-gray-50 rounded border border-gray-200">
-                        <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-700">{result.fix_kit.body}</p></div>
+                        <p className="text-sm text-gray-700">{result.fix_kit.body}</p>
                       </div>
                     </div>
                   </div>
@@ -615,7 +615,7 @@
                       <div className="flex flex-wrap gap-3">
                         {result.fix_kit.ctas.map((cta, i) => (
                           <div key={i} style={{ borderColor: '#0a66c2' }} className="px-5 py-2.5 bg-white border-2 rounded-full">
-                            <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><span style={{ color: '#0a66c2' }} className="text-base font-semibold">{cta}</span></div>
+                            <span style={{ color: '#0a66c2' }} className="text-base font-semibold">{cta}</span>
                           </div>
                         ))}
                       </div>
@@ -626,12 +626,12 @@
                         <div className="space-y-2">
                           <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border">
                             <span className="text-xs text-gray-500">Headline</span>
-                            <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_headline}</p></div>
+                            <p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_headline}</p>
                           </div>
                           {result.fix_kit.landing_page_subhead && (
                             <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border">
                               <span className="text-xs text-gray-500">Subheadline</span>
-                              <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_subhead}</p></div>
+                              <p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_subhead}</p>
                             </div>
                           )}
                         </div>
@@ -642,19 +642,17 @@
                 <div className="px-4 pb-4">
                   <div className="p-3 bg-gray-50 rounded border border-gray-200">
                     <span style={{ color: '#0a66c2' }} className="font-semibold text-sm">Why this works:</span>
-                    <div className={isPortalView ? "inline" : "blur-sm pointer-events-none select-none inline"}><span className="text-sm text-gray-600 ml-1">{result.fix_kit.rationale}</span></div>
+                    <span className="text-sm text-gray-600 ml-1">{result.fix_kit.rationale}</span>
                   </div>
                 </div>
-{!isPortalView && (                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
-                  <button onClick={() => handleCtaClick(icp, 'Fix Kit')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get Full Report</button>
-                </div>)}
               </div>
+)}
 
-              {/* Experiments - PREMIUM */}
+              {/* Experiments - FULL VERSION ONLY (portal/admin) */}
+{isPortalView && (
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">3 Experiments to Run</h2>
-                  {!isPortalView && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                 </div>
                 <div className="p-4 grid sm:grid-cols-3 gap-3">
                   {result.experiments.map((exp, i) => (
@@ -663,33 +661,29 @@
                         <div style={{ backgroundColor: '#e8f3ff', color: '#0a66c2' }} className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{i + 1}</div>
                         <h3 className="font-semibold text-gray-900 text-sm">{exp.title}</h3>
                       </div>
-                      <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600">{exp.description}</p></div>
+                      <p className="text-sm text-gray-600">{exp.description}</p>
                     </div>
                   ))}
                 </div>
-{!isPortalView && (                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
-                  <button onClick={() => handleCtaClick(icp, 'Experiments')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get Full Report</button>
-                </div>)}
               </div>
+)}
 
-              {/* Next Steps - PREMIUM */}
+              {/* Next Steps - FULL VERSION ONLY (portal/admin) */}
+{isPortalView && (
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Next Steps</h2>
-                  {!isPortalView && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
+                  <h2 className="font-semibold text-gray-900">Strategic Next Steps</h2>
                 </div>
                 <div className="p-4 space-y-2">
                   {result.next_steps.map((step, i) => (
                     <label key={i} className="flex items-start gap-3 p-2 rounded">
                       <input type="checkbox" disabled className="mt-0.5 w-4 h-4 rounded border-gray-400" />
-                      <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><span className="text-sm text-gray-700">{step}</span></div>
+                      <span className="text-sm text-gray-700">{step}</span>
                     </label>
                   ))}
                 </div>
-{!isPortalView && (                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
-                  <button onClick={() => handleCtaClick(icp, 'Next Steps')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get Full Report</button>
-                </div>)}
               </div>
+)}
 
               {/* Save & Share Report */}
               {!isSharedView && (
