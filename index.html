@@ -207,7 +207,7 @@
         });
         
         const shareLink = reportId 
-          ? `${window.location.origin}${window.location.pathname}?id=${reportId}`
+          ? `${window.location.origin}${window.location.pathname}?id=${reportId}${isPortalView ? '&portal=1' : ''}`
           : window.location.href;
         
         // Send link to user (skip in admin mode)
@@ -252,7 +252,7 @@
         });
         
         const shareLink = reportId 
-          ? `${window.location.origin}${window.location.pathname}?id=${reportId}`
+          ? `${window.location.origin}${window.location.pathname}?id=${reportId}${isPortalView ? '&portal=1' : ''}`
           : window.location.href;
         
         // ONE email to Marina with LinkedIn + roast info + short link
