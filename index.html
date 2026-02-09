@@ -187,7 +187,7 @@
       const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
       const sendReportLink = async () => {
-        if (!validateEmail(reportEmail)) { setReportEmailErr('Please enter a valid email address'); return; }
+        if (!adminMode && !validateEmail(reportEmail)) { setReportEmailErr('Please enter a valid email address'); return; }
         setReportEmailErr(null); setPdfStatus('sending');
         
         const adScore = result.overall_score;
@@ -196,8 +196,8 @@
         
         // Save to Notion and get report ID
         const reportId = await saveToNotion({
-          email: reportEmail,
-          linkedin: linkedin,
+          email: adminMode ? 'internal@brandswithpurpose.us' : reportEmail,
+          linkedin: linkedin || 'internal-audit',
           platform: platform,
           adScore: adScore,
           lpScore: lpScore,
@@ -210,7 +210,8 @@
           ? `${window.location.origin}${window.location.pathname}?id=${reportId}`
           : window.location.href;
         
-        // Send link to user
+        // Send link to user (skip in admin mode)
+        if (!adminMode) {
         try {
           await fetch('https://api.emailjs.com/api/v1.0/email/send', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -224,6 +225,7 @@
             })
           });
         } catch (e) { console.error('Email to user error:', e); }
+        }
         
         setShareableLink(shareLink);
         setPdfStatus('sent');
@@ -698,7 +700,7 @@
                       <div className="text-center py-2">
                         <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3"><Icon name="check" className="w-6 h-6 text-green-600" /></div>
                         <p className="text-green-700 font-semibold mb-1">Here's your link!</p>
-                        <p className="text-gray-500 text-sm mb-3">Also sent to {reportEmail}</p>
+                        {!adminMode && <p className="text-gray-500 text-sm mb-3">Also sent to {reportEmail}</p>}
                         <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 mb-3">
                           <input type="text" readOnly value={shareableLink} className="flex-1 bg-transparent text-xs text-gray-600 outline-none truncate" />
                           <button onClick={() => copy(shareableLink, 'shareLink')} className="p-2 hover:bg-gray-200 rounded transition-colors">
@@ -709,6 +711,15 @@
                       </div>
                     ) : (
                       <>
+                        {adminMode ? (
+                          <>
+                            <p className="text-gray-600 text-sm mb-4">Save this report and get a permanent shareable link.</p>
+                            <button onClick={sendReportLink} disabled={pdfStatus === 'sending'} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90">
+                              {pdfStatus === 'sending' ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Icon name="link" className="w-4 h-4" />} Get My Link
+                            </button>
+                          </>
+                        ) : (
+                          <>
                         <p className="text-gray-600 text-sm mb-4">Enter your email to get a permanent link to your report.</p>
                         <div className="mb-4">
                           <input type="email" placeholder="your@email.com" value={reportEmail} onChange={(e) => { setReportEmail(e.target.value); setReportEmailErr(null); }} className={`w-full px-3 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-1 ${reportEmailErr ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'}`} />
@@ -718,6 +729,8 @@
                           {pdfStatus === 'sending' ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Icon name="link" className="w-4 h-4" />} Get My Link
                         </button>
                         <p className="text-gray-400 text-xs mt-3 text-center">Your email stays between us. No spam, ever.</p>
+                          </>
+                        )}
                       </>
                     )}
                   </div>
