@@ -68,7 +68,7 @@
     };
 
     const EMAIL_CONFIG = { service_id: 'service_ywioabe', template_id: 'template_gtqow85', public_key: '964Wa83HevoEa5KnS', notify_email: 'marina.kogan@brandswithpurpose.us' };
-    const PAYMENT_URL = 'https://buy.stripe.com/5kQ4gy45SdXwgvsaz7ew801';
+    const PAYMENT_URL = 'https://buy.stripe.com/dRmeVc1XK9Hg1Ay6iRew800';
 
     const notifyCtaClick = async (leadLinkedIn, section) => {
       try {
@@ -529,13 +529,14 @@
                         <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200 relative">
                           <p className="text-red-600 text-sm font-medium mb-2">⚠️ Problem {i + 1}</p>
                           <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600">{d.problem}</p></div>
-                          <p className="text-green-600 text-sm font-medium mt-3">✓ Fix</p>
-                          <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600">{d.fix}</p></div>
+{isPortalView && (<>                          <p className="text-green-600 text-sm font-medium mt-3">✓ Fix</p>
+                          <p className="text-sm text-gray-600">{d.fix}</p>
+</>)}
                         </div>
                       ))}
                     </div>
 {!isPortalView && (                    <div className="mt-4 pt-4 border-t border-gray-200 text-center">
-                      <button onClick={() => handleCtaClick(icp, 'Message Mismatch')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get Full Report</button>
+                      <button onClick={() => handleCtaClick(icp, 'Message Mismatch')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get the Full Diagnosis</button>
                     </div>)}
                   </div>
                 </div>
@@ -571,15 +572,17 @@
                           <h4 className="font-semibold text-red-700 text-sm mb-2">🚨 Top Issues</h4>
                           <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><ul className="space-y-1">{lp.top_issues.map((issue, i) => <li key={i} className="text-sm text-red-600">• {issue}</li>)}</ul></div>
                         </div>
+{isPortalView && (
                         <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                           <h4 className="font-semibold text-green-700 text-sm mb-2">⚡ Quick Wins</h4>
-                          <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><ul className="space-y-1">{(lp.quick_wins || []).map((win, i) => <li key={i} className="text-sm text-green-600">• {win}</li>)}</ul></div>
+                          <ul className="space-y-1">{(lp.quick_wins || []).map((win, i) => <li key={i} className="text-sm text-green-600">• {win}</li>)}</ul>
                         </div>
+)}
                       </div>
                     )}
                   </div>
 {!isPortalView && (                  <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
-                    <button onClick={() => handleCtaClick(icp, 'Landing Page Analysis')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get Full Report</button>
+                    <button onClick={() => handleCtaClick(icp, 'Landing Page Analysis')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get the Full Diagnosis</button>
                   </div>)}
                 </div>
               )}
@@ -733,8 +736,8 @@
 
               {/* CTA */}
 {!isPortalView && (              <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="rounded-lg border p-8 text-center">
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Need help understanding your audit?</h2>
-                <p className="text-gray-600 mb-5">Book a free 30-minute call to walk through your results and get a clear action plan.</p>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Founders who fix their positioning close 47% faster.</h2>
+                <p className="text-gray-600 mb-5">Let's chat to turn your audit into an action plan to make your ads actually convert.</p>
                 <a href="https://calendly.com/marina-kogan-brandswithpurpose/30min" target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-base hover:opacity-90 transition-opacity">
                   <Icon name="zap" className="w-5 h-5" /> Book a Free Call
                 </a>
