@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brands with Purpose | Ad Positioning for B2B SaaS Founders</title>
+  <title>AdRoast | Ad Positioning for B2B SaaS</title>
   <meta name="description" content="Running $10K+/month on Ads but demo quality still sucks? The real problem is your positioning. Fix it without touching your Ad budget.">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.brandswithpurpose.us">
-  <meta property="og:site_name" content="Brands with Purpose">
+  <meta property="og:site_name" content="AdRoast">
   <meta property="og:title" content="Running $10K+/month on Ads but demo quality still sucks?">
   <meta property="og:description" content="You've tried better targeting and new creatives. The real problem: your positioning is broken. Fix it without touching your Ad budget.">
   <meta property="og:image" content="https://www.brandswithpurpose.us/og-image.png">
@@ -320,8 +320,9 @@
           <header className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-50" style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
             <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <img src={BWP_LOGO} alt="Brands with Purpose" className="w-8 h-8 rounded-md object-cover" />
-                <span className="text-base text-gray-800" style={{ fontWeight: 400 }}>Brands with Purpose</span>
+                <Icon name="linkedin" className="w-8 h-8" />
+                <span className="text-gray-300 text-lg font-light">|</span>
+                <span className="text-lg text-gray-800 font-semibold">AdRoast</span>
               </div>
               <a href="https://www.brandswithpurpose.us/#portal" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className={`px-4 py-1.5 bg-white border rounded-full text-sm font-medium hover:bg-blue-50 transition-colors no-underline ${adminMode ? 'hidden' : ''}`}>Partner Portal</a>
               {adminMode && <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-300">INTERNAL</span>}
@@ -997,8 +998,9 @@
 
         const Logo = () => (
             <div className="flex items-center space-x-2.5">
-                <img src={LOGO_SRC} alt="Brands with Purpose" className="w-8 h-8 rounded-lg object-cover" />
-                <span className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>Brands with Purpose</span>
+                <Icon name="linkedin" className="w-8 h-8" />
+                <span className="text-gray-300 text-lg font-light">|</span>
+                <span className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>AdRoast</span>
             </div>
         );
 
@@ -1105,10 +1107,10 @@
                     <div className="w-full max-w-sm">
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="text-center mb-2">
-                                <div className="mx-auto mb-3">
-                                    <img src={LOGO_SRC} alt="Brands with Purpose" className="w-12 h-12 rounded-lg object-cover mx-auto" />
+                                <div className="mx-auto mb-3 flex items-center justify-center gap-2">
+                                    <Icon name="linkedin" className="w-10 h-10" />
                                 </div>
-                                <h1 className="text-lg font-bold serif" style={{ color: 'var(--ink)' }}>Brands with Purpose</h1>
+                                <h1 className="text-lg font-bold serif" style={{ color: 'var(--ink)' }}>AdRoast</h1>
                                 <p className="text-sm mt-1" style={{ color: 'var(--slate)' }}>Enter your access code to continue</p>
                             </div>
                             <div className="relative">
@@ -2219,7 +2221,7 @@
     function setFaviconAndTitle(isPortal) {
       const link = document.getElementById('dynamic-favicon');
       if (link) link.href = isPortal ? FAVICON_BWP : FAVICON_LINKEDIN;
-      document.title = isPortal ? 'Brands with Purpose' : 'Ad Roast';
+      document.title = isPortal ? 'AdRoast | Partner Portal' : 'AdRoast';
     }
 
     /* ============================================================
