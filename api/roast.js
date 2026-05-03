@@ -45,37 +45,89 @@ export default async function handler(req, res) {
   if (landingUrl?.trim()) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      const timeout = setTimeout(() => controller.abort(), 12000);
       const pageRes = await fetch(landingUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9'
         },
-        signal: controller.signal
+        signal: controller.signal,
+        redirect: 'follow'
       });
       clearTimeout(timeout);
       const html = await pageRes.text();
       
-      // Extract text content, removing scripts/styles
-      landingPageContent = html
+      // Extract structured elements
+      const extractedElements = [];
+      
+      // Title
+      const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+      if (titleMatch) extractedElements.push(`PAGE TITLE: ${titleMatch[1].trim()}`);
+      
+      // Meta description
+      const metaDesc = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
+      if (metaDesc) extractedElements.push(`META DESCRIPTION: ${metaDesc[1].trim()}`);
+      
+      // OG tags
+      const ogTitle = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
+      const ogDesc = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+      if (ogTitle) extractedElements.push(`OG TITLE: ${ogTitle[1].trim()}`);
+      if (ogDesc) extractedElements.push(`OG DESCRIPTION: ${ogDesc[1].trim()}`);
+      
+      // H1s
+      const h1s = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/gi);
+      if (h1s) extractedElements.push(`H1 HEADLINES: ${h1s.map(h => h.replace(/<[^>]+>/g, '').trim()).filter(Boolean).join(' | ')}`);
+      
+      // H2s
+      const h2s = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/gi);
+      if (h2s) extractedElements.push(`H2 SUBHEADLINES: ${h2s.slice(0, 10).map(h => h.replace(/<[^>]+>/g, '').trim()).filter(Boolean).join(' | ')}`);
+      
+      // H3s
+      const h3s = html.match(/<h3[^>]*>([\s\S]*?)<\/h3>/gi);
+      if (h3s) extractedElements.push(`H3 SECTIONS: ${h3s.slice(0, 10).map(h => h.replace(/<[^>]+>/g, '').trim()).filter(Boolean).join(' | ')}`);
+      
+      // Buttons and CTAs
+      const buttons = html.match(/<button[^>]*>([\s\S]*?)<\/button>/gi);
+      const ctaLinks = html.match(/<a[^>]*class=["'][^"']*(?:cta|btn|button)[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi);
+      const allCtas = [...(buttons || []), ...(ctaLinks || [])];
+      if (allCtas.length > 0) {
+        const ctaTexts = allCtas.map(c => c.replace(/<[^>]+>/g, '').trim()).filter(t => t.length > 0 && t.length < 100);
+        if (ctaTexts.length > 0) extractedElements.push(`CTA/BUTTON TEXT: ${[...new Set(ctaTexts)].slice(0, 10).join(' | ')}`);
+      }
+      
+      // List items (benefits, features)
+      const lis = html.match(/<li[^>]*>([\s\S]*?)<\/li>/gi);
+      if (lis && lis.length > 0) {
+        const liTexts = lis.map(l => l.replace(/<[^>]+>/g, '').trim()).filter(t => t.length > 5 && t.length < 200);
+        if (liTexts.length > 0) extractedElements.push(`LIST ITEMS/BENEFITS: ${liTexts.slice(0, 15).join(' | ')}`);
+      }
+      
+      // Testimonials / blockquotes
+      const quotes = html.match(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi);
+      if (quotes) {
+        const quoteTexts = quotes.map(q => q.replace(/<[^>]+>/g, '').trim()).filter(Boolean);
+        if (quoteTexts.length > 0) extractedElements.push(`TESTIMONIALS/QUOTES: ${quoteTexts.slice(0, 5).join(' | ')}`);
+      }
+      
+      // Full text content (scripts/styles removed)
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      const contentHtml = bodyMatch ? bodyMatch[1] : html;
+      const fullText = contentHtml
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+        .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
         .replace(/<[^>]+>/g, ' ')
+        .replace(/&[a-z]+;/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .slice(0, 8000);
-      
-      const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-      const h1Match = html.match(/<h1[^>]*>([^<]*)<\/h1>/gi);
-      const metaDesc = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
-      
-      const extractedElements = [];
-      if (titleMatch) extractedElements.push(`Page Title: ${titleMatch[1]}`);
-      if (h1Match) extractedElements.push(`H1 Headlines: ${h1Match.slice(0, 3).map(h => h.replace(/<[^>]+>/g, '')).join(' | ')}`);
-      if (metaDesc) extractedElements.push(`Meta Description: ${metaDesc[1]}`);
+        .slice(0, 10000);
       
       if (extractedElements.length > 0) {
-        landingPageContent = `EXTRACTED ELEMENTS:\n${extractedElements.join('\n')}\n\nPAGE CONTENT:\n${landingPageContent}`;
+        landingPageContent = `STRUCTURED EXTRACTION:\n${extractedElements.join('\n')}\n\nFULL PAGE TEXT:\n${fullText}`;
+      } else {
+        landingPageContent = fullText;
       }
       
       if (landingPageContent.trim().length > 50) {
