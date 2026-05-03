@@ -141,7 +141,7 @@
       const [linkedin, setLinkedin] = useState('');
       const [linkedinErr, setLinkedinErr] = useState(null);
       const [sending, setSending] = useState(false);
-      const [inputs, setInputs] = useState({ url: '', copy: '', visual: '', landingCopy: '' });
+      const [inputs, setInputs] = useState({ url: '', copy: '', visual: '' });
       const [result, setResult] = useState(null);
       const [copied, setCopied] = useState({});
       const [error, setError] = useState(null);
@@ -153,7 +153,7 @@
       const [isSharedView, setIsSharedView] = useState(false);
       const [isPortalView, setIsPortalView] = useState(adminMode);
       const [legalModal, setLegalModal] = useState(null);
-      const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.landingCopy.trim();
+      const hasInput = inputs.url.trim() || inputs.copy.trim();
       const canProceed = platform && offerType && icp.length > 10;
 
       // Check for shared report in URL on load
@@ -195,7 +195,7 @@
       const reset = () => {
         setView('landing'); setPlatform(null); setOfferType(null); setIcp('');
         setLinkedin(''); setLinkedinErr(null); setResult(null); setError(null);
-        setInputs({ url: '', copy: '', visual: '', landingCopy: '' });
+        setInputs({ url: '', copy: '', visual: '' });
         setReportEmail(''); setReportEmailErr(null); setPdfStatus(null);
       };
 
@@ -290,7 +290,7 @@
 
       const generate = async () => {
         setError(null); setLoading(true); setView('processing');
-        const payload = { platform, offerType, icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: inputs.landingCopy };
+        const payload = { platform, offerType, icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '' };
         try {
           const res = await fetch('/api/roast', {
             method: 'POST',
@@ -627,16 +627,13 @@
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h1 className="text-xl font-normal text-gray-900 mb-1">Add your content</h1>
-              <p className="text-gray-500 text-sm mb-5">Paste your ad copy and landing page content to compare messaging</p>
+              <p className="text-gray-500 text-sm mb-5">Paste your Ad copy and add your landing page URL to compare messaging</p>
               {error && <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded text-red-700 flex items-center gap-2 text-sm"><Icon name="alertCircle" className="w-4 h-4" />{error}</div>}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1">Landing Page URL <span className="text-gray-500 font-normal">(optional)</span></label>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Landing Page URL</label>
                   <input type="url" placeholder="https://your-landing-page.com" value={inputs.url} onChange={(e) => setInputs(p => ({ ...p, url: e.target.value }))} className="w-full px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1">Landing Page Copy <span style={{ color: '#0a66c2' }}>(paste to compare with ad)</span></label>
-                  <textarea placeholder="Paste: headline, subheadline, key benefits, CTA text, testimonials..." value={inputs.landingCopy} onChange={(e) => setInputs(p => ({ ...p, landingCopy: e.target.value }))} className="w-full h-28 px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
+                  <p className="text-xs text-gray-400 mt-1">We'll auto-extract all the copy from your page.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-1">Ad Copy</label>
