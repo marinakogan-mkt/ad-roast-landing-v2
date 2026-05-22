@@ -319,69 +319,72 @@
       ];
 
       if (view === 'landing') return (
-        <div className="min-h-screen flex flex-col bg-white">
+        <div className="min-h-screen flex flex-col bg-white" >
 
           {/* NAV */}
           <header className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-50" style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
-            <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <img src={ADROAST_LOGO} alt="AdRoast" className="w-8 h-8 rounded" />
-                <span className="text-gray-300 text-lg font-light">|</span>
-                <span className="text-lg text-gray-800 font-semibold">AdRoast</span>
+                <img src={ADROAST_LOGO} alt="AdRoast" className="w-9 h-9 rounded" />
+                <span className="text-gray-300 text-xl font-light">|</span>
+                <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
               </div>
-              <button onClick={() => setView('onboarding')} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className={`px-5 py-1.5 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity ${adminMode ? 'hidden' : ''}`}>Roast my Ad</button>
+              <button onClick={() => setView('onboarding')} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className={`px-6 py-2 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity ${adminMode ? 'hidden' : ''}`}>Roast my Ad</button>
               {adminMode && <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-300">INTERNAL</span>}
             </div>
           </header>
 
           {/* HERO */}
-          <section className="flex-shrink-0 text-center px-4" style={{ paddingTop: '60px', paddingBottom: '40px' }}>
-            <div className="max-w-3xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-full mb-5">
-                <Icon name="alertCircle" className="w-4 h-4" style={{ color: '#0a66c2' }} />
-                <span style={{ color: '#0a66c2' }} className="text-xs sm:text-sm">Positioning for B2B SaaS & AI teams running $20K+/mo on LinkedIn</span>
+          <section className="flex-shrink-0 text-center px-4 sm:px-6" style={{ paddingTop: '56px', paddingBottom: '40px' }}>
+            <div className="max-w-4xl mx-auto">
+              <p className="text-left sm:text-center mb-5 sm:mb-6" style={{ color: '#0a66c2' }}>
+                <span className="hidden sm:inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-full">
+                  <Icon name="alertCircle" className="w-4 h-4 flex-shrink-0" style={{ color: '#0a66c2' }} />
+                  <span style={{ fontSize: '15px' }}>Positioning for Cybersecurity & AI teams running $20K+/mo on Ads</span>
+                </span>
+                <span className="sm:hidden text-sm" style={{ color: '#0a66c2' }}>Positioning for Cybersecurity & AI teams running $20K+/mo on Ads</span>
+              </p>
+              <h1 className="text-left sm:text-center text-gray-900 mb-5" style={{ fontSize: 'clamp(30px, 5.5vw, 62px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>Spending $20K+/mo on Ads but<br />demo quality still sucks?</h1>
+              <p className="text-left sm:text-center text-gray-400 max-w-lg sm:mx-auto mb-8" style={{ fontSize: 'clamp(15px, 2.5vw, 18px)', lineHeight: 1.7 }}>2-minute roast to find out exactly where your demos leak.<br />Get a full diagnosis ranked by impact.</p>
+              <div className="flex items-center justify-start sm:justify-center">
+                <button onClick={() => setView('onboarding')} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-10 py-3.5 border rounded-full font-medium text-lg hover:opacity-90 transition-opacity">Roast my Ad</button>
               </div>
-              <h1 className="text-gray-900 mb-5" style={{ fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>Spending $20K+/mo on Ads but demo quality still sucks?</h1>
-              <p className="text-gray-400 max-w-lg mx-auto mb-8" style={{ fontSize: 'clamp(15px, 3vw, 17px)', lineHeight: 1.7 }}>2-minute roast to find out exactly where your demos leak.<br />Get a full diagnosis ranked by impact.</p>
-              <div className="flex items-center justify-center">
-                <button onClick={() => setView('onboarding')} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-base hover:opacity-90 transition-opacity">Roast my Ad</button>
-              </div>
-              <p className="text-gray-400 mt-3 text-xs">Free &middot; 2-min audit &middot; no call required</p>
+              <p className="text-left sm:text-center text-gray-400 mt-3" style={{ fontSize: '14px' }}>Free &middot; 2-min audit &middot; no call required</p>
             </div>
           </section>
 
           {/* TRUST STRIP */}
-          <div className="max-w-3xl mx-auto px-4 mb-10">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 mb-8 sm:mb-10">
             <div className="border-t border-b border-gray-100 py-6 text-center">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Trusted by 50+ B2B SaaS, AI & Cybersecurity teams</p>
+              <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wide font-medium">Trusted by 50+ B2B SaaS, AI & Cybersecurity teams</p>
             </div>
           </div>
 
           {/* HOW IT WORKS */}
-          <div className="max-w-3xl mx-auto px-4 mb-8">
-            <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-center gap-3 sm:gap-4">
               <div className="flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>1</span>
-                <span className="text-sm text-gray-600">Describe your ICP</span>
+                <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>1</span>
+                <span style={{ fontSize: '15px' }} className="text-gray-600">Describe your ICP</span>
               </div>
               <Icon name="chevronRight" className="w-4 h-4 text-gray-300 hidden sm:block" />
               <div className="flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>2</span>
-                <span className="text-sm text-gray-600">Paste your Ad copy</span>
+                <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>2</span>
+                <span style={{ fontSize: '15px' }} className="text-gray-600">Paste your Ad copy</span>
               </div>
               <Icon name="chevronRight" className="w-4 h-4 text-gray-300 hidden sm:block" />
               <div className="flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>3</span>
-                <span className="text-sm text-gray-600">Get your roast in 2 minutes</span>
+                <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>3</span>
+                <span style={{ fontSize: '15px' }} className="text-gray-600">Get your roast in 2 minutes</span>
               </div>
             </div>
           </div>
 
           {/* WHAT YOU GET */}
-          <div className="max-w-3xl mx-auto px-4 mb-3">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 mb-3">
             <p className="text-center text-xs text-gray-400 uppercase tracking-wide font-medium">Your roast includes</p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 max-w-3xl mx-auto px-4 mb-20">
+          <div className="grid grid-cols-2 sm:grid-cols-4 max-w-3xl mx-auto px-4 sm:px-6 mb-10 sm:mb-20">
             {[
               { icon: 'users', title: "Am I targeting the right buyer?", desc: "ICP match, scored" },
               { icon: 'alertCircle', title: "Why aren't demos converting?", desc: "5 issues with evidence from your copy" },
@@ -397,10 +400,10 @@
           </div>
 
           {/* RESULTS */}
-          <section className="max-w-5xl mx-auto px-4 pb-20 w-full">
+          <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Client Results</div>
             <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>60% of your demos leak between Ad and landing page.</h2>
-            <p className="text-gray-400 mb-10 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>It's called Message Drift, and we've diagnosed it in 50+ funnels. Your Ad says one thing, your page says another, and demos disappear in between. It's the #1 reason demos leak, and it's invisible until someone scores it.</p>
+            <p className="text-gray-400 mb-6 sm:mb-10 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>It's called Message Drift, and we've diagnosed it in 50+ funnels. Your Ad says one thing, your page says another, and demos disappear in between. It's the #1 reason demos leak, and it's invisible until someone scores it.</p>
             <div className="grid grid-cols-2 gap-4">
               {[
                 { num: "50+", label: "B2B SaaS & AI teams repositioned" },
@@ -408,19 +411,19 @@
                 { num: "47%", label: "demo increase in 8 weeks" },
                 { num: "31%", label: <span>CAC drop <em className="font-normal">(same Ad spend)</em></span> }
               ].map((r, i) => (
-                <div key={i} className="p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all">
-                  <div style={{ fontSize: '42px', fontWeight: 300, color: '#0a66c2', letterSpacing: '-1px', lineHeight: 1 }} className="mb-3">{r.num}</div>
-                  <div className="text-gray-600 text-base font-medium">{r.label}</div>
+                <div key={i} className="p-5 sm:p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all">
+                  <div style={{ fontSize: 'clamp(32px, 8vw, 42px)', fontWeight: 300, color: '#0a66c2', letterSpacing: '-1px', lineHeight: 1 }} className="mb-3">{r.num}</div>
+                  <div className="text-gray-600 text-sm sm:text-base font-medium">{r.label}</div>
                 </div>
               ))}
             </div>
           </section>
 
           {/* PRICING TIERS */}
-          <section className="max-w-5xl mx-auto px-4 pb-20 w-full">
+          <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>How It Works</div>
             <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Diagnose what's broken, get the fix, or have us build it.</h2>
-            <p className="text-gray-400 mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>Three ways to work together, depending on how deep your positioning problem runs.</p>
+            <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>Three ways to work together, depending on how deep your positioning problem runs.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
@@ -486,12 +489,12 @@
           </section>
 
           {/* TESTIMONIALS */}
-          <section className="max-w-5xl mx-auto px-4 pb-20 w-full">
+          <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What Founders Say</div>
             <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(28px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Words from clients.</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {CLIENT_QUOTES.map((t, i) => (
-                <div key={i} className="p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between">
+                <div key={i} className="p-5 sm:p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between">
                   <p className="text-gray-700 text-sm italic mb-6" style={{ lineHeight: 1.7 }}>{`\u201c${t.quote}\u201d`}</p>
                   <div>
                     <p className="text-sm font-semibold text-gray-900">{t.name}</p>
@@ -503,7 +506,7 @@
           </section>
 
           {/* BOTTOM CTA */}
-          <section className="text-center px-4 pb-20 max-w-5xl mx-auto">
+          <section className="text-center px-4 pb-10 sm:pb-20 max-w-5xl mx-auto">
             <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
             <p className="text-gray-400 mb-8" style={{ fontSize: 'clamp(14px, 3vw, 16px)', lineHeight: 1.6 }}>Same spend, aligned message, 3x demos.</p>
             <div className="flex items-center justify-center">
