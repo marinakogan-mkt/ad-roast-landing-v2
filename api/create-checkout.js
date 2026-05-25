@@ -1,0 +1,45 @@
+import { Redis } from '@upstash/redis';
+const kv = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  let body = req.body;
+  if (typeof body === 'string') try { body = JSON.parse(body); } catch(e) { body = {}; }
+
+  const { token, email } = body;
+  if (!token || !email) return res.status(400).json({ error: 'Token and email required' });
+
+  // Verify session
+  const sessionEmail = await kv.get(`session:${token}`);
+  if (!sessionEmail) return res.status(401).json({ error: 'Invalid or expired session' });
+
+  try {
+    const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        'mode': 'payment',
+        'line_items[0][price_data][currency]': 'usd',
+        'line_items[0][price_data][unit_amount]': '3500',
+        'line_items[0][price_data][product_data][name]': 'AdRoast Full Audit',
+        'line_items[0][price_data][product_data][description]': 'Complete ad positioning audit with Fix Kit, experiments, and strategic next steps',
+        'customer_email': email,
+        'success_url': `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://adroast.in'}?payment=success&session_id={CHECKOUT_SESSION_ID}&token=${token}`,
+        'cancel_url': `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://adroast.in'}?payment=cancelled`,
+        'metadata[token]': token,
+        'metadata[email]': email
+      }).toString()
+    });
+
+    const session = await response.json();
+    if (session.error) return res.status(400).json({ error: session.error.message });
+
+    return res.status(200).json({ ok: true, url: session.url, sessionId: session.id });
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+}
