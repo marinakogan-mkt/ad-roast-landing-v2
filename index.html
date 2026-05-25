@@ -158,6 +158,10 @@
       const [legalModal, setLegalModal] = useState(null);
       const [needsPayment, setNeedsPayment] = useState(false);
       const [paymentVerified, setPaymentVerified] = useState(false);
+      const [unlockEmail, setUnlockEmail] = useState('');
+      const [unlockLoading, setUnlockLoading] = useState(false);
+      const [unlockError, setUnlockError] = useState(null);
+      const [isUnlocked, setIsUnlocked] = useState(false);
 
       // Auto-generate link after verified payment
       React.useEffect(() => {
@@ -168,6 +172,7 @@
       }, [paymentVerified, view]);
       const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.adScreenshot;
       const canProceed = platform && offerType && icp.length > 10;
+      const showFull = isPortalView || isUnlocked;
 
       // Check for shared report in URL on load
       React.useEffect(() => {
@@ -181,7 +186,6 @@
 
         // Handle Stripe payment return
         if (paymentStatus === 'success' && stripeSessionId) {
-          setView('processing');
           // Restore saved state
           try {
             const saved = JSON.parse(sessionStorage.getItem('adroast_pending'));
@@ -201,25 +205,19 @@
             body: JSON.stringify({ sessionId: stripeSessionId })
           })
             .then(res => res.json())
-            .then(async (data) => {
+            .then(data => {
               if (data.paid) {
-                try {
-                  const saved = JSON.parse(sessionStorage.getItem('adroast_pending'));
-                  if (saved && saved.result) {
-                    sessionStorage.removeItem('adroast_pending');
-                    setPaymentVerified(true);
-                    setView('results');
-                  } else {
-                    setView('landing');
-                  }
-                } catch(e) { setView('landing'); }
+                sessionStorage.removeItem('adroast_pending');
+                setPaymentVerified(true);
+                setIsUnlocked(true);
+                setView('results');
               } else {
-                setError('Payment not confirmed yet. Try clicking "Get My Link" again.');
+                setNeedsPayment(true);
                 setView('results');
               }
             })
             .catch(() => {
-              setError('Could not verify payment. Contact marina.kogan@adroast.in');
+              setNeedsPayment(true);
               setView('results');
             });
 
@@ -278,34 +276,16 @@
         setView('landing'); setPlatform(null); setOfferType(null); setIcp('');
         setLinkedin(''); setLinkedinErr(null); setResult(null); setError(null);
         setInputs({ url: '', copy: '', visual: '', adScreenshot: null, adScreenshotPreview: null });
-        setReportEmail(''); setReportEmailErr(null); setPdfStatus(null); setNeedsPayment(false); setPaymentVerified(false);
+        setReportEmail(''); setReportEmailErr(null); setPdfStatus(null);
+        setNeedsPayment(false); setPaymentVerified(false); setIsUnlocked(false);
+        setUnlockEmail(''); setUnlockLoading(false); setUnlockError(null);
       };
 
       const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-      const sendReportLink = async (skipCheck) => {
+      const sendReportLink = async () => {
         if (!adminMode && !validateEmail(reportEmail)) { setReportEmailErr('Please enter a valid email address'); return; }
         setReportEmailErr(null); setPdfStatus('sending');
-        
-        // Check if email has used free audit (skip for admin or after payment)
-        if (!adminMode && !skipCheck) {
-          try {
-            const checkRes = await fetch('/api/check-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: reportEmail, linkedin: linkedin || null })
-            });
-            const checkData = await checkRes.json();
-            if (checkData.ok && !checkData.free) {
-              setNeedsPayment(true);
-              setPdfStatus(null);
-              return;
-            }
-          } catch (e) {
-            // If check fails, let them through (fail open)
-            console.error('Email check error:', e);
-          }
-        }
         
         const adScore = result.overall_score;
         const lpScore = result.landing_page_roast?.overall_score || 'N/A';
@@ -805,7 +785,6 @@
         </div>
       );
 
-
       if (view === 'linkedin') {
         const v = linkedin ? validateLinkedIn(linkedin) : { valid: false };
         return (
@@ -890,10 +869,10 @@
                 <div className="bg-white rounded-lg border border-amber-300 shadow-sm overflow-hidden">
                   <div className="px-4 py-3 border-b border-amber-200 bg-amber-50 flex items-center justify-between">
                     <h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch</h2>
-                    {!isPortalView && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
+                    {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                   </div>
                   <div className="p-4 relative">
-                    <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}>
+                    <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}>
                       <p className="text-sm text-gray-800 mb-3">{mismatch.verdict}</p>
                       {mismatch.message_match_issues && <p className="text-sm text-gray-600 mb-4">{mismatch.message_match_issues}</p>}
                     </div>
@@ -901,15 +880,51 @@
                       {mismatch.disconnects.map((d, i) => (
                         <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200 relative">
                           <p className="text-red-600 text-sm font-medium mb-2">⚠️ Problem {i + 1}</p>
-                          <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600">{d.problem}</p></div>
-{isPortalView && (<>                          <p className="text-green-600 text-sm font-medium mt-3">✓ Fix</p>
+                          <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600">{d.problem}</p></div>
+{showFull && (<>                          <p className="text-green-600 text-sm font-medium mt-3">✓ Fix</p>
                           <p className="text-sm text-gray-600">{d.fix}</p>
 </>)}
                         </div>
                       ))}
                     </div>
-{!isPortalView && (                    <div className="mt-4 pt-4 border-t border-gray-200 text-center">
-                      <button onClick={() => handleCtaClick(icp, 'Message Mismatch', shareableLink)} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get the Full Diagnosis</button>
+{!showFull && (                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="max-w-sm mx-auto text-center">
+                        <p className="text-sm font-semibold text-gray-900 mb-1">{needsPayment ? 'Unlock for $35' : 'Unlock Full Report'}</p>
+                        <p className="text-xs text-gray-500 mb-3">{needsPayment ? 'You\'ve already claimed your free audit.' : 'Enter your email to see the complete analysis.'}</p>
+                        {needsPayment ? (
+                          <button onClick={async () => {
+                            setUnlockLoading(true);
+                            try {
+                              sessionStorage.setItem('adroast_pending', JSON.stringify({ result, icp, platform, email: unlockEmail, linkedin }));
+                              const res = await fetch('/api/create-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: unlockEmail }) });
+                              const data = await res.json();
+                              if (data.url) window.location.href = data.url;
+                              else setUnlockLoading(false);
+                            } catch (e) { setUnlockLoading(false); }
+                          }} disabled={unlockLoading} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
+                            {unlockLoading ? 'Redirecting...' : 'Pay $35 & Unlock'}
+                          </button>
+                        ) : (
+                          <div>
+                            <input type="email" placeholder="you@company.com" value={unlockEmail} onChange={(e) => { setUnlockEmail(e.target.value); setUnlockError(null); }} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 mb-2" />
+                            {unlockError && <p className="text-red-500 text-xs mb-2">{unlockError}</p>}
+                            <button onClick={async () => {
+                              if (!unlockEmail || !unlockEmail.includes('@')) { setUnlockError('Enter a valid email'); return; }
+                              setUnlockLoading(true); setUnlockError(null);
+                              try {
+                                const res = await fetch('/api/check-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: unlockEmail, linkedin }) });
+                                const data = await res.json();
+                                if (data.free) { setIsUnlocked(true); setReportEmail(unlockEmail); }
+                                else { setNeedsPayment(true); }
+                              } catch (e) { setUnlockError('Something went wrong.'); }
+                              setUnlockLoading(false);
+                            }} disabled={unlockLoading} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
+                              {unlockLoading ? 'Checking...' : 'Unlock Full Report'}
+                            </button>
+                            <p className="text-xs text-gray-400 mt-2">First audit is free. No card required.</p>
+                          </div>
+                        )}
+                      </div>
                     </div>)}
                   </div>
                 </div>
@@ -920,7 +935,7 @@
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                     <h2 className="font-semibold text-gray-900">Landing Page Analysis</h2>
-                    {!isPortalView && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
+                    {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                   </div>
                   <div className="p-4">
                     <div className="grid sm:grid-cols-2 gap-3 mb-4">
@@ -935,7 +950,7 @@
                             <span className="font-semibold text-sm text-gray-900">{item.label}</span>
                             <span className={`px-2 py-0.5 rounded text-xs font-bold ${getScoreColor(item.score)}`}>{item.score}/10</span>
                           </div>
-                          <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600">{item.feedback}</p></div>
+                          <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600">{item.feedback}</p></div>
                         </div>
                       ))}
                     </div>
@@ -943,9 +958,9 @@
                       <div className="grid sm:grid-cols-2 gap-3">
                         <div className="p-3 bg-red-50 rounded-lg border border-red-200">
                           <h4 className="font-semibold text-red-700 text-sm mb-2">🚨 Top Issues</h4>
-                          <div className={isPortalView ? "" : "blur-sm pointer-events-none select-none"}><ul className="space-y-1">{lp.top_issues.map((issue, i) => <li key={i} className="text-sm text-red-600">• {issue}</li>)}</ul></div>
+                          <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><ul className="space-y-1">{lp.top_issues.map((issue, i) => <li key={i} className="text-sm text-red-600">• {issue}</li>)}</ul></div>
                         </div>
-{isPortalView && (
+{showFull && (
                         <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                           <h4 className="font-semibold text-green-700 text-sm mb-2">⚡ Quick Wins</h4>
                           <ul className="space-y-1">{(lp.quick_wins || []).map((win, i) => <li key={i} className="text-sm text-green-600">• {win}</li>)}</ul>
@@ -954,14 +969,14 @@
                       </div>
                     )}
                   </div>
-{!isPortalView && (                  <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
-                    <button onClick={() => handleCtaClick(icp, 'Landing Page Analysis', shareableLink)} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get the Full Diagnosis</button>
+{!showFull && (                  <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
+                    <p className="text-sm text-gray-500">Enter your email above to unlock the full report</p>
                   </div>)}
                 </div>
               )}
 
               {/* Fix Kit - FULL VERSION ONLY (portal/admin) */}
-{isPortalView && (
+{showFull && (
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">Fix Kit</h2>
@@ -1025,7 +1040,7 @@
 )}
 
               {/* Experiments - FULL VERSION ONLY (portal/admin) */}
-{isPortalView && (
+{showFull && (
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">3 Experiments to Run</h2>
@@ -1045,7 +1060,7 @@
 )}
 
               {/* Next Steps - FULL VERSION ONLY (portal/admin) */}
-{isPortalView && (
+{showFull && (
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900">Strategic Next Steps</h2>
@@ -1088,56 +1103,17 @@
                               {pdfStatus === 'sending' ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Icon name="link" className="w-4 h-4" />} Get My Link
                             </button>
                           </>
-                        ) : needsPayment ? (
-                          <>
-                        <div className="text-center mb-4">
-                          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-2"><Icon name="zap" className="w-5 h-5" style={{ color: '#d97706' }} /></div>
-                          <p className="text-gray-900 font-semibold text-sm">You've already used your free audit</p>
-                          <p className="text-gray-500 text-xs mt-1">Unlock this report for $35</p>
-                        </div>
-                        <div className="space-y-2 text-sm text-gray-600 mb-4">
-                          <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Permanent link to full report</span></div>
-                          <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Full Fix Kit with rewritten copy</span></div>
-                          <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Emailed directly to you</span></div>
-                        </div>
-                        <button onClick={async () => {
-                          setPdfStatus('sending');
-                          try {
-                            sessionStorage.setItem('adroast_pending', JSON.stringify({
-                              result, icp, platform, email: reportEmail, linkedin
-                            }));
-                            const res = await fetch('/api/create-checkout', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ email: reportEmail })
-                            });
-                            const data = await res.json();
-                            if (data.url) {
-                              window.location.href = data.url;
-                            } else {
-                              setReportEmailErr('Failed to start checkout. Try again.');
-                              setPdfStatus(null);
-                            }
-                          } catch (e) {
-                            setReportEmailErr('Failed to start checkout. Try again.');
-                            setPdfStatus(null);
-                          }
-                        }} disabled={pdfStatus === 'sending'} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90">
-                          {pdfStatus === 'sending' ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Icon name="zap" className="w-4 h-4" />} Pay $35 & Unlock
-                        </button>
-                        <p className="text-gray-400 text-xs mt-3 text-center">Secure payment via Stripe</p>
-                          </>
                         ) : (
                           <>
                         <p className="text-gray-600 text-sm mb-4">Enter your email to get a permanent link to your report.</p>
                         <div className="mb-4">
-                          <input type="email" placeholder="your@email.com" value={reportEmail} onChange={(e) => { setReportEmail(e.target.value); setReportEmailErr(null); setNeedsPayment(false); }} className={`w-full px-3 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-1 ${reportEmailErr ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'}`} />
+                          <input type="email" placeholder="your@email.com" value={reportEmail} onChange={(e) => { setReportEmail(e.target.value); setReportEmailErr(null); }} className={`w-full px-3 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-1 ${reportEmailErr ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'}`} />
                           {reportEmailErr && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{reportEmailErr}</p>}
                         </div>
                         <button onClick={sendReportLink} disabled={pdfStatus === 'sending'} style={reportEmail ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`w-full py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 transition-all ${reportEmail ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
                           {pdfStatus === 'sending' ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Icon name="link" className="w-4 h-4" />} Get My Link
                         </button>
-                        <p className="text-gray-400 text-xs mt-3 text-center">First report is free. No spam, ever.</p>
+                        <p className="text-gray-400 text-xs mt-3 text-center">Your email stays between us. No spam, ever.</p>
                           </>
                         )}
                       </>
@@ -1147,7 +1123,7 @@
               )}
 
               {/* CTA */}
-{!isPortalView && (              <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="rounded-lg border p-8 text-center">
+{!showFull && (              <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="rounded-lg border p-8 text-center">
                 <h2 className="text-xl font-bold text-gray-900 mb-2">You just got your roast. Now let's turn it into results.</h2>
                 <p className="text-gray-600 mb-5">Founders who implement this close 47% faster.</p>
                 <a href="https://calendly.com/marina-kogan-adroast/30min" target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-base hover:opacity-90 transition-opacity">
