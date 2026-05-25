@@ -25,6 +25,7 @@ export default async function handler(req, res) {
         'line_items[0][price_data][unit_amount]': '3500',
         'line_items[0][price_data][product_data][name]': 'AdRoast Full Audit',
         'line_items[0][price_data][product_data][description]': 'Permanent link to your complete ad positioning audit',
+        'line_items[0][quantity]': '1',
         'customer_email': email,
         'success_url': `${siteUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
         'cancel_url': `${siteUrl}?payment=cancelled`,
