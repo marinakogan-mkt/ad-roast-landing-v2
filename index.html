@@ -111,6 +111,70 @@
       window.open(PAYMENT_URL, '_blank');
     };
 
+    // Email verification functions
+    const sendVerificationCode = async (email) => {
+      try {
+        const res = await fetch('/api/send-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Failed to send code');
+        return true;
+      } catch (e) { throw e; }
+    };
+
+    const verifyCodeAndCheck = async (email, code) => {
+      try {
+        const res = await fetch('/api/verify-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Verification failed');
+        return data;
+      } catch (e) { throw e; }
+    };
+
+    const saveAuditToKV = async (token, linkedin) => {
+      try {
+        const res = await fetch('/api/save-audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, linkedin })
+        });
+        const data = await res.json();
+        return data;
+      } catch (e) { console.error('Save audit error:', e); }
+    };
+
+    const createStripeCheckout = async (token, email) => {
+      try {
+        const res = await fetch('/api/create-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, email })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Failed to create checkout');
+        return data;
+      } catch (e) { throw e; }
+    };
+
+    const verifyStripePayment = async (sessionId, token) => {
+      try {
+        const res = await fetch('/api/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, token })
+        });
+        const data = await res.json();
+        return data;
+      } catch (e) { return { paid: false }; }
+    };
+
     const saveToNotion = async (data) => {
       try {
         const res = await fetch('/api/lead', {
@@ -156,6 +220,14 @@
       const [isSharedView, setIsSharedView] = useState(false);
       const [isPortalView, setIsPortalView] = useState(adminMode);
       const [legalModal, setLegalModal] = useState(null);
+      const [verifyEmail, setVerifyEmail] = useState('');
+      const [verifyCode, setVerifyCode] = useState('');
+      const [verifyToken, setVerifyToken] = useState(null);
+      const [hasFreeAudit, setHasFreeAudit] = useState(null);
+      const [codeSent, setCodeSent] = useState(false);
+      const [verifying, setVerifying] = useState(false);
+      const [verifyError, setVerifyError] = useState(null);
+      const [paymentLoading, setPaymentLoading] = useState(false);
       const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.adScreenshot;
       const canProceed = platform && offerType && icp.length > 10;
 
@@ -164,7 +236,77 @@
         const params = new URLSearchParams(window.location.search);
         const reportId = params.get('id');
         const portalParam = params.get('portal');
+        const paymentStatus = params.get('payment');
+        const stripeSessionId = params.get('session_id');
+        const returnToken = params.get('token');
+
         if (portalParam === '1') setIsPortalView(true);
+
+        // Handle Stripe payment return
+        if (paymentStatus === 'success' && stripeSessionId && returnToken) {
+          setView('verifying-payment');
+          // Restore saved result from sessionStorage
+          try {
+            const saved = JSON.parse(sessionStorage.getItem('adroast_pending'));
+            if (saved && saved.result) {
+              setResult(saved.result);
+              setIcp(saved.icp || '');
+              setPlatform(saved.platform || null);
+              setVerifyToken(returnToken);
+            }
+          } catch(e) {}
+
+          // Verify payment with Stripe
+          fetch('/api/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: stripeSessionId, token: returnToken })
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.paid) {
+                // Save audit count
+                fetch('/api/save-audit', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ token: returnToken })
+                }).catch(() => {});
+                sessionStorage.removeItem('adroast_pending');
+                setView('results');
+              } else {
+                setError('Payment not confirmed. Please try again or contact marina.kogan@adroast.in');
+                setView('payment-required');
+              }
+            })
+            .catch(() => {
+              setError('Could not verify payment. Please contact marina.kogan@adroast.in');
+              setView('payment-required');
+            });
+
+          // Clean URL
+          window.history.replaceState({}, '', window.location.pathname);
+          return;
+        }
+
+        if (paymentStatus === 'cancelled') {
+          // Restore state from sessionStorage
+          try {
+            const saved = JSON.parse(sessionStorage.getItem('adroast_pending'));
+            if (saved && saved.result) {
+              setResult(saved.result);
+              setIcp(saved.icp || '');
+              setPlatform(saved.platform || null);
+              setVerifyToken(saved.token || null);
+              setVerifyEmail(saved.email || '');
+              setView('payment-required');
+            } else {
+              setView('landing');
+            }
+          } catch(e) { setView('landing'); }
+          window.history.replaceState({}, '', window.location.pathname);
+          return;
+        }
+
         if (reportId) {
           setView('loading-report');
           fetch(`/api/roast-view?id=${reportId}`)
@@ -200,6 +342,8 @@
         setLinkedin(''); setLinkedinErr(null); setResult(null); setError(null);
         setInputs({ url: '', copy: '', visual: '', adScreenshot: null, adScreenshotPreview: null });
         setReportEmail(''); setReportEmailErr(null); setPdfStatus(null);
+        setVerifyEmail(''); setVerifyCode(''); setVerifyToken(null); setHasFreeAudit(null);
+        setCodeSent(false); setVerifying(false); setVerifyError(null); setPaymentLoading(false);
       };
 
       const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -302,7 +446,7 @@
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'API error');
-          setResult(data); setView(adminMode ? 'results' : 'linkedin');
+          setResult(data); setView(adminMode ? 'results' : 'partial-results');
         } catch (err) { setError(err.message); setView('input'); }
         setLoading(false);
       };
@@ -707,6 +851,182 @@
       );
 
       /* ─── LINKEDIN GATE ─── */
+      /* ─── PARTIAL RESULTS (scores only, gated) ─── */
+      if (view === 'partial-results' && result) {
+        return (
+          <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+            <div className="max-w-md w-full">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#e8f3ff' }}><Icon name="sparkles" className="w-8 h-8" style={{ color: '#0a66c2' }} /></div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Your Roast is Ready</h1>
+                <p className="text-gray-500 text-sm">Here's a preview of your scores</p>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="text-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <span className="text-xs text-gray-500 block mb-1">Ad Score</span>
+                    <span className={`text-2xl font-bold ${getScoreText(result?.overall_score)}`}>{result?.overall_score}/10</span>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <span className="text-xs text-gray-500 block mb-1">Landing</span>
+                    <span className={`text-2xl font-bold ${result?.landing_page_roast?.overall_score > 0 ? getScoreText(result.landing_page_roast.overall_score) : 'text-gray-400'}`}>{result?.landing_page_roast?.overall_score > 0 ? `${result.landing_page_roast.overall_score}/10` : 'N/A'}</span>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <span className="text-xs text-gray-500 block mb-1">Match</span>
+                    <span className={`text-2xl font-bold ${result?.ad_landing_mismatch?.alignment_score > 0 ? getScoreText(result.ad_landing_mismatch.alignment_score) : 'text-gray-400'}`}>{result?.ad_landing_mismatch?.alignment_score > 0 ? `${result.ad_landing_mismatch.alignment_score}/10` : 'N/A'}</span>
+                  </div>
+                </div>
+                {result?.ad_issues && (
+                  <div className="space-y-2 mb-4">
+                    <p className="text-xs text-gray-500 font-semibold uppercase">The 5 Killers</p>
+                    {result.ad_issues.map((issue, i) => (
+                      <div key={i} className="flex items-center justify-between py-1.5 border-b border-gray-100">
+                        <span className="text-sm text-gray-700">{issue.title || issue.category}</span>
+                        <span className={`text-sm font-bold ${getScoreText(issue.score)}`}>{issue.score}/10</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                  <p className="text-sm text-blue-800 font-medium">Full report includes:</p>
+                  <p className="text-xs text-blue-600 mt-1">Detailed analysis, Fix Kit with rewritten copy, 3 experiments to run, and strategic next steps</p>
+                </div>
+              </div>
+              <button onClick={() => setView('email-verify')} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-3 rounded-full font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+                <Icon name="sparkles" className="w-5 h-5" /> Unlock Full Report
+              </button>
+              <p className="text-center text-xs text-gray-400 mt-2">Verify your email to access the complete audit</p>
+            </div>
+          </div>
+        );
+      }
+
+      /* ─── EMAIL VERIFY ─── */
+      if (view === 'email-verify') {
+        return (
+          <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+            <div className="max-w-md w-full">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#e8f3ff' }}><Icon name="mail" className="w-8 h-8" style={{ color: '#0a66c2' }} /></div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">{codeSent ? 'Enter Your Code' : 'Verify Your Email'}</h1>
+                <p className="text-gray-500 text-sm">{codeSent ? 'Check your inbox for the 6-digit code' : 'We\'ll send you a verification code'}</p>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+                {!codeSent ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-1">Email</label>
+                      <input type="email" placeholder="you@company.com" value={verifyEmail} onChange={(e) => { setVerifyEmail(e.target.value); setVerifyError(null); }} className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-1">LinkedIn <span className="text-gray-400 font-normal">(optional)</span></label>
+                      <input type="url" placeholder="https://linkedin.com/in/yourprofile" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
+                      <p className="text-xs text-gray-400 mt-1">I review every roast personally. No spam.</p>
+                    </div>
+                    {verifyError && <p className="text-red-500 text-xs flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{verifyError}</p>}
+                    <button onClick={async () => {
+                      if (!verifyEmail || !verifyEmail.includes('@')) { setVerifyError('Enter a valid email'); return; }
+                      setVerifying(true); setVerifyError(null);
+                      try {
+                        await sendVerificationCode(verifyEmail);
+                        setCodeSent(true);
+                      } catch (e) { setVerifyError(e.message); }
+                      setVerifying(false);
+                    }} disabled={verifying} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-3 rounded-full font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
+                      {verifying ? 'Sending...' : 'Send Code'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-600 text-center">Code sent to <strong>{verifyEmail}</strong></p>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-1">Verification Code</label>
+                      <input type="text" placeholder="123456" value={verifyCode} onChange={(e) => { setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setVerifyError(null); }} className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg text-2xl text-center tracking-widest focus:outline-none focus:border-blue-500" maxLength={6} />
+                    </div>
+                    {verifyError && <p className="text-red-500 text-xs flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{verifyError}</p>}
+                    <button onClick={async () => {
+                      if (verifyCode.length !== 6) { setVerifyError('Enter the 6-digit code'); return; }
+                      setVerifying(true); setVerifyError(null);
+                      try {
+                        const data = await verifyCodeAndCheck(verifyEmail, verifyCode);
+                        setVerifyToken(data.token);
+                        setHasFreeAudit(data.hasFreeAudit);
+                        if (data.hasFreeAudit) {
+                          // Save audit and show full results
+                          await saveAuditToKV(data.token, linkedin);
+                          setView('results');
+                        } else {
+                          // Show payment prompt
+                          setView('payment-required');
+                        }
+                      } catch (e) { setVerifyError(e.message); }
+                      setVerifying(false);
+                    }} disabled={verifying || verifyCode.length !== 6} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-3 rounded-full font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
+                      {verifying ? 'Verifying...' : 'Verify & Unlock'}
+                    </button>
+                    <button onClick={() => { setCodeSent(false); setVerifyCode(''); }} className="w-full text-center text-xs text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer">Resend code or change email</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      /* ─── VERIFYING PAYMENT ─── */
+      if (view === 'verifying-payment') {
+        return (
+          <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+            <div className="max-w-md w-full text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#e8f3ff' }}><Icon name="sparkles" className="w-8 h-8 animate-pulse" style={{ color: '#0a66c2' }} /></div>
+              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Verifying Payment...</h1>
+              <p className="text-gray-500 text-sm">Confirming your payment with Stripe. This takes a few seconds.</p>
+            </div>
+          </div>
+        );
+      }
+
+      /* ─── PAYMENT REQUIRED ─── */
+      if (view === 'payment-required') {
+        return (
+          <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+            <div className="max-w-md w-full">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#fef3c7' }}><Icon name="zap" className="w-8 h-8" style={{ color: '#d97706' }} /></div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">You've Used Your Free Audit</h1>
+                <p className="text-gray-500 text-sm">Unlock this audit for $35</p>
+              </div>
+              {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{error}</div>}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+                <div className="space-y-3 text-sm text-gray-700">
+                  <div className="flex items-center gap-2"><Icon name="check" className="w-4 h-4 text-green-500" /><span>Full detailed analysis</span></div>
+                  <div className="flex items-center gap-2"><Icon name="check" className="w-4 h-4 text-green-500" /><span>Fix Kit with rewritten copy</span></div>
+                  <div className="flex items-center gap-2"><Icon name="check" className="w-4 h-4 text-green-500" /><span>3 experiments to run</span></div>
+                  <div className="flex items-center gap-2"><Icon name="check" className="w-4 h-4 text-green-500" /><span>Strategic next steps</span></div>
+                </div>
+              </div>
+              <button onClick={async () => {
+                setPaymentLoading(true);
+                try {
+                  // Save state before redirect
+                  sessionStorage.setItem('adroast_pending', JSON.stringify({
+                    result, icp, platform, email: verifyEmail, token: verifyToken
+                  }));
+                  const checkout = await createStripeCheckout(verifyToken, verifyEmail);
+                  window.location.href = checkout.url;
+                } catch (e) {
+                  setError('Failed to start checkout. Please try again.');
+                  setPaymentLoading(false);
+                }
+              }} disabled={paymentLoading} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-3 rounded-full font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
+                {paymentLoading ? 'Redirecting to checkout...' : 'Pay $35 & Unlock'}
+              </button>
+              <p className="text-center text-xs text-gray-400 mt-2">Secure payment via Stripe</p>
+            </div>
+          </div>
+        );
+      }
+
       if (view === 'linkedin') {
         const v = linkedin ? validateLinkedIn(linkedin) : { valid: false };
         return (
