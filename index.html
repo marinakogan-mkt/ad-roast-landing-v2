@@ -5224,10 +5224,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
                         <BackButton label={`Back to Audit ${auditId} summary`} onClick={() => onNavigate('audit', partnerId, clientId, auditId)} />
                         <Badge>Complete Audit Report</Badge>
                         <h1 className="text-3xl sm:text-4xl font-bold mt-4 mb-2" style={{ color: 'var(--ink)' }}>{audit.title}</h1>
-                        <p className="text-lg mb-10" style={{ color: 'var(--slate)' }}>{audit.summary}</p>
-                        <div className="bg-white rounded-xl border p-6 sm:p-10" style={{ borderColor: 'var(--cloud)' }}>
-                            <RichAuditView audit={audit} />
-                        </div>
+                        <p className="text-lg mb-8" style={{ color: 'var(--slate)' }}>{audit.summary}</p>
+                        <RichAuditView audit={audit} />
                     </div>
                 </PageShell>
             );
