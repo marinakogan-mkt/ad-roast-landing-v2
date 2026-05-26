@@ -5121,75 +5121,78 @@ The full pattern synthesis. Including the SCA template, the product-category for
                         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--cloud)' }}>
                             <div className="p-6 sm:p-8 space-y-12">
 
-                                {/* Campaign overview. Shows the 'Open Complete Audit Report' button only when
-                                    there's a real external audit URL (e.g., Nudge's tool-generated permalink).
-                                    For clients with on-page fullContent (e.g., Aikido), the audit is rendered
-                                    directly below — no external link needed. */}
+                                {/* Campaign overview + 'Open Complete Audit Report' button.
+                                    For Aikido (audit.parsed present): opens the internal RichAuditView page.
+                                    For Nudge (external auditUrl): links out to the tool-generated permalink. */}
                                 <section>
                                     <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Campaign Overview</h2>
                                     <p className="text-base leading-relaxed mb-5" style={{ color: 'var(--ink-light)' }}>{audit.summary}</p>
-                                    {audit.auditUrl && audit.auditUrl !== '#' && !audit.fullContent && (
+                                    {(audit.parsed || (audit.auditUrl && audit.auditUrl !== '#')) && (
                                         <div className="rounded-lg p-5" style={{ background: 'var(--accent-faint)' }}>
                                             <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--ink)' }}>Access Full Analysis</h3>
-                                            <a href={audit.auditUrl + '&portal=1'} target="_blank" rel="noopener noreferrer"
-                                                className="inline-flex items-center px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
-                                                style={{ background: 'var(--accent)' }}
-                                                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
-                                                onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
-                                            >
-                                                Open Complete Audit Report<ExternalIcon />
-                                            </a>
+                                            {audit.parsed ? (
+                                                <button onClick={() => onNavigate('audit-full', partnerId, clientId, auditId)}
+                                                    className="inline-flex items-center px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors border-0 cursor-pointer"
+                                                    style={{ background: 'var(--accent)' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                                                >
+                                                    Open Complete Audit Report<ExternalIcon />
+                                                </button>
+                                            ) : (
+                                                <a href={audit.auditUrl + '&portal=1'} target="_blank" rel="noopener noreferrer"
+                                                    className="inline-flex items-center px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
+                                                    style={{ background: 'var(--accent)' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                                                >
+                                                    Open Complete Audit Report<ExternalIcon />
+                                                </a>
+                                            )}
                                         </div>
                                     )}
                                 </section>
 
-                                {/* Creative assets (CTAs only, no titles) */}
+                                {/* Creative assets — paired cards with section titles */}
                                 <section>
                                     <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Creative Assets</h2>
-                                    <div className="flex flex-wrap gap-3">
-                                        <a href={audit.adUrl} target="_blank" rel="noopener noreferrer"
-                                            className="inline-flex items-center px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
-                                            style={{ background: 'var(--accent)' }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
-                                        >{client.platform === 'Google' ? 'View Google Ad' : 'View LinkedIn Ad'}<ExternalIcon /></a>
-                                        <a href={audit.landingPageUrl} target="_blank" rel="noopener noreferrer"
-                                            className="inline-flex items-center px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
-                                            style={{ background: 'var(--accent)' }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
-                                        >View Landing Page<ExternalIcon /></a>
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="border rounded-lg p-5 flex flex-col items-center justify-center text-center" style={{ borderColor: 'var(--cloud)' }}>
+                                            <p className="text-sm font-semibold mb-3" style={{ color: 'var(--ink)' }}>{client.platform === 'Google' ? 'Google Ad' : 'LinkedIn Ad Creative'}</p>
+                                            <a href={audit.adUrl} target="_blank" rel="noopener noreferrer"
+                                                className="inline-flex items-center px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors"
+                                                style={{ background: 'var(--accent)' }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                                            >{client.platform === 'Google' ? 'View Google Ad' : 'View LinkedIn Ad'}<ExternalIcon /></a>
+                                        </div>
+                                        <div className="border rounded-lg p-5 flex flex-col items-center justify-center text-center" style={{ borderColor: 'var(--cloud)' }}>
+                                            <p className="text-sm font-semibold mb-3" style={{ color: 'var(--ink)' }}>Landing Page</p>
+                                            <a href={audit.landingPageUrl} target="_blank" rel="noopener noreferrer"
+                                                className="inline-flex items-center px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors"
+                                                style={{ background: 'var(--accent)' }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                                            >View Landing Page<ExternalIcon /></a>
+                                        </div>
                                     </div>
                                 </section>
 
-                                {audit.parsed ? (
-                                    /* Rich card-based audit UI matching the AdRoast tool output. */
-                                    <RichAuditView audit={audit} />
-                                ) : audit.fullContent ? (
-                                    /* Fallback: render the raw markdown if structured data isn't available.
-                                       Strip the leading H1 + LP/Campaign/Ad group metadata block. */
-                                    <section>
-                                        <Markdown content={audit.fullContent.replace(/^[\s\S]*?(?=\*\*Headlines\b|## )/, '')} />
-                                    </section>
-                                ) : (
-                                    <>
-                                        {/* Key findings */}
-                                        <section>
-                                            <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Key Findings</h2>
-                                            <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
-                                                <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{audit.findings}</p>
-                                            </div>
-                                        </section>
+                                {/* Brief Key Findings + Recommendations (Nudge-style summary).
+                                    For deep dive, click 'Open Complete Audit Report' above (Aikido: internal rich UI; Nudge: external URL). */}
+                                <section>
+                                    <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Key Findings</h2>
+                                    <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
+                                        <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{audit.findings}</p>
+                                    </div>
+                                </section>
 
-                                        {/* Recommendations */}
-                                        <section>
-                                            <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Recommendations</h2>
-                                            <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--success-light)', borderColor: 'var(--success)' }}>
-                                                <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{audit.recommendations}</p>
-                                            </div>
-                                        </section>
-                                    </>
-                                )}
+                                <section>
+                                    <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Recommendations</h2>
+                                    <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--success-light)', borderColor: 'var(--success)' }}>
+                                        <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{audit.recommendations}</p>
+                                    </div>
+                                </section>
                             </div>
 
                             {/* Return to Audit 1 button on Audit 5 */}
@@ -5208,6 +5211,52 @@ The full pattern synthesis. Including the SCA template, the product-category for
                             )}
 
                             <ContentNav current={auditId} partnerId={partnerId} clientId={clientId} onNavigate={onNavigate} />
+                        </div>
+                    </div>
+                </PageShell>
+            );
+        };
+
+        /* ============================================================
+           AUDIT FULL VIEW — rich card-based UI (deep dive)
+           Accessed via the 'Open Complete Audit Report' button on AuditPage.
+           ============================================================ */
+        const AuditFullPage = ({ partnerId, clientId, auditId, onNavigate, accessMode }) => {
+            const partner = portalData.partners[partnerId];
+            const client = partner.clients[clientId];
+            const audit = client.audits[auditId];
+            if (!audit || !audit.parsed) return null;
+
+            const crumbs = accessMode === 'master'
+                ? [
+                    { label: 'Portal', onClick: () => onNavigate('portal-root') },
+                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
+                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                    { label: `Audit ${auditId}`, onClick: () => onNavigate('audit', partnerId, clientId, auditId) },
+                    { label: 'Complete Report' }
+                ]
+                : accessMode === 'partner'
+                ? [
+                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
+                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                    { label: `Audit ${auditId}`, onClick: () => onNavigate('audit', partnerId, clientId, auditId) },
+                    { label: 'Complete Report' }
+                ]
+                : [
+                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                    { label: `Audit ${auditId}`, onClick: () => onNavigate('audit', partnerId, clientId, auditId) },
+                    { label: 'Complete Report' }
+                ];
+
+            return (
+                <PageShell crumbs={crumbs} onNavigate={onNavigate}>
+                    <div className="max-w-5xl mx-auto">
+                        <BackButton label={`Back to Audit ${auditId} summary`} onClick={() => onNavigate('audit', partnerId, clientId, auditId)} />
+                        <Badge>Complete Audit Report</Badge>
+                        <h1 className="text-3xl sm:text-4xl font-bold mt-4 mb-2" style={{ color: 'var(--ink)' }}>{audit.title}</h1>
+                        <p className="text-lg mb-10" style={{ color: 'var(--slate)' }}>{audit.summary}</p>
+                        <div className="bg-white rounded-xl border p-6 sm:p-10" style={{ borderColor: 'var(--cloud)' }}>
+                            <RichAuditView audit={audit} />
                         </div>
                     </div>
                 </PageShell>
@@ -5320,6 +5369,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
                     return <PositioningReportPage partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
                 case 'audit':
                     return <AuditPage partnerId={partnerId} clientId={clientId} auditId={auditId} onNavigate={nav} accessMode={mode} />;
+                case 'audit-full':
+                    return <AuditFullPage partnerId={partnerId} clientId={clientId} auditId={auditId} onNavigate={nav} accessMode={mode} />;
                 default:
                     return mode === 'master'
                         ? <PortalRoot onNavigate={nav} />
