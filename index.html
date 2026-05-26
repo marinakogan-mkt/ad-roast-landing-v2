@@ -3597,21 +3597,26 @@ The full pattern synthesis. Including the SCA template, the product-category for
                         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--cloud)' }}>
                             <div className="p-6 sm:p-8 space-y-12">
 
-                                {/* Campaign overview + full audit link */}
+                                {/* Campaign overview. Shows the 'Open Complete Audit Report' button only when
+                                    there's a real external audit URL (e.g., Nudge's tool-generated permalink).
+                                    For clients with on-page fullContent (e.g., Aikido), the audit is rendered
+                                    directly below — no external link needed. */}
                                 <section>
                                     <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Campaign Overview</h2>
                                     <p className="text-base leading-relaxed mb-5" style={{ color: 'var(--ink-light)' }}>{audit.summary}</p>
-                                    <div className="rounded-lg p-5" style={{ background: 'var(--accent-faint)' }}>
-                                        <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--ink)' }}>Access Full Analysis</h3>
-                                        <a href={audit.auditUrl + '&portal=1'} target="_blank" rel="noopener noreferrer"
-                                            className="inline-flex items-center px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
-                                            style={{ background: 'var(--accent)' }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
-                                        >
-                                            Open Complete Audit Report<ExternalIcon />
-                                        </a>
-                                    </div>
+                                    {audit.auditUrl && audit.auditUrl !== '#' && !audit.fullContent && (
+                                        <div className="rounded-lg p-5" style={{ background: 'var(--accent-faint)' }}>
+                                            <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--ink)' }}>Access Full Analysis</h3>
+                                            <a href={audit.auditUrl + '&portal=1'} target="_blank" rel="noopener noreferrer"
+                                                className="inline-flex items-center px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
+                                                style={{ background: 'var(--accent)' }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                                            >
+                                                Open Complete Audit Report<ExternalIcon />
+                                            </a>
+                                        </div>
+                                    )}
                                 </section>
 
                                 {/* Creative assets (CTAs only, no titles) */}
