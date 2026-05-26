@@ -2216,6 +2216,1247 @@ The full pattern synthesis. Including the SCA template, the product-category for
 *Methodology: AdRoast single-asset rubric (ICP fit, headline, CTA, benefit, trust, ad-LP message match, fix kit, experiments, next steps) × 5 ads.*
 `;
 
+        /* Parsed-JSON versions of the 5 audits for the rich card-based UI */
+        const AIKIDO_AUDIT_1_PARSED = {
+            "headlines": [
+                        {
+                                    "text": "Static Code Analysis (SAST)",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Aikido Security",
+                                    "pin": "3"
+                        },
+                        {
+                                    "text": "SAST Security Code Testing",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Best SAST Tool Worldwide",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "SAST Scans Code In Minutes",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "No.1 SAST Solution Worldwide",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Try It Free",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Scans Your Code In A Few Min",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Start a Free Trial",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Sign-up now and Start Free",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "SAST Platform Scans In Minutes",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Fast SAST Scanner In Only Mins",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Our SAST Tool Scans In Minutes",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Reduce False Positives by 85%",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Scans Static Code In Only Mins",
+                                    "pin": "1"
+                        }
+            ],
+            "descriptions": [
+                        "Automated SAST & DAST scans. Fix code issues automatically in a few min.",
+                        "Seamlessly integrate SAST into your CI/CD pipeline. Start free with Aikido!",
+                        "Scans your source code for SQL injection, XSS, buffer overflows and other security risks.",
+                        "Experience 85% fewer false positives in your static code with our SAST Solution."
+            ],
+            "icp_match": {
+                        "score": 6,
+                        "text": "The buyer searching \"static code analysis,\" \"SAST scanner,\" or \"SAST tool\" is exactly the ICP. DevSecOps lead or AppSec engineer at a Series A+ SaaS company who's already running Snyk Code or Sonar and is shopping a less-noisy replacement. The ad ranks for the intent. The disconnect isn't who's clicking; it's whether the copy gives that buyer any reason to choose Aikido over the four other SAST scanners they're also evaluating in that same search."
+            },
+            "overall_score": {
+                        "score": 5,
+                        "text": "The single line worth its slot (*\"Reduce False Positives by 85%\"*) is buried at headline 14 of 15. Seven of the remaining slots are vendor-noise variants of \"scans in minutes\" or \"best/worldwide.\" Average rating from Google is generous."
+            },
+            "ad_issues": [
+                        {
+                                    "title": "Headline Clarity",
+                                    "score": 4,
+                                    "text": "Seven of 15 headlines are noun-stack near-clones: *\"SAST Scans Code In Minutes · SAST Platform Scans In Minutes · Fast SAST Scanner In Only Mins · Our SAST Tool Scans In Minutes · Scans Static Code In Only Mins · SAST Scans Code In Minutes\" Six near-identical \"scans in minutes\" headlines. Add *\"Best SAST Tool Worldwide\"* and *\"No.1 SAST Solution Worldwide\" Both unbacked self-claims that DevSecOps buyers automatically discount. Google's RSA optimizer needs distinct asset signals to pick a winner; these are clones."
+                        },
+                        {
+                                    "title": "CTA Friction",
+                                    "score": 5,
+                                    "text": "Three competing freemium CTAs sit in one ad: *\"Try It Free [2] · Start a Free Trial [2] · Sign-up now and Start Free [2]\" Three ways to say the same thing. Hick's law: each extra same-tier CTA reduces clickthrough. Pick one verb (*\"Start free\"*) and reclaim the other two slots for proof or a demo CTA."
+                        },
+                        {
+                                    "title": "Visual-Copy Match",
+                                    "score": null,
+                                    "text": "Google Search RSA, no creative."
+                        },
+                        {
+                                    "title": "Benefit Specificity",
+                                    "score": 5,
+                                    "text": "*\"Reduce False Positives by 85%\"* (headline 14) is the only number in the ad. Strong, sharp, ICP-relevant. And it's the second-to-last slot Google rotates. Description 4 backs it: *\"Experience 85% fewer false positives in your static code.\"* Everything else is generic: *\"SAST Scans Code In Minutes\"* with no minute count, *\"Fast SAST Scanner In Only Mins\"* with no number, *\"Reduces False Positives\"* without the %. The LP has the actual 95% figure from the comparison table. The ad doesn't use it."
+                        },
+                        {
+                                    "title": "Trust Signals",
+                                    "score": 1,
+                                    "text": "Zero. No customer count, no logo, no rating, no testimonial. And Aikido's LP (every page in the stack) carries *\"Trusted by 50k+ orgs · Loved by 100k+ devs · 4.7/5\"* + 14 named customer logos. The proof exists. None of it travels into the ad."
+                        }
+            ],
+            "lp_roast": {
+                        "headline": {
+                                    "score": 7,
+                                    "text": "*\"Advanced SAST, Built for Developers\" Clear category, clear audience, clear differentiation angle (dev-first, vs the enterprise-procurement Veracode/Checkmarx alternative). Subhead carries weight: *\"Aikido finds real security and quality issues in your code. Then helps you fix them via your IDE, inline PR comments, or AI-generated pull requests.\"*"
+                        },
+                        "value_prop": {
+                                    "score": 8,
+                                    "text": "Three hero bullets carry numbers and concrete features: *\"85% less false positives / Inline PR comments and IDE integration / 1-click AutoFix.\"* The Opengrep engine credit gives technical credibility. *\"Static Analysis, Without Noise\"* is the section that names the noise problem directly."
+                        },
+                        "cta": {
+                                    "score": 7,
+                                    "text": "*\"Start for Free · No CC required\"* + *\"Book a demo\" Two friction levels, both clear. *\"Your data won't be shared · Read-only access · No CC required\"* below the CTA pre-empts the security-buyer's first objection."
+                        },
+                        "trust": {
+                                    "score": 9,
+                                    "text": "Best section of the LP. *\"Trusted by 50k+ orgs · Loved by 100k+ devs · 4.7/5.\"* 14 named customer logos including Pendo, Premier League, Revolut, Soundcloud, Niantic, n8n, Visma, Montblanc, Deel. **Konstantin S (Head of Information Security at OSOME) quote: *\"Best value for money. Coming from Snyk, it was too expensive and Aikido has better SAST capabilities. The mechanism that prevents false positives is superb.\"*** This is the strongest single proof asset in the entire Aikido site, and it's exactly the testimonial the ad needs (named persona + named competitor + named mechanism). James B (Cloud Security Researcher): *\"Aikido is truly pulling off the impossible with a commitment to openness that I haven't seen before.\"*"
+                        },
+                        "top_issues": [
+                                    "*\"Reinventing Traditional SAST Scanning\"* comparison table (vs Snyk/Sonar). Including the 95% false positive reduction figure. Sits below the fold. For a comparison-shopping buyer, that table is the LP's strongest weapon and it's not hero-adjacent.",
+                                    "Konstantin S testimonial is the strongest proof asset on the page and it's mid-scroll, not hero-adjacent.",
+                                    "FAQ section is long and addresses competitor comparisons (Snyk, Checkmarx, Veracode). Useful, but most of it should be promoted to a comparison block under the hero."
+                        ],
+                        "quick_wins": [
+                                    "Move the *\"Reinventing Traditional SAST\"* comparison table directly under the hero.",
+                                    "Pull the Konstantin S Snyk-migration quote to a hero-adjacent testimonial slot.",
+                                    "Add a 1-line super-heading: *\"For dev teams replacing Snyk Code, Sonar, or Semgrep.\"*"
+                        ]
+            },
+            "mismatch": {
+                        "alignment_score": 7,
+                        "verdict": "The ad sells SAST. The LP delivers SAST. No category collision. The disconnects are about *strength of handoff*, not direction.",
+                        "disconnects": [
+                                    {
+                                                "label": "proof asymmetry, biggest leak",
+                                                "problem": "The LP has the Konstantin S Snyk-migration quote, the 95% false positive figure, the 50k+ orgs claim, the multi-file taint analysis differentiator. The ad has *\"Reduce False Positives by 85%\"* (buried at slot 14) and nothing else. The buyer clicks expecting a generic scanner and finds an extremely strong product page. But two seconds of those generic ad headlines is where most buyers decide whether to scroll.",
+                                                "fix": "Promote the 85% number to headline 1. Add a proof-headline slot: *\"Trusted by 50k+ Orgs · 100k+ Devs · 4.7/5.\"* Quote Konstantin S in Description 2: *\"'Best value for money. Coming from Snyk, the mechanism that prevents false positives is superb.' Konstantin S, Head of Information Security at OSOME.\"*"
+                                    },
+                                    {
+                                                "label": "competitor naming",
+                                                "problem": "The LP's entire positioning is *vs Snyk, vs Sonar* The ad never names a competitor. DevSecOps leads searching \"SAST scanner\" are almost always shopping a replacement. They're already running something. The ad refuses to acknowledge what they're replacing.",
+                                                "fix": "Headline: *\"Snyk Too Noisy? 95% Less Noise.\"*"
+                                    },
+                                    {
+                                                "label": "number consistency",
+                                                "problem": "Ad headline 14 says *\"Reduce False Positives by 85%\" Description 4 says *\"85% fewer false positives.\"* LP comparison table says *\"reduces false positives by up to 95%.\"* Three different numbers on one customer journey. Either the LP is wrong or the ad is wrong. Pick one and ship the same number everywhere.",
+                                                "fix": "Standardize on the LP number (95%) since it's the harder claim and the one Aikido is willing to defend in a comparison table."
+                                    }
+                        ],
+                        "message_match": "The product matches the click. The proof doesn't. A DevSecOps lead clicks expecting \"another SAST tool\" and lands on a page that has the named-competitor testimonial, the 95% figure, the multi-file taint analysis wedge, and the dev-first IDE/PR integration story. The handoff works on product but loses 2 seconds on proof asymmetry. The buyer who bounces at second 2 never sees the Konstantin quote that would have closed them. Moving 3 specific assets from LP to ad copy is the single highest-leverage edit on this campaign."
+            },
+            "fix_kit": {
+                        "headlines": [
+                                    {
+                                                "label": "Pain-led",
+                                                "text": "Snyk Too Noisy? 95% Less Noise."
+                                    },
+                                    {
+                                                "label": "Benefit-led",
+                                                "text": "Multi-File Taint Analysis · 95% Less Noise"
+                                    },
+                                    {
+                                                "label": "Proof-led",
+                                                "text": "\"Coming from Snyk… Aikido has better SAST.\" Konstantin S, OSOME"
+                                    }
+                        ],
+                        "descriptions": [
+                                    {
+                                                "label": "Description 1",
+                                                "text": "95% fewer false positives than Snyk or Sonar. Multi-file taint analysis. Autofix in your IDE or PR. Built on Opengrep. Replace your SAST stack. Start free, no CC."
+                                    },
+                                    {
+                                                "label": "Description 2",
+                                                "text": "\"Coming from Snyk, it was too expensive and Aikido has better SAST capabilities. The mechanism that prevents false positives is superb.\" Konstantin S, Head of InfoSec at OSOME."
+                                    },
+                                    {
+                                                "label": "Description 3",
+                                                "text": "Multi-file taint analysis catches what single-file scanners miss. 16 languages, 4 VCS providers, every CI/CD. 1-click AutoFix on detected vulnerabilities."
+                                    },
+                                    {
+                                                "label": "Description 4",
+                                                "text": "Trusted by 50k+ orgs including Revolut, Visma, Premier League, Pendo. Setup in 30 seconds. SOC 2 + ISO 27001. Start free."
+                                    }
+                        ],
+                        "ctas": [
+                                    {
+                                                "label": "Low friction",
+                                                "text": "Scan your repo free · No CC"
+                                    },
+                                    {
+                                                "label": "Mid friction",
+                                                "text": "Book 15-min demo · See 95% noise reduction live"
+                                    }
+                        ],
+                        "lp_rewrite": {
+                                    "headline": "AI-powered SAST. 95% less noise than Snyk.",
+                                    "subhead": "Multi-file taint analysis. 1-click AutoFix in your IDE or PR. Built on Opengrep. Used by Revolut, Visma, Premier League. And the team that left Snyk to write this. Start free in 30 seconds."
+                        },
+                        "rationale": "Three structural moves: (1) promote the LP's strongest weapon (Konstantin S Snyk-migration quote) into the ad copy where it can do work at the click decision, not after; (2) name the competitor. DevSecOps buyers searching SAST are shopping a replacement, the ad should acknowledge what they're leaving; (3) standardize the noise-reduction number (95% from the LP, not the diluted 85% in the current ad)."
+            },
+            "experiments": [
+                        {
+                                    "title": "Pain-named competitor headline",
+                                    "what": "*\"Snyk Too Noisy? 95% Less Noise.\"* vs current *\"Static Code Analysis (SAST)\"* in slot 1",
+                                    "measure": "CTR · CVR to free signup",
+                                    "hypothesis": "If the headline names the replacement target, CTR ↑20-30%. DevSecOps leads searching SAST are shopping a replacement, not learning a category"
+                        },
+                        {
+                                    "title": "Promote the 85→95% number to slot 1",
+                                    "what": "Move *\"Reduce False Positives by 95%\"* (corrected from 85) to headline 1 vs current slot 14",
+                                    "measure": "Bounce rate on LP · time-on-page",
+                                    "hypothesis": "If the load-bearing number lands at the click decision, bounce ↓10-15%. Buyer arrives with expectation already framed"
+                        },
+                        {
+                                    "title": "Konstantin S quote in Description 2",
+                                    "what": "New Description with named-customer Snyk-migration quote vs current generic *\"Seamlessly integrate SAST\"*",
+                                    "measure": "LP signup CVR",
+                                    "hypothesis": "If the buyer arrives with named-customer trust pre-attached, signup CVR ↑15-20% (B2B benchmark for named-persona social proof in RSAs)"
+                        }
+            ],
+            "next_steps": [
+                        {
+                                    "num": 1,
+                                    "title": "Promote *\"Reduce False Positives by 95%\"* from headline slot 14 → slot 1",
+                                    "text": "Single largest free lift on this ad. Edit ships in 5 minutes. (This week)"
+                        },
+                        {
+                                    "num": 2,
+                                    "title": "Drop 4 noun-clones (*\"Best SAST Tool Worldwide · No.1 SAST Solution Worldwide · SAST Platform Scans In Minutes · Fast SAST Scanner In Only Mins\"*)",
+                                    "text": "Reclaim slots for the Konstantin S quote (in a description) and *\"Trusted by 50k+ Orgs\"* (in a headline). (This week)"
+                        },
+                        {
+                                    "num": 3,
+                                    "title": "Add one competitor-named headline: *\"Snyk Too Noisy? 95% Less Noise.\"",
+                                    "text": "* Comparison intent matches the SAST keyword set. (Next week)"
+                        },
+                        {
+                                    "num": 4,
+                                    "title": "Add the sitelink Google asked for: `/comparison/snyk-alternative`",
+                                    "text": "The SAST buyer is the same buyer who clicks comparison pages. Give them the bridge. (This week)"
+                        }
+            ]
+};
+
+        const AIKIDO_AUDIT_2_PARSED = {
+            "headlines": [
+                        {
+                                    "text": "SCA Scanner for Developers",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Fix What Actually Matters",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Start Scanning Free Today",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Catch Vulns Before CVEs Drop",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "SCA With Reachability Analysis",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Open Source Risk Scanner",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "No False Positive Noise",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "SBOM + License Compliance",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Only Exploitable Risks Shown",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Built for Developer Workflows",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Free SCA Tool for DevSecOps",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Scan Dependencies in Minutes",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Pre-CVE Vulnerability Intel",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Trusted by 10,000+ Dev Teams",
+                                    "pin": null
+                        },
+                        {
+                                    "text": "Software Composition Analysis",
+                                    "pin": null
+                        }
+            ],
+            "descriptions": [
+                        "Tired of false positives? Reachability analysis shows only exploitable risks. Start Free.",
+                        "Catch open-source vulns before CVEs drop. SBOM, license & malware detection in one scan.",
+                        "SCA built for developers: reachability analysis, pre-CVE intel & SBOM. All in one platform.",
+                        "Find & fix real open-source risks fast. Less noise, no wasted time. Start for free today."
+            ],
+            "icp_match": {
+                        "score": 9,
+                        "text": "The headline-1 *\"SCA Scanner for Developers\"* names the buyer in 4 words. Anyone searching SCA tooling is already a DevSecOps lead or AppSec engineer; the ad doesn't waste a slot warming them up. The descriptions speak directly to the recurring DevSecOps complaint (*\"Tired of false positives?\"*) with a specific differentiator (reachability analysis) the buyer hasn't seen on Snyk or Mend."
+            },
+            "overall_score": {
+                        "score": 8,
+                        "text": "This is the strongest ad in the audit and the strongest ad in Aikido's current SCA/SAST campaign. Google rates it Excellent. The score isn't 9 only because of the undercounted trust number (*\"Trusted by 10,000+ Dev Teams\"* when the LP says 100k+)."
+            },
+            "ad_issues": [
+                        {
+                                    "title": "Headline Clarity",
+                                    "score": 9,
+                                    "text": "*\"SCA Scanner for Developers\"* (slot 1) names the audience. *\"Fix What Actually Matters\"* (slot 2) is BBQ-language that would land at a Tuesday standup. *\"Catch Vulns Before CVEs Drop\"* (slot 4) is the sharpest line in the entire audit. It names a specific mechanism (pre-CVE intel) the buyer didn't know existed and frames it as a benefit. *\"No False Positive Noise\"* (slot 7) and *\"Only Exploitable Risks Shown\"* (slot 9) carry the reachability-analysis pitch. One filler headline: *\"Software Composition Analysis\"* (slot 15). Buyers don't search \"SCA\" spelled out."
+                        },
+                        {
+                                    "title": "CTA Friction",
+                                    "score": 8,
+                                    "text": "*\"Start Scanning Free Today\"* (slot 3) is the lowest-friction freemium CTA in the audit. *\"Free SCA Tool for DevSecOps\"* (slot 11) reinforces it. Only weakness: no demo CTA for enterprise SCA buyers (Series C+ orgs that buy via procurement)."
+                        },
+                        {
+                                    "title": "Visual-Copy Match",
+                                    "score": null,
+                                    "text": ""
+                        },
+                        {
+                                    "title": "Benefit Specificity",
+                                    "score": 7,
+                                    "text": "*\"Pre-CVE Vulnerability Intel\"* names a mechanism. *\"Reachability Analysis\"* names another. *\"Scan Dependencies in Minutes\"* has a time anchor. Description 1 has the strongest 14 words in the audit: *\"Tired of false positives? Reachability analysis shows only exploitable risks. Start Free.\" Pain → mechanism → CTA in one breath. Missing: an actual reduction number (the LP doesn't give one for SCA specifically; SAST's 95% doesn't apply here). Adding a \"3 layers of reachability analysis\" framing would sharpen it further."
+                        },
+                        {
+                                    "title": "Trust Signals",
+                                    "score": 6,
+                                    "text": "This is the only ad in the audit that puts customer count in a headline. *\"Trusted by 10,000+ Dev Teams\"* (slot 14). But the LP and every other Aikido asset says *\"50k+ orgs · 100k+ devs · 4.7/5.\"* This ad is undercounting itself by 10x. Either there's a SCA-specific lower number (in which case say so explicitly: *\"Trusted by 10,000+ SCA users\"*) or use the platform number."
+                        }
+            ],
+            "lp_roast": {
+                        "headline": {
+                                    "score": 9,
+                                    "text": "*\"Reachability-based SCA that cuts the noise.\" Verbatim match to the ad's promise. Subhead: *\"Secure third-party dependencies with reachability analysis, pre-CVE and malware intelligence, SBOMs, and AI-assisted fixes.\"*"
+                        },
+                        "value_prop": {
+                                    "score": 8,
+                                    "text": "*\"Best-in-class SCA, by design\" Followed by three differentiator blocks: Detect earlier than others (pre-CVE intel) / Prioritize what's exploitable (reachability) / Fix fast without breaking things (AutoFix + breaking-change analysis). Then a 5-feature deep dive: three layers of reachability analysis (dependency-level / function-level / contextual), threat intelligence with malware detection, automated remediation with breaking-change warnings, workflow integration (IDE + CI/CD), SBOMs tied to license/lifecycle risk."
+                        },
+                        "cta": {
+                                    "score": 7,
+                                    "text": "*\"Start for Free · No CC required\"* + *\"Book a demo\" Same as the rest of the Aikido stack. Clean."
+                        },
+                        "trust": {
+                                    "score": 9,
+                                    "text": "*\"50k+ orgs · 100k+ devs · 4.7/5\"* + the full named-logo wall. 5 named customer quotes including the gold one: **Christian Schmidt, VP Security & IT at Go Autonomous (migrated off Snyk): *\"There wasn't noise reduction in Snyk. It was more like 'here's everything, good luck.' With Aikido, the triaging is just… done.\"*** Plus Marc Lehr (GEA, Head of Customer Engagement): *\"In just 45 minutes, we onboarded 150+ developers with Aikido.\"* Plus Said Barati (Tech Lead, Simployer): *\"The speed to resolution is incredible. We've fixed issues in under a minute. Aikido creates the pull request, tests pass, and it's done.\"* Plus Nicolai Brogaard (Service Owner of SAST & SCA, Visma). Plus a *\"Migrated off Snyk\"* badge that links to the comparison page. Plus G2 reviews displayed inline."
+                        },
+                        "top_issues": [
+                                    "The Christian Schmidt Snyk-migration quote is mid-scroll; should be hero-adjacent.",
+                                    "The *\"three layers of reachability analysis\"* concept is the technical differentiator and it's also mid-scroll; should be in the hero subhead.",
+                                    "Marc Lehr's *\"45 minutes for 150 devs\"* number is a frictionless adoption story. Best buried proof on the page."
+                        ],
+                        "quick_wins": [
+                                    "Pull *\"3 layers of reachability analysis\"* into the hero subhead.",
+                                    "Move Christian Schmidt's Snyk quote to a hero-adjacent slot.",
+                                    "Add the *\"45 minutes for 150 devs\"* number as a hero bullet point."
+                        ]
+            },
+            "mismatch": {
+                        "alignment_score": 9,
+                        "verdict": "This is the strongest ad-LP chain in the audit. Ad H1 *\"SCA Scanner for Developers\" LP H1 *\"Reachability-based SCA that cuts the noise.\"* Same audience, same product, same mechanism. The only friction is the trust-number undercount (ad: 10k+ / LP: 100k+).",
+                        "disconnects": [
+                                    {
+                                                "label": "the only meaningful one",
+                                                "problem": "Ad headline 14 *\"Trusted by 10,000+ Dev Teams\" LP hero bar *\"Loved by 100k+ devs · Trusted by 50k+ orgs · 4.7/5.\"* Undercount by 10x. The buyer who reads the ad and then sees the bigger number on the LP will trust both numbers less.",
+                                                "fix": "Replace ad headline 14 with *\"Loved by 100k+ Devs · 50k+ Orgs\"* (matches LP) OR commit to the SCA-specific number with framing: *\"Trusted by 10,000+ SCA Users\"*."
+                                    }
+                        ],
+                        "message_match": "A DevSecOps lead clicks because the ad named their pain (false positive noise) and offered a specific mechanism (reachability analysis). The LP confirms both in the H1, names a Snyk-migration story in the first scroll-section, and shows G2 reviews + 5 named customer quotes. The buyer's expectation survives the click with high fidelity. This is the model the other 4 ads in this audit should follow."
+            },
+            "fix_kit": {
+                        "headlines": [
+                                    {
+                                                "label": "Pain-led",
+                                                "text": "Tired of Snyk's \"Here's Everything, Good Luck\"?"
+                                    },
+                                    {
+                                                "label": "Benefit-led",
+                                                "text": "3-Layer Reachability · Only Exploitable Risks"
+                                    },
+                                    {
+                                                "label": "Proof-led",
+                                                "text": "\"With Aikido, Triaging Is Just… Done.\" Christian Schmidt, Go Autonomous (migrated off Snyk)"
+                                    }
+                        ],
+                        "descriptions": [
+                                    {
+                                                "label": "Description 1",
+                                                "text": "Tired of Snyk's false-positive flood? Reachability analysis shows only exploitable risks. Function-level + contextual. Start Free."
+                                    },
+                                    {
+                                                "label": "Description 2",
+                                                "text": "\"With Aikido, the triaging is just done.\" Christian Schmidt, VP Security & IT, Go Autonomous (migrated from Snyk). 50k+ orgs, 100k+ devs, 4.7/5."
+                                    },
+                                    {
+                                                "label": "Description 3",
+                                                "text": "3 layers of reachability: dependency-level (do you use the package?), function-level (do you call the vulnerable code?), contextual (does it run in production?). AutoFix PR with breaking-change warning."
+                                    },
+                                    {
+                                                "label": "Description 4",
+                                                "text": "Find & fix real open-source risks fast. Less noise, no wasted time. Start for free today."
+                                    }
+                        ],
+                        "ctas": [
+                                    {
+                                                "label": "Low friction",
+                                                "text": "Start Scanning Free Today (keep. Strongest CTA in the audit)"
+                                    },
+                                    {
+                                                "label": "Mid friction",
+                                                "text": "15-min SCA demo · See reachability live"
+                                    }
+                        ],
+                        "lp_rewrite": {
+                                    "headline": "Reachability-based SCA. 3 layers. Only exploitable risks.",
+                                    "subhead": "Snyk and Mend report everything. Aikido reports what's reachable in production. Dependency-level, function-level, and runtime contextual analysis. 100k+ devs already migrated."
+                        },
+                        "rationale": "This ad doesn't need a rebuild. It needs three targeted edits: standardize the trust number (10k → 100k), promote the Snyk-migration quote into a description, and surface the \"3 layers\" framing the LP explains in detail but the ad currently doesn't reference. Score 8 → 9+ on small moves."
+            },
+            "experiments": [
+                        {
+                                    "title": "Trust number standardization",
+                                    "what": "*\"Loved by 100k+ Devs\"* vs current *\"Trusted by 10,000+ Dev Teams\"*",
+                                    "measure": "CTR · LP bounce rate",
+                                    "hypothesis": "If the ad number matches the LP number, perceived credibility ↑ and bounce on the LP ↓5-8% (number-consistency lift)"
+                        },
+                        {
+                                    "title": "Christian Schmidt quote in Description 2",
+                                    "what": "Named-Snyk-migration testimonial vs current category-feature description",
+                                    "measure": "LP signup CVR",
+                                    "hypothesis": "If the ad arrives with a named-customer migration story attached, signup CVR ↑10-20% (named-persona proof carries more weight than category proof at click decision)"
+                        },
+                        {
+                                    "title": "3-layer reachability framing",
+                                    "what": "New description with *\"dependency / function / runtime\"* breakdown vs current *\"reachability analysis\"* generic mention",
+                                    "measure": "LP scroll depth + signup CVR",
+                                    "hypothesis": "If the technical buyer sees the specific mechanism in the ad, scroll depth ↑ and signup CVR ↑15% (technical buyers reward specificity over benefit-speak)"
+                        }
+            ],
+            "next_steps": [
+                        {
+                                    "num": 1,
+                                    "title": "Standardize the trust number to 100k+ devs / 50k+ orgs / 4.7/5 across the ad",
+                                    "text": "Single edit, biggest credibility lift on the strongest ad in the campaign. (This week)"
+                        },
+                        {
+                                    "num": 2,
+                                    "title": "Add the Christian Schmidt Snyk-migration quote to Description 2",
+                                    "text": "The LP already has it; the ad doesn't use it. (This week)"
+                        },
+                        {
+                                    "num": 3,
+                                    "title": "Add one demo CTA headline: *\"Book a 15-min SCA + reachability demo.\"",
+                                    "text": "* Reaches the enterprise SCA buyer (Series C+, procurement-led) the freemium-only stack currently disqualifies. (Next week)"
+                        },
+                        {
+                                    "num": 4,
+                                    "title": "Drop *\"Software Composition Analysis\"* (filler headline 15). Replace with *\"Migrated 1,000+ Teams Off Snyk\"",
+                                    "text": "* (or whatever number Aikido is willing to defend publicly). (Next week)"
+                        }
+            ]
+};
+
+        const AIKIDO_AUDIT_3_PARSED = {
+            "headlines": [
+                        {
+                                    "text": "Start Your Pentest",
+                                    "pin": "3"
+                        },
+                        {
+                                    "text": "Autonomous AI Pentests",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Automated Penetration Testing",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "AI Penetration Testing",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "AI-Powered Pentesting Tool",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Agentic Pentest Platform",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "ISO27001 and SOC2 Compliant",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Secure Your App & APIs Now",
+                                    "pin": "3"
+                        },
+                        {
+                                    "text": "Self-Service - No sales",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Aikido Security",
+                                    "pin": "3"
+                        },
+                        {
+                                    "text": "Autonomous AI Agents",
+                                    "pin": "3"
+                        },
+                        {
+                                    "text": "Start Now",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Full Report in Hours",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "No Findings, Money Back",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Go Beyond Human Pentesters",
+                                    "pin": "2"
+                        }
+            ],
+            "descriptions": [
+                        "Automated AI Penetration Testing Platform for APIs & Web Applications that exceeds humans.",
+                        "Find real exploits: IDOR/BOLA, SSRF, RCE & injections. ISO & SOC2 Compliant Report.",
+                        "AI Pentest for your APIs & Web App. Trusted by 50k+ organizations.",
+                        "Finds IDOR, SSRF, SQLi, XSS, auth & logic bugs. SOC2 & ISO Compliant. Same day Report."
+            ],
+            "icp_match": {
+                        "score": 8,
+                        "text": "Buyers searching \"AI pentest,\" \"automated penetration testing,\" or \"pentest service\" split into three personas: (a) AppSec engineer at a Series B+ SaaS company needing a SOC2 pentest report by a deadline, (b) Head of Security at a mid-market org doing annual ISO27001 prep, (c) CTO at a Series A who's never run a pentest and is intimidated by the $25K-and-3-week traditional cycle. The ad speaks to all three. *\"ISO27001 and SOC2 Compliant\"* (b), *\"Self-Service - No sales\"* (c), *\"Full Report in Hours\"* (a). Strongest persona-coverage in the audit."
+            },
+            "overall_score": {
+                        "score": 7,
+                        "text": "Sharpest concept-led ad in the audit (*\"Autonomous AI Pentests · Agentic Pentest Platform · Go Beyond Human Pentesters\"*) with two unusual moves for B2B security (risk reversal: *\"No Findings, Money Back\"*; demo-wall rejection: *\"Self-Service - No Sales\"*). Held back from 8 by 5 near-duplicate AI-pentest noun headlines that Google flagged exactly."
+            },
+            "ad_issues": [
+                        {
+                                    "title": "Headline Clarity",
+                                    "score": 7,
+                                    "text": "*\"Autonomous AI Pentests\"* + *\"Agentic Pentest Platform\"* + *\"AI Penetration Testing\"* + *\"AI-Powered Pentesting Tool\"* + *\"Automated Penetration Testing\" 5 of 15 headlines are minor variants of the same concept. Google's RSA optimizer needs distinct signals; this trains it to pick the most generic of the five. Google flagged it directly: *\"Try adding a few more unique headlines or unpinning some assets.\"* Counterweight: *\"Self-Service - No sales\"* (slot 9) is the sharpest pain-named line in the audit. Every security buyer has been demo-walled by a pentest vendor and this names that pain directly. *\"No Findings, Money Back\"* (slot 14) is real risk reversal, rare in B2B SaaS, rarer in security."
+                        },
+                        {
+                                    "title": "CTA Friction",
+                                    "score": 7,
+                                    "text": "*\"Start Your Pentest\"* (pinned slot 3), *\"Secure Your App & APIs Now\"* (pinned slot 3), *\"Start Now\"* (slot 2). Three Start-verb CTAs competing. *\"Self-Service - No sales\"* doubles as a CTA-by-implication and is the strongest of the bunch."
+                        },
+                        {
+                                    "title": "Visual-Copy Match",
+                                    "score": null,
+                                    "text": ""
+                        },
+                        {
+                                    "title": "Benefit Specificity",
+                                    "score": 8,
+                                    "text": "This ad has the most concrete benefit copy in the audit. *\"Find real exploits: IDOR/BOLA, SSRF, RCE & injections\"* (Description 2) lists actual vulnerability classes. Credible to a pentester reading the ad. *\"Same day Report\"* (Description 4) is a time anchor. *\"ISO27001 and SOC2 Compliant\"* (slot 7) names the deliverable. *\"Full Report in Hours\"* (slot 13). But the LP has the sharper version: *\"in hours, not weeks\" The ad has the soft version."
+                        },
+                        {
+                                    "title": "Trust Signals",
+                                    "score": 5,
+                                    "text": "Description 3 *\"Trusted by 50k+ organizations\" This is the only ad in the audit that puts the customer count in a description (good). But no named-customer testimonial in the ad, despite Dan Sherwood's LP quote (*\"Aikido's pentest delivered human level, comprehensive findings at lightning speed and passed a rigorous compliance review with no issues\" Managing Director at Khaos Control Solutions) being gold for compliance-driven buyers. The risk-reversal claim (*\"No Findings, Money Back\"*) substitutes for some of the missing proof. Pricing transparency is its own trust signal."
+                        }
+            ],
+            "lp_roast": {
+                        "headline": {
+                                    "score": 8,
+                                    "text": "*\"Pentest every angle of your app.\" Direct, action-led, names the mechanism (pentest, not \"security assessment\" or \"vulnerability check\"). Subhead: *\"Autonomous AI agents that outperform humans at machine speed. Get a full audit-grade SOC2 or ISO27001 PDF report in hours, not weeks.\" Names the alternative being beaten (\"not weeks\"), names the deliverable (SOC2/ISO27001 PDF report)."
+                        },
+                        "value_prop": {
+                                    "score": 8,
+                                    "text": "3-step methodology: maps attack surface first (whitebox via code + OpenAPI, or blackbox via live probing) → parallel agents test real attack paths (red team behavior, not checklist scan) → only verified findings make the report (unproven issues dropped). Four report types named (high-level mgmt, post-remediation, simplified customer, detailed auditor). Strong technical credibility for AppSec readers."
+                        },
+                        "cta": {
+                                    "score": 8,
+                                    "text": "*\"Start your Pentest In 5 Minutes\"* (sharpest CTA on any Aikido LP) + *\"How it works\"* anchor link. Different from the rest of the Aikido stack (no *\"Book a demo\"* CTA on this page). Appropriate for the price-transparent pentest product."
+                        },
+                        "trust": {
+                                    "score": 8,
+                                    "text": "*\"50k+ orgs · 100k+ devs · 4.7/5\"* + full named-logo wall (Pendo, Premier League, Revolut, Soundcloud, Niantic, n8n, Visma, Montblanc, Deel, Legora, Handshake, Joe & juice, Runway, Too Good to Go). Dan Sherwood testimonial (Managing Director at Khaos Control Solutions). Exactly the compliance-tier proof the ICP needs. Pricing transparency: Standard €3,500 / Rightsized €800-€25,000+ / Continuous custom. Most unusual: *\"No High or Critical Finding = Don't Pay\" Explicit risk reversal in the pricing block. Sample report downloadable without sign-up."
+                        },
+                        "top_issues": [
+                                    "The Dan Sherwood compliance quote is mid-scroll, not hero-adjacent. For a compliance-driven buyer, that quote should be in the hero block.",
+                                    "The *\"€3,500 flat / No findings = no pay\"* pricing transparency is buried below \"How it works\". This is one of the LP's strongest weapons against the demo-walled $25K-starting incumbents (Cobalt, HackerOne, Bugcrowd) and it should be hero-adjacent.",
+                                    "The downloadable sample report is below the fold. For an AppSec buyer evaluating pentest vendors, \"show me what a report looks like\" is the first ask; should be a hero CTA."
+                        ],
+                        "quick_wins": [
+                                    "Move the Dan Sherwood quote to a hero-adjacent slot.",
+                                    "Pull the *\"€3,500. No findings = don't pay.\"* line into a hero bullet.",
+                                    "Promote the *\"Download a sample report\"* link to a hero-adjacent secondary CTA."
+                        ]
+            },
+            "mismatch": {
+                        "alignment_score": 7,
+                        "verdict": "Ad sells AI Pentest. LP delivers AI Pentest. Same product, same audience, same pricing transparency angle. The handoff works on direction; the strength differential is in specific phrasings.",
+                        "disconnects": [
+                                    {
+                                                "label": "sharpness loss",
+                                                "problem": "Ad headline 13: *\"Full Report in Hours.\"* LP H1 subhead: *\"in hours, not weeks.\"* The LP names the alternative being beaten (traditional pentest = weeks). The ad has the soft version that doesn't name the comparison.",
+                                                "fix": "Headline: *\"Pentest in Hours, Not Weeks.\"*"
+                                    },
+                                    {
+                                                "label": "CTA verb consistency",
+                                                "problem": "Ad CTAs: *\"Start Your Pentest · Secure Your App & APIs Now · Start Now.\"* LP primary CTA: *\"Start your Pentest In 5 Minutes.\"* The LP names the specific friction level the ad doesn't.",
+                                                "fix": "Standardize to *\"Start your pentest in 5 minutes\"* across both ad and LP."
+                                    },
+                                    {
+                                                "label": "compliance proof depth",
+                                                "problem": "Ad mentions SOC2/ISO27001 three times. LP has the Dan Sherwood quote that closes the compliance case. The ad doesn't reference any named-customer compliance proof.",
+                                                "fix": "Description 2 → *\"'Passed a rigorous compliance review with no issues.' Dan Sherwood, MD, Khaos Control Solutions.\"*"
+                                    },
+                                    {
+                                                "label": "buyer-path gap",
+                                                "problem": "Both ad and LP serve the dev-led self-serve buyer well. Neither serves the procurement-led enterprise buyer who buys €25K+ on annual contracts. AI Pentest is sold up to €25,000+ tier. That buyer doesn't run a self-serve €3,500 pentest, they want a scoping call and a demo.",
+                                                "fix": "Add one CISO-tier headline to the ad: *\"Book 30-min compliance demo · See SOC2 report walkthrough.\"* Add a \"Continuous Pentest\" CTA to the LP hero alongside the freemium Start CTA."
+                                    }
+                        ],
+                        "message_match": "The buyer arrives with the right expectation (autonomous AI pentest, fast, SOC2 ready) and the LP confirms it within the hero. The handoff is solid. The improvements aren't directional. They're about (a) sharpening the headline to match the LP's stronger phrasing, (b) adding the named-customer compliance quote that's sitting unused on the LP, and (c) opening the second buyer path (procurement-led enterprise) the freemium-only CTAs currently disqualify."
+            },
+            "fix_kit": {
+                        "headlines": [
+                                    {
+                                                "label": "Pain-led",
+                                                "text": "Demo-Walled by Cobalt? Try Self-Serve."
+                                    },
+                                    {
+                                                "label": "Benefit-led",
+                                                "text": "Pentest in Hours, Not Weeks · €3,500 Flat"
+                                    },
+                                    {
+                                                "label": "Proof-led",
+                                                "text": "\"Passed a rigorous compliance review.\" Dan Sherwood, MD, Khaos Control"
+                                    }
+                        ],
+                        "descriptions": [
+                                    {
+                                                "label": "Description 1",
+                                                "text": "AI penetration testing for APIs & Web Apps. Exceeds human pentesters. Same-day audit-ready SOC2 / ISO27001 PDF report. €3,500 flat. No findings = don't pay."
+                                    },
+                                    {
+                                                "label": "Description 2",
+                                                "text": "\"Aikido's pentest delivered human-level, comprehensive findings at lightning speed and passed a rigorous compliance review with no issues.\" Dan Sherwood, MD, Khaos Control Solutions."
+                                    },
+                                    {
+                                                "label": "Description 3",
+                                                "text": "200+ AI agents map your attack surface, test in parallel, validate findings against the live target. Only verified exploits make the report. No false positives."
+                                    },
+                                    {
+                                                "label": "Description 4",
+                                                "text": "Finds IDOR, SSRF, SQLi, XSS, auth & logic bugs. SOC2 & ISO Compliant. Same day Report. Sample report downloadable, no signup."
+                                    }
+                        ],
+                        "ctas": [
+                                    {
+                                                "label": "Low friction",
+                                                "text": "Start your pentest in 5 minutes (matches LP exactly)"
+                                    },
+                                    {
+                                                "label": "Mid friction",
+                                                "text": "Book 30-min compliance demo · SOC2 walkthrough"
+                                    }
+                        ],
+                        "lp_rewrite": {
+                                    "headline": "Pentest in hours. €3,500 flat. No findings = don't pay.",
+                                    "subhead": "200+ autonomous AI agents map, attack, and validate. SOC2 / ISO27001 PDF report. Same day. Trusted by 50k+ orgs. Download sample report."
+                        },
+                        "rationale": "Three structural moves: (1) sharpen \"Full Report in Hours\" to the LP's actual phrasing \"in hours, not weeks\". Names the alternative; (2) add the Dan Sherwood compliance quote. The LP's strongest proof asset for compliance-driven buyers; (3) open the enterprise procurement path with a demo CTA. The risk-reversal line stays. It's the ad's signature move and it works."
+            },
+            "experiments": [
+                        {
+                                    "title": "Competitor-replacement headline",
+                                    "what": "*\"Demo-Walled by Cobalt? Try Self-Serve.\"* vs current *\"Autonomous AI Pentests\"* in slot 1",
+                                    "measure": "CTR",
+                                    "hypothesis": "If the ad names the procurement frustration of the incumbent (Cobalt / HackerOne / Bugcrowd / Synack), CTR ↑20%+. Pentest shoppers are 80% replacing or supplementing an incumbent"
+                        },
+                        {
+                                    "title": "Dan Sherwood quote in Description 2",
+                                    "what": "Named-customer compliance testimonial vs current generic *\"Find real exploits\"*",
+                                    "measure": "LP signup CVR",
+                                    "hypothesis": "If compliance-driven buyer arrives with named-MD trust pre-attached, signup CVR ↑15-20%. Compliance buyers buy from whoever looks safest"
+                        },
+                        {
+                                    "title": "Sharper time anchor",
+                                    "what": "*\"Pentest in Hours, Not Weeks\"* vs current *\"Full Report in Hours\"*",
+                                    "measure": "CTR · CVR",
+                                    "hypothesis": "If the ad names the incumbent's weakness (weeks of delay), CTR ↑10-15%. Buyer's existing frustration is \"we waited 4 weeks for the Cobalt scoping call\""
+                        }
+            ],
+            "next_steps": [
+                        {
+                                    "num": 1,
+                                    "title": "Drop 3 of the 5 AI-Pentest noun variants",
+                                    "text": "Keep *\"AI Penetration Testing\"* + *\"Autonomous AI Agents\" Replace the other 3 with: Dan Sherwood quote, *\"Trusted by 50k+ Orgs\"*, *\"€3,500 Flat · No Findings = Don't Pay.\"* (This week. Fixes Google's \"more unique headlines\" flag)"
+                        },
+                        {
+                                    "num": 2,
+                                    "title": "Sharpen *\"Full Report in Hours\"* → *\"Pentest in Hours, Not Weeks.\"",
+                                    "text": "* Matches LP framing, names the alternative. (This week)"
+                        },
+                        {
+                                    "num": 3,
+                                    "title": "Add one CISO-tier demo CTA: *\"Book 30-min compliance demo.\"",
+                                    "text": "* Reaches the procurement-led €25K+ buyer the freemium-only stack disqualifies. (Next week)"
+                        },
+                        {
+                                    "num": 4,
+                                    "title": "Quote Dan Sherwood in Description 2",
+                                    "text": "Compliance proof at click, not after the scroll. (Next week)"
+                        }
+            ]
+};
+
+        const AIKIDO_AUDIT_4_PARSED = {
+            "headlines": [
+                        {
+                                    "text": "Aikido Security",
+                                    "pin": "3"
+                        },
+                        {
+                                    "text": "Sonar Alternatives",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Sonar vs. Aikido",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "AI Code Reviews",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Codebase-aware Rule Generation",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "See Why Devs Prefer Aikido",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "#1 Alternative",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Did You Mistype Aikido?",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "AI-Powered Code Review Tool",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Ship Faster, Review Smarter",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Language-agnostic Reviews",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Smarter, faster PR reviews",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Next-gen Code Reviews",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Smarter Reviews. Better Code.",
+                                    "pin": "-"
+                        },
+                        {
+                                    "text": "[empty]",
+                                    "pin": null
+                        }
+            ],
+            "descriptions": [
+                        "Sonar flags too much. AI checks adapt to your code, not rules.",
+                        "Get AI-driven, contextual feedback that adapts to your code. Supports all languages.",
+                        "Trusted by 25k+ teams. SOC2 certified. Start your free trial today.",
+                        "AI code reviews that speed up workflows and improve code quality. Try it Now"
+            ],
+            "icp_match": {
+                        "score": 5,
+                        "text": "The buyer searching \"SonarQube alternative\" is split into two intents: (a) code-quality replacement (the dominant SonarQube use case. Devs frustrated with the dated UX, LOC-based pricing, and self-hosted infrastructure) and (b) security-tool replacement (smaller cohort. Teams that bought SonarQube for SAST and outgrew it). The ad's headlines sell **AI Code Review** (5 of 15). Neither of those intents. The LP repositions the buyer toward AppSec. But the click decision happens before the LP loads."
+            },
+            "overall_score": {
+                        "score": 4,
+                        "text": "Limited Approved status is a precondition penalty. Google has already capped serving. The category collision between ad (AI Code Review) and LP (security-focused SAST alternative) is the deeper issue. The LP itself carries the sharpest positioning paragraph in the entire Aikido site; the ad never uses it."
+            },
+            "ad_issues": [
+                        {
+                                    "title": "Headline Clarity",
+                                    "score": 5,
+                                    "text": "*\"Sonar Alternatives\"* (slot 2) and *\"Sonar vs. Aikido\"* (slot 3) match search intent directly. *\"Codebase-aware Rule Generation\"* (slot 5) names a real technical differentiator. But 5 of 15 headlines pivot to AI Code Review (*\"AI Code Reviews · AI-Powered Code Review Tool · Ship Faster, Review Smarter · Smarter, faster PR reviews · Next-gen Code Reviews · Smarter Reviews. Better Code.\"*). That's the wrong category for a SonarQube replacement search. SonarQube isn't an AI Code Review competitor; it's a code-quality / SAST scanner. Two ad headlines are likely policy-restricted: *\"#1 Alternative\"* (unbacked superlative) and *\"Did You Mistype Aikido?\"* (deceptive brand-bidding inside a competitor-comparison ad)."
+                        },
+                        {
+                                    "title": "CTA Friction",
+                                    "score": 5,
+                                    "text": "No clear primary CTA in the headlines. Description 3 carries *\"Start your free trial today\"*; Description 4 ends with *\"Try it Now\" Two different verbs, neither matched to the LP's *\"Start for Free · Go for it\"* primary or *\"Book a Demo\"* secondary."
+                        },
+                        {
+                                    "title": "Visual-Copy Match",
+                                    "score": null,
+                                    "text": ""
+                        },
+                        {
+                                    "title": "Benefit Specificity",
+                                    "score": 5,
+                                    "text": "*\"Codebase-aware Rule Generation\"* is a specific mechanism. *\"Language-agnostic Reviews\"* is a real benefit (vs SonarQube's per-language rule packs). Description 1 is the strongest 9 words in the ad: *\"Sonar flags too much. AI checks adapt to your code, not rules.\"* Missing: the LP's killer pricing comparison (Aikido Basic €3,240/year vs SonarQube Team €3,302/year. Nearly identical price, vastly more coverage) is sitting on the LP and never makes it into the ad."
+                        },
+                        {
+                                    "title": "Trust Signals",
+                                    "score": 4,
+                                    "text": "Description 3 *\"Trusted by 25k+ teams. SOC2 certified.\" But the LP says *\"50k+ orgs · 100k+ devs · 4.7/5.\"* The ad is undercounting itself by 2x (and undercounting devs by 4x). The Salvatore Cuccurullo (Senior DevOps Manager at GEA) migration quote on the LP is the perfect comparison-ad proof asset and it's absent from the ad copy."
+                        }
+            ],
+            "lp_roast": {
+                        "headline": {
+                                    "score": 9,
+                                    "text": "*\"Aikido, the security focused alternative to SonarQube\" Names both the positioning move (security vs code-quality) and the competitor. Subhead is the sharpest 35 words in the entire Aikido site: *\"SonarQube started as a code-quality platform and added security later. Aikido started as AppSec. The difference shows up in quality, coverage, pricing and in your developers' day.\"*"
+                        },
+                        "value_prop": {
+                                    "score": 9,
+                                    "text": "Concrete pricing comparison (Aikido Basic €3,240/year · Aikido Pro €6,480/year · SonarQube Team €3,302/year · SonarQube Enterprise \"Talk to sales\"). Detailed feature comparison table covering SAST + AI AutoFix + Multi-file Analysis + Taint Analysis + Custom SAST Rules + SCA + DAST + Agentic AI Pentesting + Cloud Security + Container Scanning + Secrets Detection + Runtime Security + Local Scanner + Integrations + Premium Support. *\"SonarQube charges per line of code. Aikido charges per developer.\" Frames the pricing-model fight directly. Four \"Key areas where Aikido wins\": business-logic awareness via LLMs / custom rules & team knowledge / unified security + quality workflow / zero setup, developer-first UX. Three follow-up positioning blocks: 100% security focused / Includes 15+ engines / Pay per dev, not per line of code."
+                        },
+                        "cta": {
+                                    "score": 7,
+                                    "text": "*\"Start for Free · Go for it\"* + *\"Book a Demo\" Two friction levels. The \"Go for it\" framing is more dev-voice than the rest of the Aikido stack, appropriate for the comparison-shopping moment."
+                        },
+                        "trust": {
+                                    "score": 8,
+                                    "text": "*\"50k+ orgs · 100k+ devs · 4.7/5\"* + full named-logo wall. Salvatore Cuccurullo quote (Senior DevOps Manager at GEA): *\"Aikido immediately stood out because it was truly built with developers in mind. The UX is simple, clean, and removes unnecessary friction.\"* *\"GEA switched from Sonarqube to Aikido\"* migration badge."
+                        },
+                        "top_issues": [
+                                    "The €3,240 vs €3,302 pricing-near-parity line is the LP's killer weapon and it's not hero-adjacent.",
+                                    "The \"SonarQube charges per LOC, Aikido charges per dev\" framing is the buyer's actual budgeting pain and it's mid-scroll.",
+                                    "The Salvatore Cuccurullo migration quote is below \"Why Aikido wins\". Should be hero-adjacent or in the hero block itself."
+                        ],
+                        "quick_wins": [
+                                    "Move the pricing comparison line to the hero subhead: *\"Same price as SonarQube Team. 15+ more engines. Pay per dev, not per LOC.\"*",
+                                    "Pull Salvatore Cuccurullo's GEA migration quote into the hero block.",
+                                    "Add a single hero CTA: *\"Calculate your savings vs SonarQube\" Interactive pricing tool would beat the static table."
+                        ]
+            },
+            "mismatch": {
+                        "alignment_score": 4,
+                        "verdict": "This is the lowest-alignment ad in the audit and the second-worst alignment score across both audit batches. The ad sells AI Code Review; the LP sells security-focused alternative to SonarQube. Different categories.",
+                        "disconnects": [
+                                    {
+                                                "label": "category collision, severe",
+                                                "problem": "Ad headlines 4, 9, 10, 11, 12, 13, 14 lean on AI Code Review / Code Reviews / PR Reviews. A different product category that competes with Greptile, CodeRabbit, and Codium, not with SonarQube. The buyer searching \"SonarQube alternative\" is shopping a code-quality or SAST replacement. The ad pivots them to AI Code Review. The LP pivots them to AppSec. Three categories on one click.\n**Fix (the high-leverage one):** Replace 4 of the 5 AI Code Review headlines with LP positioning lines: *\"100% Security Focused\"*, *\"Pay Per Dev, Not Per Line of Code\"*, *\"15+ Engines vs SonarQube's 5\"*, *\"Built for AppSec From Day One.\"*\n\n- **Disconnect 2 (pricing wedge unused):** LP's killer line: Aikido Basic €3,240/year vs SonarQube Team €3,302/year. Same price, vastly more coverage. The ad doesn't reference price once.",
+                                                "fix": "Headline: *\"Same Price as SonarQube · 15+ More Engines.\"* Or sharper: *\"Stop Paying SonarQube Per Line of Code.\"*"
+                                    },
+                                    {
+                                                "label": "named migration absent",
+                                                "problem": "LP shows the Salvatore Cuccurullo GEA migration. The ad doesn't quote him.",
+                                                "fix": "Description 2 → *\"'Aikido was truly built with developers in mind.' Salvatore Cuccurullo, Senior DevOps Manager at GEA (migrated from SonarQube).\"*"
+                                    },
+                                    {
+                                                "label": "trust number undercount",
+                                                "problem": "Ad says 25k+ teams. LP says 50k+ orgs / 100k+ devs.",
+                                                "fix": "Standardize on LP numbers."
+                                    },
+                                    {
+                                                "label": "Limited Approved status",
+                                                "problem": "Two ad headlines likely trigger Google's policy review: *\"#1 Alternative\"* (unbacked superlative. Google policy disallows ranking claims without third-party proof) and *\"Did You Mistype Aikido?\"* (deceptive brand-bidding in a competitor comparison ad. Google's \"responsible advertising\" policy disallows this kind of confusion intent).",
+                                                "fix": "Drop both headlines. Eligibility likely restores within 24-72 hours of resubmission."
+                                    }
+                        ],
+                        "message_match": "A Director of Engineering or DevSecOps lead searches \"SonarQube alternative.\" They've usually got a renewal in 60 days and a quote from SonarQube enterprise sales that's higher than they expected because their codebase grew. The ad needs to do two things: (a) tell them Aikido replaces SonarQube without the per-LOC penalty, (b) tell them the pricing is comparable and the coverage is broader. The current ad does neither. It pivots to AI Code Review (a third category) and never references price. The LP would close this buyer in 2 minutes. The ad currently doesn't earn the click."
+            },
+            "fix_kit": {
+                        "headlines": [
+                                    {
+                                                "label": "Pain-led",
+                                                "text": "Tired of SonarQube's Per-LOC Pricing?"
+                                    },
+                                    {
+                                                "label": "Benefit-led",
+                                                "text": "Same Price · 15+ More Engines · Pay Per Dev"
+                                    },
+                                    {
+                                                "label": "Proof-led",
+                                                "text": "GEA Migrated From SonarQube. Here's Why"
+                                    }
+                        ],
+                        "descriptions": [
+                                    {
+                                                "label": "Description 1",
+                                                "text": "Sonar flags too much. AI checks adapt to your code, not rules."
+                                    },
+                                    {
+                                                "label": "Description 2",
+                                                "text": "\"Aikido was truly built with developers in mind. The UX is simple, clean, and removes unnecessary friction.\" Salvatore Cuccurullo, Senior DevOps Manager at GEA (migrated from SonarQube)."
+                                    },
+                                    {
+                                                "label": "Description 3",
+                                                "text": "Aikido Basic €3,240/year vs SonarQube Team €3,302/year. Same price. SAST + SCA + DAST + IaC + CSPM + Secrets + Pentest + Runtime. 15+ engines."
+                                    },
+                                    {
+                                                "label": "Description 4",
+                                                "text": "100% security focused. Built for AppSec from day one. Not bolted on after a code-quality platform. SOC 2 + ISO 27001. Start free, no CC."
+                                    }
+                        ],
+                        "ctas": [
+                                    {
+                                                "label": "Low friction",
+                                                "text": "Start free · No CC · No LOC pricing"
+                                    },
+                                    {
+                                                "label": "Mid friction",
+                                                "text": "Book 15-min migration demo · See your SonarQube switch"
+                                    }
+                        ],
+                        "lp_rewrite": {
+                                    "headline": "Aikido vs SonarQube: same price, 15+ more engines, no LOC penalty.",
+                                    "subhead": "SonarQube started as code-quality and added security later. Aikido started as AppSec. Pay per developer, not per line of code. GEA, Visma, and 50k+ orgs already migrated."
+                        },
+                        "rationale": "Three structural fixes: (1) restore Limited Approved → Eligible by dropping the two policy-trigger headlines (*\"#1 Alternative\"* and *\"Did You Mistype Aikido?\"*); (2) drop 4 of the 5 AI Code Review headlines. Wrong category for this buyer; (3) pull the LP's killer pricing line into the ad copy. Limited Approved status is the immediate blocker; the category fix is the medium-term lift."
+            },
+            "experiments": [
+                        {
+                                    "title": "Eligibility restoration",
+                                    "what": "Drop *\"#1 Alternative\"* and *\"Did You Mistype Aikido?\" Resubmit",
+                                    "measure": "Approval status · impression share",
+                                    "hypothesis": "If the two policy triggers come out, Limited Approved → Eligible within 72h, impression share returns to baseline. **This is precondition #1. No other experiment can run while the ad is restricted.**"
+                        },
+                        {
+                                    "title": "Pricing-wedge headline",
+                                    "what": "*\"Stop Paying SonarQube Per Line of Code\"* vs current *\"Sonar Alternatives\"* in slot 1",
+                                    "measure": "CTR · LP scroll depth",
+                                    "hypothesis": "If the headline names the budgeting pain (LOC pricing), CTR ↑25-35%. SonarQube shoppers are usually pre-renewal and price-sensitive"
+                        },
+                        {
+                                    "title": "Category-corrected description set",
+                                    "what": "Replace 4 AI Code Review headlines with LP positioning lines (*\"100% Security Focused\"* / *\"Pay Per Dev, Not Per LOC\"* / *\"15+ Engines\"*)",
+                                    "measure": "LP signup CVR",
+                                    "hypothesis": "If ad sells what LP sells (AppSec, not AI Code Review), signup CVR ↑30%+. Current state buys the wrong impression in the buyer's head"
+                        }
+            ],
+            "next_steps": [
+                        {
+                                    "num": 1,
+                                    "title": "Restore Limited Approved → Eligible",
+                                    "text": "Drop *\"#1 Alternative\"* and *\"Did You Mistype Aikido?\" Most likely policy triggers. **Single highest-impact action in this audit.** Edit ships in 5 minutes; approval typically restores within 24-72 hours. (Owner: paid team · By: Monday May 25)"
+                        },
+                        {
+                                    "num": 2,
+                                    "title": "Drop 4 of 5 AI Code Review headlines",
+                                    "text": "Replace with LP positioning lines (*\"100% Security Focused\"*, *\"Pay Per Dev, Not Per Line of Code\"*, *\"15+ Engines vs SonarQube\"*, *\"Built for AppSec From Day One\"*). (This week)"
+                        },
+                        {
+                                    "num": 3,
+                                    "title": "Pull the €3,240 vs €3,302 pricing line into a headline",
+                                    "text": "Strongest weapon the LP holds, currently invisible at the click decision. (This week)"
+                        },
+                        {
+                                    "num": 4,
+                                    "title": "Quote Salvatore Cuccurullo (GEA migration) in Description 2",
+                                    "text": "Named-migration proof at click, not after the scroll. (Next week)"
+                        }
+            ]
+};
+
+        const AIKIDO_AUDIT_5_PARSED = {
+            "headlines": [
+                        {
+                                    "text": "Aikido Security",
+                                    "pin": "3"
+                        },
+                        {
+                                    "text": "Easily Export SBOMs",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Sign-up in 1 min",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Start for Free",
+                                    "pin": "2"
+                        },
+                        {
+                                    "text": "Open Source License Scanning",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Generate your SBOMs",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Generate SBOMs in Minutes",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "SBOM Generator",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "SBOM Tools",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "SBOM software",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "SBOM Export",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "SBOM Solutions",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "SBOM Management",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Software Bill of Materials",
+                                    "pin": "1"
+                        },
+                        {
+                                    "text": "Online SBOM Generator",
+                                    "pin": "1"
+                        }
+            ],
+            "descriptions": [
+                        "Get a full overview of the licenses you're using and get alerted for license risks.",
+                        "Generate and export your SBOM to prepare for audits. Free. Setup in minutes.",
+                        "",
+                        ""
+            ],
+            "icp_match": {
+                        "score": 7,
+                        "text": "This is the only ad in the audit where the buyer is **trigger-event qualified** before the click. Anyone searching \"SBOM generator\" or \"software bill of materials\" is preparing for one of: SOC 2 evidence, FedRAMP submission, EO 14028 compliance, NIS2 deadline (EU), or Cyber Resilience Act (EU). They have a date on their calendar. The ad doesn't have to convert a cold buyer; it has to win the click against Snyk, Mend, Cycode, Black Duck, FOSSA, and Anchore. All of whom rank for the same keyword set. ICP fit is strong for the persona (Head of Security or AppSec lead with audit deadline); persona mismatch with the LP testimonial is the deeper issue (see §4)."
+            },
+            "overall_score": {
+                        "score": 6,
+                        "text": "Solid structure, two free fixes available. *\"Generate SBOMs in Minutes\"* + *\"Sign-up in 1 min\"* is the right benefit promise with the right friction anchor. But 8 of 15 headlines are SBOM-noun variants, 2 of 4 description slots are empty, and the compliance proof (SOC 2 / ISO 27001 / FedRAMP) that's the entire reason this product exists is absent from the ad copy."
+            },
+            "ad_issues": [
+                        {
+                                    "title": "Headline Clarity",
+                                    "score": 7,
+                                    "text": "*\"Generate SBOMs in Minutes\"* (slot 7) is the strongest headline. Specific verb + time anchor. *\"Easily Export SBOMs\"* (slot 2) sets the right tone. But 8 of 15 are noun stacks: *\"SBOM Generator · SBOM Tools · SBOM software · SBOM Export · SBOM Solutions · SBOM Management · Software Bill of Materials · Online SBOM Generator\" Eight near-clones of the category keyword. Some keyword coverage is necessary for SEM matching, but eight is excessive."
+                        },
+                        {
+                                    "title": "CTA Friction",
+                                    "score": 6,
+                                    "text": "*\"Sign-up in 1 min\"* (slot 3) is one of the few specific-friction CTAs in the audit. Names the exact friction level a Security Engineer cares about. *\"Start for Free\"* (slot 4) backs it. But the LP primary CTA verb is *\"Create SBOM\" The ad never primes the buyer for that exact action verb. Hick's law again: two start-verbs."
+                        },
+                        {
+                                    "title": "Visual-Copy Match",
+                                    "score": null,
+                                    "text": ""
+                        },
+                        {
+                                    "title": "Benefit Specificity",
+                                    "score": 5,
+                                    "text": "*\"Generate SBOMs in Minutes\"* is the only number in the ad. The LP says scans complete in 32 seconds. That's a sharper number and it's not used. The LP names the export formats: CycloneDX, SPDX, CSV. Three formats specifically because auditors ask for different ones. The ad doesn't list any format. *\"Get a full overview of the licenses you're using\"* is generic; the VEX exploitability analysis (the LP's real technical wedge. Most competitors give a parts list, Aikido tells the buyer which CVEs are actually exploitable) is never mentioned."
+                        },
+                        {
+                                    "title": "Trust Signals",
+                                    "score": 1,
+                                    "text": "Zero. No SOC 2 badge, no ISO 27001 badge, no FedRAMP mention, no customer count, no logo. For a compliance product. Where compliance proof IS the value prop. This is the most expensive miss in the audit. The buyer is a CISO or Head of Security; the buying question is \"Can I trust this vendor with my dependency tree before the audit on June 30?\" and the ad doesn't answer."
+                        }
+            ],
+            "lp_roast": {
+                        "headline": {
+                                    "score": 7,
+                                    "text": "*\"Create SBOMs easily.\" Direct, matches search intent. Subhead: *\"Generate SBOMs in 1-click. Get full visibility into your software, eliminate hidden risks, and meet compliance requirements - without slowing down development.\"* Handles the \"why now\" (compliance requirements) and the \"what's the catch\" (without slowing development)."
+                        },
+                        "value_prop": {
+                                    "score": 8,
+                                    "text": "Clean 3-step process: Connect git → Triage Licenses → Export CycloneDX / SPDX / CSV. *\"Built-in VEX analysis to assess real exploitability\"* is the technical wedge. Most SBOM tools give you a parts list, Aikido tells you which components are actually exploitable. *\"Scan results in 32 seconds\"* is the time anchor. Compliance copy is accurate and well-researched: *\"USA: SBOMs are required by the FDA and Executive Order 14028. Europe: Comply with NIS2 and the Cyber Resilience Act.\"*"
+                        },
+                        "cta": {
+                                    "score": 7,
+                                    "text": "*\"Create SBOM · Create SBOM\"* (matches the verb the visitor came to do) + *\"Book a demo.\"* The verb-match is sharp."
+                        },
+                        "trust": {
+                                    "score": 4,
+                                    "text": "Weakest section of the LP, and the single most expensive miss for a compliance product. **One testimonial** on the page: Jonathan V (Software Engineer at XEOS). *\"The license scanning has saved me a lot of headaches.\"* That's a Software Engineer giving feedback on a tool that gets bought by Heads of Security and auditors. Wrong rank, wrong persona, wrong proof. SOC 2 / ISO 27001 / FedRAMP badges are in the LP footer, not the hero. The Visma / Revolut / Premier League / Pendo logo wall that's on every other Aikido LP is absent from this page."
+                        },
+                        "top_issues": [
+                                    "Wrong-persona testimonial. Software Engineer quote on a CISO product.",
+                                    "SOC 2 / ISO 27001 / FedRAMP badges buried in footer instead of hero-adjacent.",
+                                    "Logo wall missing. Every other Aikido LP has it; this one doesn't."
+                        ],
+                        "quick_wins": [
+                                    "Swap Jonathan V (Software Engineer) for Konstantin S (Head of InfoSec at OSOME). Already in Aikido's testimonial bank, currently on the DAST page, rotate onto SBOM page.",
+                                    "Move SOC 2 + ISO 27001 trust bar to hero.",
+                                    "Add the named-logo wall (Pendo, Premier League, Revolut, Soundcloud, Niantic, n8n, Visma, Montblanc, Deel) to the hero block."
+                        ]
+            },
+            "mismatch": {
+                        "alignment_score": 7,
+                        "verdict": "Ad sells SBOM generator. LP delivers SBOM generator. Category match is clean. The disconnects are about strength of compliance handoff, not category collision.",
+                        "disconnects": [
+                                    {
+                                                "label": "proof gap on both sides, biggest leak",
+                                                "problem": "The ad has zero compliance trust. The LP has compliance copy but buries the SOC 2 / ISO 27001 / FedRAMP badges in the footer. A CISO scanning the page in 4 seconds doesn't find them. Net: compliance product, no compliance proof at click decision OR at LP first-fold.",
+                                                "fix": "Hero trust bar on LP. Compliance-proof description on ad: *\"SOC 2 + ISO 27001 + FedRAMP-track. Trusted by 50k+ orgs for SOC 2 audits.\"*"
+                                    },
+                                    {
+                                                "label": "CTA verb shift",
+                                                "problem": "Ad CTAs: *\"Sign-up in 1 min · Start for Free.\"* LP primary CTA: *\"Create SBOM.\"* The ad never primes the visitor for that specific action verb.",
+                                                "fix": "Add one ad headline: *\"Create Your SBOM Free.\"*"
+                                    },
+                                    {
+                                                "label": "empty description slots",
+                                                "problem": "Two of four description slots are empty (`--`). Google's RSA optimizer can't rotate what isn't there; Ad Strength is capped at \"Good\" because of these gaps.",
+                                                "fix": "Fill both. Suggested copy in the Fix Kit below."
+                                    },
+                                    {
+                                                "label": "wrong-rank testimonial",
+                                                "problem": "LP's only testimonial is from a Software Engineer (Jonathan V). The buyer is a CISO. The Engineer who runs the integration is not the buyer.",
+                                                "fix": "Rotate Konstantin S (Head of InfoSec at OSOME) onto the SBOM LP from the DAST LP where he currently sits."
+                                    }
+                        ],
+                        "message_match": "A Head of Security searches \"SBOM generator\" 30 days before a SOC 2 audit. The ad gives them the right product in the right format (CycloneDX/SPDX/CSV via LP). The LP delivers the 3-step process and accurate compliance copy. But neither the ad nor the LP front-loads the trust a compliance buyer needs at the click decision. SOC 2 / ISO 27001 / FedRAMP badges, named CISO testimonial, customer count. The buyer's question at click is \"Can I trust this vendor with the artifact I show my auditor?\" and the answer arrives at scroll-3 instead of second 1."
+            },
+            "fix_kit": {
+                        "headlines": [
+                                    {
+                                                "label": "Pain-led",
+                                                "text": "Audit on Monday? Generate SBOM Today."
+                                    },
+                                    {
+                                                "label": "Benefit-led",
+                                                "text": "SBOM in 32 Seconds · CycloneDX · SPDX · CSV"
+                                    },
+                                    {
+                                                "label": "Proof-led",
+                                                "text": "SOC 2 + ISO 27001 · Trusted by 50k+ Orgs"
+                                    }
+                        ],
+                        "descriptions": [
+                                    {
+                                                "label": "Description 1",
+                                                "text": "Generate audit-ready SBOMs in 32 seconds. CycloneDX, SPDX & CSV export with built-in VEX exploitability analysis. Meets EO 14028 + NIS2 + Cyber Resilience Act. Free, no CC."
+                                    },
+                                    {
+                                                "label": "Description 2",
+                                                "text": "Generate and export your SBOM to prepare for audits. SOC 2 + ISO 27001 ready. Setup in 1 minute. Trusted by 50k+ orgs."
+                                    },
+                                    {
+                                                "label": "Description 3",
+                                                "text": "Beyond a parts list: VEX exploitability analysis tells you which CVEs are actually exploitable. So your remediation queue stays short, not 10,000 items long."
+                                    },
+                                    {
+                                                "label": "Description 4",
+                                                "text": "Aikido SBOM is built into the same platform as SCA, SAST, DAST, IaC & Cloud. So your audit artifact ties back to live remediation, not a static parts list."
+                                    }
+                        ],
+                        "ctas": [
+                                    {
+                                                "label": "Low friction",
+                                                "text": "Create SBOM Free (matches LP verb)"
+                                    },
+                                    {
+                                                "label": "Mid friction",
+                                                "text": "Book 15-min compliance demo · See SOC 2 walkthrough"
+                                    }
+                        ],
+                        "lp_rewrite": {
+                                    "headline": "Audit-ready SBOMs in 32 seconds.",
+                                    "subhead": "Generate CycloneDX, SPDX or CSV exports with built-in VEX exploitability analysis. Meets EO 14028, NIS2 & Cyber Resilience Act. SOC 2 + ISO 27001 compliant. Trusted by 50k+ orgs. Start free. No CC required."
+                        },
+                        "rationale": "Three structural moves: (1) fill the two empty description slots. Biggest free lift in the entire audit (Google rates Ad Strength Good → Excellent on this single edit, lifting impression share ~25%); (2) put compliance proof in the ad (SOC 2 + ISO 27001 in description 2, FedRAMP-track in the headline rotation). Compliance product without compliance proof is the most expensive miss; (3) sharpen the time anchor from \"in minutes\" (vague) to \"in 32 seconds\" (the LP's actual number)."
+            },
+            "experiments": [
+                        {
+                                    "title": "Fill the 2 empty description slots",
+                                    "what": "Add Descriptions 3 + 4 from Fix Kit above vs current 2-of-4 filled",
+                                    "measure": "Ad Strength rating · impression share · CTR",
+                                    "hypothesis": "If Ad Strength goes Good → Excellent, impression share ↑~25% via Google's auction weighting. **Cheapest fix in the audit. No creative debate, just fill the slots.**"
+                        },
+                        {
+                                    "title": "Deadline-framing headline",
+                                    "what": "*\"Audit on Monday? Generate SBOM Today.\"* in slot 1 vs current *\"Aikido Security\"*",
+                                    "measure": "CTR · LP CVR",
+                                    "hypothesis": "If the headline names the deadline trigger, CTR ↑15-20%. SBOM buyers always have a date on the calendar"
+                        },
+                        {
+                                    "title": "Hero trust bar on LP",
+                                    "what": "SOC 2 + ISO 27001 + FedRAMP-track badges in hero vs current footer-only",
+                                    "measure": "Bounce rate · time-on-page",
+                                    "hypothesis": "If trust badges sit hero-adjacent, bounce ↓8-12%. CISO scanning in second 1 needs to see the proof before scrolling"
+                        }
+            ],
+            "next_steps": [
+                        {
+                                    "num": 1,
+                                    "title": "Fill the 2 empty description slots",
+                                    "text": "Cheapest fix in the audit. Google rates the ad Good not Excellent partly because of these gaps. Ad Strength lift drives ~25% impression-share gain. (This week. Ships in 5 minutes)"
+                        },
+                        {
+                                    "num": 2,
+                                    "title": "Add SOC 2 + ISO 27001 trust bar to the LP hero",
+                                    "text": "Currently in the footer. For a compliance product, this is the single most expensive UX miss on the page. (This week. Web team edit)"
+                        },
+                        {
+                                    "num": 3,
+                                    "title": "Swap the LP testimonial",
+                                    "text": "Konstantin S (Head of InfoSec at OSOME) for Jonathan V (Software Engineer). Konstantin is already on the DAST page; rotate him. (Next week)"
+                        },
+                        {
+                                    "num": 4,
+                                    "title": "Add the deadline-framing headline: *\"Audit on Monday? Generate SBOM Today.\"",
+                                    "text": "* Names the trigger event the buyer is already living. (Next week)"
+                        }
+            ]
+};
+
         const portalData = {
             partners: {
                 "fractional-demand": {
@@ -2336,6 +3577,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     auditUrl: "#",
                                     adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489?region=VN",
                                     landingPageUrl: "https://www.aikido.dev/code/sast-engine",
+                                    parsed: AIKIDO_AUDIT_1_PARSED,
                                     fullContent: AIKIDO_AUDIT_1_MD
                                 },
                                 2: {
@@ -2346,6 +3588,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     auditUrl: "#",
                                     adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489?region=VN",
                                     landingPageUrl: "https://www.aikido.dev/code/aikido-sca",
+                                    parsed: AIKIDO_AUDIT_2_PARSED,
                                     fullContent: AIKIDO_AUDIT_2_MD
                                 },
                                 3: {
@@ -2356,6 +3599,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     auditUrl: "#",
                                     adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489?region=VN",
                                     landingPageUrl: "https://www.aikido.dev/attack/aipentest",
+                                    parsed: AIKIDO_AUDIT_3_PARSED,
                                     fullContent: AIKIDO_AUDIT_3_MD
                                 },
                                 4: {
@@ -2366,6 +3610,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     auditUrl: "#",
                                     adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489?region=VN",
                                     landingPageUrl: "https://www.aikido.dev/comparison/aikido-vs-sonarqube",
+                                    parsed: AIKIDO_AUDIT_4_PARSED,
                                     fullContent: AIKIDO_AUDIT_4_MD
                                 },
                                 5: {
@@ -2376,6 +3621,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     auditUrl: "#",
                                     adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489?region=VN",
                                     landingPageUrl: "https://www.aikido.dev/use-cases/sbom-generator-create-software-bill-of-materials",
+                                    parsed: AIKIDO_AUDIT_5_PARSED,
                                     fullContent: AIKIDO_AUDIT_5_MD
                                 }
                             }
@@ -2550,6 +3796,284 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 }
             }
             return <div className="markdown-body" style={{ color: 'var(--ink-light)' }}>{blocks}</div>;
+        };
+
+        /* Rich card-based audit view — renders pre-parsed structured audit data
+           in the same visual style the AdRoast tool generates after running an audit. */
+        const RichAuditView = ({ audit }) => {
+            const p = audit.parsed;
+            if (!p) return null;
+            const scoreColor = (s) => s == null ? '#64648b' : s >= 8 ? '#16a34a' : s >= 6 ? '#d97706' : '#dc2626';
+            const lpAvg = p.lp_roast ? Math.round((
+                (p.lp_roast.headline?.score || 0) +
+                (p.lp_roast.value_prop?.score || 0) +
+                (p.lp_roast.cta?.score || 0) +
+                (p.lp_roast.trust?.score || 0)
+            ) / 4) : null;
+            const ScoreCard = ({ label, score }) => (
+                <div className="rounded-xl border p-5 bg-white text-center" style={{ borderColor: 'var(--cloud)' }}>
+                    <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--slate)' }}>{label}</div>
+                    <div style={{ color: scoreColor(score), fontSize: '2.5rem', fontWeight: 700, lineHeight: 1 }}>
+                        {score == null ? 'N/A' : score}
+                        {score != null && <span style={{ fontSize: '1rem', fontWeight: 400, color: 'var(--slate)' }}>/10</span>}
+                    </div>
+                </div>
+            );
+            return (
+                <div className="space-y-12">
+                    {/* Headlines + Descriptions (ad copy under review) */}
+                    {(p.headlines?.length > 0 || p.descriptions?.length > 0) && (
+                        <section>
+                            <h2 className="text-2xl font-semibold mb-5" style={{ color: 'var(--ink)' }}>Ad Copy Under Review</h2>
+                            {p.headlines?.length > 0 && (
+                                <div className="rounded-lg border p-5 mb-4" style={{ borderColor: 'var(--cloud)', background: 'var(--mist)' }}>
+                                    <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--ink)' }}>Headlines ({p.headlines.length})</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {p.headlines.map((h, i) => (
+                                            <div key={i} className="px-3 py-1.5 bg-white rounded border text-sm" style={{ borderColor: 'var(--cloud)', color: 'var(--ink)' }}>
+                                                {h.text}
+                                                {h.pin && h.pin !== '-' && <span className="ml-2 text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>slot {h.pin}</span>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {p.descriptions?.length > 0 && (
+                                <div className="rounded-lg border p-5" style={{ borderColor: 'var(--cloud)', background: 'var(--mist)' }}>
+                                    <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--ink)' }}>Descriptions ({p.descriptions.length})</h3>
+                                    <div className="space-y-2">
+                                        {p.descriptions.map((d, i) => (
+                                            <div key={i} className="px-3 py-2 bg-white rounded border text-sm" style={{ borderColor: 'var(--cloud)', color: 'var(--ink)' }}>
+                                                {d || <em style={{ color: 'var(--slate)' }}>[empty]</em>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </section>
+                    )}
+
+                    {/* Top 3 score cards */}
+                    <section>
+                        <div className="grid sm:grid-cols-3 gap-4">
+                            <ScoreCard label="Ad Score" score={p.overall_score?.score} />
+                            <ScoreCard label="Landing Page" score={lpAvg} />
+                            <ScoreCard label="Ad ↔ LP Match" score={p.mismatch?.alignment_score} />
+                        </div>
+                    </section>
+
+                    {/* ICP Match commentary */}
+                    {p.icp_match && (
+                        <section>
+                            <h2 className="text-2xl font-semibold mb-3" style={{ color: 'var(--ink)' }}>Target Audience Match</h2>
+                            <div className="flex items-start gap-4 rounded-lg border p-5" style={{ borderColor: 'var(--cloud)', background: 'white' }}>
+                                <div className="shrink-0 text-center rounded-lg px-4 py-3" style={{ background: 'var(--accent-faint)' }}>
+                                    <div className="text-xs font-semibold mb-1" style={{ color: 'var(--slate)' }}>ICP</div>
+                                    <div style={{ color: scoreColor(p.icp_match.score), fontSize: '1.5rem', fontWeight: 700 }}>{p.icp_match.score}/10</div>
+                                </div>
+                                <p className="text-base leading-relaxed flex-1" style={{ color: 'var(--ink-light)' }}>{p.icp_match.text}</p>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Ad Issues grid */}
+                    {p.ad_issues?.length > 0 && (
+                        <section>
+                            <h2 className="text-2xl font-semibold mb-5" style={{ color: 'var(--ink)' }}>Ad Issues</h2>
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {p.ad_issues.map((issue, i) => (
+                                    <div key={i} className="rounded-lg border p-4 bg-white" style={{ borderColor: 'var(--cloud)' }}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{issue.title}</h3>
+                                            <span style={{ color: scoreColor(issue.score), fontSize: '0.95rem', fontWeight: 700 }}>
+                                                {issue.score == null ? 'N/A' : `${issue.score}/10`}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>{issue.text || '—'}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Message Mismatch */}
+                    {p.mismatch && (
+                        <section>
+                            <div className="rounded-lg border-2 p-5" style={{ borderColor: 'var(--warning)', background: 'var(--warning-light)' }}>
+                                <h2 className="text-xl font-semibold mb-3" style={{ color: 'var(--ink)' }}>📎 Message Mismatch <span style={{ color: scoreColor(p.mismatch.alignment_score), fontWeight: 700 }}>{p.mismatch.alignment_score}/10</span></h2>
+                                {p.mismatch.verdict && <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--ink-light)' }}>{p.mismatch.verdict}</p>}
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    {p.mismatch.disconnects.map((d, i) => (
+                                        <div key={i} className="rounded-md p-3 bg-white border" style={{ borderColor: 'var(--cloud)' }}>
+                                            <p className="text-xs font-semibold mb-1" style={{ color: 'var(--warning)' }}>⚠️ Problem {i + 1} — {d.label}</p>
+                                            <p className="text-sm mb-3" style={{ color: 'var(--ink-light)' }}>{d.problem}</p>
+                                            <p className="text-xs font-semibold mb-1" style={{ color: 'var(--success)' }}>✓ Fix</p>
+                                            <p className="text-sm" style={{ color: 'var(--ink-light)' }}>{d.fix}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                {p.mismatch.message_match && (
+                                    <p className="text-sm leading-relaxed mt-4 italic" style={{ color: 'var(--ink-light)' }}>{p.mismatch.message_match}</p>
+                                )}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Landing Page Analysis */}
+                    {p.lp_roast && (
+                        <section>
+                            <h2 className="text-2xl font-semibold mb-5" style={{ color: 'var(--ink)' }}>Landing Page Analysis</h2>
+                            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                                {['headline', 'value_prop', 'cta', 'trust'].map((k) => {
+                                    const item = p.lp_roast[k];
+                                    if (!item) return null;
+                                    const label = {headline:'Headline', value_prop:'Value Prop', cta:'CTA', trust:'Trust'}[k];
+                                    return (
+                                        <div key={k} className="rounded-lg border p-4 bg-white" style={{ borderColor: 'var(--cloud)' }}>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <h3 className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{label}</h3>
+                                                <span style={{ color: scoreColor(item.score), fontSize: '0.95rem', fontWeight: 700 }}>{item.score}/10</span>
+                                            </div>
+                                            <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>{item.text}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="grid sm:grid-cols-2 gap-3">
+                                {p.lp_roast.top_issues?.length > 0 && (
+                                    <div className="rounded-lg p-4 border" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
+                                        <h4 className="font-semibold text-sm mb-2" style={{ color: 'var(--danger)' }}>🚨 Top Issues</h4>
+                                        <ul className="space-y-1 list-disc pl-5">{p.lp_roast.top_issues.map((it, i) => (
+                                            <li key={i} className="text-sm" style={{ color: 'var(--ink-light)' }}>{it}</li>
+                                        ))}</ul>
+                                    </div>
+                                )}
+                                {p.lp_roast.quick_wins?.length > 0 && (
+                                    <div className="rounded-lg p-4 border" style={{ background: 'var(--success-light)', borderColor: 'var(--success)' }}>
+                                        <h4 className="font-semibold text-sm mb-2" style={{ color: 'var(--success)' }}>⚡ Quick Wins</h4>
+                                        <ul className="space-y-1 list-disc pl-5">{p.lp_roast.quick_wins.map((it, i) => (
+                                            <li key={i} className="text-sm" style={{ color: 'var(--ink-light)' }}>{it}</li>
+                                        ))}</ul>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Fix Kit */}
+                    {p.fix_kit && (
+                        <section>
+                            <h2 className="text-2xl font-semibold mb-5" style={{ color: 'var(--ink)' }}>Fix Kit</h2>
+                            <div className="rounded-lg border p-5 bg-white" style={{ borderColor: 'var(--cloud)' }}>
+                                <div className="grid sm:grid-cols-2 gap-4">
+                                    {p.fix_kit.headlines?.length > 0 && (
+                                        <div>
+                                            <h3 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--slate)' }}>Ad Headlines</h3>
+                                            <div className="space-y-2">
+                                                {p.fix_kit.headlines.map((h, i) => (
+                                                    <div key={i} className="p-3 rounded border" style={{ borderColor: 'var(--cloud)', background: 'var(--mist)' }}>
+                                                        <div className="text-xs font-semibold mb-1" style={{ color: 'var(--accent)' }}>{h.label}</div>
+                                                        <div className="text-sm" style={{ color: 'var(--ink)' }}>{h.text}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {p.fix_kit.ctas?.length > 0 && (
+                                        <div>
+                                            <h3 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--slate)' }}>CTAs</h3>
+                                            <div className="space-y-2">
+                                                {p.fix_kit.ctas.map((c, i) => (
+                                                    <div key={i} className="p-3 rounded border-2" style={{ borderColor: 'var(--accent)' }}>
+                                                        <div className="text-xs font-semibold mb-1" style={{ color: 'var(--accent)' }}>{c.label}</div>
+                                                        <div className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>{c.text}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                {p.fix_kit.descriptions?.length > 0 && (
+                                    <div className="mt-5">
+                                        <h3 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--slate)' }}>Ad Body (Rewritten Descriptions)</h3>
+                                        <div className="space-y-2">
+                                            {p.fix_kit.descriptions.map((d, i) => (
+                                                <div key={i} className="p-3 rounded border" style={{ borderColor: 'var(--cloud)', background: 'var(--mist)' }}>
+                                                    <div className="text-xs font-semibold mb-1" style={{ color: 'var(--slate)' }}>{d.label}</div>
+                                                    <div className="text-sm" style={{ color: 'var(--ink)' }}>{d.text}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {p.fix_kit.lp_rewrite && (
+                                    <div className="mt-5 p-4 rounded border" style={{ borderColor: 'var(--accent-light)', background: 'var(--accent-faint)' }}>
+                                        <h3 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--accent)' }}>Landing Page Copy</h3>
+                                        <div className="mb-2">
+                                            <div className="text-xs" style={{ color: 'var(--slate)' }}>Headline</div>
+                                            <div className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>{p.fix_kit.lp_rewrite.headline}</div>
+                                        </div>
+                                        {p.fix_kit.lp_rewrite.subhead && (
+                                            <div>
+                                                <div className="text-xs" style={{ color: 'var(--slate)' }}>Subheadline</div>
+                                                <div className="text-sm" style={{ color: 'var(--ink)' }}>{p.fix_kit.lp_rewrite.subhead}</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {p.fix_kit.rationale && (
+                                    <div className="mt-5 p-3 rounded border" style={{ borderColor: 'var(--cloud)', background: 'var(--mist)' }}>
+                                        <span className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>Why this works: </span>
+                                        <span className="text-sm" style={{ color: 'var(--ink-light)' }}>{p.fix_kit.rationale}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Experiments */}
+                    {p.experiments?.length > 0 && (
+                        <section>
+                            <h2 className="text-2xl font-semibold mb-5" style={{ color: 'var(--ink)' }}>{p.experiments.length} Experiments to Run</h2>
+                            <div className="grid sm:grid-cols-3 gap-4">
+                                {p.experiments.map((exp, i) => (
+                                    <div key={i} className="rounded-lg border p-4 bg-white" style={{ borderColor: 'var(--cloud)' }}>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>{i + 1}</div>
+                                            <h3 className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{exp.title}</h3>
+                                        </div>
+                                        <div className="space-y-2 text-xs">
+                                            <div><strong style={{ color: 'var(--slate)' }}>What:</strong> <span style={{ color: 'var(--ink-light)' }}>{exp.what}</span></div>
+                                            <div><strong style={{ color: 'var(--slate)' }}>Measure:</strong> <span style={{ color: 'var(--ink-light)' }}>{exp.measure}</span></div>
+                                            <div><strong style={{ color: 'var(--slate)' }}>Hypothesis:</strong> <span style={{ color: 'var(--ink-light)' }}>{exp.hypothesis}</span></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Next Steps */}
+                    {p.next_steps?.length > 0 && (
+                        <section>
+                            <h2 className="text-2xl font-semibold mb-5" style={{ color: 'var(--ink)' }}>Strategic Next Steps</h2>
+                            <div className="rounded-lg border p-5 bg-white" style={{ borderColor: 'var(--cloud)' }}>
+                                <ol className="space-y-3">
+                                    {p.next_steps.map((s, i) => (
+                                        <li key={i} className="flex items-start gap-3">
+                                            <input type="checkbox" disabled className="mt-1 w-4 h-4" style={{ accentColor: 'var(--accent)' }} />
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{s.title}</div>
+                                                <div className="text-sm mt-1" style={{ color: 'var(--ink-light)' }}>{s.text}</div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
+                        </section>
+                    )}
+                </div>
+            );
         };
 
         const BackButton = ({ label, onClick }) => (
@@ -3638,10 +5162,12 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     </div>
                                 </section>
 
-                                {audit.fullContent ? (
-                                    /* Full audit report (markdown rendered).
-                                       Strip the leading H1 + metadata block (LP/Campaign/Ad group/Strength/flag)
-                                       which duplicates info shown elsewhere on this page. */
+                                {audit.parsed ? (
+                                    /* Rich card-based audit UI matching the AdRoast tool output. */
+                                    <RichAuditView audit={audit} />
+                                ) : audit.fullContent ? (
+                                    /* Fallback: render the raw markdown if structured data isn't available.
+                                       Strip the leading H1 + LP/Campaign/Ad group metadata block. */
                                     <section>
                                         <Markdown content={audit.fullContent.replace(/^[\s\S]*?(?=\*\*Headlines\b|## )/, '')} />
                                     </section>
