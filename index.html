@@ -4414,16 +4414,82 @@ The full pattern synthesis. Including the SCA template, the product-category for
                         { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
                         { label: 'Positioning Report' }
                     ];
+                /* Parse content into sections by H2 headers. Each section becomes a collapsible block.
+                   The TOC at the top links to each section. */
+                const raw = client.positioning.fullContent;
+                // Strip the leading H1 + frontmatter (everything up to first ## )
+                const trimmed = raw.replace(/^[\s\S]*?(?=\n## )/, '').trim();
+                // Split into sections at H2 boundaries
+                const sectionRe = /^## (.+)$/gm;
+                const sections = [];
+                let match;
+                let lastIdx = 0;
+                let lastTitle = null;
+                while ((match = sectionRe.exec(trimmed)) !== null) {
+                    if (lastTitle !== null) {
+                        sections.push({
+                            title: lastTitle,
+                            body: trimmed.slice(lastIdx, match.index).trim()
+                        });
+                    }
+                    lastTitle = match[1].trim();
+                    lastIdx = match.index + match[0].length;
+                }
+                if (lastTitle !== null) {
+                    sections.push({ title: lastTitle, body: trimmed.slice(lastIdx).trim() });
+                }
+                const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
                 return (
                     <PageShell crumbs={crumbs} onNavigate={onNavigate}>
                         <div className="max-w-3xl mx-auto">
                             <BackButton label={`Back to ${client.name} Hub`} onClick={() => onNavigate('client-hub', partnerId, clientId)} />
                             <Badge>Strategic Analysis</Badge>
                             <h1 className="text-3xl sm:text-4xl font-bold mt-4 mb-2" style={{ color: 'var(--ink)' }}>{client.positioning.title}</h1>
-                            <p className="text-lg mb-10" style={{ color: 'var(--slate)' }}>{client.positioning.subtitle}</p>
-                            <div className="bg-white rounded-xl border p-6 sm:p-10" style={{ borderColor: 'var(--cloud)' }}>
-                                <Markdown content={client.positioning.fullContent} />
+                            <p className="text-lg mb-8" style={{ color: 'var(--slate)' }}>{client.positioning.subtitle}</p>
+                            <div className="bg-white rounded-xl border p-6 sm:p-8" style={{ borderColor: 'var(--cloud)' }}>
+                                {/* Report Sections TOC */}
+                                {sections.length > 0 && (
+                                    <div className="mb-10 p-5 rounded-lg border" style={{ background: 'var(--mist)', borderColor: 'var(--cloud)' }}>
+                                        <h3 className="text-sm font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--slate)' }}>Report Sections</h3>
+                                        <div className="grid sm:grid-cols-2 gap-2">
+                                            {sections.map((s, i) => (
+                                                <a key={i} href={`#${slug(s.title)}`}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        setOpenSections(prev => ({ ...prev, [slug(s.title)]: true }));
+                                                        setTimeout(() => {
+                                                            const el = document.getElementById(slug(s.title));
+                                                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                        }, 50);
+                                                    }}
+                                                    className="text-sm hover:underline" style={{ color: 'var(--accent)' }}>{s.title}</a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {/* Collapsible sections */}
+                                {sections.map((s, i) => {
+                                    const sid = slug(s.title);
+                                    const open = openSections[sid] !== false; // default open
+                                    return (
+                                        <div key={i} id={sid} className="border-t" style={{ borderColor: 'var(--cloud)' }}>
+                                            <button onClick={() => setOpenSections(prev => ({ ...prev, [sid]: !open }))}
+                                                className="w-full flex items-center justify-between py-5 group bg-transparent border-0 cursor-pointer text-left">
+                                                <h2 className="text-2xl font-bold" style={{ color: 'var(--ink)' }}>{s.title}</h2>
+                                                <svg className={`w-5 h-5 transition-transform flex-shrink-0 ml-4 ${open ? '' : '-rotate-90'}`} style={{ color: 'var(--slate)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                            {open && (
+                                                <div className="pb-6">
+                                                    <Markdown content={s.body} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
+                            <ContentNav current="positioning" partnerId={partnerId} clientId={clientId} onNavigate={onNavigate} />
                         </div>
                     </PageShell>
                 );
