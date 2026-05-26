@@ -3798,6 +3798,176 @@ The full pattern synthesis. Including the SCA template, the product-category for
             return <div className="markdown-body" style={{ color: 'var(--ink-light)' }}>{blocks}</div>;
         };
 
+        /* NudgeStyleSection — applies section-specific rendering enhancements
+           (numbered finding circles, variant cards, callout boxes, pillar numbers,
+           day badges, final-diagnosis box) per Nudge's positioning report design.
+           Falls back to plain Markdown for sections without special handling. */
+        const NudgeStyleSection = ({ title, body }) => {
+            const firstWord = title.split(/[\s\)]/)[0];
+
+            /* Executive Summary: first paragraph becomes red callout, bulleted findings
+               become numbered circles with bold title + sub-detail. */
+            if (/^A\)?\s*Executive Summary/i.test(title) || /^Executive Summary/i.test(title)) {
+                const lines = body.split('\n');
+                const introLines = [];
+                let i = 0;
+                while (i < lines.length && !/^\s*-\s+/.test(lines[i])) {
+                    introLines.push(lines[i]);
+                    i++;
+                }
+                const intro = introLines.join('\n').trim();
+                const findings = [];
+                while (i < lines.length) {
+                    if (/^\s*-\s+/.test(lines[i])) {
+                        const item = [lines[i].replace(/^\s*-\s+/, '')];
+                        i++;
+                        while (i < lines.length && !/^\s*-\s+/.test(lines[i]) && lines[i].trim() !== '') {
+                            item.push(lines[i]);
+                            i++;
+                        }
+                        const txt = item.join(' ').trim();
+                        const m = txt.match(/^\*\*([^*]+?)\*\*\s*(.*)$/s);
+                        if (m) findings.push({ title: m[1].trim(), text: m[2].trim() });
+                        else findings.push({ title: '', text: txt });
+                    } else {
+                        i++;
+                    }
+                }
+                return (
+                    <div>
+                        {intro && (
+                            <div className="rounded-lg p-5 border-l-4 mb-6" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
+                                <p className="text-base leading-relaxed font-medium" style={{ color: 'var(--ink)' }}>
+                                    <Markdown content={intro} />
+                                </p>
+                            </div>
+                        )}
+                        <div className="space-y-4">
+                            {findings.map((f, idx) => (
+                                <div key={idx} className="flex items-start gap-4">
+                                    <div className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mt-1" style={{ background: 'var(--accent)', color: '#fff' }}>{idx + 1}</div>
+                                    <div className="flex-1">
+                                        {f.title && (
+                                            <div className="font-semibold mb-1" style={{ color: 'var(--ink)' }}>
+                                                <Markdown content={f.title} />
+                                            </div>
+                                        )}
+                                        <div className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>
+                                            <Markdown content={f.text} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            /* Recommended Positioning: Core Positioning Statement = blue callout,
+               Variant 1/2/3 each become a card with a small badge. */
+            if (/^D\)?\s*Recommended Positioning/i.test(title)) {
+                /* Split body by ### subheadings */
+                const parts = body.split(/\n(?=### )/g);
+                return (
+                    <div className="space-y-5">
+                        {parts.map((part, idx) => {
+                            const headerMatch = part.match(/^###\s+(.+)/);
+                            const subTitle = headerMatch ? headerMatch[1].trim() : '';
+                            const subBody = headerMatch ? part.slice(headerMatch[0].length).trim() : part.trim();
+                            if (!subTitle) {
+                                return <Markdown key={idx} content={subBody} />;
+                            }
+                            const isCorePos = /Core Positioning|Positioning Statement/i.test(subTitle);
+                            const variantMatch = subTitle.match(/^Variant\s*\d+/i);
+                            if (isCorePos) {
+                                return (
+                                    <div key={idx} className="p-5 rounded-lg border-l-4" style={{ background: 'var(--accent-faint)', borderColor: 'var(--accent)' }}>
+                                        <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--accent)' }}>{subTitle}</div>
+                                        <div className="text-base leading-relaxed" style={{ color: 'var(--ink)' }}>
+                                            <Markdown content={subBody} />
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            if (variantMatch) {
+                                /* Extract a badge from the title if it has a parenthetical descriptor */
+                                const badgeMatch = subTitle.match(/^(Variant\s*\d+[^(]*)\(([^)]+)\)\s*$/i);
+                                const variantLabel = badgeMatch ? badgeMatch[1].trim() : subTitle;
+                                const badgeText = badgeMatch ? badgeMatch[2].trim() : null;
+                                return (
+                                    <div key={idx} className="rounded-lg border p-5" style={{ borderColor: 'var(--cloud)', background: 'white' }}>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <h3 className="text-base font-bold" style={{ color: 'var(--ink)' }}>{variantLabel}</h3>
+                                            {badgeText && (
+                                                <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>{badgeText}</span>
+                                            )}
+                                        </div>
+                                        <div className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>
+                                            <Markdown content={subBody} />
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return (
+                                <div key={idx}>
+                                    <h3 className="text-base font-bold mb-2" style={{ color: 'var(--ink)' }}>{subTitle}</h3>
+                                    <Markdown content={subBody} />
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            }
+
+            /* Messaging Pillars: ### Pillar N becomes a card with numbered circle. */
+            if (/^F\)?\s*Messaging Pillars/i.test(title)) {
+                const parts = body.split(/\n(?=### )/g);
+                let pillarNum = 0;
+                return (
+                    <div className="space-y-5">
+                        {parts.map((part, idx) => {
+                            const headerMatch = part.match(/^###\s+(.+)/);
+                            if (!headerMatch) return <Markdown key={idx} content={part.trim()} />;
+                            const subTitle = headerMatch[1].trim();
+                            const subBody = part.slice(headerMatch[0].length).trim();
+                            if (/^Pillar\s*\d+/i.test(subTitle)) {
+                                pillarNum++;
+                                return (
+                                    <div key={idx} className="rounded-lg border p-5" style={{ borderColor: 'var(--cloud)', background: 'white' }}>
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'var(--accent)', color: '#fff' }}>{pillarNum}</div>
+                                            <h3 className="text-base font-bold" style={{ color: 'var(--ink)' }}>{subTitle.replace(/^Pillar\s*\d+:?\s*/i, '')}</h3>
+                                        </div>
+                                        <div className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>
+                                            <Markdown content={subBody} />
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return (
+                                <div key={idx}>
+                                    <h3 className="text-base font-bold mb-2" style={{ color: 'var(--ink)' }}>{subTitle}</h3>
+                                    <Markdown content={subBody} />
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            }
+
+            /* Final Diagnosis: wrap the whole section content in a red bordered box. */
+            if (/^Final Diagnosis/i.test(title)) {
+                return (
+                    <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
+                        <Markdown content={body} />
+                    </div>
+                );
+            }
+
+            /* Default: just render the body as markdown. */
+            return <Markdown content={body} />;
+        };
+
         /* Rich card-based audit view — renders pre-parsed structured audit data
            in the exact visual style the AdRoast tool generates after running an audit
            (Nudge-style polish: tailwind colors, score badges, paneled sections). */
@@ -4467,7 +4637,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                         </div>
                                     </div>
                                 )}
-                                {/* Collapsible sections */}
+                                {/* Collapsible sections — with Nudge-style enhancements per section type */}
                                 {sections.map((s, i) => {
                                     const sid = slug(s.title);
                                     const open = openSections[sid] !== false; // default open
@@ -4482,7 +4652,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                             </button>
                                             {open && (
                                                 <div className="pb-6">
-                                                    <Markdown content={s.body} />
+                                                    <NudgeStyleSection title={s.title} body={s.body} />
                                                 </div>
                                             )}
                                         </div>
