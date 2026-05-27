@@ -308,7 +308,19 @@ LANGUAGE & TONE RULES:
 - Strong opinion-led statements are fine, but stay literal, specific, and free of emotional/medical metaphor.
 - Avoid hype phrases ("game-changer", "rockstar", "ninja", "10x"). Prefer concrete numbers from the audits.
 - NEVER mention what you cannot do. Do not output phrases like "Can't assess visuals", "Unable to evaluate without image", "Without seeing the screenshot", "Hard to judge without seeing", "No visual provided", "Can't analyze without access", or any capability disclaimer. If you can't synthesize something with confidence, skip that point silently and move on. The reader never sees the model's limitations — they only see findings backed by evidence in the source audits.
-- If a source audit itself contains capability-disclaimer language, do NOT carry it forward into the synthesis. Drop those points and replace them with concrete findings from other audits.`;
+- If a source audit itself contains capability-disclaimer language, do NOT carry it forward into the synthesis. Drop those points and replace them with concrete findings from other audits.
+
+PRESCRIPTION RULES (avoid over-generalized recommendations):
+- DO NOT recommend doing something "in all headlines", "in every hero section", "across all ads", "in every CTA", "on all landing pages". A real expert recommends targeted, testable changes — not blanket overhauls.
+- Use measured scope words. Prefer:
+    "Lead with X in 2 of the 5 ad headlines (SAST + SCA), test before rolling further"
+  Over:
+    "Lead with X in all ad headlines and hero sections"
+- When a pattern shows up in N/M audits, recommend acting on those N specifically, not "all of them". Cite which audits.
+- For headline-level fixes, recommend testing 1-2 variants, not rewriting the whole asset stack.
+- Hero section / homepage changes need explicit justification ("the LP for AUDIT-X already does this — replicate on the AUDIT-Y LP"). Do not recommend hero rewrites blindly across the brand.
+- "Standardize on X" is allowed only for trust lines and similar single-string assets where consistency matters. Even then, name the specific assets.
+- If you catch yourself writing "in all", "in every", "across the board", "everywhere" — rewrite with a specific count or list of audit IDs.`;
 
   const userPrompt = `Synthesize the following ${fetched.length} ad audits into a single Evidence-Backed Audit Synthesis report for ${clientName}.\n\n${auditBlocks}`;
 
