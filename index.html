@@ -4104,6 +4104,180 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 );
             }
 
+            /* E) ICP & Segmentation: detect Primary ICP paragraph and render in blue box.
+               The Primary ICP is a bold paragraph directly after the '### Primary ICP' or similar heading. */
+            if (/^E\)?\s*ICP/i.test(title)) {
+                /* Find the Primary ICP block — bold paragraph after first ### */
+                const lines = body.split('\n');
+                const out = [];
+                let i = 0;
+                let inserted = false;
+                while (i < lines.length) {
+                    const line = lines[i];
+                    /* Detect Primary ICP heading */
+                    if (!inserted && /^###\s+Primary ICP/i.test(line)) {
+                        out.push(line);
+                        i++;
+                        /* Skip blank lines */
+                        while (i < lines.length && lines[i].trim() === '') { out.push(lines[i]); i++; }
+                        /* Capture the next paragraph (until blank line or list start) */
+                        const para = [];
+                        while (i < lines.length && lines[i].trim() !== '' && !/^[#\-*>|]/.test(lines[i].trim())) {
+                            para.push(lines[i]); i++;
+                        }
+                        if (para.length) {
+                            out.push('__PRIMARY_ICP_BLOCK__' + para.join(' '));
+                            inserted = true;
+                        }
+                    } else {
+                        out.push(line); i++;
+                    }
+                }
+                const processed = out.join('\n');
+                /* Now render: split by the marker to insert a custom blue box */
+                const segments = processed.split('__PRIMARY_ICP_BLOCK__');
+                if (segments.length === 2) {
+                    const [pre, restWithIcp] = segments;
+                    const nl = restWithIcp.indexOf('\n');
+                    const icp = nl >= 0 ? restWithIcp.slice(0, nl) : restWithIcp;
+                    const rest = nl >= 0 ? restWithIcp.slice(nl + 1) : '';
+                    return (
+                        <div>
+                            <Markdown content={pre} />
+                            <div className="p-5 rounded-lg border-l-4 my-4" style={{ background: 'var(--accent-faint)', borderColor: 'var(--accent)' }}>
+                                <div className="text-base leading-relaxed font-medium" style={{ color: 'var(--ink)' }}>
+                                    <Markdown content={icp} />
+                                </div>
+                            </div>
+                            <Markdown content={rest} />
+                        </div>
+                    );
+                }
+                return <Markdown content={body} />;
+            }
+
+            /* G) Offer & CTA Direction: the Primary Offer line gets a green callout box. */
+            if (/^G\)?\s*Offer/i.test(title)) {
+                /* Look for '### Primary Offer' then the next paragraph wrapping. */
+                const m = body.match(/(###\s+Primary Offer[^\n]*\n)((?:\n*(?:[^\n#]|\n(?!#))*)+?)(?=\n###|\n##|\Z)/i);
+                if (m) {
+                    const pre = body.slice(0, m.index);
+                    const headerLine = m[1];
+                    const para = m[2].trim();
+                    const post = body.slice(m.index + m[0].length);
+                    return (
+                        <div>
+                            <Markdown content={pre} />
+                            <h3 className="text-base font-bold mt-4 mb-2" style={{ color: 'var(--ink)' }}>{headerLine.replace(/^###\s+/, '').trim()}</h3>
+                            <div className="p-5 rounded-lg border-l-4 my-2" style={{ background: 'var(--success-light)', borderColor: 'var(--success)' }}>
+                                <div className="text-base leading-relaxed font-medium" style={{ color: 'var(--ink)' }}>
+                                    <Markdown content={para} />
+                                </div>
+                            </div>
+                            <Markdown content={post} />
+                        </div>
+                    );
+                }
+                return <Markdown content={body} />;
+            }
+
+            /* I) Next Actions: numbered list items become blue circles + Day badges.
+               Tables remain as default markdown. */
+            if (/^I\)?\s*Next\s+\d+\s+Actions/i.test(title)) {
+                /* Split body into chunks: H3 subheadings keep, OL items get circle treatment */
+                const lines = body.split('\n');
+                const out = [];
+                const itemRegex = /^(\d+)\.\s+\*\*(.+?)\*\*\s*(.*)$/;
+                let i = 0;
+                while (i < lines.length) {
+                    const line = lines[i];
+                    const m = line.match(itemRegex);
+                    if (m) {
+                        /* Found a numbered action item with bold title */
+                        const num = parseInt(m[1], 10);
+                        let titleStr = m[2];
+                        let restStr = m[3];
+                        /* Pull subsequent indented/continuation lines into restStr until next numbered item or blank */
+                        i++;
+                        while (i < lines.length && !itemRegex.test(lines[i]) && !/^#/.test(lines[i]) && lines[i].trim() !== '') {
+                            restStr += ' ' + lines[i].trim();
+                            i++;
+                        }
+                        /* Extract any "Day X" or "(Day X)" or "(This week)" markers from the text */
+                        let dayBadge = null;
+                        const dayMatch = restStr.match(/\((Day\s*\d+(?:-\d+)?|This week|Next week|Same week|Day\s*\d+\/\d+)\)/i) || restStr.match(/\b(Day\s*\d+(?:-\d+)?)\b/i);
+                        if (dayMatch) {
+                            dayBadge = dayMatch[1];
+                            restStr = restStr.replace(dayMatch[0], '').replace(/\s+/g, ' ').trim();
+                        }
+                        out.push({ kind: 'item', num, title: titleStr, body: restStr, badge: dayBadge });
+                    } else if (/^###\s+/.test(line)) {
+                        out.push({ kind: 'h3', text: line.replace(/^###\s+/, '').trim() });
+                        i++;
+                    } else if (/^##\s+/.test(line)) {
+                        out.push({ kind: 'h2', text: line.replace(/^##\s+/, '').trim() });
+                        i++;
+                    } else if (line.includes('|') && i + 1 < lines.length && /^\s*\|?[\s\-|:]+\|?\s*$/.test(lines[i+1])) {
+                        /* Collect table block */
+                        const tbl = [line];
+                        i++;
+                        while (i < lines.length && lines[i].includes('|') && lines[i].trim() !== '') {
+                            tbl.push(lines[i]); i++;
+                        }
+                        out.push({ kind: 'md', text: tbl.join('\n') });
+                    } else {
+                        out.push({ kind: 'raw', text: line });
+                        i++;
+                    }
+                }
+                /* Render */
+                let elements = [];
+                let mdBuffer = [];
+                const flushMd = () => {
+                    if (mdBuffer.length) {
+                        elements.push(<Markdown key={'md-' + elements.length} content={mdBuffer.join('\n')} />);
+                        mdBuffer = [];
+                    }
+                };
+                for (const part of out) {
+                    if (part.kind === 'item') {
+                        flushMd();
+                        elements.push(
+                            <div key={'item-' + elements.length} className="flex items-start gap-4 my-3">
+                                <div className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mt-0.5" style={{ background: 'var(--accent)', color: '#fff' }}>{part.num}</div>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>
+                                            <Markdown content={part.title} />
+                                        </span>
+                                        {part.badge && (
+                                            <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ background: 'var(--warning-light)', color: 'var(--warning)' }}>{part.badge}</span>
+                                        )}
+                                    </div>
+                                    {part.body && (
+                                        <div className="text-sm mt-1" style={{ color: 'var(--ink-light)' }}>
+                                            <Markdown content={part.body} />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    } else if (part.kind === 'h2') {
+                        flushMd();
+                        elements.push(<h2 key={'h2-' + elements.length} className="text-lg font-bold mt-6 mb-2" style={{ color: 'var(--ink)' }}>{part.text}</h2>);
+                    } else if (part.kind === 'h3') {
+                        flushMd();
+                        elements.push(<h3 key={'h3-' + elements.length} className="text-base font-semibold mt-5 mb-2" style={{ color: 'var(--ink)' }}>{part.text}</h3>);
+                    } else if (part.kind === 'md') {
+                        mdBuffer.push(part.text);
+                    } else {
+                        mdBuffer.push(part.text);
+                    }
+                }
+                flushMd();
+                return <div>{elements}</div>;
+            }
+
             /* Default: just render the body as markdown. */
             return <Markdown content={body} />;
         };
