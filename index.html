@@ -1210,11 +1210,18 @@
                 </div>
               )}
               <div className="bg-white rounded-xl border p-6 sm:p-8" style={{ borderColor: 'var(--cloud)' }}>
-                {/* Report Sections TOC */}
+                {/* Report Sections TOC — column-major so reading A, B, C, D… flows down the
+                    left column first, then continues down the right column. */}
                 {sections.length > 0 && (
                   <div className="mb-10 p-5 rounded-lg border" style={{ background: 'var(--mist)', borderColor: 'var(--cloud)' }}>
                     <h3 className="text-sm font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--slate)' }}>Report Sections</h3>
-                    <div className="grid sm:grid-cols-2 gap-2">
+                    <div
+                      className="grid sm:grid-cols-2 gap-x-6 gap-y-2"
+                      style={{
+                        gridAutoFlow: 'column',
+                        gridTemplateRows: `repeat(${Math.ceil(sections.length / 2)}, auto)`
+                      }}
+                    >
                       {sections.map((s, i) => (
                         <a key={i} href={`#${slug(s.title)}`}
                           onClick={(e) => {
