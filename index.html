@@ -5787,35 +5787,70 @@ The full pattern synthesis. Including the SCA template, the product-category for
         );
 
         /* ============================================================
-           PASSWORD GATE
-           No access code, no hints, no portal content visible.
+           EMAIL + PASSWORD GATE  (two-factor sign-in)
+           User submits their work email + the per-client access code.
+           Server validates both against the allowlist and emails a one-time
+           magic link. They click the link to receive a 7-day session cookie.
+           No passwords ship in the JS bundle — server-side validation only.
            ============================================================ */
-        // Password registry — single gate, destination depends on password
-        // Each password maps to an access level and route
-        const PASSWORD_ROUTES = {
-            'CreativeerOU9590': { mode: 'master' },
-            'PositioningFD90': { mode: 'partner', partnerId: 'fractional-demand' },
-            'DojoSec90': { mode: 'partner', partnerId: 'aikido-security' }
-            // Future client passwords:
-            // 'ClientPW123': { mode: 'client', partnerId: 'fractional-demand', clientId: 'nudge-security' }
-        };
-
-        const PasswordGate = ({ onUnlock }) => {
+        const EmailPasswordGate = ({ initialMessage }) => {
+            const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
             const [error, setError] = useState('');
-            const [show, setShow] = useState(false);
+            const [info, setInfo] = useState(initialMessage || '');
+            const [sending, setSending] = useState(false);
+            const [showPassword, setShowPassword] = useState(false);
+            const [sent, setSent] = useState(false);
 
-            const handleSubmit = (e) => {
+            const handleSubmit = async (e) => {
                 e.preventDefault();
-                const trimmed = password.trim();
-                const route = PASSWORD_ROUTES[trimmed];
-                if (route) {
-                    onUnlock(route);
+                const trimmedEmail = email.trim().toLowerCase();
+                const trimmedPassword = password.trim();
+                if (!trimmedEmail || !trimmedPassword) {
+                    setError('Email and access code are both required.');
                     return;
                 }
-                setError('Invalid access code. Please try again.');
-                setPassword('');
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+                    setError('Please enter a valid email address.');
+                    return;
+                }
+                setError(''); setInfo(''); setSending(true);
+                try {
+                    const r = await fetch('/api/auth/request-link', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword })
+                    });
+                    const d = await r.json();
+                    if (!r.ok) {
+                        setError(d.error || 'Sign-in failed. Please try again.');
+                        setSending(false);
+                        return;
+                    }
+                    /* Always show the generic success message — server doesn't reveal whether
+                       the combo was valid (prevents email + password enumeration). */
+                    setSent(true);
+                    setInfo(d.message || 'Check your inbox for a sign-in link.');
+                } catch (err) {
+                    setError('Network error. Please check your connection and try again.');
+                }
+                setSending(false);
             };
+
+            if (sent) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center px-4 fade-in" style={{ background: 'var(--mist)' }}>
+                        <div className="w-full max-w-sm text-center">
+                            <div className="mx-auto mb-4 flex items-center justify-center w-12 h-12 rounded-full" style={{ background: 'var(--accent-light)' }}>
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--accent)' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            </div>
+                            <h1 className="text-lg font-bold mb-2" style={{ color: 'var(--ink)' }}>Check your inbox</h1>
+                            <p className="text-sm mb-1" style={{ color: 'var(--slate)' }}>{info}</p>
+                            <p className="text-xs mt-3" style={{ color: 'var(--slate)' }}>Link expires in 15 minutes. Didn't get it? <button onClick={() => { setSent(false); setInfo(''); }} className="bg-transparent border-0 cursor-pointer hover:underline" style={{ color: 'var(--accent)' }}>Try again</button>.</p>
+                        </div>
+                    </div>
+                );
+            }
 
             return (
                 <div className="min-h-screen flex items-center justify-center px-4 fade-in" style={{ background: 'var(--mist)' }}>
@@ -5825,23 +5860,34 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                 <div className="mx-auto mb-3 flex items-center justify-center gap-2">
                                     <img src="data:image/png;base64,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" alt="AdRoast" className="w-10 h-10 rounded" />
                                 </div>
-                                <h1 className="text-lg font-bold" style={{ color: 'var(--ink)' }}>AdRoast</h1>
-                                <p className="text-sm mt-1" style={{ color: 'var(--slate)' }}>Enter your access code to continue</p>
+                                <h1 className="text-lg font-bold" style={{ color: 'var(--ink)' }}>AdRoast Portal</h1>
+                                <p className="text-sm mt-1" style={{ color: 'var(--slate)' }}>Sign in with your email and access code</p>
                             </div>
+                            <input
+                                type="email"
+                                required
+                                autoFocus
+                                autoComplete="email"
+                                className="w-full px-4 py-3 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-shadow"
+                                style={{ borderColor: error ? 'var(--danger)' : 'var(--cloud)', background: '#fff' }}
+                                placeholder="Email"
+                                value={email}
+                                onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                            />
                             <div className="relative">
                                 <input
-                                    type={show ? 'text' : 'password'}
+                                    type={showPassword ? 'text' : 'password'}
                                     required
-                                    autoFocus
+                                    autoComplete="current-password"
                                     className="w-full px-4 py-3 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-shadow"
                                     style={{ borderColor: error ? 'var(--danger)' : 'var(--cloud)', background: '#fff' }}
                                     placeholder="Access code"
                                     value={password}
                                     onChange={(e) => { setPassword(e.target.value); setError(''); }}
                                 />
-                                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-1" onClick={() => setShow(!show)} tabIndex={-1}>
+                                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-transparent border-0 cursor-pointer" onClick={() => setShowPassword(s => !s)} tabIndex={-1}>
                                     <svg className="h-4 w-4" style={{ color: 'var(--slate)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        {show
+                                        {showPassword
                                             ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
                                             : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         }
@@ -5849,10 +5895,16 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                 </button>
                             </div>
                             {error && <p className="text-xs text-center" style={{ color: 'var(--danger)' }}>{error}</p>}
-                            <button type="submit" className="w-full py-3 text-white text-sm font-semibold rounded-lg transition-colors" style={{ background: 'var(--accent)' }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
-                                onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
-                            >Continue</button>
+                            {info && !error && <p className="text-xs text-center" style={{ color: 'var(--slate)' }}>{info}</p>}
+                            <button type="submit" disabled={sending}
+                                className="w-full py-3 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                style={{ background: 'var(--accent)' }}
+                                onMouseEnter={e => !sending && (e.currentTarget.style.background = 'var(--accent-hover)')}
+                                onMouseLeave={e => !sending && (e.currentTarget.style.background = 'var(--accent)')}
+                            >{sending ? 'Sending sign-in link…' : 'Send sign-in link'}</button>
+                            <p className="text-xs text-center" style={{ color: 'var(--slate)' }}>
+                                We'll email a one-time link that expires in 15 minutes. Your session lasts 7 days.
+                            </p>
                         </form>
                     </div>
                 </div>
@@ -7260,7 +7312,42 @@ The full pattern synthesis. Including the SCA template, the product-category for
            APP ROUTER
            ============================================================ */
         function PortalApp() {
-            const [state, setState] = useState({ mode: null, view: 'portal-root', partnerId: null, clientId: null, auditId: null });
+            const [state, setState] = useState({ mode: null, view: 'portal-root', partnerId: null, clientId: null, auditId: null, email: null });
+            const [authChecking, setAuthChecking] = useState(true);
+            const [authMessage, setAuthMessage] = useState('');
+
+            /* On mount: ask the server if we already have a valid session cookie.
+               If yes, drop straight into the portal. If no, show the EmailPasswordGate. */
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const authParam = params.get('auth');
+                if (authParam === 'expired') {
+                    setAuthMessage('Your sign-in link expired. Please request a new one below.');
+                    /* Strip the param so it doesn't persist on reload */
+                    try { window.history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) {}
+                } else if (authParam === 'missing' || authParam === 'error') {
+                    setAuthMessage('That sign-in link is no longer valid. Please request a new one.');
+                    try { window.history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) {}
+                }
+                fetch('/api/auth/me')
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => {
+                        if (d && d.success && d.session) {
+                            const s = d.session;
+                            const initialView = s.mode === 'client' ? 'client-hub'
+                                : s.mode === 'partner' ? 'partner-workspace'
+                                : 'portal-root';
+                            setState({ mode: s.mode, view: initialView, partnerId: s.partnerId, clientId: s.clientId, auditId: null, email: s.email });
+                        }
+                    })
+                    .catch(() => { /* silent — gate will show */ })
+                    .finally(() => setAuthChecking(false));
+            }, []);
+
+            const handleLogout = async () => {
+                try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+                setState({ mode: null, view: 'portal-root', partnerId: null, clientId: null, auditId: null, email: null });
+            };
 
             const nav = (v, pid, cid, aid) => {
                 setState(prev => {
@@ -7300,46 +7387,65 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 } catch (e) { /* ignore */ }
             }, [state.view]);
 
-            const handleUnlock = (auth) => {
-                if (auth.mode === 'client') {
-                    setState({ mode: 'client', view: 'client-hub', partnerId: auth.partnerId, clientId: auth.clientId, auditId: null });
-                } else if (auth.mode === 'partner') {
-                    setState({ mode: 'partner', view: 'partner-workspace', partnerId: auth.partnerId, clientId: null, auditId: null });
-                } else {
-                    setState({ mode: 'master', view: 'portal-root', partnerId: null, clientId: null, auditId: null });
-                }
-            };
-
             const { mode, view, partnerId, clientId, auditId } = state;
 
-            if (!mode) return <PasswordGate onUnlock={handleUnlock} />;
-
-            switch (view) {
-                case 'portal-root':
-                    return mode === 'master'
-                        ? <PortalRoot onNavigate={nav} />
-                        : mode === 'partner'
-                        ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
-                        : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
-                case 'partner-workspace':
-                    return (mode === 'master' || mode === 'partner')
-                        ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
-                        : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
-                case 'client-hub':
-                    return <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
-                case 'positioning':
-                    return <PositioningReportPage partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
-                case 'audit':
-                    return <AuditPage partnerId={partnerId} clientId={clientId} auditId={auditId} onNavigate={nav} accessMode={mode} />;
-                case 'audit-full':
-                    return <AuditFullPage partnerId={partnerId} clientId={clientId} auditId={auditId} onNavigate={nav} accessMode={mode} />;
-                default:
-                    return mode === 'master'
-                        ? <PortalRoot onNavigate={nav} />
-                        : mode === 'partner'
-                        ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
-                        : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+            /* Still checking session — render a brief loading state so the gate
+               doesn't flash before the cookie check completes. */
+            if (authChecking) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--mist)' }}>
+                        <div className="inline-block w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--cloud)', borderTopColor: 'var(--accent)' }}></div>
+                    </div>
+                );
             }
+
+            if (!mode) return <EmailPasswordGate initialMessage={authMessage} />;
+
+            /* Floating signed-in indicator: shows the authenticated email + a logout
+               button, fixed to the top-right corner across all portal pages. */
+            const AuthIndicator = () => (
+                <div className="fixed top-3 right-3 sm:top-4 sm:right-4 z-50 flex items-center gap-2 bg-white border rounded-full pl-3 pr-1 py-1 shadow-sm"
+                    style={{ borderColor: 'var(--cloud)' }}>
+                    <span className="text-xs font-medium hidden sm:inline" style={{ color: 'var(--slate)' }}>{state.email}</span>
+                    <button onClick={handleLogout}
+                        className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-transparent border-0 cursor-pointer hover:bg-gray-100 transition-colors"
+                        style={{ color: 'var(--ink-light)' }}
+                        title={`Sign out (${state.email})`}>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Sign out
+                    </button>
+                </div>
+            );
+
+            const page = (() => {
+                switch (view) {
+                    case 'portal-root':
+                        return mode === 'master'
+                            ? <PortalRoot onNavigate={nav} />
+                            : mode === 'partner'
+                            ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
+                            : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                    case 'partner-workspace':
+                        return (mode === 'master' || mode === 'partner')
+                            ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
+                            : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                    case 'client-hub':
+                        return <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                    case 'positioning':
+                        return <PositioningReportPage partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                    case 'audit':
+                        return <AuditPage partnerId={partnerId} clientId={clientId} auditId={auditId} onNavigate={nav} accessMode={mode} />;
+                    case 'audit-full':
+                        return <AuditFullPage partnerId={partnerId} clientId={clientId} auditId={auditId} onNavigate={nav} accessMode={mode} />;
+                    default:
+                        return mode === 'master'
+                            ? <PortalRoot onNavigate={nav} />
+                            : mode === 'partner'
+                            ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
+                            : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                }
+            })();
+            return <>{page}<AuthIndicator /></>;
         }
 
         // Portal render handled by RootRouter below
