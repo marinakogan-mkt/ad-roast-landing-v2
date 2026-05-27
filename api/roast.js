@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     body = {};
   }
 
-  const { platform, offerType, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy } = body;
+  const { platform, offerType, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit } = body;
 
   console.log('[AdRoast v4] Request body type:', typeof req.body);
   console.log('[AdRoast v4] Request body keys:', Object.keys(body));
@@ -41,6 +41,17 @@ export default async function handler(req, res) {
     adUrlDetected: null,
     adUrlScrape: null
   };
+
+  // ADVANCED INTERNAL AUDIT: if a structured variants[] array is included, format it
+  // into a rich multi-variant ad block. The pre-formatted adCopy string from the client
+  // is still used, but we annotate the prompt so the LLM treats this as a multi-variant
+  // analysis rather than a single ad.
+  if (isAdvancedAudit && Array.isArray(variants) && variants.length > 0) {
+    meta.advancedAudit = true;
+    meta.variantCount = variants.length;
+    meta.totalHeadlines = variants.reduce((s, v) => s + (v.headlines?.filter(h => h && h.trim()).length || 0), 0);
+    meta.totalDescriptions = variants.reduce((s, v) => s + (v.descriptions?.filter(d => d && d.trim()).length || 0), 0);
+  }
 
   // If adCopy is actually a URL (e.g. LinkedIn / Meta / Google ad-library link),
   // fetch the page and extract OG tags + body text to use as the ad copy for the LLM prompt.
@@ -175,7 +186,7 @@ Offer: ${offerType}
 Landing Page URL: ${landingUrl || 'Not provided'}
 Landing page content available: ${hasAnyLandingContent ? 'YES — SCORE IT 1-10' : 'NO — SCORE IT 0'}
 
-${effectiveAdCopy ? `=== AD COPY ===\n${effectiveAdCopy}` : '=== AD COPY ===\n[No ad copy provided]'}
+${effectiveAdCopy ? (isAdvancedAudit ? `=== AD COPY (MULTI-VARIANT GOOGLE/PAID-ADS AUDIT — ${variants?.length || 0} variants) ===\n${effectiveAdCopy}\n\nNOTE: This is a structured Google Ads-style audit with multiple variants. Analyse the full ad structure: scoring should reflect the overall campaign quality across variants, and the 5 Ad Issues / Fix Kit / Experiments should cite specific headlines and descriptions (by variant + number) when relevant.` : `=== AD COPY ===\n${effectiveAdCopy}`) : '=== AD COPY ===\n[No ad copy provided]'}
 
 ${visualDescription ? `=== AD VISUAL DESCRIPTION ===\n${visualDescription}` : ''}
 
