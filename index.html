@@ -4919,6 +4919,144 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 );
             }
 
+            /* B) What the Audits Agree On: each ### Pattern N renders with:
+               - pattern title as h3
+               - frequency line in red
+               - tables/evidence/fix as default markdown */
+            if (/^B\)?\s*What the Audits Agree/i.test(title)) {
+                const parts = body.split(/\n(?=### )/g);
+                return (
+                    <div className="space-y-8">
+                        {parts.map((part, idx) => {
+                            const headerMatch = part.match(/^###\s+(.+)/);
+                            if (!headerMatch) return <Markdown key={idx} content={part.trim()} />;
+                            const subTitle = headerMatch[1].trim();
+                            const subBody = part.slice(headerMatch[0].length).trim();
+                            /* Detect first **Frequency:...** line and pull it out */
+                            const lines = subBody.split('\n');
+                            let freqLine = null;
+                            let restStart = 0;
+                            for (let i = 0; i < lines.length; i++) {
+                                const ln = lines[i].trim();
+                                if (/^\*\*Frequency:?\*\*/i.test(ln) || /^Frequency:/i.test(ln)) {
+                                    freqLine = ln.replace(/^\*\*Frequency:?\*\*\s*/i, '').replace(/^Frequency:\s*/i, '').trim();
+                                    restStart = i + 1;
+                                    break;
+                                }
+                                if (ln !== '') break; // hit non-frequency content first → no frequency line
+                            }
+                            const restBody = lines.slice(restStart).join('\n').trim();
+                            return (
+                                <div key={idx}>
+                                    <h3 className="text-base font-bold mb-1" style={{ color: 'var(--ink)' }}>{subTitle}</h3>
+                                    {freqLine && (
+                                        <p className="text-xs font-semibold mb-3" style={{ color: 'var(--danger)' }}>
+                                            Frequency: <MdInline text={freqLine} />
+                                        </p>
+                                    )}
+                                    <Markdown content={restBody} />
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            }
+
+            /* C) Inconsistencies & How to Resolve: each ### Contradiction N becomes
+               a bordered card with structured tension/resolution + green callout for
+               the recommendation. */
+            if (/^C\)?\s*(Inconsistencies|What's Inconsistent|Contradictions)/i.test(title)) {
+                const parts = body.split(/\n(?=### )/g);
+                /* Extract a labeled field from body text. Captures content after
+                   **Label:** up to the next bold label or end of string. */
+                const extractField = (text, labels) => {
+                    const allLabels = ['The tension', 'Tension', 'Resolution', 'Recommendation', 'Recommended Fix', 'Recommended', 'Fix'];
+                    const labelPattern = labels.map(l => l.replace(/\s+/g, '\\s+')).join('|');
+                    const nextLabelPattern = allLabels.filter(l => !labels.includes(l)).map(l => l.replace(/\s+/g, '\\s+')).join('|');
+                    const re = new RegExp(`\\*\\*(?:${labelPattern}):?\\*\\*\\s*([\\s\\S]*?)(?=\\*\\*(?:${nextLabelPattern}):?\\*\\*|$)`, 'i');
+                    const m = text.match(re);
+                    return m ? m[1].trim().replace(/\s+/g, ' ') : null;
+                };
+                return (
+                    <div className="space-y-5">
+                        {parts.map((part, idx) => {
+                            const headerMatch = part.match(/^###\s+(.+)/);
+                            if (!headerMatch) {
+                                const t = part.trim();
+                                if (!t) return null;
+                                return <Markdown key={idx} content={t} />;
+                            }
+                            const subTitle = headerMatch[1].trim();
+                            const subBody = part.slice(headerMatch[0].length).trim();
+                            const tension = extractField(subBody, ['The tension', 'Tension']);
+                            const resolution = extractField(subBody, ['Resolution']);
+                            const recommendation = extractField(subBody, ['Recommendation', 'Recommended Fix', 'Recommended', 'Fix']);
+                            if (tension || resolution || recommendation) {
+                                return (
+                                    <div key={idx} className="rounded-lg border p-5" style={{ borderColor: 'var(--cloud)', background: 'white' }}>
+                                        <h3 className="text-base font-bold mb-3" style={{ color: 'var(--ink)' }}>{subTitle}</h3>
+                                        <div className="space-y-2 text-sm">
+                                            {tension && (
+                                                <p className="leading-relaxed" style={{ color: 'var(--ink-light)' }}>
+                                                    <strong style={{ color: 'var(--ink)' }}>The tension:</strong> <MdInline text={tension} />
+                                                </p>
+                                            )}
+                                            {resolution && (
+                                                <p className="leading-relaxed" style={{ color: 'var(--ink-light)' }}>
+                                                    <strong style={{ color: 'var(--ink)' }}>Resolution:</strong> <MdInline text={resolution} />
+                                                </p>
+                                            )}
+                                            {recommendation && (
+                                                <div className="rounded-lg p-3 mt-2" style={{ background: 'var(--success-light)' }}>
+                                                    <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-light)' }}>
+                                                        <strong style={{ color: 'var(--success)' }}>Recommendation:</strong> <MdInline text={recommendation} />
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return (
+                                <div key={idx} className="rounded-lg border p-5" style={{ borderColor: 'var(--cloud)', background: 'white' }}>
+                                    <h3 className="text-base font-bold mb-2" style={{ color: 'var(--ink)' }}>{subTitle}</h3>
+                                    <Markdown content={subBody} />
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            }
+
+            /* H) Do/Don't Messaging Rules: ### DO (...) renders with green header,
+               ### DON'T (...) with red header. */
+            if (/^H\)?\s*Do\/Don/i.test(title) || /^H\)?\s*Do.*Don/i.test(title)) {
+                const parts = body.split(/\n(?=### )/g);
+                return (
+                    <div className="space-y-6">
+                        {parts.map((part, idx) => {
+                            const headerMatch = part.match(/^###\s+(.+)/);
+                            if (!headerMatch) {
+                                const t = part.trim();
+                                if (!t) return null;
+                                return <Markdown key={idx} content={t} />;
+                            }
+                            const subTitle = headerMatch[1].trim();
+                            const subBody = part.slice(headerMatch[0].length).trim();
+                            const isDo = /^DO\b/i.test(subTitle) && !/^DON'?T/i.test(subTitle);
+                            const isDont = /^DON'?T\b/i.test(subTitle);
+                            const color = isDo ? 'var(--success)' : isDont ? 'var(--danger)' : 'var(--ink)';
+                            return (
+                                <div key={idx}>
+                                    <h3 className="text-base font-bold uppercase tracking-wide mb-3" style={{ color }}>{subTitle}</h3>
+                                    <Markdown content={subBody} />
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            }
+
             /* Recommended Positioning: Core Positioning Statement = blue callout,
                Variant 1/2/3 each become a card with a small badge. */
             if (/^D\)?\s*Recommended Positioning/i.test(title)) {

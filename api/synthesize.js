@@ -194,11 +194,15 @@ For each of 4–6 patterns:
 **Recommended Fix:** one sentence
 
 ## C) Inconsistencies & How to Resolve
-For each of 2–4 contradictions:
+For each of 2–4 contradictions, output the labels on SEPARATE LINES (not inline):
 ### Contradiction N: Title
-**The tension:** ...
-**Resolution:** ...
-**Recommendation:** ...
+**The tension:** <one or two sentences naming the contradiction>
+
+**Resolution:** <one or two sentences explaining how to resolve it>
+
+**Recommendation:** <one sentence with the concrete action>
+
+(Each labeled line must be its own paragraph separated by a blank line. Do NOT run them together.)
 
 ## D) Recommended Positioning
 ### Core Positioning Statement
@@ -277,12 +281,14 @@ Evidence: short rationale.
 **The pattern is clear:** <one paragraph summarizing the central insight>.
 
 The fix is not <X>. The fix is:
-1. <step>
-2. <step>
-3. <step>
-4. <step>
+1. **<short bold step title>** — <short description>
+2. **<short bold step title>** — <short description>
+3. **<short bold step title>** — <short description>
+4. **<short bold step title>** — <short description>
 
-> short rallying-call quote
+(Use numbered list 1. 2. 3. 4. — NOT bullets. Each fix step starts with a bold short title, em-dash, then description.)
+
+> short closing line — one sentence that summarizes the call to action
 
 CRITICAL RULES:
 - Cite specific audit evidence (e.g., "AUDIT-2 (the SCA ad) scored 8/10 while AUDIT-1 (SAST) only scored 5/10").
