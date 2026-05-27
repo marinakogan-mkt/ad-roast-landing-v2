@@ -637,14 +637,68 @@
       const [importLink, setImportLink] = useState('');
       const [importLoading, setImportLoading] = useState(false);
 
-      /* Synthesis Report state (admin-only): multiple roast links → one cross-audit synthesis. */
-      const [synthLinks, setSynthLinks] = useState(['', '', '', '', '']);
-      const [synthClientName, setSynthClientName] = useState('');
+      /* Synthesis Report state (admin-only): multiple roast links → one cross-audit synthesis.
+         Auto-persisted to localStorage so a refresh / closed tab doesn't lose progress. */
+      const SYNTH_STORAGE_KEY = 'adroast_synth_draft_v1';
+      const SYNTH_LIBRARY_KEY = 'adroast_synth_library_v1';
+      const loadJSON = (key, fallback) => {
+        try {
+          if (typeof localStorage === 'undefined') return fallback;
+          const v = localStorage.getItem(key);
+          return v ? JSON.parse(v) : fallback;
+        } catch (e) { return fallback; }
+      };
+      const saveJSON = (key, value) => {
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* ignore quota / private mode */ }
+      };
+      const initialSynthDraft = loadJSON(SYNTH_STORAGE_KEY, null);
+      const [synthLinks, setSynthLinks] = useState((initialSynthDraft && Array.isArray(initialSynthDraft.links) && initialSynthDraft.links.length) ? initialSynthDraft.links : ['', '', '', '', '']);
+      const [synthClientName, setSynthClientName] = useState(initialSynthDraft?.clientName || '');
+      const [synthLibrary, setSynthLibrary] = useState(loadJSON(SYNTH_LIBRARY_KEY, []));
       const [synthLoading, setSynthLoading] = useState(false);
       const [synthResult, setSynthResult] = useState(null);
+
+      /* Persist draft on every change. */
+      React.useEffect(() => {
+        saveJSON(SYNTH_STORAGE_KEY, { links: synthLinks, clientName: synthClientName });
+      }, [synthLinks, synthClientName]);
+      /* Persist library on every change. */
+      React.useEffect(() => {
+        saveJSON(SYNTH_LIBRARY_KEY, synthLibrary);
+      }, [synthLibrary]);
+
       const setSynthLinkAt = (i, value) => setSynthLinks(prev => prev.map((v, idx) => idx === i ? value : v));
       const addSynthLinkSlot = () => setSynthLinks(prev => [...prev, '']);
       const removeSynthLinkSlot = (i) => setSynthLinks(prev => prev.length <= 2 ? prev : prev.filter((_, idx) => idx !== i));
+
+      /* Library management. */
+      const saveCurrentToLibrary = () => {
+        const filled = synthLinks.map(s => (s || '').trim()).filter(Boolean);
+        if (!filled.length) return;
+        const existingUrls = new Set(synthLibrary.map(item => item.url));
+        const additions = filled
+          .filter(u => !existingUrls.has(u))
+          .map(u => ({
+            id: 'r' + Math.random().toString(36).slice(2, 10),
+            url: u,
+            label: synthClientName ? `${synthClientName} — Audit` : '',
+            addedAt: new Date().toISOString()
+          }));
+        if (!additions.length) return;
+        setSynthLibrary(prev => [...additions, ...prev]);
+      };
+      const updateLibraryItem = (id, patch) => setSynthLibrary(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item));
+      const removeLibraryItem = (id) => setSynthLibrary(prev => prev.filter(item => item.id !== id));
+      const insertLibraryItem = (url) => {
+        /* Place into the first empty slot; if none, append a new slot. */
+        const emptyIdx = synthLinks.findIndex(s => !(s || '').trim());
+        if (emptyIdx >= 0) setSynthLinkAt(emptyIdx, url);
+        else setSynthLinks(prev => [...prev, url]);
+      };
+      const clearSynthDraft = () => {
+        setSynthLinks(['', '', '', '', '']);
+        setSynthClientName('');
+      };
 
       const generateSynthesis = async () => {
         const links = synthLinks.map(s => (s || '').trim()).filter(Boolean);
@@ -1029,10 +1083,40 @@
                   className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 text-gray-900" />
               </div>
 
+              {/* Saved library (persisted in localStorage) */}
               <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
                 <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-semibold text-gray-900">AdRoast report links</label>
-                  <span className="text-xs text-gray-400">{filledCount} of {synthLinks.length} filled</span>
+                  <label className="text-sm font-semibold text-gray-900">📚 Saved roast library <span className="text-gray-400 font-normal">({synthLibrary.length} saved)</span></label>
+                  <button onClick={saveCurrentToLibrary} disabled={!synthLinks.some(s => (s || '').trim())}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded transition-colors bg-transparent border ${synthLinks.some(s => (s || '').trim()) ? 'border-blue-300 text-blue-700 hover:bg-blue-50 cursor-pointer' : 'border-gray-200 text-gray-400 cursor-not-allowed'}`}>
+                    + Save current to library
+                  </button>
+                </div>
+                {synthLibrary.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">Saved roast links appear here. They persist in this browser, so you can reuse them across synthesis sessions.</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                    {synthLibrary.map((item) => (
+                      <div key={item.id} className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 border border-gray-100">
+                        <input type="text" value={item.label} onChange={(e) => updateLibraryItem(item.id, { label: e.target.value })}
+                          placeholder="Label (optional)"
+                          className="w-36 px-2 py-1 bg-white border border-gray-200 rounded text-xs focus:outline-none focus:border-blue-500 text-gray-700" />
+                        <span className="flex-1 text-xs text-gray-500 truncate" title={item.url}>{item.url}</span>
+                        <button onClick={() => insertLibraryItem(item.url)} className="text-xs font-semibold text-blue-600 hover:underline bg-transparent border-0 cursor-pointer px-1">Use</button>
+                        <button onClick={() => removeLibraryItem(item.id)} className="text-gray-300 hover:text-red-500 px-1 bg-transparent border-0 cursor-pointer">×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-semibold text-gray-900">AdRoast report links <span className="text-gray-400 font-normal">(auto-saved)</span></label>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400">{filledCount} of {synthLinks.length} filled</span>
+                    <button onClick={clearSynthDraft} className="text-xs text-gray-500 hover:text-red-500 bg-transparent border-0 cursor-pointer">Clear</button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {synthLinks.map((v, i) => (
