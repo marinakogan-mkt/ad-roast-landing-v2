@@ -1191,20 +1191,30 @@
          sections + NudgeStyleSection styling as the Aikido positioning report. ─── */
       if (view === 'synthesis-result' && synthResult) {
         const shareLink = synthResult.id ? `${window.location.origin}/?synth=${synthResult.id}` : null;
-        /* Parse the markdown into H1 title + H2 sections. */
+        /* Parse the markdown into H1 title + metadata + H2 sections. */
         const raw = (synthResult.markdown || '').trim();
         const h1Match = raw.match(/^#\s+(.+)$/m);
         let reportTitle = h1Match ? h1Match[1].trim() : 'Evidence-Backed Audit Synthesis';
+        /* Parse frontmatter metadata between H1 and the first H2:
+           **Prepared for:** … / **Date:** … / **Prepared by:** … */
+        const meta = {};
+        const metaRe = /\*\*(Prepared for|Date|Prepared by):\*\*\s*([^\n]+)/gi;
+        let mm;
+        while ((mm = metaRe.exec(raw)) !== null) {
+          meta[mm[1].toLowerCase().replace(/\s+/g, '')] = mm[2].trim();
+        }
         const trimmed = raw.replace(/^[\s\S]*?(?=\n## )/, '').trim();
+        /* Strip numeric prefixes from H2 titles ("1) A) Executive Summary" → "A) Executive Summary") */
+        const cleanTitle = (t) => t.replace(/^\d+\)\s*/, '').trim();
         const sectionRe = /^## (.+)$/gm;
         const rawSections = [];
         let match, lastIdx = 0, lastTitle = null;
         while ((match = sectionRe.exec(trimmed)) !== null) {
-          if (lastTitle !== null) rawSections.push({ title: lastTitle, body: trimmed.slice(lastIdx, match.index).trim() });
+          if (lastTitle !== null) rawSections.push({ title: cleanTitle(lastTitle), body: trimmed.slice(lastIdx, match.index).trim() });
           lastTitle = match[1].trim();
           lastIdx = match.index + match[0].length;
         }
-        if (lastTitle !== null) rawSections.push({ title: lastTitle, body: trimmed.slice(lastIdx).trim() });
+        if (lastTitle !== null) rawSections.push({ title: cleanTitle(lastTitle), body: trimmed.slice(lastIdx).trim() });
         /* Older synthesis reports use H1 = "Positioning Report..." and H2 = client name
            (with empty body). Promote that empty client-name section to be the report title,
            then drop any sections whose body is empty. */
@@ -1244,10 +1254,18 @@
                 </div>
               )}
               <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full tracking-wide uppercase mb-3" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>Strategic Analysis</span>
-              <h1 className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'var(--ink)' }}>{reportTitle}</h1>
-              <p className="text-base mb-6" style={{ color: 'var(--slate)' }}>
-                Cross-audit synthesis based on {synthResult.sourceCount || synthResult.sourceLinks?.length || 'multiple'} AdRoast reports{synthResult.createdAt ? ` · ${new Date(synthResult.createdAt).toLocaleDateString()}` : ''}
-              </p>
+              <h1 className="text-3xl sm:text-4xl font-bold mt-1 mb-2 serif" style={{ color: 'var(--ink)' }}>{reportTitle}</h1>
+              {(meta.preparedfor || meta.date || meta.preparedby) ? (
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm mt-3 mb-6" style={{ color: 'var(--slate)' }}>
+                  {meta.preparedfor && <span><strong style={{ color: 'var(--ink-light)' }}>Prepared for:</strong> {meta.preparedfor}</span>}
+                  {meta.date && <span><strong style={{ color: 'var(--ink-light)' }}>Date:</strong> {meta.date}</span>}
+                  {meta.preparedby && <span><strong style={{ color: 'var(--ink-light)' }}>Prepared by:</strong> {meta.preparedby}</span>}
+                </div>
+              ) : (
+                <p className="text-base mb-6" style={{ color: 'var(--slate)' }}>
+                  Cross-audit synthesis based on {synthResult.sourceCount || synthResult.sourceLinks?.length || 'multiple'} AdRoast reports{synthResult.createdAt ? ` · ${new Date(synthResult.createdAt).toLocaleDateString()}` : ''}
+                </p>
+              )}
               {shareLink && (
                 <div style={{ backgroundColor: 'var(--accent-faint)', borderColor: 'var(--accent-light)' }} className="border rounded-lg p-3 mb-6 flex items-center gap-2">
                   <Icon name="link" className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--accent)' }} />
@@ -2266,17 +2284,13 @@
        ============================================================ */
 
         /* Aikido audit + synthesis markdown content */
-        const AIKIDO_SYNTHESIS_MD = `# Positioning Report. Evidence-Backed Audit Synthesis
-## Aikido Security · Google Search RSAs
+        const AIKIDO_SYNTHESIS_MD = `# Evidence-Backed Audit Synthesis & Strategic Recommendations
 
 **Prepared for:** Lieven Oosterlinck and Willem Delbare, Aikido Security
 **Date:** May 23, 2026
 **Prepared by:** Marina Kogan, AdRoast
 
----
----
-
-## 1) A) Executive Summary (Key Findings)
+## A) Executive Summary (Key Findings)
 
 - **Trust signal absence is the #1 conversion killer.** Trust scores average **3.4/10** across 5 ads. Aikido has *"50k+ orgs · 100k+ devs · 4.7/5"* + 14 named customer logos + 6 named customer testimonials sitting on every LP. None of those proof assets travel into the ad copy at the moment of the click decision. This is the single most expensive miss in the campaign.
 
@@ -4637,7 +4651,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                             description: "5-ad audit synthesis + positioning recommendations for Aikido's Google Search campaigns (SAST, SCA, AI Pentest, vs SonarQube, SBOM).",
                             platform: "Google",
                             positioning: {
-                                title: "Evidence-Backed Audit Synthesis · Aikido Security",
+                                title: "Evidence-Backed Audit Synthesis & Strategic Recommendations",
                                 subtitle: "Positioning report based on 5 AdRoast audits (Google Search RSAs)",
                                 fullContent: AIKIDO_SYNTHESIS_MD,
                                 summary: "Comprehensive analysis synthesizing 5 ad audits into actionable positioning, messaging pillars, ICP definition, CTA direction, and a prioritized 2-week testing plan.",
@@ -5980,8 +5994,24 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 /* Parse content into sections by H2 headers. Each section becomes a collapsible block.
                    The TOC at the top links to each section. */
                 const raw = client.positioning.fullContent;
+                /* Parse frontmatter metadata (lines like **Prepared for:** ..., **Date:** ...,
+                   **Prepared by:** ...) that appear between the H1 and the first H2. They render
+                   as the metadata line under the H1 (matching Nudge), not as content. */
+                const parseMeta = (text) => {
+                    const meta = {};
+                    const re = /\*\*(Prepared for|Date|Prepared by):\*\*\s*([^\n]+)/gi;
+                    let m;
+                    while ((m = re.exec(text)) !== null) {
+                        const key = m[1].toLowerCase().replace(/\s+/g, '');
+                        meta[key] = m[2].trim();
+                    }
+                    return meta;
+                };
+                const meta = parseMeta(raw);
                 // Strip the leading H1 + frontmatter (everything up to first ## )
                 const trimmed = raw.replace(/^[\s\S]*?(?=\n## )/, '').trim();
+                /* Drop leading numeric prefixes (e.g., "1) A) Executive Summary" → "A) Executive Summary"). */
+                const cleanTitle = (t) => t.replace(/^\d+\)\s*/, '').trim();
                 // Split into sections at H2 boundaries
                 const sectionRe = /^## (.+)$/gm;
                 const sections = [];
@@ -5991,7 +6021,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 while ((match = sectionRe.exec(trimmed)) !== null) {
                     if (lastTitle !== null) {
                         sections.push({
-                            title: lastTitle,
+                            title: cleanTitle(lastTitle),
                             body: trimmed.slice(lastIdx, match.index).trim()
                         });
                     }
@@ -5999,7 +6029,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                     lastIdx = match.index + match[0].length;
                 }
                 if (lastTitle !== null) {
-                    sections.push({ title: lastTitle, body: trimmed.slice(lastIdx).trim() });
+                    sections.push({ title: cleanTitle(lastTitle), body: trimmed.slice(lastIdx).trim() });
                 }
                 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
                 return (
@@ -6008,7 +6038,15 @@ The full pattern synthesis. Including the SCA template, the product-category for
                             <BackButton label={`Back to ${client.name} Hub`} onClick={() => onNavigate('client-hub', partnerId, clientId)} />
                             <Badge>Strategic Analysis</Badge>
                             <h1 className="text-3xl sm:text-4xl font-bold mt-4 mb-2 serif" style={{ color: 'var(--ink)' }}>{client.positioning.title}</h1>
-                            <p className="text-lg mb-8" style={{ color: 'var(--slate)' }}>{client.positioning.subtitle}</p>
+                            {(meta.preparedfor || meta.date || meta.preparedby) ? (
+                                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm mt-3 mb-8" style={{ color: 'var(--slate)' }}>
+                                    {meta.preparedfor && <span><strong style={{ color: 'var(--ink-light)' }}>Prepared for:</strong> {meta.preparedfor}</span>}
+                                    {meta.date && <span><strong style={{ color: 'var(--ink-light)' }}>Date:</strong> {meta.date}</span>}
+                                    {meta.preparedby && <span><strong style={{ color: 'var(--ink-light)' }}>Prepared by:</strong> {meta.preparedby}</span>}
+                                </div>
+                            ) : (
+                                <p className="text-lg mb-8" style={{ color: 'var(--slate)' }}>{client.positioning.subtitle}</p>
+                            )}
                             {/* TOC card — same Nudge styling as the synthesis viewer:
                                 white background, rounded-xl, uppercase tracking-wider header,
                                 row-flow grid. Sits OUTSIDE the main report card. */}
