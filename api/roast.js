@@ -37,8 +37,67 @@ export default async function handler(req, res) {
     hasLandingCopy: !!landingCopy?.trim(),
     landingCopyLength: landingCopy?.trim()?.length || 0,
     landingScraped: false,
-    landingScrapeError: null
+    landingScrapeError: null,
+    adUrlDetected: null,
+    adUrlScrape: null
   };
+
+  // If adCopy is actually a URL (e.g. LinkedIn / Meta / Google ad-library link),
+  // fetch the page and extract OG tags + body text to use as the ad copy for the LLM prompt.
+  let effectiveAdCopy = adCopy;
+  const adCopyTrim = (adCopy || '').trim();
+  if (/^https?:\/\/\S+$/i.test(adCopyTrim)) {
+    const platformDetected = /linkedin\.com\/ad-library|linkedin\.com\/posts/i.test(adCopyTrim) ? 'linkedin'
+      : /facebook\.com\/ads\/library|fb\.com\/ads\/library/i.test(adCopyTrim) ? 'meta'
+      : /adstransparency\.google\.com/i.test(adCopyTrim) ? 'google'
+      : 'unknown';
+    meta.adUrlDetected = { url: adCopyTrim, platform: platformDetected };
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 7000);
+      const r = await fetch(adCopyTrim, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9'
+        },
+        signal: ctrl.signal,
+        redirect: 'follow'
+      });
+      clearTimeout(t);
+      const html = await r.text();
+      const ogTitle = (html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)/i)?.[1] || '').trim();
+      const ogDesc = (html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)/i)?.[1] || '').trim();
+      const ogImage = (html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)/i)?.[1] || '').trim();
+      const pageTitle = (html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] || '').trim();
+      const metaDesc = (html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)/i)?.[1] || '').trim();
+      const bodyText = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&[a-z]+;/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 3000);
+      const parts = [];
+      const title = ogTitle || pageTitle;
+      const description = ogDesc || metaDesc;
+      if (title) parts.push('Headline: ' + title);
+      if (description) parts.push('Description / Body: ' + description);
+      if (ogImage) parts.push('Creative Image URL: ' + ogImage);
+      const extracted = parts.join('\n');
+      if ((extracted.length + bodyText.length) >= 50) {
+        meta.adUrlScrape = { success: true, platform: platformDetected, statusCode: r.status, contentChars: extracted.length + bodyText.length };
+        effectiveAdCopy = '[Ad URL: ' + adCopyTrim + ' (platform: ' + platformDetected + ')]\n\n' + extracted + (bodyText && bodyText.length > 100 ? '\n\nPAGE TEXT:\n' + bodyText : '');
+      } else {
+        meta.adUrlScrape = { success: false, platform: platformDetected, statusCode: r.status, error: 'No extractable content (page may be JS-rendered or blocked)' };
+        effectiveAdCopy = '[Ad URL provided: ' + adCopyTrim + ' (platform: ' + platformDetected + ')]\n[Auto-fetch returned minimal content; analysis based on URL alone]';
+      }
+    } catch (e) {
+      meta.adUrlScrape = { success: false, platform: platformDetected, error: e.message };
+      effectiveAdCopy = '[Ad URL provided: ' + adCopyTrim + ' (platform: ' + platformDetected + ')]\n[Auto-fetch failed: ' + e.message + ']';
+    }
+  }
 
   // Fetch landing page content if URL provided
   let landingPageContent = '';
@@ -116,7 +175,7 @@ Offer: ${offerType}
 Landing Page URL: ${landingUrl || 'Not provided'}
 Landing page content available: ${hasAnyLandingContent ? 'YES — SCORE IT 1-10' : 'NO — SCORE IT 0'}
 
-${adCopy ? `=== AD COPY ===\n${adCopy}` : '=== AD COPY ===\n[No ad copy provided]'}
+${effectiveAdCopy ? `=== AD COPY ===\n${effectiveAdCopy}` : '=== AD COPY ===\n[No ad copy provided]'}
 
 ${visualDescription ? `=== AD VISUAL DESCRIPTION ===\n${visualDescription}` : ''}
 
