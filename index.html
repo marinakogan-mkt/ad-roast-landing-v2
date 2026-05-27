@@ -1247,6 +1247,29 @@
           out = out.replace(disclaimerSentenceRe, '');
           const noVisualRe = /[^.!?\n]*\b(no|missing|absent)\s+(image|visual|screenshot|asset|preview)s?\s+(provided|available|attached|shown)\b[^.!?\n]*[.!?]?/gi;
           out = out.replace(noVisualRe, '');
+          /* Soften absolutist "Lead with X in all Y / in every Y" recommendations
+             into "Prioritize X in Y" — less prescriptive, gives the team room to
+             test. Targets recommendation patterns only; doesn't touch factual
+             statistics ("trust score averages 3.4/10 across 5 ads") because those
+             don't use the "in all/every" prefix.
+
+             Examples:
+               "Lead with false positive reduction in all ad headlines and hero sections."
+                 -> "Prioritize false positive reduction in ad headlines and hero sections."
+               "Use Konstantin S quote in every ad copy."
+                 -> "Prioritize Konstantin S quote in ad copy."
+          */
+          const blanketTargets = '(ad headlines?|headlines?|hero sections?|ads?|landing pages?|LPs?|descriptions?|CTAs?|touchpoints?|asset stacks?|ad copy|ad slots?)';
+          /* First: replace action verbs that imply blanket rollout with "Prioritize". */
+          out = out.replace(/\bLead with\b/g, 'Prioritize');
+          out = out.replace(/\blead with\b/g, 'prioritize');
+          /* Then: drop the absolutist quantifier so "in all ad headlines" becomes "in ad headlines". */
+          out = out.replace(new RegExp(`\\bin all ${blanketTargets}\\b`, 'gi'), (m, t) => `in ${t}`);
+          out = out.replace(new RegExp(`\\bin every ${blanketTargets}\\b`, 'gi'), (m, t) => `in ${t}`);
+          out = out.replace(new RegExp(`\\bacross all ${blanketTargets}\\b`, 'gi'), (m, t) => `across ${t}`);
+          out = out.replace(new RegExp(`\\bon all ${blanketTargets}\\b`, 'gi'), (m, t) => `on ${t}`);
+          out = out.replace(/\bacross the board\b/gi, 'as a priority');
+          out = out.replace(/\beverywhere\b/gi, 'as a priority');
           /* Collapse any whitespace left behind by the deletions. */
           out = out.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/^\s+/gm, m => m.includes('\n') ? '\n' : '');
           return out;

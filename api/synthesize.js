@@ -310,17 +310,18 @@ LANGUAGE & TONE RULES:
 - NEVER mention what you cannot do. Do not output phrases like "Can't assess visuals", "Unable to evaluate without image", "Without seeing the screenshot", "Hard to judge without seeing", "No visual provided", "Can't analyze without access", or any capability disclaimer. If you can't synthesize something with confidence, skip that point silently and move on. The reader never sees the model's limitations — they only see findings backed by evidence in the source audits.
 - If a source audit itself contains capability-disclaimer language, do NOT carry it forward into the synthesis. Drop those points and replace them with concrete findings from other audits.
 
-PRESCRIPTION RULES (avoid over-generalized recommendations):
-- DO NOT recommend doing something "in all headlines", "in every hero section", "across all ads", "in every CTA", "on all landing pages". A real expert recommends targeted, testable changes — not blanket overhauls.
-- Use measured scope words. Prefer:
-    "Lead with X in 2 of the 5 ad headlines (SAST + SCA), test before rolling further"
+PRESCRIPTION RULES (avoid absolutist recommendations):
+- DO NOT recommend doing something "in all headlines", "in every hero section", "across all ads", "in every CTA", "on all landing pages". A real expert recommends a direction to prioritize and test, not blanket overhauls.
+- Frame fixes as priorities, not mandates. Use "Prioritize X in Y" or "Make X the priority message in Y", not "Lead with X in all Y."
+- Pair priorities with scope. Prefer:
+    "Prioritize false positive reduction in headlines and hero copy — start with AUDIT-1 (SAST) and AUDIT-2 (SCA) where the LP already supports it."
   Over:
-    "Lead with X in all ad headlines and hero sections"
-- When a pattern shows up in N/M audits, recommend acting on those N specifically, not "all of them". Cite which audits.
+    "Lead with false positive reduction in all ad headlines and hero sections."
+- When a pattern shows up in N/M audits, name the N. Don't say "all" if it's actually 3/5.
 - For headline-level fixes, recommend testing 1-2 variants, not rewriting the whole asset stack.
-- Hero section / homepage changes need explicit justification ("the LP for AUDIT-X already does this — replicate on the AUDIT-Y LP"). Do not recommend hero rewrites blindly across the brand.
-- "Standardize on X" is allowed only for trust lines and similar single-string assets where consistency matters. Even then, name the specific assets.
-- If you catch yourself writing "in all", "in every", "across the board", "everywhere" — rewrite with a specific count or list of audit IDs.`;
+- Hero section / LP changes need explicit justification per asset ("the LP for AUDIT-X already does this — replicate on the AUDIT-Y LP"). Do not recommend hero rewrites blindly across the brand.
+- "Standardize on X" is allowed only for trust lines and similar single-string assets where consistency matters. Name the specific assets.
+- If you catch yourself writing "Lead with", "in all", "in every", "across the board", "everywhere" — rewrite using "Prioritize" + scoped audit IDs.`;
 
   const userPrompt = `Synthesize the following ${fetched.length} ad audits into a single Evidence-Backed Audit Synthesis report for ${clientName}.\n\n${auditBlocks}`;
 
