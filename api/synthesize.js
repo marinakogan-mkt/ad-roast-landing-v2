@@ -170,8 +170,7 @@ This is NOT a summary of each audit — it is a cross-audit synthesis that ident
 
 Return ONLY markdown. No preface, no closing. The markdown MUST follow this exact structure:
 
-# Positioning Report. Evidence-Backed Audit Synthesis
-## ${clientName}
+# ${clientName} — Evidence-Backed Audit Synthesis
 
 ## A) Executive Summary (Key Findings)
 - 8–12 bulleted findings. Each starts with **Bold title.** then a sentence or two with evidence cited from the audits (e.g., "Trust scores average 3.4/10 across 5 ads"). The first line should be a callout headline insight (a strong opinion-led statement that names the #1 pattern).
