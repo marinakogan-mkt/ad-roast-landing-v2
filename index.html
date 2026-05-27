@@ -138,6 +138,9 @@
     function AdRoastApp({ adminMode = false }) {
       const [view, setView] = useState('landing');
       const [guidedStep, setGuidedStep] = useState(0);
+      /* Captured at landing-click time: whether the user already pasted ad copy on landing.
+         Stable for the session so the guided step list doesn't reshape as the user types. */
+      const [guidedHadCopyAtStart, setGuidedHadCopyAtStart] = useState(false);
       /* Admin-only advanced audit builder state (multi-variant Google Ads-style input).
          Each variant: { name, headlines[15], descriptions[4], finalUrl, notes }. */
       const newBlankVariant = (n = 1) => ({ name: `Variant ${n}`, headlines: ['', '', ''], descriptions: ['', ''], finalUrl: '', notes: '' });
@@ -475,7 +478,7 @@
                   <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-300">INTERNAL</span>
                 </div>
               ) : (
-                <button onClick={() => { setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-6 py-2 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad</button>
+                <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-6 py-2 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad</button>
               )}
             </div>
           </header>
@@ -504,7 +507,7 @@
                     style={{ borderColor: '#e8e8f0' }}
                   />
                   <button
-                    onClick={() => { setGuidedStep(0); setView('guided'); }}
+                    onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
                     className="px-6 py-2 border rounded-full font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity"
                   >Roast my Ad →</button>
@@ -602,7 +605,7 @@
                   <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>What's killing your demos</span></li>
                   <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Top fixes ranked by impact</span></li>
                 </ul>
-                <button onClick={() => { setGuidedStep(0); setView('guided'); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors">Roast my Ad</button>
+                <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors">Roast my Ad</button>
                 <p className="text-center text-xs text-gray-400 mt-2">Runs on autopilot · 2 minutes end-to-end</p>
               </div>
 
@@ -671,7 +674,7 @@
             <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
             <p className="text-gray-400 mb-8" style={{ fontSize: 'clamp(14px, 3vw, 16px)', lineHeight: 1.6 }}>Same spend, aligned message, 3x demos.</p>
             <div className="flex items-center justify-center">
-              <button onClick={() => { setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad</button>
+              <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad</button>
             </div>
             <p className="text-gray-400 mt-3 text-xs">Free &middot; 2 minutes &middot; no call required</p>
           </section>
@@ -910,7 +913,9 @@
         /* Step list adapts to whether ad copy was already pasted on the landing page.
            If yes, skip the ad-copy step. */
         const steps = [];
-        if (!inputs.copy?.trim() && !inputs.adScreenshot) {
+        /* guidedHadCopyAtStart is captured at landing-click. The step list stays stable
+           even if the user later clears the input mid-flow. */
+        if (!guidedHadCopyAtStart) {
           steps.push({ id: 'adCopy', q: 'Paste your ad copy', valid: () => (inputs.copy?.trim().length > 0) || inputs.adScreenshot });
         }
         steps.push({ id: 'icp', q: 'Who are you targeting?', hint: 'Be specific: job title, company size, pain points.', valid: () => icp?.trim().length > 0 });
@@ -1082,7 +1087,7 @@
           <main className="max-w-2xl mx-auto px-4 py-6">
             <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="border rounded-lg p-3 mb-4 flex items-start gap-3">
               <Icon name="users" className="w-5 h-5 mt-0.5" style={{ color: '#0a66c2' }} />
-              <div><p className="text-sm text-gray-900 font-medium">Target Audience</p><p className="text-sm text-gray-700">{icp}</p><button onClick={() => { setGuidedStep(0); setView('guided'); }} style={{ color: '#0a66c2' }} className="text-xs hover:underline mt-1">Edit</button></div>
+              <div><p className="text-sm text-gray-900 font-medium">Target Audience</p><p className="text-sm text-gray-700">{icp}</p><button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ color: '#0a66c2' }} className="text-xs hover:underline mt-1">Edit</button></div>
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h1 className="text-xl font-normal text-gray-900 mb-1">Add your content</h1>
