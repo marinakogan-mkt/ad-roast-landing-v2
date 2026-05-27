@@ -137,6 +137,7 @@
 
     function AdRoastApp({ adminMode = false }) {
       const [view, setView] = useState('landing');
+      const [guidedStep, setGuidedStep] = useState(0);
       const [platform, setPlatform] = useState(null);
       const [offerType, setOfferType] = useState(null);
       const [icp, setIcp] = useState('');
@@ -408,7 +409,7 @@
                 <span className="text-gray-300 text-xl font-light">|</span>
                 <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
               </div>
-              <button onClick={() => setView('onboarding')} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className={`px-6 py-2 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity ${adminMode ? 'hidden' : ''}`}>Roast my Ad</button>
+              <button onClick={() => { setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className={`px-6 py-2 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity ${adminMode ? 'hidden' : ''}`}>Roast my Ad</button>
               {adminMode && <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-300">INTERNAL</span>}
             </div>
           </header>
@@ -425,10 +426,25 @@
               </p>
               <h1 className="text-left sm:text-center text-gray-900 mb-5" style={{ fontSize: 'clamp(30px, 5.5vw, 62px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>Spending $20K+/mo on Ads but<br />demo quality still sucks?</h1>
               <p className="text-left sm:text-center text-gray-400 max-w-lg sm:mx-auto mb-8" style={{ fontSize: 'clamp(15px, 2.5vw, 18px)', lineHeight: 1.7 }}>2-minute roast to find out exactly where your demos leak.<br />Get a full diagnosis ranked by impact.</p>
-              <div className="flex items-center justify-start sm:justify-center">
-                <button onClick={() => setView('onboarding')} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-10 py-3.5 border rounded-full font-medium text-lg hover:opacity-90 transition-opacity">Roast my Ad</button>
+              {/* Inline ad-copy input + CTA — captures the ad in one shot so the guided flow can skip the paste step */}
+              <div className="max-w-2xl mx-auto">
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+                  <textarea
+                    rows={2}
+                    placeholder="Paste your ad copy here..."
+                    value={inputs.copy}
+                    onChange={(e) => setInputs(p => ({...p, copy: e.target.value}))}
+                    className="flex-1 px-5 py-3 bg-white border-2 rounded-2xl text-base focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm resize-none"
+                    style={{ borderColor: '#e8e8f0' }}
+                  />
+                  <button
+                    onClick={() => { setGuidedStep(0); setView('guided'); }}
+                    style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
+                    className="px-8 py-3 border rounded-2xl font-medium text-base whitespace-nowrap hover:opacity-90 transition-opacity self-stretch sm:self-auto"
+                  >Roast my Ad →</button>
+                </div>
+                <p className="text-center text-gray-400 mt-3" style={{ fontSize: '14px' }}>Free &middot; 2-min audit &middot; no call required</p>
               </div>
-              <p className="text-left sm:text-center text-gray-400 mt-3" style={{ fontSize: '14px' }}>Free &middot; 2-min audit &middot; no call required</p>
             </div>
           </section>
 
@@ -520,7 +536,7 @@
                   <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>What's killing your demos</span></li>
                   <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Top fixes ranked by impact</span></li>
                 </ul>
-                <button onClick={() => setView('onboarding')} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors">Roast my Ad</button>
+                <button onClick={() => { setGuidedStep(0); setView('guided'); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors">Roast my Ad</button>
                 <p className="text-center text-xs text-gray-400 mt-2">Runs on autopilot · 2 minutes end-to-end</p>
               </div>
 
@@ -589,7 +605,7 @@
             <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
             <p className="text-gray-400 mb-8" style={{ fontSize: 'clamp(14px, 3vw, 16px)', lineHeight: 1.6 }}>Same spend, aligned message, 3x demos.</p>
             <div className="flex items-center justify-center">
-              <button onClick={() => setView('onboarding')} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad</button>
+              <button onClick={() => { setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad</button>
             </div>
             <p className="text-gray-400 mt-3 text-xs">Free &middot; 2 minutes &middot; no call required</p>
           </section>
@@ -660,7 +676,129 @@
         </div>
       );
 
-      /* ─── ONBOARDING ─── */
+      /* ─── GUIDED (step-by-step questions, replaces onboarding + input forms) ─── */
+      if (view === 'guided') {
+        /* Step list adapts to whether ad copy was already pasted on the landing page.
+           If yes, skip the ad-copy step. */
+        const steps = [];
+        if (!inputs.copy?.trim() && !inputs.adScreenshot) {
+          steps.push({ id: 'adCopy', q: 'Paste your ad copy', valid: () => (inputs.copy?.trim().length > 0) || inputs.adScreenshot });
+        }
+        steps.push({ id: 'icp', q: 'Who are you targeting?', hint: 'Be specific: job title, company size, pain points.', valid: () => icp?.trim().length > 0 });
+        steps.push({ id: 'platform', q: 'Which platform is this ad for?', valid: () => !!platform });
+        steps.push({ id: 'offer', q: 'What type of offer is this?', valid: () => !!offerType });
+        steps.push({ id: 'lpUrl', q: "What's the landing page URL?", hint: "We'll auto-extract all the copy from your page.", valid: () => true });
+        const stepIdx = Math.min(guidedStep, steps.length - 1);
+        const step = steps[stepIdx];
+        const total = steps.length;
+        const onContinue = () => {
+          if (!step.valid()) return;
+          if (stepIdx === total - 1) generate();
+          else setGuidedStep(stepIdx + 1);
+        };
+        return (
+          <div className="min-h-screen bg-gray-100">
+            <header className="bg-white border-b border-gray-200">
+              <div onClick={reset} className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-2 cursor-pointer">
+                <img src={ADROAST_LOGO} alt="AdRoast" className="w-9 h-9 rounded" />
+                <span className="text-gray-300 text-lg font-light">|</span>
+                <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
+              </div>
+            </header>
+            <main className="max-w-md mx-auto px-4 py-10">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#0a66c2' }}>Step {stepIdx + 1} of {total}</p>
+                </div>
+                <h1 className="text-2xl font-normal text-gray-900 mb-4 mt-2">{step.q}</h1>
+                {step.hint && <p className="text-gray-500 text-sm mb-5">{step.hint}</p>}
+                <div className="mb-6">
+                  {step.id === 'adCopy' && (
+                    <div className="space-y-3">
+                      <textarea
+                        placeholder="Paste your ad headline and body copy..."
+                        value={inputs.copy}
+                        onChange={(e) => setInputs(p => ({ ...p, copy: e.target.value }))}
+                        className="w-full h-40 px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
+                      <div className="text-center text-xs text-gray-400">or upload a screenshot</div>
+                      {inputs.adScreenshotPreview ? (
+                        <div className="relative h-32 border border-gray-200 rounded overflow-hidden bg-gray-50">
+                          <img src={inputs.adScreenshotPreview} alt="Ad screenshot" className="w-full h-full object-contain" />
+                          <button onClick={() => setInputs(p => ({ ...p, adScreenshot: null, adScreenshotPreview: null }))} className="absolute top-1 right-1 w-6 h-6 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-500 hover:text-red-500 text-xs font-bold">✕</button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                          <Icon name="upload" className="w-5 h-5 text-gray-400 mb-1" />
+                          <span className="text-xs text-gray-400">Drop or click to upload</span>
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const base64 = reader.result.split(',')[1];
+                              setInputs(p => ({ ...p, adScreenshot: base64, adScreenshotPreview: reader.result }));
+                            };
+                            reader.readAsDataURL(file);
+                          }} />
+                        </label>
+                      )}
+                    </div>
+                  )}
+                  {step.id === 'icp' && (
+                    <textarea
+                      placeholder="e.g., Engineering managers at Series B+ startups frustrated with slow CI/CD..."
+                      value={icp}
+                      onChange={(e) => setIcp(e.target.value)}
+                      className="w-full h-32 px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
+                  )}
+                  {step.id === 'platform' && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {['Meta', 'Google', 'LinkedIn'].map((p) => (
+                        <button key={p} onClick={() => setPlatform(p.toLowerCase())} style={platform === p.toLowerCase() ? { borderColor: '#0a66c2', backgroundColor: '#e8f3ff', color: '#0a66c2' } : {}} className={`p-3 rounded border-2 text-sm font-medium transition-all ${platform === p.toLowerCase() ? '' : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'}`}>{p}</button>
+                      ))}
+                    </div>
+                  )}
+                  {step.id === 'offer' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {[{ id: 'demo', label: 'Book a Demo' }, { id: 'trial', label: 'Free Trial' }].map((o) => (
+                        <button key={o.id} onClick={() => setOfferType(o.id)} style={offerType === o.id ? { borderColor: '#0a66c2', backgroundColor: '#e8f3ff', color: '#0a66c2' } : {}} className={`p-3 rounded border-2 text-sm font-medium transition-all ${offerType === o.id ? '' : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'}`}>{o.label}</button>
+                      ))}
+                    </div>
+                  )}
+                  {step.id === 'lpUrl' && (
+                    <input
+                      type="url"
+                      placeholder="https://your-landing-page.com"
+                      value={inputs.url}
+                      onChange={(e) => setInputs(p => ({ ...p, url: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900" />
+                  )}
+                </div>
+                {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 flex items-center gap-2 text-sm"><Icon name="alertCircle" className="w-4 h-4" />{error}</div>}
+                <div className="flex gap-2 items-center">
+                  {stepIdx > 0 && (
+                    <button onClick={() => setGuidedStep(stepIdx - 1)} className="px-4 py-2.5 rounded-full font-semibold text-sm text-gray-600 hover:bg-gray-100 transition-colors border-0 bg-transparent">← Back</button>
+                  )}
+                  <button onClick={onContinue} disabled={!step.valid()}
+                    style={step.valid() ? { backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' } : {}}
+                    className={`flex-1 py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 transition-all ${step.valid() ? 'hover:opacity-90' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+                    {stepIdx === total - 1 ? 'Roast my Ad' : 'Continue'} <Icon name="chevronRight" className="w-4 h-4" />
+                  </button>
+                </div>
+                {/* Progress bar */}
+                <div className="mt-6">
+                  <div className="w-full bg-gray-200 rounded-full" style={{ height: 4 }}>
+                    <div className="rounded-full transition-all" style={{ height: 4, width: `${((stepIdx + 1) / total) * 100}%`, background: '#0a66c2' }} />
+                  </div>
+                </div>
+              </div>
+            </main>
+          </div>
+        );
+      }
+
+      /* ─── ONBOARDING (legacy, kept as fallback) ─── */
       if (view === 'onboarding') return (
         <div className="min-h-screen bg-gray-100">
           <header className="bg-white border-b border-gray-200"><div onClick={reset} className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-2 cursor-pointer"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAHpElEQVR4nM2YW4xdVRnHf99ae+8z55yZYVo6LTMttBViZUppESjQFIcq3hFEOQVUiA8ixifRaEx4GCYmXp404cFoAKPRoDOxXhCVpAGaoMFLFYRWoRe1tAUGaDsz5zL7stbnwz4znenMcIY6Rf/Jzj7Z31lr/dd3XwvmwVClYndu3dwHCMDBd15VyT5wtcbv3+r/sW3zbQCP9fcH841fLJi5PmqlYivDw/68wFx39NqrfgsQWJYbAUA6A/vFgf7+4Jpdu9z/hOAwIKCJ8b/q6Si+Z981m28Qrz1iDA3v067Abqj46tsFdKhSsW86we6REVGQQMx5eHXWUBHhHeo94vFFa2iPwisUpHtkRM4kwVk+pCBUqyKghw2f8y6zHYH5sEGKNefwobcgIH6JgD5fLFpUZ5tajLZcXb0gwAACjxsGt7mcwrRpZpHLP+qBa6/48upC9LVq7LwNxKgqahRZV/fRcx1mJE13ikei0aN3rtj9wgED+Dekm4VhiqCCCGilry/61qqzvr48CO6a0Mz5srM6HiixEbu2Qbh5jMbOpXSNCs92LGdj32eeUmMTVJshJIoiuKQNldc3v5EUCbxYqQdZ4+EL9v3wm3uHhxNQAVFomlhBGBiQoeHh8taVZ/2ypxBtG5tInUbY6OpRsic7hUwINlZRo5jehPjVUKsY1WLnprltWVqgfvL9pB3Lrn7+gtu29vf33bjrmns8g5wkSKViZHDQ/etdV32lp1jYNprECamJgvMbSJvDXlRDig4CD5lguxN8WJDlaVU66sf9WFhSUYdO95hJjS4Ioho3nDvrnOt+f1nfRxi8eYihIcv27S5QEBkedk9s2dJRNvrxiTT1JCYwvTF2fQ1ig+lKc607AQOmw+FLSinJKPvUjDEHlxbWnQVVVbx3xqwFYE+3AJg8gqAcurOt4ew0w0hXJuHm8Uk3gFggIU9KHog8lBziwNA6WBdOEoNoOv2TkUH8ziuvXDnusk0KxwIEu74KBZ9rLFPkohDptZA041wgiBx1CanaCBaX5AzVG4C17Wm1Owo+6R2ZlL3K0hRSgUjwCZiyIfxgCW0T8Lm1A3X8u20Jo2GZWf63iDDa3x+cv3P3aElk37JC2zkN8c5YEWLFXBgSfqiE6bWYsmDODSBVMrXYquOhpW8DE2F1ETV4KkF27XIK8kxc++poXH9uScMHaWJ9FhlkVUjQF2GWBfhM8AVLUjB0jiQ8m67mgVVXIi7GyZwVc3EICuhwZchc98Qzx7+w+t2ff6z9Qjr2Om33NUI3gZAipQxjYorHx+k80eCpfW+lsu52ToQlxLvF9MBZCAC206wk5/TXH1hT4MYjl8gN+5+i72eHWXZxSlQWxg8aDvx9Hb9ubOT7ay6nGhUwWYwagz0lpXhVVPPdGxF8cwcieYw5rwve1FSzIKDlxqu2XuhlR++l7Mgug+MxwSMNsjQDE0JbCdoFSDAuwYsBp7g0OzmjAqHBhhaXOHzqwJomM83lbQHGCH4Bvjujm5kQqwKYpI5YyCKhe0Unm3o6Ue+x6gkU9p+I2fNyDVBWdERcvrIT31zbCux9pcbBw+OsO7eDT2zs4dLeToqh5cXxmEcPHuPBv71EbcJhItuS5FztFl4MgQhMpLxvTRcP3Lhhxn++/adDfPane0GELed2sePWjTPkd/xiD5evKPO9mzZQDGcucevFPdy1ZTU3//hpnn2p1pJky/BLPDhVYueJncepUk9PNlapV5wqifdkzd8f27CCH92yiWIYMJF5Uqc4nz+pU/qWt/PQ7ZfQVQpQ5183g7YkKIAVmfEYmVsemPy97S3LMM1l2wJDaAURwRohtELilDVdJe68YhUaZ1gzP8XTSmCtaoZvNpd/OTrKQ3tfZv+xWp7PmnJrQBWuX9cNoZmK8rmw6MfGfDHlUz/fw/1/OAwqFEPhB7ds4Kb1PThVDIIIrO4qUiyGNBLX7AxnY1FLgPOKEXhk/6vc/8QhTCEkKoU0UuXunQfJvMeITBEphpZiYHJm85hlUQlOLvz4P49jrGAFUueRguWFsZiXqslUDz1r0Dw4LYKt0ms9c1N5EXJ/S70nzvzCJvhvCZ4uTqchOyNRvJg4QxpcvC28qSY+HfzfE2yZqFUh80o2Ld27acV9Uu6aPSAwb2VwzXkm+8HMtz7JtCRYCAyByevsJNqjk8OiIJcF05YqhmbOVLK0FM6Ya1kpbOmu8xL0CgSGvSM17tt9hKypnkCERw8eywsqcOBYg/t2H57qRQOBvx4dm1VjVeE7fz5CdznCq2JEqCWOiUxfl+RMgiqC5ky8KkSGJw+d4Mn9r50yykKYE3z66Dh3/OSZmfLQwvQ+T/Jm+u6Hn4PpvZ8IFAKYWlYVmXl+mEEwFJfGNhDSxCFiUJAgb99naldPnjOsYMvRvPLpsKVwlrKmfFvVIzYwXuPp13gy9R4YkJ4Xe9tGzu79nVuychPVU7R2plHsxNaPvxadOLSpce8dR/IGQnQyzSjAi9+9s9554pXrg7GR3xhkonnLccYfI6S2MfrHQv219zbu/fRhBu4RJL8YOkXj+cWhAOUvPXjhRNixhLQB/o1eVS0QRpWwSJTFtcY3Pvq0AgwMGAYHp6z8H64mYytBcDRRAAAAAElFTkSuQmCC" alt="AdRoast" className="w-9 h-9 rounded" /><span className="text-gray-300 text-lg font-light">|</span><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div></header>
@@ -709,7 +847,7 @@
           <main className="max-w-2xl mx-auto px-4 py-6">
             <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="border rounded-lg p-3 mb-4 flex items-start gap-3">
               <Icon name="users" className="w-5 h-5 mt-0.5" style={{ color: '#0a66c2' }} />
-              <div><p className="text-sm text-gray-900 font-medium">Target Audience</p><p className="text-sm text-gray-700">{icp}</p><button onClick={() => setView('onboarding')} style={{ color: '#0a66c2' }} className="text-xs hover:underline mt-1">Edit</button></div>
+              <div><p className="text-sm text-gray-900 font-medium">Target Audience</p><p className="text-sm text-gray-700">{icp}</p><button onClick={() => { setGuidedStep(0); setView('guided'); }} style={{ color: '#0a66c2' }} className="text-xs hover:underline mt-1">Edit</button></div>
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h1 className="text-xl font-normal text-gray-900 mb-1">Add your content</h1>
