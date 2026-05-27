@@ -93,6 +93,10 @@ export default async function handler(req, res) {
 
   const roastLinks = Array.isArray(body.roastLinks) ? body.roastLinks.filter(s => (s || '').trim()) : [];
   const clientName = (body.clientName || '').trim() || 'Client';
+  /* Optional: regenerate an existing synthesis in place. If keepId is provided
+     and a synthesis exists at that id, we write the new markdown back to the
+     same Redis key — preserving the shareable ?synth= URL. */
+  const keepId = (body.keepId || '').trim() || null;
 
   if (roastLinks.length < 2) {
     return res.status(400).json({ error: 'Need at least 2 roast links to synthesize.' });
@@ -284,7 +288,15 @@ CRITICAL RULES:
 - Cite specific audit evidence (e.g., "AUDIT-2 (the SCA ad) scored 8/10 while AUDIT-1 (SAST) only scored 5/10").
 - Never invent numbers or quotes that aren't supported by the input audits.
 - Treat the audits as a single body of evidence to extract patterns from.
-- Output ONLY the markdown report. No JSON, no preamble, no closing message.`;
+- Output ONLY the markdown report. No JSON, no preamble, no closing message.
+
+LANGUAGE & TONE RULES:
+- Write in plain, neutral B2B consulting language. Direct, evidence-led, professional.
+- DO NOT use medical, violent, mental-health, or sensationalist metaphors.
+  Banned words/phrases include (non-exhaustive): "schizophrenic", "bipolar", "hemorrhaging", "bleeding", "dying", "killing", "killer", "kills", "death", "weaponize", "nuclear", "cancer", "toxic", "insane", "crazy", "psycho", "manic", "anxiety-inducing".
+- Prefer plain alternatives: "inconsistent" instead of "schizophrenic", "losing conversions" instead of "hemorrhaging conversions", "the biggest issue" instead of "the killer", "underperforming" instead of "dying".
+- Strong opinion-led statements are fine, but stay literal, specific, and free of emotional/medical metaphor.
+- Avoid hype phrases ("game-changer", "rockstar", "ninja", "10x"). Prefer concrete numbers from the audits.`;
 
   const userPrompt = `Synthesize the following ${fetched.length} ad audits into a single Evidence-Backed Audit Synthesis report for ${clientName}.\n\n${auditBlocks}`;
 
@@ -310,13 +322,22 @@ CRITICAL RULES:
     const markdown = llmData.content?.[0]?.text || '';
     if (!markdown) return res.status(500).json({ error: 'Empty synthesis from LLM', failures });
 
-    const id = randomId(10);
+    const id = keepId || randomId(10);
+    /* If keepId is set, preserve the original createdAt and add an updatedAt timestamp. */
+    let existing = null;
+    if (keepId) {
+      try {
+        const raw = await redis.get(`synth:${keepId}`);
+        if (raw) existing = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch (e) { /* ignore — treat as new */ }
+    }
     const stored = {
       id,
       markdown,
       sourceLinks: fetched.map(f => f.link),
       clientName,
-      createdAt: new Date().toISOString()
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      ...(keepId ? { updatedAt: new Date().toISOString() } : {})
     };
     try {
       await redis.set(`synth:${id}`, JSON.stringify(stored));

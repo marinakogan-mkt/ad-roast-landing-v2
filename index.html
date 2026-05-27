@@ -727,6 +727,42 @@
         setSynthLoading(false);
       };
 
+      /* Re-run the LLM on an existing synthesis report, preserving its shareable
+         ?synth= URL. Uses the sourceLinks and clientName already stored. */
+      const regenerateSynthesis = async () => {
+        if (!synthResult?.id || !synthResult?.sourceLinks) return;
+        if (!window.confirm('Regenerate this synthesis with the latest prompt? The shareable link will stay the same. The current report will be overwritten.')) return;
+        setError(null); setSynthLoading(true);
+        try {
+          const res = await fetch('/api/synthesize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              roastLinks: synthResult.sourceLinks,
+              clientName: synthResult.clientName || '',
+              keepId: synthResult.id
+            })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            setError(data.error || 'Regeneration failed.');
+            setSynthLoading(false);
+            return;
+          }
+          /* Reload the freshly-stored synthesis so we get createdAt/updatedAt etc. */
+          const get = await fetch(`/api/synthesize?id=${encodeURIComponent(synthResult.id)}`);
+          if (get.ok) {
+            const fresh = await get.json();
+            setSynthResult(fresh);
+          } else {
+            setSynthResult({ ...synthResult, markdown: data.markdown });
+          }
+        } catch (e) {
+          setError('Regeneration failed: ' + e.message);
+        }
+        setSynthLoading(false);
+      };
+
       const importFromLink = async () => {
         const url = (importLink || '').trim();
         if (!url) return;
@@ -1191,8 +1227,21 @@
             </header>
             <main className="max-w-3xl mx-auto px-4 py-8">
               {adminMode && (
-                <button onClick={() => setView('synthesis-builder')}
-                  className="inline-flex items-center gap-1.5 mb-4 text-sm font-medium bg-transparent border-0 cursor-pointer" style={{ color: 'var(--accent)' }}>← Back to builder</button>
+                <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                  <button onClick={() => setView('synthesis-builder')}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium bg-transparent border-0 cursor-pointer" style={{ color: 'var(--accent)' }}>← Back to builder</button>
+                  {synthResult.id && synthResult.sourceLinks && (
+                    <button onClick={regenerateSynthesis} disabled={synthLoading}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border cursor-pointer"
+                      style={{ background: '#fff', borderColor: 'var(--cloud)', color: synthLoading ? 'var(--slate)' : 'var(--ink-light)' }}
+                      title="Re-run the LLM on this synthesis with the latest prompt. Keeps the same shareable URL.">
+                      <svg className={`w-3.5 h-3.5 ${synthLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      {synthLoading ? 'Regenerating…' : 'Regenerate'}
+                    </button>
+                  )}
+                </div>
               )}
               <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full tracking-wide uppercase mb-3" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>Strategic Analysis</span>
               <h1 className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'var(--ink)' }}>{reportTitle}</h1>
