@@ -1191,8 +1191,32 @@
          sections + NudgeStyleSection styling as the Aikido positioning report. ─── */
       if (view === 'synthesis-result' && synthResult) {
         const shareLink = synthResult.id ? `${window.location.origin}/?synth=${synthResult.id}` : null;
+        /* Runtime safety net: scrub charged/sensationalist words from stored synthesis
+           content. Existing reports in Redis may have language generated before the
+           prompt banlist was added. We replace at render time so users never see them,
+           even if the user hasn't clicked Regenerate yet. */
+        const scrubChargedLanguage = (text) => {
+          if (!text || typeof text !== 'string') return text;
+          const replacements = [
+            [/\bschizophrenic\b/gi, 'inconsistent'],
+            [/\bhemorrhaging\b/gi, 'losing'],
+            [/\bhemorrhage(s|d)?\b/gi, (_, s) => 'lose' + (s === 's' ? 's' : s === 'd' ? 'd' : '')],
+            [/\bbipolar\b/gi, 'inconsistent'],
+            [/\bcancer\b/gi, 'problem'],
+            [/\binsane\b/gi, 'extreme'],
+            [/\bcrazy\b/gi, 'extreme'],
+            [/\bpsycho\b/gi, 'irrational'],
+            [/\bmanic\b/gi, 'frantic'],
+            [/\banxiety-inducing\b/gi, 'stressful'],
+            [/\bweaponize\b/gi, 'leverage'],
+            [/\bnuclear\b/gi, 'severe']
+          ];
+          let out = text;
+          for (const [re, sub] of replacements) out = out.replace(re, sub);
+          return out;
+        };
         /* Parse the markdown into H1 title + metadata + H2 sections. */
-        const raw = (synthResult.markdown || '').trim();
+        const raw = scrubChargedLanguage((synthResult.markdown || '').trim());
         const h1Match = raw.match(/^#\s+(.+)$/m);
         let reportTitle = h1Match ? h1Match[1].trim() : 'Evidence-Backed Audit Synthesis';
         /* Parse frontmatter metadata anywhere in the document:
@@ -6041,6 +6065,30 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 );
             }
 
+            /* Runtime safety net: scrub charged/sensationalist words from synthesis
+               content (same list as the public viewer). Protects against stale stored
+               content the user hasn't regenerated yet. */
+            const scrubChargedLanguage = (text) => {
+                if (!text || typeof text !== 'string') return text;
+                const replacements = [
+                    [/\bschizophrenic\b/gi, 'inconsistent'],
+                    [/\bhemorrhaging\b/gi, 'losing'],
+                    [/\bhemorrhage(s|d)?\b/gi, (_, s) => 'lose' + (s === 's' ? 's' : s === 'd' ? 'd' : '')],
+                    [/\bbipolar\b/gi, 'inconsistent'],
+                    [/\bcancer\b/gi, 'problem'],
+                    [/\binsane\b/gi, 'extreme'],
+                    [/\bcrazy\b/gi, 'extreme'],
+                    [/\bpsycho\b/gi, 'irrational'],
+                    [/\bmanic\b/gi, 'frantic'],
+                    [/\banxiety-inducing\b/gi, 'stressful'],
+                    [/\bweaponize\b/gi, 'leverage'],
+                    [/\bnuclear\b/gi, 'severe']
+                ];
+                let out = text;
+                for (const [re, sub] of replacements) out = out.replace(re, sub);
+                return out;
+            };
+
             /* If this client has live-fetched synth content OR fullContent markdown, render via the rich path. */
             if (useFullContent) {
                 const crumbs = accessMode === 'master'
@@ -6062,8 +6110,9 @@ The full pattern synthesis. Including the SCA template, the product-category for
                     ];
                 /* Parse content into sections by H2 headers. Each section becomes a collapsible block.
                    The TOC at the top links to each section.
-                   Prefer the live-fetched synthesis content (synthId) over hardcoded fullContent. */
-                const raw = liveMarkdown || client.positioning.fullContent;
+                   Prefer the live-fetched synthesis content (synthId) over hardcoded fullContent.
+                   Scrub charged language before parsing. */
+                const raw = scrubChargedLanguage(liveMarkdown || client.positioning.fullContent);
                 /* Parse Prepared for/Date/Prepared by metadata anywhere in the markdown
                    and render it as the metadata line under H1 (matches Nudge). */
                 const parseMeta = (text) => {
