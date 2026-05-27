@@ -6022,20 +6022,22 @@ The full pattern synthesis. Including the SCA template, the product-category for
             const [fetchedSynth, setFetchedSynth] = useState(null);
             const [fetchedSynthError, setFetchedSynthError] = useState(null);
             const synthIdToFetch = client.positioning && client.positioning.synthId;
-            /* Shareable URL for the synthesis report (when this client uses synthId).
-               Same link surfaced by the public ?synth= viewer. */
-            const [copiedSynthUrl, setCopiedSynthUrl] = useState(false);
+            /* Permalink for the synthesis report. We sync the address bar to this URL
+               while the report is visible so the user can copy it from the navigator
+               directly (no separate copy banner needed). */
             const synthShareUrl = synthIdToFetch
                 ? `${window.location.origin}/?synth=${synthIdToFetch}`
                 : null;
-            const handleCopySynthUrl = () => {
+            useEffect(() => {
                 if (!synthShareUrl) return;
                 try {
-                    navigator.clipboard.writeText(synthShareUrl);
-                    setCopiedSynthUrl(true);
-                    setTimeout(() => setCopiedSynthUrl(false), 2000);
-                } catch (e) { /* clipboard blocked — silently ignore */ }
-            };
+                    const u = new URL(synthShareUrl, window.location.origin);
+                    const target = u.pathname + u.search + u.hash;
+                    if (window.location.pathname + window.location.search + window.location.hash !== target) {
+                        window.history.replaceState(null, '', target);
+                    }
+                } catch (e) { /* ignore */ }
+            }, [synthShareUrl]);
             useEffect(() => {
                 if (!synthIdToFetch) return;
                 let cancelled = false;
@@ -6184,25 +6186,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                             ) : (
                                 <p className="text-lg mb-6" style={{ color: 'var(--slate)' }}>{client.positioning.subtitle}</p>
                             )}
-                            {/* Shareable URL for this synthesis report (when backed by a synthId).
-                                One-click copy. Same pattern as on individual audit pages. */}
-                            {synthShareUrl && (
-                                <div className="mb-8 flex items-center gap-2 border rounded-lg px-3 py-2" style={{ background: 'var(--accent-faint)', borderColor: 'var(--accent-light)' }}>
-                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--accent)' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                                    <input type="text" readOnly value={synthShareUrl}
-                                        onFocus={(e) => e.target.select()}
-                                        className="flex-1 bg-transparent text-xs outline-none truncate font-mono" style={{ color: 'var(--ink-light)' }} />
-                                    <button onClick={handleCopySynthUrl}
-                                        className="p-1.5 hover:bg-blue-100 rounded transition-colors bg-transparent border-0 cursor-pointer flex-shrink-0"
-                                        title="Copy report URL">
-                                        {copiedSynthUrl ? (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--success)' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                        ) : (
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--slate)' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                        )}
-                                    </button>
-                                </div>
-                            )}
+                            <div className="mb-2"></div>
                             {/* TOC card — same Nudge styling as the synthesis viewer:
                                 white background, rounded-xl, uppercase tracking-wider header,
                                 row-flow grid. Sits OUTSIDE the main report card. */}
@@ -6896,20 +6880,24 @@ The full pattern synthesis. Including the SCA template, the product-category for
                and audit.recommendations from portalData. */
             const [liveRoast, setLiveRoast] = useState(null);
             const [liveRoastError, setLiveRoastError] = useState(false);
-            const [copiedAuditUrl, setCopiedAuditUrl] = useState(false);
-            /* URL to display + copy. We always append &portal=1 so anyone who opens this
-               link from a shared message lands in the portal-styled view of the report. */
+            /* Permalink for the underlying audit report. We always append &portal=1 so the
+               URL stays in the portal-styled view. The address bar is updated to this URL
+               while the audit is visible — the user can copy it from the navigator
+               directly (no separate copy banner needed). */
             const fullAuditUrl = (audit.auditUrl && audit.auditUrl !== '#')
                 ? (audit.auditUrl.includes('portal=1') ? audit.auditUrl : audit.auditUrl + '&portal=1')
                 : null;
-            const handleCopyAuditUrl = () => {
+            useEffect(() => {
                 if (!fullAuditUrl) return;
                 try {
-                    navigator.clipboard.writeText(fullAuditUrl);
-                    setCopiedAuditUrl(true);
-                    setTimeout(() => setCopiedAuditUrl(false), 2000);
-                } catch (e) { /* clipboard blocked — silently ignore */ }
-            };
+                    /* Use the path-relative portion so the same hash/origin handling applies. */
+                    const u = new URL(fullAuditUrl, window.location.origin);
+                    const target = u.pathname + u.search + u.hash;
+                    if (window.location.pathname + window.location.search + window.location.hash !== target) {
+                        window.history.replaceState(null, '', target);
+                    }
+                } catch (e) { /* ignore */ }
+            }, [fullAuditUrl]);
             const reportId = (() => {
                 const u = audit.auditUrl;
                 if (!u || u === '#') return null;
@@ -7030,23 +7018,6 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                                 >
                                                     Open Complete Audit Report<ExternalIcon />
                                                 </a>
-                                            )}
-                                            {fullAuditUrl && (
-                                                <div className="mt-3 flex items-center gap-2 bg-white border rounded-md px-3 py-2" style={{ borderColor: 'var(--cloud)' }}>
-                                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--accent)' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                                                    <input type="text" readOnly value={fullAuditUrl}
-                                                        onFocus={(e) => e.target.select()}
-                                                        className="flex-1 bg-transparent text-xs outline-none truncate font-mono" style={{ color: 'var(--ink-light)' }} />
-                                                    <button onClick={handleCopyAuditUrl}
-                                                        className="p-1.5 hover:bg-blue-50 rounded transition-colors bg-transparent border-0 cursor-pointer flex-shrink-0"
-                                                        title="Copy report URL">
-                                                        {copiedAuditUrl ? (
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--success)' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                                        ) : (
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--slate)' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                                        )}
-                                                    </button>
-                                                </div>
                                             )}
                                         </div>
                                     )}
@@ -7262,6 +7233,23 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 });
                 window.scrollTo(0, 0);
             };
+
+            /* Keep the browser URL bar in sync with the current portal view.
+               - On audit / positioning views: the page components themselves set the
+                 permalink via history.replaceState (so the user can copy the report URL
+                 directly from the address bar).
+               - On hub / workspace / root views: restore /#portal so the bar doesn't
+                 keep showing a stale permalink from a previous page. */
+            useEffect(() => {
+                const isPermalinkView = state.view === 'audit' || state.view === 'positioning' || state.view === 'audit-full';
+                if (isPermalinkView) return; // the page itself sets the permalink
+                try {
+                    const target = '/#portal';
+                    if (window.location.pathname + window.location.search + window.location.hash !== target) {
+                        window.history.replaceState(null, '', target);
+                    }
+                } catch (e) { /* ignore */ }
+            }, [state.view]);
 
             const handleUnlock = (auth) => {
                 if (auth.mode === 'client') {
