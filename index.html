@@ -4663,7 +4663,9 @@ The full pattern synthesis. Including the SCA template, the product-category for
                             positioning: {
                                 title: "Evidence-Backed Audit Synthesis & Strategic Recommendations",
                                 subtitle: "Positioning report based on 5 AdRoast audits (Google Search RSAs)",
-                                fullContent: AIKIDO_SYNTHESIS_MD,
+                                /* Pull the actual content live from the synthesis store so the portal
+                                   stays in sync with the public ?synth= URL. Regenerating updates both. */
+                                synthId: "b3SLj6YwW4",
                                 summary: "Comprehensive analysis synthesizing 5 ad audits into actionable positioning, messaging pillars, ICP definition, CTA direction, and a prioritized 2-week testing plan.",
                                 content: {
                                     executiveSummary: "Trust signal absence is the #1 conversion killer. Trust scores average 3.4/10 across 5 ads. Aikido has '50k+ orgs · 100k+ devs · 4.7/5' + 14 named customer logos + 6 testimonials sitting unused on every LP. None of those proof assets travel into the ad copy at the moment of click decision.",
@@ -5981,9 +5983,52 @@ The full pattern synthesis. Including the SCA template, the product-category for
             const partner = portalData.partners[partnerId];
             const client = partner.clients[clientId];
             const [openSections, setOpenSections] = useState({});
+            /* Live-fetched synthesis content when this client uses a synthId
+               (single source of truth shared with the public ?synth= URL). */
+            const [fetchedSynth, setFetchedSynth] = useState(null);
+            const [fetchedSynthError, setFetchedSynthError] = useState(null);
+            const synthIdToFetch = client.positioning && client.positioning.synthId;
+            useEffect(() => {
+                if (!synthIdToFetch) return;
+                let cancelled = false;
+                fetch(`/api/synthesize?id=${encodeURIComponent(synthIdToFetch)}`)
+                    .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+                    .then(d => { if (!cancelled) setFetchedSynth(d); })
+                    .catch(e => { if (!cancelled) setFetchedSynthError(e.message); });
+                return () => { cancelled = true; };
+            }, [synthIdToFetch]);
 
-            /* If this client has fullContent markdown (e.g., Aikido), render it via Markdown. */
-            if (client.positioning && client.positioning.fullContent) {
+            /* Build the markdown content from synthId fetch (preferred) or fullContent fallback. */
+            const liveMarkdown = fetchedSynth && fetchedSynth.markdown;
+            const useFullContent = client.positioning && (liveMarkdown || client.positioning.fullContent);
+
+            /* Loading state while we fetch from synthId. */
+            if (synthIdToFetch && !fetchedSynth && !fetchedSynthError) {
+                return (
+                    <PageShell onNavigate={onNavigate}>
+                        <div className="max-w-3xl mx-auto py-16 text-center">
+                            <div className="inline-block w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: 'var(--cloud)', borderTopColor: 'var(--accent)' }}></div>
+                            <p className="text-sm mt-4" style={{ color: 'var(--slate)' }}>Loading synthesis…</p>
+                        </div>
+                    </PageShell>
+                );
+            }
+            /* Error state: the fetch failed and there's no fullContent fallback. */
+            if (synthIdToFetch && fetchedSynthError && !client.positioning?.fullContent) {
+                return (
+                    <PageShell onNavigate={onNavigate}>
+                        <div className="max-w-3xl mx-auto py-16">
+                            <BackButton label={`Back to ${client.name} Hub`} onClick={() => onNavigate('client-hub', partnerId, clientId)} />
+                            <div className="rounded-lg p-5 border" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
+                                <p className="text-sm" style={{ color: 'var(--ink)' }}>Couldn't load the synthesis report. ({fetchedSynthError})</p>
+                            </div>
+                        </div>
+                    </PageShell>
+                );
+            }
+
+            /* If this client has live-fetched synth content OR fullContent markdown, render via the rich path. */
+            if (useFullContent) {
                 const crumbs = accessMode === 'master'
                     ? [
                         { label: 'Portal', onClick: () => onNavigate('portal-root') },
@@ -6002,8 +6047,9 @@ The full pattern synthesis. Including the SCA template, the product-category for
                         { label: 'Positioning Report' }
                     ];
                 /* Parse content into sections by H2 headers. Each section becomes a collapsible block.
-                   The TOC at the top links to each section. */
-                const raw = client.positioning.fullContent;
+                   The TOC at the top links to each section.
+                   Prefer the live-fetched synthesis content (synthId) over hardcoded fullContent. */
+                const raw = liveMarkdown || client.positioning.fullContent;
                 /* Parse Prepared for/Date/Prepared by metadata anywhere in the markdown
                    and render it as the metadata line under H1 (matches Nudge). */
                 const parseMeta = (text) => {
