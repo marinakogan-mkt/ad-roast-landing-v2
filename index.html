@@ -4775,7 +4775,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     findings: "The ad's strongest weapon — 95% false-positive reduction — is buried at headline slot 14 while 'Best SAST Worldwide' vendor noise fills the top. Zero trust signals in a sale to security buyers who've already been burned by Snyk.",
                                     recommendations: "Move the 95% number to headline slot 1 and name the competitor. Quote Konstantin S leaving Snyk in the ad where buyers can read it before they click, not after.",
                                     auditUrl: "https://www.adroast.in/?id=6Yba3yPp",
-                                    adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489?region=VN",
+                                    adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR05790785529091981313",
                                     landingPageUrl: "https://www.aikido.dev/code/sast-engine"
                                 },
                                 2: {
@@ -4784,7 +4784,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     findings: "The model audit. Names the buyer in slot 1, uses pain-language, points to a specific mechanism — but undercounts its own trust line by 10x (ad: 10k+ teams vs LP: 100k+ devs).",
                                     recommendations: "Standardize the trust line to 100k+ devs. Pull Christian Schmidt's Snyk-migration quote into the ad. Treat this campaign as the template for the other four.",
                                     auditUrl: "https://www.adroast.in/?id=Gs6hNNTA",
-                                    adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489?region=VN",
+                                    adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR03731046551120773121",
                                     landingPageUrl: "https://www.aikido.dev/code/aikido-sca"
                                 },
                                 3: {
@@ -4792,8 +4792,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     summary: "Audit of Aikido's AI Pentest Google RSA. Carries the campaign's boldest unconventional positioning: '€3,500 flat. No findings = don't pay.'",
                                     findings: "'No findings = no pay' is the sharpest unconventional move in the audit, but five near-duplicate AI-Pentest headlines waste slots and the freemium-only CTAs disqualify the €25K procurement buyer this product is actually built for.",
                                     recommendations: "Keep the risk reversal. Drop three of the clone headlines. Quote Dan Sherwood on compliance and add one CISO demo CTA so the enterprise buyer has a path in.",
-                                    auditUrl: "https://www.adroast.in/?id=ttdKdxxc",
-                                    adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489?region=VN",
+                                    auditUrl: "https://www.adroast.in/?id=zVNStrvS",
+                                    adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR15175644350546706433",
                                     landingPageUrl: "https://www.aikido.dev/attack/aipentest"
                                 },
                                 4: {
@@ -4801,8 +4801,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     summary: "Audit of Aikido's competitor comparison ad targeting buyers searching for SonarQube alternatives. Currently Limited Approved by Google.",
                                     findings: "Limited Approved by Google over two policy-trigger headlines, plus a category collision — the ad sells AI Code Review while the LP sells AppSec. The LP's strongest pricing line (€3,240 vs €3,302) never makes it to the click decision.",
                                     recommendations: "Drop the two policy-trigger headlines — restores eligibility within 72h. Replace the AI Code Review filler with LP positioning. Quote Salvatore Cuccurullo's SonarQube migration and put the price-parity line in the ad.",
-                                    auditUrl: "https://www.adroast.in/?id=zVNStrvS",
-                                    adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489?region=VN",
+                                    auditUrl: "https://www.adroast.in/?id=C78UmgSD",
+                                    adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR10473496150383001601",
                                     landingPageUrl: "https://www.aikido.dev/comparison/aikido-vs-sonarqube"
                                 },
                                 5: {
@@ -4810,7 +4810,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     summary: "Audit of Aikido's SBOM Generator ad targeting compliance teams needing CycloneDX/SPDX SBOMs for SOC 2, ISO 27001, EO 14028, NIS2 deadlines.",
                                     findings: "Compliance product with zero compliance proof in the ad. Two of four description slots are empty (capping Ad Strength at Good) and the LP testimonial is from a Software Engineer — wrong rank for a buyer who signs off on SOC 2.",
                                     recommendations: "Fill the two empty description slots — cheapest fix in the audit. Surface SOC 2 + ISO 27001 + FedRAMP in the hero. Swap the Software Engineer testimonial for Konstantin S (Head of InfoSec) — the right rank for a CISO product.",
-                                    auditUrl: "https://www.adroast.in/?id=C78UmgSD",
+                                    auditUrl: "https://www.adroast.in/?id=ttdKdxxc",
                                     adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489?region=VN",
                                     landingPageUrl: "https://www.aikido.dev/use-cases/sbom-generator-create-software-bill-of-materials"
                                 }
@@ -7124,7 +7124,10 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     )}
                                 </section>
 
-                                {/* Creative assets — CTAs only, no titles */}
+                                {/* Creative assets — CTAs only, no titles.
+                                    Button label switches between singular and plural based on whether
+                                    the URL points to a specific /creative/ (one ad) or to the
+                                    advertiser library (multiple ads). */}
                                 <section>
                                     <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Creative Assets</h2>
                                     <div className="flex flex-wrap gap-3">
@@ -7133,7 +7136,11 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                             style={{ background: 'var(--accent)' }}
                                             onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
                                             onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
-                                        >{client.platform === 'Google' ? 'View Google Ads' : 'View LinkedIn Ad'}<ExternalIcon /></a>
+                                        >{
+                                            client.platform === 'Google'
+                                                ? (audit.adUrl && audit.adUrl.includes('/creative/') ? 'View Google Ad' : 'View Google Ads')
+                                                : 'View LinkedIn Ad'
+                                        }<ExternalIcon /></a>
                                         <a href={audit.landingPageUrl} target="_blank" rel="noopener noreferrer"
                                             className="inline-flex items-center px-5 py-2.5 text-white text-sm font-semibold rounded-lg transition-colors"
                                             style={{ background: 'var(--accent)' }}
