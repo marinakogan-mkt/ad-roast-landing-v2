@@ -1,6 +1,85 @@
+/* Helper: detect if a string is a URL (http/https, no spaces). */
+function looksLikeUrl(s) {
+  if (!s) return false;
+  const t = s.trim();
+  return /^https?:\/\/\S+$/i.test(t);
+}
+
+/* Helper: detect the ad platform from the URL. Returns: linkedin, meta, google, unknown */
+function detectAdPlatform(url) {
+  if (/linkedin\.com\/ad-library|linkedin\.com\/posts/i.test(url)) return 'linkedin';
+  if (/facebook\.com\/ads\/library|fb\.com\/ads\/library/i.test(url)) return 'meta';
+  if (/adstransparency\.google\.com/i.test(url)) return 'google';
+  return 'unknown';
+}
+
+/* Helper: fetch the ad URL and extract whatever content we can.
+   Public ad library pages are JS-rendered SPAs so we can't get the full creative,
+   but the HTML response usually contains OG meta tags + page <title> with the
+   ad headline/description that the platform sets for sharing previews. */
+async function fetchAdContent(url) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7000);
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
+      },
+      signal: controller.signal,
+      redirect: 'follow'
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      return { success: false, error: `HTTP ${res.status}`, platform: detectAdPlatform(url) };
+    }
+    const html = await res.text();
+
+    const pluck = (re) => (html.match(re)?.[1] || '').trim();
+    const ogTitle = pluck(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)/i);
+    const ogDesc = pluck(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)/i);
+    const ogImage = pluck(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)/i);
+    const twTitle = pluck(/<meta[^>]*name=["']twitter:title["'][^>]*content=["']([^"']+)/i);
+    const twDesc = pluck(/<meta[^>]*name=["']twitter:description["'][^>]*content=["']([^"']+)/i);
+    const pageTitle = pluck(/<title[^>]*>([^<]*)<\/title>/i);
+    const metaDesc = pluck(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)/i);
+
+    const bodyText = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&[a-z]+;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 3000);
+
+    const parts = [];
+    const title = ogTitle || twTitle || pageTitle;
+    const description = ogDesc || twDesc || metaDesc;
+    if (title) parts.push(`Headline: ${title}`);
+    if (description) parts.push(`Description / Body: ${description}`);
+    if (ogImage) parts.push(`Creative Image URL: ${ogImage}`);
+
+    const extracted = parts.join('\n');
+    const total = (extracted.length || 0) + (bodyText.length || 0);
+    if (total < 50) {
+      return { success: false, error: 'No extractable content (page may be JS-rendered or blocked)', platform: detectAdPlatform(url) };
+    }
+    return {
+      success: true,
+      platform: detectAdPlatform(url),
+      content: extracted + (bodyText && bodyText.length > 100 ? `\n\nPAGE TEXT:\n${bodyText}` : '')
+    };
+  } catch (e) {
+    return { success: false, error: e.message, platform: detectAdPlatform(url) };
+  }
+}
+
 export default async function handler(req, res) {
   const API_VERSION = 'v4';
-  
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', _version: API_VERSION });
   }
@@ -37,8 +116,25 @@ export default async function handler(req, res) {
     hasLandingCopy: !!landingCopy?.trim(),
     landingCopyLength: landingCopy?.trim()?.length || 0,
     landingScraped: false,
-    landingScrapeError: null
+    landingScrapeError: null,
+    adUrlDetected: null,
+    adUrlScrape: null
   };
+
+  /* If the user pasted an ad-library URL (instead of ad copy text), fetch it and
+     replace adCopy with the extracted ad content (OG tags + body text). */
+  let effectiveAdCopy = adCopy;
+  if (looksLikeUrl(adCopy)) {
+    const platform_ = detectAdPlatform(adCopy);
+    meta.adUrlDetected = { url: adCopy.trim(), platform: platform_ };
+    const result = await fetchAdContent(adCopy.trim());
+    meta.adUrlScrape = result;
+    if (result.success) {
+      effectiveAdCopy = `[Ad URL: ${adCopy.trim()} (platform: ${result.platform})]\n\n${result.content}`;
+    } else {
+      effectiveAdCopy = `[Ad URL provided: ${adCopy.trim()} (platform: ${platform_})]\n[Auto-fetch failed: ${result.error}]\n[No ad copy text was provided; analysis based on URL alone]`;
+    }
+  }
 
   // Fetch landing page content if URL provided
   let landingPageContent = '';
@@ -116,7 +212,7 @@ Offer: ${offerType}
 Landing Page URL: ${landingUrl || 'Not provided'}
 Landing page content available: ${hasAnyLandingContent ? 'YES — SCORE IT 1-10' : 'NO — SCORE IT 0'}
 
-${adCopy ? `=== AD COPY ===\n${adCopy}` : '=== AD COPY ===\n[No ad copy provided]'}
+${effectiveAdCopy ? `=== AD COPY ===\n${effectiveAdCopy}` : '=== AD COPY ===\n[No ad copy provided]'}
 
 ${visualDescription ? `=== AD VISUAL DESCRIPTION ===\n${visualDescription}` : ''}
 
