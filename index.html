@@ -1158,17 +1158,24 @@
         /* Parse the markdown into H1 title + H2 sections. */
         const raw = (synthResult.markdown || '').trim();
         const h1Match = raw.match(/^#\s+(.+)$/m);
-        const reportTitle = h1Match ? h1Match[1].trim() : 'Evidence-Backed Audit Synthesis';
+        let reportTitle = h1Match ? h1Match[1].trim() : 'Evidence-Backed Audit Synthesis';
         const trimmed = raw.replace(/^[\s\S]*?(?=\n## )/, '').trim();
         const sectionRe = /^## (.+)$/gm;
-        const sections = [];
+        const rawSections = [];
         let match, lastIdx = 0, lastTitle = null;
         while ((match = sectionRe.exec(trimmed)) !== null) {
-          if (lastTitle !== null) sections.push({ title: lastTitle, body: trimmed.slice(lastIdx, match.index).trim() });
+          if (lastTitle !== null) rawSections.push({ title: lastTitle, body: trimmed.slice(lastIdx, match.index).trim() });
           lastTitle = match[1].trim();
           lastIdx = match.index + match[0].length;
         }
-        if (lastTitle !== null) sections.push({ title: lastTitle, body: trimmed.slice(lastIdx).trim() });
+        if (lastTitle !== null) rawSections.push({ title: lastTitle, body: trimmed.slice(lastIdx).trim() });
+        /* Older synthesis reports use H1 = "Positioning Report..." and H2 = client name
+           (with empty body). Promote that empty client-name section to be the report title,
+           then drop any sections whose body is empty. */
+        if (rawSections.length > 0 && rawSections[0].body === '' && /Positioning Report|Evidence-Backed Audit Synthesis/i.test(reportTitle)) {
+          reportTitle = `${rawSections[0].title} — Evidence-Backed Audit Synthesis`;
+        }
+        const sections = rawSections.filter(s => s.body && s.body.length > 0);
         const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         return (
           <div className="min-h-screen" style={{ background: 'var(--mist)' }}>
