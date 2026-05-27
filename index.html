@@ -309,6 +309,32 @@
         }
       }, []);
 
+      /* Keep the browser URL bar in sync with the current view + report id.
+         Every generated report (synthesis or single audit) gets its own dedicated
+         URL the moment it exists, so the user can copy it from the address bar. */
+      React.useEffect(() => {
+        try {
+          let target = null;
+          if (view === 'synthesis-result' && synthResult?.id) {
+            target = '/?synth=' + encodeURIComponent(synthResult.id);
+          } else if (view === 'results' && shareableLink) {
+            /* shareableLink is "<origin><path>?id=<reportId>[&portal=1]"; strip origin. */
+            try {
+              const u = new URL(shareableLink, window.location.origin);
+              target = u.pathname + u.search + u.hash;
+            } catch (e) { /* ignore — leave URL untouched */ }
+          } else if (view === 'landing') {
+            /* Don't reset the URL if there's a payment-success ?id= already handled
+               by the init effect — only reset on a true return to landing. */
+            const hasReportParam = /[?&](id|synth|payment)=/.test(window.location.search);
+            if (!hasReportParam) target = '/';
+          }
+          if (target && (window.location.pathname + window.location.search + window.location.hash) !== target) {
+            window.history.replaceState(null, '', target);
+          }
+        } catch (e) { /* clipboard blocked — silently ignore */ }
+      }, [view, synthResult, shareableLink]);
+
       const copy = async (text, key) => {
         await navigator.clipboard.writeText(text);
         setCopied(p => ({ ...p, [key]: true }));
