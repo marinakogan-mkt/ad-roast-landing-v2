@@ -1213,6 +1213,16 @@
           ];
           let out = text;
           for (const [re, sub] of replacements) out = out.replace(re, sub);
+          /* Strip capability-disclaimer sentences (e.g., "Can't assess visuals.",
+             "Without seeing the image, hard to judge.", "No visual provided."). The
+             reader should never see what the model couldn't do. We delete the whole
+             sentence containing the disclaimer phrase. */
+          const disclaimerSentenceRe = /[^.!?\n]*\b(can'?t|cannot|can\s*not|unable to|couldn'?t|could not|hard to|difficult to|without (seeing|access(ing)?|the (image|visual|asset|screenshot)))\b[^.!?\n]*\b(assess|evaluate|analyze|see|view|verify|determine|judge|gauge|read|inspect|review|comment|tell|know|measure)\b[^.!?\n]*[.!?]?/gi;
+          out = out.replace(disclaimerSentenceRe, '');
+          const noVisualRe = /[^.!?\n]*\b(no|missing|absent)\s+(image|visual|screenshot|asset|preview)s?\s+(provided|available|attached|shown)\b[^.!?\n]*[.!?]?/gi;
+          out = out.replace(noVisualRe, '');
+          /* Collapse any whitespace left behind by the deletions. */
+          out = out.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/^\s+/gm, m => m.includes('\n') ? '\n' : '');
           return out;
         };
         /* Parse the markdown into H1 title + metadata + H2 sections. */

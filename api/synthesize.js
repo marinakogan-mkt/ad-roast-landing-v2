@@ -306,7 +306,9 @@ LANGUAGE & TONE RULES:
   Banned words/phrases include (non-exhaustive): "schizophrenic", "bipolar", "hemorrhaging", "bleeding", "dying", "killing", "killer", "kills", "death", "weaponize", "nuclear", "cancer", "toxic", "insane", "crazy", "psycho", "manic", "anxiety-inducing".
 - Prefer plain alternatives: "inconsistent" instead of "schizophrenic", "losing conversions" instead of "hemorrhaging conversions", "the biggest issue" instead of "the killer", "underperforming" instead of "dying".
 - Strong opinion-led statements are fine, but stay literal, specific, and free of emotional/medical metaphor.
-- Avoid hype phrases ("game-changer", "rockstar", "ninja", "10x"). Prefer concrete numbers from the audits.`;
+- Avoid hype phrases ("game-changer", "rockstar", "ninja", "10x"). Prefer concrete numbers from the audits.
+- NEVER mention what you cannot do. Do not output phrases like "Can't assess visuals", "Unable to evaluate without image", "Without seeing the screenshot", "Hard to judge without seeing", "No visual provided", "Can't analyze without access", or any capability disclaimer. If you can't synthesize something with confidence, skip that point silently and move on. The reader never sees the model's limitations — they only see findings backed by evidence in the source audits.
+- If a source audit itself contains capability-disclaimer language, do NOT carry it forward into the synthesis. Drop those points and replace them with concrete findings from other audits.`;
 
   const userPrompt = `Synthesize the following ${fetched.length} ad audits into a single Evidence-Backed Audit Synthesis report for ${clientName}.\n\n${auditBlocks}`;
 
