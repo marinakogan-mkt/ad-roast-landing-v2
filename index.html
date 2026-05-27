@@ -202,9 +202,28 @@
       React.useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const reportId = params.get('id');
+        const synthId = params.get('synth');
         const portalParam = params.get('portal');
         const paymentStatus = params.get('payment');
         const stripeSessionId = params.get('session_id');
+
+        // Synthesis report (shareable): /?synth=XXX
+        if (synthId) {
+          setView('loading-report');
+          fetch(`/api/synthesize?id=${encodeURIComponent(synthId)}`)
+            .then(r => r.json())
+            .then(d => {
+              if (d && d.markdown) {
+                setSynthResult(d);
+                setView('synthesis-result');
+              } else {
+                setError('Synthesis report not found');
+                setView('landing');
+              }
+            })
+            .catch(e => { setError('Failed to load synthesis: ' + e.message); setView('landing'); });
+          return;
+        }
 
         if (portalParam === '1') setIsPortalView(true);
 
@@ -618,6 +637,39 @@
       const [importLink, setImportLink] = useState('');
       const [importLoading, setImportLoading] = useState(false);
 
+      /* Synthesis Report state (admin-only): multiple roast links → one cross-audit synthesis. */
+      const [synthLinks, setSynthLinks] = useState(['', '', '', '', '']);
+      const [synthClientName, setSynthClientName] = useState('');
+      const [synthLoading, setSynthLoading] = useState(false);
+      const [synthResult, setSynthResult] = useState(null);
+      const setSynthLinkAt = (i, value) => setSynthLinks(prev => prev.map((v, idx) => idx === i ? value : v));
+      const addSynthLinkSlot = () => setSynthLinks(prev => [...prev, '']);
+      const removeSynthLinkSlot = (i) => setSynthLinks(prev => prev.length <= 2 ? prev : prev.filter((_, idx) => idx !== i));
+
+      const generateSynthesis = async () => {
+        const links = synthLinks.map(s => (s || '').trim()).filter(Boolean);
+        if (links.length < 2) { setError('Paste at least 2 AdRoast report links.'); return; }
+        setError(null); setSynthLoading(true);
+        try {
+          const res = await fetch('/api/synthesize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roastLinks: links, clientName: synthClientName })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            setError(data.error || 'Synthesis failed.');
+            setSynthLoading(false);
+            return;
+          }
+          setSynthResult(data);
+          setView('synthesis-result');
+        } catch (e) {
+          setError('Synthesis failed: ' + e.message);
+        }
+        setSynthLoading(false);
+      };
+
       const importFromLink = async () => {
         const url = (importLink || '').trim();
         if (!url) return;
@@ -673,8 +725,9 @@
                 <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
               </div>
               {adminMode ? (
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setView('admin-builder')} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-6 py-2 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Advanced audit</button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={() => setView('admin-builder')} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-5 py-2 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Advanced audit</button>
+                  <button onClick={() => setView('synthesis-builder')} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="px-5 py-2 border-2 bg-white rounded-full font-medium text-sm hover:bg-blue-50 transition-colors">Synthesis report</button>
                   <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-300">INTERNAL</span>
                 </div>
               ) : (
@@ -944,6 +997,115 @@
 
         </div>
       );
+
+      /* ─── ADMIN SYNTHESIS BUILDER (internal-only, multi-roast synthesis) ─── */
+      if (view === 'synthesis-builder' && adminMode) {
+        const filledCount = synthLinks.filter(s => (s || '').trim()).length;
+        return (
+          <div className="min-h-screen bg-gray-100">
+            <header className="bg-white border-b border-gray-200">
+              <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div onClick={reset} className="flex items-center gap-2 cursor-pointer">
+                  <img src={ADROAST_LOGO} alt="AdRoast" className="w-9 h-9 rounded" />
+                  <span className="text-gray-300 text-lg font-light">|</span>
+                  <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
+                </div>
+                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-300">INTERNAL</span>
+              </div>
+            </header>
+            <main className="max-w-2xl mx-auto px-4 py-8">
+              <button onClick={() => setView('landing')}
+                className="inline-flex items-center gap-1.5 mb-4 text-sm font-medium text-gray-600 hover:text-blue-600 bg-transparent border-0 cursor-pointer">← Back to home</button>
+              <h1 className="text-2xl font-semibold text-gray-900 mb-1">Synthesis Report</h1>
+              <p className="text-sm text-gray-500 mb-6">
+                Paste links to multiple completed AdRoast reports. The synthesis engine compares them and produces a strategic positioning report — the same format as Nudge's Evidence-Backed Audit Synthesis.
+              </p>
+              {error && <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded text-red-700 flex items-center gap-2 text-sm"><Icon name="alertCircle" className="w-4 h-4" />{error}</div>}
+
+              <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
+                <label className="block text-sm font-semibold text-gray-900 mb-1">Client name <span className="text-gray-400 font-normal">(optional, used in the report title)</span></label>
+                <input type="text" value={synthClientName} onChange={(e) => setSynthClientName(e.target.value)}
+                  placeholder="e.g., Aikido Security"
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 text-gray-900" />
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-semibold text-gray-900">AdRoast report links</label>
+                  <span className="text-xs text-gray-400">{filledCount} of {synthLinks.length} filled</span>
+                </div>
+                <div className="space-y-2">
+                  {synthLinks.map((v, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 w-6 text-right">{i + 1}.</span>
+                      <input type="url" value={v} onChange={(e) => setSynthLinkAt(i, e.target.value)}
+                        placeholder="https://www.brandswithpurpose.us/?id=… or https://adroast.in/?id=…"
+                        className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 text-gray-900" />
+                      {synthLinks.length > 2 && (
+                        <button onClick={() => removeSynthLinkSlot(i)} className="text-gray-300 hover:text-red-500 px-1 bg-transparent border-0 cursor-pointer text-base">×</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button onClick={addSynthLinkSlot}
+                  className="mt-3 text-xs text-blue-600 hover:underline bg-transparent border-0 cursor-pointer">+ Add another link</button>
+              </div>
+
+              <button onClick={generateSynthesis} disabled={filledCount < 2 || synthLoading}
+                style={filledCount >= 2 && !synthLoading ? { backgroundColor: '#0a66c2', color: '#fff' } : {}}
+                className={`w-full py-3 rounded-full font-semibold text-base flex items-center justify-center gap-2 transition-all ${filledCount >= 2 && !synthLoading ? 'hover:opacity-90' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
+                {synthLoading ? 'Synthesizing…' : `Generate Synthesis (${filledCount} reports)`}
+              </button>
+              <p className="text-xs text-gray-400 mt-3 text-center">
+                Needs at least 2 reports. Each link must be a public AdRoast report URL (the kind you copy from a saved roast).
+              </p>
+            </main>
+          </div>
+        );
+      }
+
+      /* ─── SYNTHESIS RESULT VIEW (internal & shareable) ─── */
+      if (view === 'synthesis-result' && synthResult) {
+        const shareLink = synthResult.id ? `${window.location.origin}/?synth=${synthResult.id}` : null;
+        return (
+          <div className="min-h-screen bg-gray-100">
+            <header className="bg-white border-b border-gray-200">
+              <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div onClick={reset} className="flex items-center gap-2 cursor-pointer">
+                  <img src={ADROAST_LOGO} alt="AdRoast" className="w-9 h-9 rounded" />
+                  <span className="text-gray-300 text-lg font-light">|</span>
+                  <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
+                </div>
+                {adminMode && <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-300">INTERNAL</span>}
+              </div>
+            </header>
+            <main className="max-w-3xl mx-auto px-4 py-8">
+              {adminMode && (
+                <button onClick={() => setView('synthesis-builder')}
+                  className="inline-flex items-center gap-1.5 mb-4 text-sm font-medium text-gray-600 hover:text-blue-600 bg-transparent border-0 cursor-pointer">← Back to builder</button>
+              )}
+              {shareLink && (
+                <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="border rounded-lg p-3 mb-5 flex items-center gap-2">
+                  <Icon name="link" className="w-4 h-4 flex-shrink-0" style={{ color: '#0a66c2' }} />
+                  <input type="text" readOnly value={shareLink}
+                    className="flex-1 bg-transparent text-xs text-gray-700 outline-none truncate" />
+                  <button onClick={() => copy(shareLink, 'synthLink')} className="p-1.5 hover:bg-blue-100 rounded transition-colors bg-transparent border-0 cursor-pointer">
+                    {copied.synthLink ? <Icon name="check" className="w-4 h-4 text-green-600" /> : <Icon name="copy" className="w-4 h-4 text-gray-500" />}
+                  </button>
+                </div>
+              )}
+              <div className="bg-white rounded-xl border p-6 sm:p-10" style={{ borderColor: 'var(--cloud)' }}>
+                <Markdown content={synthResult.markdown || ''} />
+              </div>
+              {synthResult.failures && synthResult.failures.length > 0 && (
+                <div className="mt-5 p-3 bg-amber-50 border border-amber-200 rounded text-sm">
+                  <strong className="text-amber-800">Note:</strong> {synthResult.failures.length} link(s) couldn't be loaded and were skipped: {synthResult.failures.map(f => f.error).join(' · ')}
+                </div>
+              )}
+            </main>
+          </div>
+        );
+      }
 
       /* ─── ADMIN BUILDER (internal-only, advanced multi-variant audit) ─── */
       if (view === 'admin-builder' && adminMode) {
