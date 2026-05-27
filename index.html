@@ -1195,7 +1195,7 @@
         const raw = (synthResult.markdown || '').trim();
         const h1Match = raw.match(/^#\s+(.+)$/m);
         let reportTitle = h1Match ? h1Match[1].trim() : 'Evidence-Backed Audit Synthesis';
-        /* Parse frontmatter metadata between H1 and the first H2:
+        /* Parse frontmatter metadata anywhere in the document:
            **Prepared for:** … / **Date:** … / **Prepared by:** … */
         const meta = {};
         const metaRe = /\*\*(Prepared for|Date|Prepared by):\*\*\s*([^\n]+)/gi;
@@ -1206,6 +1206,15 @@
         const trimmed = raw.replace(/^[\s\S]*?(?=\n## )/, '').trim();
         /* Strip numeric prefixes from H2 titles ("1) A) Executive Summary" → "A) Executive Summary") */
         const cleanTitle = (t) => t.replace(/^\d+\)\s*/, '').trim();
+        /* True when a section body is empty or contains only Prepared for/Date/Prepared by lines.
+           These sections are legacy artifacts (the client name as an H2 with metadata frontmatter
+           below it) and should be lifted out of the section list. */
+        const META_RE = /^\*\*(Prepared for|Date|Prepared by):\*\*/i;
+        const isMetaOnly = (body) => {
+          const lines = body.split('\n').map(l => l.trim()).filter(l => l !== '' && l !== '---');
+          if (lines.length === 0) return true;
+          return lines.every(l => META_RE.test(l));
+        };
         const sectionRe = /^## (.+)$/gm;
         const rawSections = [];
         let match, lastIdx = 0, lastTitle = null;
@@ -1215,13 +1224,14 @@
           lastIdx = match.index + match[0].length;
         }
         if (lastTitle !== null) rawSections.push({ title: cleanTitle(lastTitle), body: trimmed.slice(lastIdx).trim() });
-        /* Older synthesis reports use H1 = "Positioning Report..." and H2 = client name
-           (with empty body). Promote that empty client-name section to be the report title,
-           then drop any sections whose body is empty. */
-        if (rawSections.length > 0 && rawSections[0].body === '' && /Positioning Report|Evidence-Backed Audit Synthesis/i.test(reportTitle)) {
+        /* Older synthesis reports use H1 = "Positioning Report..." and an H2 = client name
+           with metadata-only body. Promote that section title into the report title and
+           drop the section from the rendered list. */
+        if (rawSections.length > 0 && isMetaOnly(rawSections[0].body) && /Positioning Report|Evidence-Backed Audit Synthesis/i.test(reportTitle)) {
           reportTitle = `${rawSections[0].title} — Evidence-Backed Audit Synthesis`;
         }
-        const sections = rawSections.filter(s => s.body && s.body.length > 0);
+        /* Drop empty and meta-only sections from the rendered list. */
+        const sections = rawSections.filter(s => s.body && s.body.length > 0 && !isMetaOnly(s.body));
         const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         return (
           <div className="min-h-screen" style={{ background: 'var(--mist)' }}>
@@ -5994,9 +6004,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 /* Parse content into sections by H2 headers. Each section becomes a collapsible block.
                    The TOC at the top links to each section. */
                 const raw = client.positioning.fullContent;
-                /* Parse frontmatter metadata (lines like **Prepared for:** ..., **Date:** ...,
-                   **Prepared by:** ...) that appear between the H1 and the first H2. They render
-                   as the metadata line under the H1 (matching Nudge), not as content. */
+                /* Parse Prepared for/Date/Prepared by metadata anywhere in the markdown
+                   and render it as the metadata line under H1 (matches Nudge). */
                 const parseMeta = (text) => {
                     const meta = {};
                     const re = /\*\*(Prepared for|Date|Prepared by):\*\*\s*([^\n]+)/gi;
@@ -6012,15 +6021,23 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 const trimmed = raw.replace(/^[\s\S]*?(?=\n## )/, '').trim();
                 /* Drop leading numeric prefixes (e.g., "1) A) Executive Summary" → "A) Executive Summary"). */
                 const cleanTitle = (t) => t.replace(/^\d+\)\s*/, '').trim();
+                /* Detect sections whose body is empty or only metadata lines — drop those
+                   from the rendered TOC + collapsibles. */
+                const META_RE_PORTAL = /^\*\*(Prepared for|Date|Prepared by):\*\*/i;
+                const isMetaOnly = (body) => {
+                    const lines = body.split('\n').map(l => l.trim()).filter(l => l !== '' && l !== '---');
+                    if (lines.length === 0) return true;
+                    return lines.every(l => META_RE_PORTAL.test(l));
+                };
                 // Split into sections at H2 boundaries
                 const sectionRe = /^## (.+)$/gm;
-                const sections = [];
+                const rawSections = [];
                 let match;
                 let lastIdx = 0;
                 let lastTitle = null;
                 while ((match = sectionRe.exec(trimmed)) !== null) {
                     if (lastTitle !== null) {
-                        sections.push({
+                        rawSections.push({
                             title: cleanTitle(lastTitle),
                             body: trimmed.slice(lastIdx, match.index).trim()
                         });
@@ -6029,8 +6046,9 @@ The full pattern synthesis. Including the SCA template, the product-category for
                     lastIdx = match.index + match[0].length;
                 }
                 if (lastTitle !== null) {
-                    sections.push({ title: cleanTitle(lastTitle), body: trimmed.slice(lastIdx).trim() });
+                    rawSections.push({ title: cleanTitle(lastTitle), body: trimmed.slice(lastIdx).trim() });
                 }
+                const sections = rawSections.filter(s => s.body && s.body.length > 0 && !isMetaOnly(s.body));
                 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
                 return (
                     <PageShell crumbs={crumbs} onNavigate={onNavigate}>
