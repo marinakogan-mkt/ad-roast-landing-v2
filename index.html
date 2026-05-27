@@ -7079,10 +7079,11 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 // Positioning report: no prev, next = first audit
                 next = auditIds[0];
             } else {
-                // Audit pages: circular loop among audits
+                /* Audit pages: full loop including Positioning.
+                   Positioning → 1 → 2 → 3 → 4 → 5 → Positioning. */
                 const aidx = auditIds.indexOf(String(current));
-                prev = aidx === 0 ? auditIds[auditIds.length - 1] : auditIds[aidx - 1];
-                next = aidx === auditIds.length - 1 ? auditIds[0] : auditIds[aidx + 1];
+                prev = aidx === 0 ? 'positioning' : auditIds[aidx - 1];
+                next = aidx === auditIds.length - 1 ? 'positioning' : auditIds[aidx + 1];
             }
 
             const label = (p) => p === 'positioning' ? 'Positioning Report' : `Audit ${p}`;
