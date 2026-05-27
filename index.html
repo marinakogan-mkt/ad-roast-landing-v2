@@ -6797,6 +6797,58 @@ The full pattern synthesis. Including the SCA template, the product-category for
             const audit = client.audits[auditId];
             if (!audit) return null;
 
+            /* Live-fetch the linked roast so Key Findings + Recommendations stay in sync
+               with the actual AdRoast report at audit.auditUrl (single source of truth).
+               If the URL is an adroast.in/?id=<id> link, pull the report and derive a
+               concise summary. Otherwise, fall back to the hand-written audit.findings
+               and audit.recommendations from portalData. */
+            const [liveRoast, setLiveRoast] = useState(null);
+            const [liveRoastError, setLiveRoastError] = useState(false);
+            const reportId = (() => {
+                const u = audit.auditUrl;
+                if (!u || u === '#') return null;
+                const m = u.match(/[?&]id=([^&#]+)/);
+                return m ? m[1] : null;
+            })();
+            useEffect(() => {
+                if (!reportId) return;
+                let cancelled = false;
+                fetch(`/api/roast-view?id=${encodeURIComponent(reportId)}`)
+                    .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+                    .then(d => { if (!cancelled) setLiveRoast(d); })
+                    .catch(() => { if (!cancelled) setLiveRoastError(true); });
+                return () => { cancelled = true; };
+            }, [reportId]);
+
+            /* Derive a 2-3 line Findings summary + a 2-3 line Recommendations summary
+               from the live roast data, matching the brief Nudge-style format. */
+            const derivedFindings = (() => {
+                if (!liveRoast) return null;
+                const r = liveRoast.result || liveRoast;
+                const issues = (r.issues || []).filter(i => i && i.title && (i.score !== undefined));
+                if (issues.length === 0) {
+                    /* Fall back to ad↔LP mismatch verdict if no issues */
+                    return r.ad_landing_mismatch?.verdict || null;
+                }
+                /* Sort by lowest score first — those are the biggest problems */
+                const sorted = [...issues].sort((a, b) => (a.score || 0) - (b.score || 0));
+                const top = sorted.slice(0, 2);
+                return top;
+            })();
+            const derivedRecs = (() => {
+                if (!liveRoast) return null;
+                const r = liveRoast.result || liveRoast;
+                const steps = (r.next_steps || []).filter(s => typeof s === 'string' && s.trim());
+                if (steps.length > 0) return steps.slice(0, 3);
+                /* Fall back to landing-page quick wins */
+                const wins = (r.landing_page_roast?.quick_wins || []).filter(s => typeof s === 'string' && s.trim());
+                if (wins.length > 0) return wins.slice(0, 3);
+                /* Last fallback: fix-kit rationale as one paragraph */
+                const rationale = r.fix_kit?.rationale;
+                if (rationale) return [rationale];
+                return null;
+            })();
+
             const crumbs = accessMode === 'master'
                 ? [
                     { label: 'Portal', onClick: () => onNavigate('portal-root') },
@@ -6878,18 +6930,51 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                 </section>
 
                                 {/* Brief Key Findings + Recommendations (Nudge-style summary).
-                                    For deep dive, click 'Open Complete Audit Report' above (Aikido: internal rich UI; Nudge: external URL). */}
+                                    When the audit has an adroast.in roast URL we pull the live
+                                    roast and derive a fresh summary from it. Falls back to the
+                                    hand-written audit.findings + audit.recommendations otherwise. */}
                                 <section>
                                     <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Key Findings</h2>
                                     <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--danger-light)', borderColor: 'var(--danger)' }}>
-                                        <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{audit.findings}</p>
+                                        {reportId && !liveRoast && !liveRoastError && (
+                                            <p className="text-sm" style={{ color: 'var(--slate)' }}>Loading the latest findings from this audit…</p>
+                                        )}
+                                        {Array.isArray(derivedFindings) ? (
+                                            <ul className="space-y-3 text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>
+                                                {derivedFindings.map((f, i) => (
+                                                    <li key={i}>
+                                                        <strong style={{ color: 'var(--ink)' }}>{f.title}{f.score !== undefined ? ` (${f.score}/10)` : ''}.</strong>{' '}
+                                                        {f.explanation || ''}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : typeof derivedFindings === 'string' && derivedFindings ? (
+                                            <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{derivedFindings}</p>
+                                        ) : (
+                                            (!reportId || liveRoastError) && (
+                                                <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{audit.findings}</p>
+                                            )
+                                        )}
                                     </div>
                                 </section>
 
                                 <section>
                                     <h2 className="text-2xl font-semibold mb-5 serif" style={{ color: 'var(--ink)' }}>Recommendations</h2>
                                     <div className="rounded-lg p-5 border-l-4" style={{ background: 'var(--success-light)', borderColor: 'var(--success)' }}>
-                                        <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{audit.recommendations}</p>
+                                        {reportId && !liveRoast && !liveRoastError && (
+                                            <p className="text-sm" style={{ color: 'var(--slate)' }}>Loading recommendations from this audit…</p>
+                                        )}
+                                        {Array.isArray(derivedRecs) ? (
+                                            <ul className="space-y-2 text-base leading-relaxed list-disc pl-5" style={{ color: 'var(--ink-light)' }}>
+                                                {derivedRecs.map((rec, i) => (
+                                                    <li key={i}>{rec}</li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            (!reportId || liveRoastError) && (
+                                                <p className="text-base leading-relaxed" style={{ color: 'var(--ink-light)' }}>{audit.recommendations}</p>
+                                            )
+                                        )}
                                     </div>
                                 </section>
                             </div>
