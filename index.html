@@ -426,21 +426,21 @@
               </p>
               <h1 className="text-left sm:text-center text-gray-900 mb-5" style={{ fontSize: 'clamp(30px, 5.5vw, 62px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>Spending $20K+/mo on Ads but<br />demo quality still sucks?</h1>
               <p className="text-left sm:text-center text-gray-400 max-w-lg sm:mx-auto mb-8" style={{ fontSize: 'clamp(15px, 2.5vw, 18px)', lineHeight: 1.7 }}>2-minute roast to find out exactly where your demos leak.<br />Get a full diagnosis ranked by impact.</p>
-              {/* Inline ad-copy input + CTA — captures the ad in one shot so the guided flow can skip the paste step */}
+              {/* Inline ad-link input + CTA — pill-shape matching the nav button, same height across both */}
               <div className="max-w-2xl mx-auto">
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch">
-                  <textarea
-                    rows={2}
-                    placeholder="Paste your ad copy here..."
+                  <input
+                    type="text"
+                    placeholder="Paste your ad link (Meta, Google, LinkedIn)..."
                     value={inputs.copy}
                     onChange={(e) => setInputs(p => ({...p, copy: e.target.value}))}
-                    className="flex-1 px-5 py-3 bg-white border-2 rounded-2xl text-base focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm resize-none"
+                    className="flex-1 px-5 py-2 bg-white border rounded-full text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm"
                     style={{ borderColor: '#e8e8f0' }}
                   />
                   <button
                     onClick={() => { setGuidedStep(0); setView('guided'); }}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
-                    className="px-8 py-3 border rounded-2xl font-medium text-base whitespace-nowrap hover:opacity-90 transition-opacity self-stretch sm:self-auto"
+                    className="px-6 py-2 border rounded-full font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity"
                   >Roast my Ad →</button>
                 </div>
                 <p className="text-center text-gray-400 mt-3" style={{ fontSize: '14px' }}>Free &middot; 2-min audit &middot; no call required</p>
