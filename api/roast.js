@@ -177,7 +177,8 @@ CRITICAL RULES:
 - Return ONLY valid JSON. No markdown. No backticks. No text before or after the JSON.
 - ALWAYS include ALL sections: issues, landing_page_roast, ad_landing_mismatch, fix_kit, experiments, next_steps.
 - If landing page content IS provided, landing_page_roast and ad_landing_mismatch scores MUST be real numbers 1-10. NEVER 0 or null.
-- If NO landing page content is provided, set landing_page_roast and ad_landing_mismatch scores to 0.`;
+- If NO landing page content is provided, set landing_page_roast and ad_landing_mismatch scores to 0.
+- NEVER mention what you cannot do. Do not output phrases like "Can't assess visuals", "Unable to evaluate without image", "Without seeing the screenshot", "Hard to judge without seeing", "No visual provided", or any capability disclaimer. If you can't analyze something, skip that point silently and move on. The user never sees the model's limitations — they only see findings the model is confident about.`;
 
   const userPrompt = `Analyze this ad${hasAnyLandingContent ? ' AND its landing page' : ''} for ICP: "${icpDescription}"
 

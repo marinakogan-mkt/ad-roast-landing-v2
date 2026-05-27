@@ -6820,15 +6820,33 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 return () => { cancelled = true; };
             }, [reportId]);
 
+            /* Filter out capability-disclaimer text the LLM sometimes emits
+               (e.g. "Can't assess visuals", "Unable to evaluate", "Without seeing the image").
+               These shouldn't surface in client-facing portal content. */
+            const isCapabilityDisclaimer = (text) => {
+                if (!text || typeof text !== 'string') return false;
+                const t = text.toLowerCase();
+                return /\b(can'?t|cannot|can not|unable to|couldn'?t|could not|hard to|difficult to|without (seeing|access(ing)?|the (image|visual|asset|screenshot)))\b.*\b(assess|evaluate|analyze|see|view|verify|determine|judge|gauge|read|inspect|review|comment|tell|know|measure)\b/.test(t)
+                    || /\b(no|missing|absent)\b.*\b(image|visual|screenshot|asset|preview)\b.*\b(provided|available|attached|shown)\b/.test(t)
+                    || /\b(visuals?|images?|screenshots?|creative assets?)\b.*\b(not (provided|available|shown|attached|visible))\b/.test(t)
+                    || /\b(I (don'?t|do not|cannot|can'?t))\b.*\b(have|see|access)\b/.test(t)
+                    || /^(note|caveat|disclaimer):/i.test(text.trim());
+            };
+
             /* Derive a 2-3 line Findings summary + a 2-3 line Recommendations summary
                from the live roast data, matching the brief Nudge-style format. */
             const derivedFindings = (() => {
                 if (!liveRoast) return null;
                 const r = liveRoast.result || liveRoast;
-                const issues = (r.issues || []).filter(i => i && i.title && (i.score !== undefined));
+                const issues = (r.issues || []).filter(i =>
+                    i && i.title && (i.score !== undefined) &&
+                    !isCapabilityDisclaimer(i.title) &&
+                    !isCapabilityDisclaimer(i.explanation)
+                );
                 if (issues.length === 0) {
                     /* Fall back to ad↔LP mismatch verdict if no issues */
-                    return r.ad_landing_mismatch?.verdict || null;
+                    const verdict = r.ad_landing_mismatch?.verdict;
+                    return verdict && !isCapabilityDisclaimer(verdict) ? verdict : null;
                 }
                 /* Sort by lowest score first — those are the biggest problems */
                 const sorted = [...issues].sort((a, b) => (a.score || 0) - (b.score || 0));
@@ -6838,14 +6856,15 @@ The full pattern synthesis. Including the SCA template, the product-category for
             const derivedRecs = (() => {
                 if (!liveRoast) return null;
                 const r = liveRoast.result || liveRoast;
-                const steps = (r.next_steps || []).filter(s => typeof s === 'string' && s.trim());
+                const filterRecs = (list) => list.filter(s => typeof s === 'string' && s.trim() && !isCapabilityDisclaimer(s));
+                const steps = filterRecs(r.next_steps || []);
                 if (steps.length > 0) return steps.slice(0, 3);
                 /* Fall back to landing-page quick wins */
-                const wins = (r.landing_page_roast?.quick_wins || []).filter(s => typeof s === 'string' && s.trim());
+                const wins = filterRecs(r.landing_page_roast?.quick_wins || []);
                 if (wins.length > 0) return wins.slice(0, 3);
                 /* Last fallback: fix-kit rationale as one paragraph */
                 const rationale = r.fix_kit?.rationale;
-                if (rationale) return [rationale];
+                if (rationale && !isCapabilityDisclaimer(rationale)) return [rationale];
                 return null;
             })();
 
