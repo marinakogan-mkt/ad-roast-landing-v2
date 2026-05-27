@@ -383,7 +383,7 @@
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'API error');
           setResult(data); setView(adminMode ? 'results' : 'linkedin');
-        } catch (err) { setError(err.message); setView('input'); }
+        } catch (err) { setError(err.message); setView('guided'); }
         setLoading(false);
       };
 
@@ -836,7 +836,9 @@
       );
 
       /* ─── INPUT ─── */
-      if (view === 'input') return (
+      /* Legacy 'input' view — should never be rendered. If something routes here, redirect to guided. */
+      if (view === 'input') { setTimeout(() => setView('guided'), 0); return null; }
+      if (view === '_legacy_input_never_used') return (
         <div className="min-h-screen bg-gray-100">
           <header className="bg-white border-b border-gray-200">
             <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
