@@ -30,8 +30,11 @@ export const PORTAL_ROLES = [
   {
     id: 'aikido-security',
     password: 'DojoSec90',
-    mode: 'partner',
-    partnerId: 'aikido-security',
+    /* Aikido is a direct client (not an agency/partner), so it lives in the
+       Client Workspaces section. mode 'client' + clientId drops them straight
+       into their client hub. */
+    mode: 'client',
+    clientId: 'aikido-security',
     emails: ['willem@aikido.dev', 'lieven@aikido.dev', 'madeline@aikido.dev']
   }
 ];

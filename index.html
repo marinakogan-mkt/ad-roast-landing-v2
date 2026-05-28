@@ -4734,13 +4734,11 @@ The full pattern synthesis. Including the SCA template, the product-category for
                             }
                         }
                     }
-                },
+                }
+            },
+            directClients: {
                 "aikido-security": {
-                    name: "Aikido Security",
-                    description: "Strategic audits and positioning for Aikido's AppSec + cloud-native security campaigns.",
-                    clients: {
-                        "google-search-rsas": {
-                            name: "Google Search RSAs",
+                            name: "Aikido Security",
                             description: "5-ad audit synthesis + positioning recommendations for Aikido's Google Search campaigns (SAST, SCA, AI Pentest, vs SonarQube, SBOM).",
                             platform: "Google",
                             positioning: {
@@ -4815,12 +4813,20 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     landingPageUrl: "https://www.aikido.dev/use-cases/sbom-generator-create-software-bill-of-materials"
                                 }
                             }
-                        }
-                    }
                 }
-            },
-            directClients: {}
+            }
         };
+
+        /* Resolve a client from either a partner workspace (partnerId set) or the
+           direct-client map (partnerId null/empty). Returns { partner, client }.
+           partner is null for direct clients — components handle that in breadcrumbs. */
+        function resolvePortalClient(partnerId, clientId) {
+            if (partnerId) {
+                const partner = portalData.partners[partnerId];
+                return { partner: partner || null, client: partner ? partner.clients[clientId] : null };
+            }
+            return { partner: null, client: portalData.directClients[clientId] || null };
+        }
 
         const LOGO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAHpElEQVR4nM2YW4xdVRnHf99ae+8z55yZYVo6LTMttBViZUppESjQFIcq3hFEOQVUiA8ixifRaEx4GCYmXp404cFoAKPRoDOxXhCVpAGaoMFLFYRWoRe1tAUGaDsz5zL7stbnwz4znenMcIY6Rf/Jzj7Z31lr/dd3XwvmwVClYndu3dwHCMDBd15VyT5wtcbv3+r/sW3zbQCP9fcH841fLJi5PmqlYivDw/68wFx39NqrfgsQWJYbAUA6A/vFgf7+4Jpdu9z/hOAwIKCJ8b/q6Si+Z981m28Qrz1iDA3v067Abqj46tsFdKhSsW86we6REVGQQMx5eHXWUBHhHeo94vFFa2iPwisUpHtkRM4kwVk+pCBUqyKghw2f8y6zHYH5sEGKNefwobcgIH6JgD5fLFpUZ5tajLZcXb0gwAACjxsGt7mcwrRpZpHLP+qBa6/48upC9LVq7LwNxKgqahRZV/fRcx1mJE13ikei0aN3rtj9wgED+Dekm4VhiqCCCGilry/61qqzvr48CO6a0Mz5srM6HiixEbu2Qbh5jMbOpXSNCs92LGdj32eeUmMTVJshJIoiuKQNldc3v5EUCbxYqQdZ4+EL9v3wm3uHhxNQAVFomlhBGBiQoeHh8taVZ/2ypxBtG5tInUbY6OpRsic7hUwINlZRo5jehPjVUKsY1WLnprltWVqgfvL9pB3Lrn7+gtu29vf33bjrmns8g5wkSKViZHDQ/etdV32lp1jYNprECamJgvMbSJvDXlRDig4CD5lguxN8WJDlaVU66sf9WFhSUYdO95hJjS4Ioho3nDvrnOt+f1nfRxi8eYihIcv27S5QEBkedk9s2dJRNvrxiTT1JCYwvTF2fQ1ig+lKc607AQOmw+FLSinJKPvUjDEHlxbWnQVVVbx3xqwFYE+3AJg8gqAcurOt4ew0w0hXJuHm8Uk3gFggIU9KHog8lBziwNA6WBdOEoNoOv2TkUH8ziuvXDnusk0KxwIEu74KBZ9rLFPkohDptZA041wgiBx1CanaCBaX5AzVG4C17Wm1Owo+6R2ZlL3K0hRSgUjwCZiyIfxgCW0T8Lm1A3X8u20Jo2GZWf63iDDa3x+cv3P3aElk37JC2zkN8c5YEWLFXBgSfqiE6bWYsmDODSBVMrXYquOhpW8DE2F1ETV4KkF27XIK8kxc++poXH9uScMHaWJ9FhlkVUjQF2GWBfhM8AVLUjB0jiQ8m67mgVVXIi7GyZwVc3EICuhwZchc98Qzx7+w+t2ff6z9Qjr2Om33NUI3gZAipQxjYorHx+k80eCpfW+lsu52ToQlxLvF9MBZCAC206wk5/TXH1hT4MYjl8gN+5+i72eHWXZxSlQWxg8aDvx9Hb9ubOT7ay6nGhUwWYwagz0lpXhVVPPdGxF8cwcieYw5rwve1FSzIKDlxqu2XuhlR++l7Mgug+MxwSMNsjQDE0JbCdoFSDAuwYsBp7g0OzmjAqHBhhaXOHzqwJomM83lbQHGCH4Bvjujm5kQqwKYpI5YyCKhe0Unm3o6Ue+x6gkU9p+I2fNyDVBWdERcvrIT31zbCux9pcbBw+OsO7eDT2zs4dLeToqh5cXxmEcPHuPBv71EbcJhItuS5FztFl4MgQhMpLxvTRcP3Lhhxn++/adDfPane0GELed2sePWjTPkd/xiD5evKPO9mzZQDGcucevFPdy1ZTU3//hpnn2p1pJky/BLPDhVYueJncepUk9PNlapV5wqifdkzd8f27CCH92yiWIYMJF5Uqc4nz+pU/qWt/PQ7ZfQVQpQ5183g7YkKIAVmfEYmVsemPy97S3LMM1l2wJDaAURwRohtELilDVdJe68YhUaZ1gzP8XTSmCtaoZvNpd/OTrKQ3tfZv+xWp7PmnJrQBWuX9cNoZmK8rmw6MfGfDHlUz/fw/1/OAwqFEPhB7ds4Kb1PThVDIIIrO4qUiyGNBLX7AxnY1FLgPOKEXhk/6vc/8QhTCEkKoU0UuXunQfJvMeITBEphpZiYHJm85hlUQlOLvz4P49jrGAFUueRguWFsZiXqslUDz1r0Dw4LYKt0ms9c1N5EXJ/S70nzvzCJvhvCZ4uTqchOyNRvJg4QxpcvC28qSY+HfzfE2yZqFUh80o2Ld27acV9Uu6aPSAwb2VwzXkm+8HMtz7JtCRYCAyByevsJNqjk8OiIJcF05YqhmbOVLK0FM6Ya1kpbOmu8xL0CgSGvSM17tt9hKypnkCERw8eywsqcOBYg/t2H57qRQOBvx4dm1VjVeE7fz5CdznCq2JEqCWOiUxfl+RMgiqC5ky8KkSGJw+d4Mn9r50yykKYE3z66Dh3/OSZmfLQwvQ+T/Jm+u6Hn4PpvZ8IFAKYWlYVmXl+mEEwFJfGNhDSxCFiUJAgb99naldPnjOsYMvRvPLpsKVwlrKmfFvVIzYwXuPp13gy9R4YkJ4Xe9tGzu79nVuychPVU7R2plHsxNaPvxadOLSpce8dR/IGQnQyzSjAi9+9s9554pXrg7GR3xhkonnLccYfI6S2MfrHQv219zbu/fRhBu4RJL8YOkXj+cWhAOUvPXjhRNixhLQB/o1eVS0QRpWwSJTFtcY3Pvq0AgwMGAYHp6z8H64mYytBcDRRAAAAAElFTkSuQmCC";
 
@@ -5988,7 +5994,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                         ) : (
                             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                                 {Object.entries(portalData.directClients).map(([cid, client]) => (
-                                    <div key={cid} onClick={() => onNavigate('direct-client', null, cid)}
+                                    <div key={cid} onClick={() => onNavigate('client-hub', null, cid)}
                                         className="bg-white rounded-xl border p-6 cursor-pointer card-lift group" style={{ borderColor: 'var(--cloud)' }}>
                                         <h3 className="text-lg font-semibold mb-1 group-hover:text-blue-700 transition-colors">{client.name}</h3>
                                         <p className="text-sm mb-4" style={{ color: 'var(--slate)' }}>{client.description}</p>
@@ -6064,17 +6070,20 @@ The full pattern synthesis. Including the SCA template, the product-category for
            CLIENT HUB  /portal/partner-workspaces/{partnerId}/{clientId}
            ============================================================ */
         const ClientHub = ({ partnerId, clientId, onNavigate, accessMode }) => {
-            const partner = portalData.partners[partnerId];
-            if (!partner) return null;
-            const client = partner.clients[clientId];
+            const { partner, client } = resolvePortalClient(partnerId, clientId);
             if (!client) return null;
 
             const crumbs = accessMode === 'master'
-                ? [
-                    { label: 'Portal', onClick: () => onNavigate('portal-root') },
-                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
-                    { label: client.name }
-                ]
+                ? (partner
+                    ? [
+                        { label: 'Portal', onClick: () => onNavigate('portal-root') },
+                        { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
+                        { label: client.name }
+                    ]
+                    : [
+                        { label: 'Portal', onClick: () => onNavigate('portal-root') },
+                        { label: client.name }
+                    ])
                 : accessMode === 'partner'
                 ? [
                     { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
@@ -6084,7 +6093,9 @@ The full pattern synthesis. Including the SCA template, the product-category for
 
             return (
                 <PageShell crumbs={crumbs} onNavigate={onNavigate}>
-                    {accessMode !== 'client' && <BackButton label={`Back to ${partner.name}`} onClick={() => onNavigate('partner-workspace', partnerId)} />}
+                    {accessMode !== 'client' && (partner
+                        ? <BackButton label={`Back to ${partner.name}`} onClick={() => onNavigate('partner-workspace', partnerId)} />
+                        : <BackButton label="Back to Portal" onClick={() => onNavigate('portal-root')} />)}
                     <div className="mb-10">
                         <h1 className="text-3xl sm:text-4xl font-bold mb-3 serif" style={{ color: 'var(--ink)' }}>{client.name}</h1>
                         <p className="text-lg" style={{ color: 'var(--slate)' }}>{client.description}</p>
@@ -6131,8 +6142,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
            POSITIONING REPORT (dedicated on-page report)
            ============================================================ */
         const PositioningReportPage = ({ partnerId, clientId, onNavigate, accessMode }) => {
-            const partner = portalData.partners[partnerId];
-            const client = partner.clients[clientId];
+            const { partner, client } = resolvePortalClient(partnerId, clientId);
             const [openSections, setOpenSections] = useState({});
             /* Live-fetched synthesis content when this client uses a synthId
                (single source of truth shared with the public ?synth= URL). */
@@ -6221,12 +6231,16 @@ The full pattern synthesis. Including the SCA template, the product-category for
             /* If this client has live-fetched synth content OR fullContent markdown, render via the rich path. */
             if (useFullContent) {
                 const crumbs = accessMode === 'master'
-                    ? [
+                    ? (partner ? [
                         { label: 'Portal', onClick: () => onNavigate('portal-root') },
                         { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
                         { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
                         { label: 'Positioning Report' }
-                    ]
+                    ] : [
+                        { label: 'Portal', onClick: () => onNavigate('portal-root') },
+                        { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                        { label: 'Positioning Report' }
+                    ])
                     : accessMode === 'partner'
                     ? [
                         { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
@@ -6985,9 +6999,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
            AUDIT PAGE
            ============================================================ */
         const AuditPage = ({ partnerId, clientId, auditId, onNavigate, accessMode }) => {
-            const partner = portalData.partners[partnerId];
-            const client = partner.clients[clientId];
-            const audit = client.audits[auditId];
+            const { partner, client } = resolvePortalClient(partnerId, clientId);
+            const audit = client ? client.audits[auditId] : null;
             if (!audit) return null;
 
             /* Live-fetch the linked roast so Key Findings + Recommendations stay in sync
@@ -7080,12 +7093,16 @@ The full pattern synthesis. Including the SCA template, the product-category for
             })();
 
             const crumbs = accessMode === 'master'
-                ? [
+                ? (partner ? [
                     { label: 'Portal', onClick: () => onNavigate('portal-root') },
                     { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
                     { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
                     { label: `Audit ${auditId}` }
-                ]
+                ] : [
+                    { label: 'Portal', onClick: () => onNavigate('portal-root') },
+                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
+                    { label: `Audit ${auditId}` }
+                ])
                 : accessMode === 'partner'
                 ? [
                     { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
@@ -7243,9 +7260,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
            Accessed via the 'Open Complete Audit Report' button on AuditPage.
            ============================================================ */
         const AuditFullPage = ({ partnerId, clientId, auditId, onNavigate, accessMode }) => {
-            const partner = portalData.partners[partnerId];
-            const client = partner.clients[clientId];
-            const audit = client.audits[auditId];
+            const { partner, client } = resolvePortalClient(partnerId, clientId);
+            const audit = client ? client.audits[auditId] : null;
             if (!audit || !audit.parsed) return null;
 
             const crumbs = accessMode === 'master'
@@ -7286,7 +7302,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
            CONTENT NAVIGATION (prev / next within client)
            ============================================================ */
         const ContentNav = ({ current, partnerId, clientId, onNavigate }) => {
-            const client = portalData.partners[partnerId].clients[clientId];
+            const { client } = resolvePortalClient(partnerId, clientId);
+            if (!client) return null;
             const auditIds = Object.keys(client.audits);
             const isPositioning = String(current) === 'positioning';
 
