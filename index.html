@@ -4739,7 +4739,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
             directClients: {
                 "aikido-security": {
                             name: "Aikido Security",
-                            description: "5-ad audit synthesis + positioning recommendations for Aikido's Google Search campaigns (SAST, SCA, AI Pentest, vs SonarQube, SBOM).",
+                            description: "Strategic ad audits and positioning recommendations for Aikido's Google Search campaigns.",
                             platform: "Google",
                             positioning: {
                                 title: "Evidence-Backed Audit Synthesis & Strategic Recommendations",
@@ -5901,8 +5901,11 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                 {Object.entries(portalData.directClients).map(([cid, client]) => (
                                     <div key={cid} onClick={() => onNavigate('client-hub', null, cid)}
                                         className="bg-white rounded-xl border p-6 cursor-pointer card-lift group" style={{ borderColor: 'var(--cloud)' }}>
-                                        <h3 className="text-lg font-semibold mb-1 group-hover:text-blue-700 transition-colors">{client.name}</h3>
-                                        <p className="text-sm mb-4" style={{ color: 'var(--slate)' }}>{client.description}</p>
+                                        <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: 'var(--accent-light)' }}>
+                                            <svg className="w-5 h-5" style={{ color: 'var(--accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                        </div>
+                                        <h3 className="text-lg font-semibold mb-1 group-hover:text-blue-700 transition-colors" style={{ color: 'var(--ink)' }}>{client.name}</h3>
+                                        <p className="text-sm mb-4 leading-relaxed" style={{ color: 'var(--slate)' }}>{client.description}</p>
                                         <span className="inline-flex items-center text-sm font-medium" style={{ color: 'var(--accent)' }}>Open workspace<ChevronRight /></span>
                                     </div>
                                 ))}
