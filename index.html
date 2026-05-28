@@ -4738,8 +4738,12 @@ The full pattern synthesis. Including the SCA template, the product-category for
             },
             directClients: {
                 "aikido-security": {
-                            name: "Aikido Security",
-                            description: "Strategic ad audits and positioning recommendations for Aikido's Google Search campaigns.",
+                    name: "Aikido Security",
+                    description: "Strategic ad audits and positioning across Aikido's paid campaigns.",
+                    projects: {
+                        "google-search-campaigns": {
+                            name: "Google Search Campaigns",
+                            description: "5-ad audit synthesis + positioning for Aikido's Google Search RSAs (SAST, SCA, AI Pentest, vs SonarQube, SBOM).",
                             platform: "Google",
                             positioning: {
                                 title: "Evidence-Backed Audit Synthesis & Strategic Recommendations",
@@ -4826,19 +4830,32 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     landingPageUrl: "https://www.aikido.dev/use-cases/sbom-generator-create-software-bill-of-materials"
                                 }
                             }
+                        }
+                    }
                 }
             }
         };
 
-        /* Resolve a client from either a partner workspace (partnerId set) or the
-           direct-client map (partnerId null/empty). Returns { partner, client }.
-           partner is null for direct clients — components handle that in breadcrumbs. */
+        /* Resolve a report set (positioning + audits) from the two-level hierarchy.
+           Two shapes, both keyed by (containerId, itemId) = (partnerId slot, clientId slot):
+             - Partner workspace:  partners[containerId].clients[itemId]
+             - Direct client:      directClients[containerId].projects[itemId]
+           Returns { partner, client, isDirect }:
+             - partner = the container object (has .name) for breadcrumb/back-button labels
+             - client  = the report set (has positioning + audits)
+             - isDirect = true when it came from a direct client's projects (so the
+                          "back to container" target is the client-workspace-hub, not
+                          the partner-workspace). */
         function resolvePortalClient(partnerId, clientId) {
-            if (partnerId) {
+            if (partnerId && portalData.partners[partnerId]) {
                 const partner = portalData.partners[partnerId];
-                return { partner: partner || null, client: partner ? partner.clients[clientId] : null };
+                return { partner, client: partner.clients[clientId] || null, isDirect: false };
             }
-            return { partner: null, client: portalData.directClients[clientId] || null };
+            if (partnerId && portalData.directClients[partnerId]) {
+                const dc = portalData.directClients[partnerId];
+                return { partner: dc, client: (dc.projects && dc.projects[clientId]) || null, isDirect: true };
+            }
+            return { partner: null, client: null, isDirect: false };
         }
 
         const LOGO_SRC = "data:image/png;base64,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";
@@ -5912,7 +5929,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                         ) : (
                             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                                 {Object.entries(portalData.directClients).map(([cid, client]) => (
-                                    <div key={cid} onClick={() => onNavigate('client-hub', null, cid)}
+                                    <div key={cid} onClick={() => onNavigate('client-workspace-hub', cid)}
                                         className="bg-white rounded-xl border p-6 cursor-pointer card-lift group" style={{ borderColor: 'var(--cloud)' }}>
                                         <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: 'var(--accent-light)' }}>
                                             <svg className="w-5 h-5" style={{ color: 'var(--accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -5988,35 +6005,85 @@ The full pattern synthesis. Including the SCA template, the product-category for
         };
 
         /* ============================================================
+           DIRECT CLIENT HUB  — lists a direct client's projects
+           (e.g. Aikido Security → Google Search Campaigns, future LinkedIn…)
+           ============================================================ */
+        const DirectClientHub = ({ partnerId, onNavigate, accessMode }) => {
+            /* partnerId here is the direct-client id (it sits in the partnerId slot). */
+            const dc = portalData.directClients[partnerId];
+            if (!dc) return null;
+            const projectEntries = Object.entries(dc.projects || {});
+
+            const crumbs = accessMode === 'master'
+                ? [
+                    { label: 'Portal', onClick: () => onNavigate('portal-root') },
+                    { label: 'Client Workspaces', onClick: () => onNavigate('portal-root') },
+                    { label: dc.name }
+                ]
+                : [{ label: dc.name }];
+
+            return (
+                <PageShell crumbs={crumbs} onNavigate={accessMode === 'master' ? onNavigate : undefined}>
+                    {accessMode === 'master' && <BackButton label="Back to Portal" onClick={() => onNavigate('portal-root')} />}
+                    <div className="mb-10">
+                        <Badge>Client workspace</Badge>
+                        <h1 className="text-3xl sm:text-4xl font-bold mt-4 mb-3 serif" style={{ color: 'var(--ink)' }}>{dc.name}</h1>
+                        <p className="text-lg" style={{ color: 'var(--slate)' }}>{dc.description}</p>
+                    </div>
+
+                    <h2 className="text-xl font-semibold mb-2 serif" style={{ color: 'var(--ink)' }}>Projects</h2>
+                    <p className="text-sm mb-6" style={{ color: 'var(--slate)' }}>Each project is a separate campaign analysis.</p>
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                        {projectEntries.map(([projId, project]) => {
+                            const auditCount = Object.keys(project.audits || {}).length;
+                            return (
+                                <div key={projId} onClick={() => onNavigate('client-hub', partnerId, projId)}
+                                    className="bg-white rounded-xl border p-6 cursor-pointer card-lift group" style={{ borderColor: 'var(--cloud)' }}>
+                                    <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: 'var(--accent-light)' }}>
+                                        <svg className="w-5 h-5" style={{ color: 'var(--accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    </div>
+                                    <h3 className="text-lg font-semibold mb-1 group-hover:text-blue-700 transition-colors" style={{ color: 'var(--ink)' }}>{project.name}</h3>
+                                    <p className="text-sm mb-3 leading-relaxed" style={{ color: 'var(--slate)' }}>{project.description}</p>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs" style={{ color: 'var(--slate)' }}>{auditCount} audits, 1 report</span>
+                                        <span className="inline-flex items-center text-sm font-medium" style={{ color: 'var(--accent)' }}>Open<ChevronRight /></span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {/* Scalability placeholder for future projects (LinkedIn, etc.) */}
+                        <div className="rounded-xl border-2 border-dashed p-6 flex flex-col items-center justify-center text-center min-h-[180px]" style={{ borderColor: 'var(--cloud)' }}>
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: 'var(--cloud)' }}>
+                                <svg className="w-5 h-5" style={{ color: 'var(--slate)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                            </div>
+                            <p className="text-sm font-medium" style={{ color: 'var(--slate)' }}>More projects coming</p>
+                            <p className="text-xs mt-1" style={{ color: 'var(--slate)', opacity: 0.7 }}>LinkedIn &amp; other campaigns will appear here</p>
+                        </div>
+                    </div>
+                </PageShell>
+            );
+        };
+
+        /* ============================================================
            CLIENT HUB  /portal/partner-workspaces/{partnerId}/{clientId}
            ============================================================ */
         const ClientHub = ({ partnerId, clientId, onNavigate, accessMode }) => {
-            const { partner, client } = resolvePortalClient(partnerId, clientId);
+            const { partner, client, isDirect } = resolvePortalClient(partnerId, clientId);
             if (!client) return null;
+            /* Where the "back to container" action goes: a direct client's project goes
+               back to the client-workspace-hub (project list); a partner's client goes
+               back to the partner-workspace. */
+            const backToContainer = () => onNavigate(isDirect ? 'client-workspace-hub' : 'partner-workspace', partnerId);
+            const containerCrumb = { label: partner.name, onClick: backToContainer };
 
             const crumbs = accessMode === 'master'
-                ? (partner
-                    ? [
-                        { label: 'Portal', onClick: () => onNavigate('portal-root') },
-                        { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
-                        { label: client.name }
-                    ]
-                    : [
-                        { label: 'Portal', onClick: () => onNavigate('portal-root') },
-                        { label: client.name }
-                    ])
-                : accessMode === 'partner'
-                ? [
-                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
-                    { label: client.name }
-                ]
-                : [{ label: client.name }];
+                ? [{ label: 'Portal', onClick: () => onNavigate('portal-root') }, containerCrumb, { label: client.name }]
+                : [containerCrumb, { label: client.name }];
 
             return (
                 <PageShell crumbs={crumbs} onNavigate={onNavigate}>
-                    {accessMode !== 'client' && (partner
-                        ? <BackButton label={`Back to ${partner.name}`} onClick={() => onNavigate('partner-workspace', partnerId)} />
-                        : <BackButton label="Back to Portal" onClick={() => onNavigate('portal-root')} />)}
+                    {accessMode !== 'client' && <BackButton label={`Back to ${partner.name}`} onClick={backToContainer} />}
                     <div className="mb-10">
                         <h1 className="text-3xl sm:text-4xl font-bold mb-3 serif" style={{ color: 'var(--ink)' }}>{client.name}</h1>
                         <p className="text-lg" style={{ color: 'var(--slate)' }}>{client.description}</p>
@@ -6063,7 +6130,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
            POSITIONING REPORT (dedicated on-page report)
            ============================================================ */
         const PositioningReportPage = ({ partnerId, clientId, onNavigate, accessMode }) => {
-            const { partner, client } = resolvePortalClient(partnerId, clientId);
+            const { partner, client, isDirect } = resolvePortalClient(partnerId, clientId);
+            const containerNav = () => onNavigate(isDirect ? 'client-workspace-hub' : 'partner-workspace', partnerId);
             const [openSections, setOpenSections] = useState({});
             /* Live-fetched synthesis content when this client uses a synthId
                (single source of truth shared with the public ?synth= URL). */
@@ -6151,27 +6219,11 @@ The full pattern synthesis. Including the SCA template, the product-category for
 
             /* If this client has live-fetched synth content OR fullContent markdown, render via the rich path. */
             if (useFullContent) {
+                const containerCrumb = { label: partner.name, onClick: containerNav };
+                const clientCrumb = { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) };
                 const crumbs = accessMode === 'master'
-                    ? (partner ? [
-                        { label: 'Portal', onClick: () => onNavigate('portal-root') },
-                        { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
-                        { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
-                        { label: 'Positioning Report' }
-                    ] : [
-                        { label: 'Portal', onClick: () => onNavigate('portal-root') },
-                        { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
-                        { label: 'Positioning Report' }
-                    ])
-                    : accessMode === 'partner'
-                    ? [
-                        { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
-                        { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
-                        { label: 'Positioning Report' }
-                    ]
-                    : [
-                        { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
-                        { label: 'Positioning Report' }
-                    ];
+                    ? [{ label: 'Portal', onClick: () => onNavigate('portal-root') }, containerCrumb, clientCrumb, { label: 'Positioning Report' }]
+                    : [containerCrumb, clientCrumb, { label: 'Positioning Report' }];
                 /* Parse content into sections by H2 headers. Each section becomes a collapsible block.
                    The TOC at the top links to each section.
                    Prefer the live-fetched synthesis content (synthId) over hardcoded fullContent.
@@ -6920,7 +6972,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
            AUDIT PAGE
            ============================================================ */
         const AuditPage = ({ partnerId, clientId, auditId, onNavigate, accessMode }) => {
-            const { partner, client } = resolvePortalClient(partnerId, clientId);
+            const { partner, client, isDirect } = resolvePortalClient(partnerId, clientId);
+            const containerNav = () => onNavigate(isDirect ? 'client-workspace-hub' : 'partner-workspace', partnerId);
             const audit = client ? client.audits[auditId] : null;
             if (!audit) return null;
 
@@ -7013,27 +7066,11 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 return null;
             })();
 
+            const containerCrumb = { label: partner.name, onClick: containerNav };
+            const clientCrumb = { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) };
             const crumbs = accessMode === 'master'
-                ? (partner ? [
-                    { label: 'Portal', onClick: () => onNavigate('portal-root') },
-                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
-                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
-                    { label: `Audit ${auditId}` }
-                ] : [
-                    { label: 'Portal', onClick: () => onNavigate('portal-root') },
-                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
-                    { label: `Audit ${auditId}` }
-                ])
-                : accessMode === 'partner'
-                ? [
-                    { label: partner.name, onClick: () => onNavigate('partner-workspace', partnerId) },
-                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
-                    { label: `Audit ${auditId}` }
-                ]
-                : [
-                    { label: client.name, onClick: () => onNavigate('client-hub', partnerId, clientId) },
-                    { label: `Audit ${auditId}` }
-                ];
+                ? [{ label: 'Portal', onClick: () => onNavigate('portal-root') }, containerCrumb, clientCrumb, { label: `Audit ${auditId}` }]
+                : [containerCrumb, clientCrumb, { label: `Audit ${auditId}` }];
 
             return (
                 <PageShell crumbs={crumbs} onNavigate={onNavigate}>
@@ -7312,10 +7349,21 @@ The full pattern synthesis. Including the SCA template, the product-category for
                     .then(d => {
                         if (d && d.success && d.session) {
                             const s = d.session;
-                            const initialView = s.mode === 'client' ? 'client-hub'
-                                : s.mode === 'partner' ? 'partner-workspace'
-                                : 'portal-root';
-                            setState({ mode: s.mode, view: initialView, partnerId: s.partnerId, clientId: s.clientId, auditId: null, email: s.email });
+                            const next = { mode: s.mode, view: 'portal-root', partnerId: s.partnerId, clientId: s.clientId, auditId: null, email: s.email };
+                            if (s.mode === 'partner') {
+                                next.view = 'partner-workspace';
+                            } else if (s.mode === 'client') {
+                                if (portalData.directClients[s.clientId]) {
+                                    /* Direct client (e.g. Aikido) → land on the project list.
+                                       The direct-client id sits in the partnerId slot. */
+                                    next.view = 'client-workspace-hub';
+                                    next.partnerId = s.clientId;
+                                    next.clientId = null;
+                                } else {
+                                    next.view = 'client-hub';
+                                }
+                            }
+                            setState(next);
                         }
                     })
                     .catch(() => { /* silent — gate will show */ })
@@ -7330,9 +7378,10 @@ The full pattern synthesis. Including the SCA template, the product-category for
             const nav = (v, pid, cid, aid) => {
                 setState(prev => {
                     const next = { ...prev, view: v };
-                    // In client mode, block everything except client-hub and below
+                    // In client mode, block escaping to the portal root or partner views.
+                    // Send them to their own home: direct clients → project list, otherwise client hub.
                     if (prev.mode === 'client' && (v === 'portal-root' || v === 'partner-workspace')) {
-                        next.view = 'client-hub';
+                        next.view = portalData.directClients[prev.partnerId] ? 'client-workspace-hub' : 'client-hub';
                         return next;
                     }
                     // In partner mode, block portal-root
@@ -7407,6 +7456,8 @@ The full pattern synthesis. Including the SCA template, the product-category for
                         return (mode === 'master' || mode === 'partner')
                             ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
                             : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                    case 'client-workspace-hub':
+                        return <DirectClientHub partnerId={partnerId} onNavigate={nav} accessMode={mode} />;
                     case 'client-hub':
                         return <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
                     case 'positioning':
