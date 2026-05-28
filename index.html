@@ -5793,141 +5793,46 @@ The full pattern synthesis. Including the SCA template, the product-category for
         );
 
         /* ============================================================
-           EMAIL + PASSWORD GATE  (two-factor sign-in)
-           User submits their work email + the per-client access code.
-           Server validates both against the allowlist and emails a one-time
-           magic link. They click the link to receive a 7-day session cookie.
-           No passwords ship in the JS bundle — server-side validation only.
+           PORTAL GATE — Google sign-in only.
+           Google verifies the user controls the email; the server checks that
+           email against the allowlist and issues a 7-day session cookie. No
+           passwords, no email step. An unauthorized account gets a clear
+           "not authorized" message (authMessage from ?auth=denied).
            ============================================================ */
         const EmailPasswordGate = ({ initialMessage }) => {
-            const [email, setEmail] = useState('');
-            const [password, setPassword] = useState('');
-            const [error, setError] = useState('');
-            const [info, setInfo] = useState(initialMessage || '');
-            const [sending, setSending] = useState(false);
-            const [showPassword, setShowPassword] = useState(false);
-            const [sent, setSent] = useState(false);
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                const trimmedEmail = email.trim().toLowerCase();
-                const trimmedPassword = password.trim();
-                if (!trimmedEmail || !trimmedPassword) {
-                    setError('Email and access code are both required.');
-                    return;
-                }
-                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-                    setError('Please enter a valid email address.');
-                    return;
-                }
-                setError(''); setInfo(''); setSending(true);
-                try {
-                    const r = await fetch('/api/auth?action=request-link', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword })
-                    });
-                    const d = await r.json();
-                    if (!r.ok) {
-                        setError(d.error || 'Sign-in failed. Please try again.');
-                        setSending(false);
-                        return;
-                    }
-                    /* Always show the generic success message — server doesn't reveal whether
-                       the combo was valid (prevents email + password enumeration). */
-                    setSent(true);
-                    setInfo(d.message || 'Check your inbox for a sign-in link.');
-                } catch (err) {
-                    setError('Network error. Please check your connection and try again.');
-                }
-                setSending(false);
-            };
-
-            if (sent) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center px-4 fade-in" style={{ background: 'var(--mist)' }}>
-                        <div className="w-full max-w-sm text-center">
-                            <div className="mx-auto mb-4 flex items-center justify-center w-12 h-12 rounded-full" style={{ background: 'var(--accent-light)' }}>
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--accent)' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                            </div>
-                            <h1 className="text-lg font-bold mb-2" style={{ color: 'var(--ink)' }}>Check your inbox</h1>
-                            <p className="text-sm mb-1" style={{ color: 'var(--slate)' }}>{info}</p>
-                            <p className="text-xs mt-3" style={{ color: 'var(--slate)' }}>Link expires in 15 minutes. Didn't get it? <button onClick={() => { setSent(false); setInfo(''); }} className="bg-transparent border-0 cursor-pointer hover:underline" style={{ color: 'var(--accent)' }}>Try again</button>.</p>
-                        </div>
-                    </div>
-                );
-            }
-
+            const isDenied = /not authorized/i.test(initialMessage || '');
             return (
                 <div className="min-h-screen flex items-center justify-center px-4 fade-in" style={{ background: 'var(--mist)' }}>
                     <div className="w-full max-w-sm">
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="text-center mb-2">
-                                <div className="mx-auto mb-3 flex items-center justify-center gap-2">
-                                    <img src="data:image/png;base64,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" alt="AdRoast" className="w-10 h-10 rounded" />
-                                </div>
-                                <h1 className="text-lg font-bold" style={{ color: 'var(--ink)' }}>AdRoast Portal</h1>
-                                <p className="text-sm mt-1" style={{ color: 'var(--slate)' }}>Sign in to access your reports</p>
+                        <div className="text-center mb-6">
+                            <div className="mx-auto mb-3 flex items-center justify-center gap-2">
+                                <img src="data:image/png;base64,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" alt="AdRoast" className="w-10 h-10 rounded" />
                             </div>
+                            <h1 className="text-lg font-bold" style={{ color: 'var(--ink)' }}>AdRoast Portal</h1>
+                            <p className="text-sm mt-1" style={{ color: 'var(--slate)' }}>Private workspace for clients &amp; partners</p>
+                        </div>
 
-                            {/* Primary: Continue with Google (one click, most secure) */}
-                            <a href="/api/auth?action=google-start"
-                                className="w-full flex items-center justify-center gap-2.5 py-3 border rounded-lg text-sm font-semibold transition-colors no-underline"
-                                style={{ borderColor: 'var(--cloud)', background: '#fff', color: 'var(--ink)' }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'var(--mist)'}
-                                onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
-                                <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                                Continue with Google
-                            </a>
-
-                            <div className="flex items-center gap-3 py-1">
-                                <div className="flex-1 h-px" style={{ background: 'var(--cloud)' }}></div>
-                                <span className="text-xs" style={{ color: 'var(--slate)' }}>or with access code</span>
-                                <div className="flex-1 h-px" style={{ background: 'var(--cloud)' }}></div>
+                        {initialMessage && (
+                            <div className="mb-5 rounded-lg p-3 border text-sm text-center"
+                                style={isDenied
+                                    ? { background: 'var(--danger-light)', borderColor: 'var(--danger)', color: 'var(--ink)' }
+                                    : { background: 'var(--accent-faint)', borderColor: 'var(--accent-light)', color: 'var(--ink-light)' }}>
+                                {initialMessage}
                             </div>
+                        )}
 
-                            <input
-                                type="email"
-                                required
-                                autoComplete="email"
-                                className="w-full px-4 py-3 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-shadow"
-                                style={{ borderColor: error ? 'var(--danger)' : 'var(--cloud)', background: '#fff' }}
-                                placeholder="Email"
-                                value={email}
-                                onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                            />
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    required
-                                    autoComplete="current-password"
-                                    className="w-full px-4 py-3 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-shadow"
-                                    style={{ borderColor: error ? 'var(--danger)' : 'var(--cloud)', background: '#fff' }}
-                                    placeholder="Access code"
-                                    value={password}
-                                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                                />
-                                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-transparent border-0 cursor-pointer" onClick={() => setShowPassword(s => !s)} tabIndex={-1}>
-                                    <svg className="h-4 w-4" style={{ color: 'var(--slate)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        {showPassword
-                                            ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                                            : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        }
-                                    </svg>
-                                </button>
-                            </div>
-                            {error && <p className="text-xs text-center" style={{ color: 'var(--danger)' }}>{error}</p>}
-                            {info && !error && <p className="text-xs text-center" style={{ color: 'var(--slate)' }}>{info}</p>}
-                            <button type="submit" disabled={sending}
-                                className="w-full py-3 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                                style={{ background: 'var(--accent)' }}
-                                onMouseEnter={e => !sending && (e.currentTarget.style.background = 'var(--accent-hover)')}
-                                onMouseLeave={e => !sending && (e.currentTarget.style.background = 'var(--accent)')}
-                            >{sending ? 'Sending sign-in link…' : 'Send sign-in link'}</button>
-                            <p className="text-xs text-center" style={{ color: 'var(--slate)' }}>
-                                We'll email a one-time link that expires in 15 minutes. Your session lasts 7 days.
-                            </p>
-                        </form>
+                        <a href="/api/auth?action=google-start"
+                            className="w-full flex items-center justify-center gap-2.5 py-3 border rounded-lg text-sm font-semibold transition-colors no-underline"
+                            style={{ borderColor: 'var(--cloud)', background: '#fff', color: 'var(--ink)' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--mist)'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                            <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                            Continue with Google
+                        </a>
+
+                        <p className="text-xs text-center mt-4" style={{ color: 'var(--slate)' }}>
+                            Access is limited to approved clients and partners. Your session lasts 7 days. If you need access, contact Marina.
+                        </p>
                     </div>
                 </div>
             );
@@ -7361,17 +7266,14 @@ The full pattern synthesis. Including the SCA template, the product-category for
             useEffect(() => {
                 const params = new URLSearchParams(window.location.search);
                 const authParam = params.get('auth');
-                if (authParam === 'expired') {
-                    setAuthMessage('Your sign-in link expired. Please request a new one below.');
-                    try { window.history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) {}
-                } else if (authParam === 'missing' || authParam === 'error') {
-                    setAuthMessage('That sign-in link is no longer valid. Please try again.');
-                    try { window.history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) {}
-                } else if (authParam === 'denied') {
-                    setAuthMessage('That Google account is not authorized for this portal. Use an approved email, or sign in with your access code.');
+                if (authParam === 'denied') {
+                    setAuthMessage('This account is not authorized. The portal is for approved clients and partners only — if you think you should have access, contact Marina.');
                     try { window.history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) {}
                 } else if (authParam === 'cancelled') {
-                    setAuthMessage('Google sign-in was cancelled. You can try again below.');
+                    setAuthMessage('Google sign-in was cancelled. Tap "Continue with Google" to try again.');
+                    try { window.history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) {}
+                } else if (authParam === 'error' || authParam === 'missing' || authParam === 'expired') {
+                    setAuthMessage('Something went wrong with sign-in. Please try "Continue with Google" again.');
                     try { window.history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) {}
                 }
                 fetch('/api/auth?action=me')
