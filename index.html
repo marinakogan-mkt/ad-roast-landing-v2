@@ -5816,7 +5816,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 }
                 setError(''); setInfo(''); setSending(true);
                 try {
-                    const r = await fetch('/api/auth/request-link', {
+                    const r = await fetch('/api/auth?action=request-link', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword })
@@ -5865,7 +5865,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                             </div>
 
                             {/* Primary: Continue with Google (one click, most secure) */}
-                            <a href="/api/auth/google/start"
+                            <a href="/api/auth?action=google-start"
                                 className="w-full flex items-center justify-center gap-2.5 py-3 border rounded-lg text-sm font-semibold transition-colors no-underline"
                                 style={{ borderColor: 'var(--cloud)', background: '#fff', color: 'var(--ink)' }}
                                 onMouseEnter={e => e.currentTarget.style.background = 'var(--mist)'}
@@ -7357,7 +7357,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                     setAuthMessage('Google sign-in was cancelled. You can try again below.');
                     try { window.history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) {}
                 }
-                fetch('/api/auth/me')
+                fetch('/api/auth?action=me')
                     .then(r => r.ok ? r.json() : null)
                     .then(d => {
                         if (d && d.success && d.session) {
@@ -7373,7 +7373,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
             }, []);
 
             const handleLogout = async () => {
-                try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+                try { await fetch('/api/auth?action=logout', { method: 'POST' }); } catch (e) {}
                 setState({ mode: null, view: 'portal-root', partnerId: null, clientId: null, auditId: null, email: null });
             };
 
