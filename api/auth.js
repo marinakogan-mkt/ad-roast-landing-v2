@@ -125,15 +125,21 @@ ${magicLink}
 If you didn't request this, you can ignore this email — the link won't grant access without your password too.
 
 — AdRoast`;
+    /* EmailJS blocks non-browser (server-side) calls unless the Private Key is
+       passed as accessToken. Include it when the env var is set. */
+    const emailPayload = {
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: EMAILJS_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      template_params: { to_email: role.email, subject: 'Your AdRoast portal sign-in link', message }
+    };
+    if (process.env.EMAILJS_PRIVATE_KEY) {
+      emailPayload.accessToken = process.env.EMAILJS_PRIVATE_KEY;
+    }
     const emailRes = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        service_id: EMAILJS_SERVICE_ID,
-        template_id: EMAILJS_TEMPLATE_ID,
-        user_id: EMAILJS_PUBLIC_KEY,
-        template_params: { to_email: role.email, subject: 'Your AdRoast portal sign-in link', message }
-      })
+      body: JSON.stringify(emailPayload)
     });
     if (!emailRes.ok) {
       const text = await emailRes.text();
