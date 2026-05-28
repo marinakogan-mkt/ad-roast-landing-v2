@@ -35,7 +35,7 @@ export const PORTAL_ROLES = [
        into their client hub. */
     mode: 'client',
     clientId: 'aikido-security',
-    emails: ['willem@aikido.dev', 'lieven@aikido.dev', 'madeline@aikido.dev']
+    emails: ['willem@aikido.dev', 'lieven@aikido.dev', 'thibaut@aikido.dev']
   }
 ];
 
