@@ -52,6 +52,22 @@ export function findRole(email, password) {
   return null;
 }
 
+/**
+ * Find a role by email alone (no password). Used by Google OAuth, where Google
+ * has already verified the user controls the email — that's the auth factor, so
+ * we don't also require the shared password. Email match is case-insensitive.
+ */
+export function findRoleByEmail(email) {
+  if (!email) return null;
+  const normEmail = String(email).trim().toLowerCase();
+  for (const role of PORTAL_ROLES) {
+    if (role.emails.map(e => e.toLowerCase()).includes(normEmail)) {
+      return { ...role, email: normEmail };
+    }
+  }
+  return null;
+}
+
 /** Build a session payload that's safe to expose to the frontend (no password). */
 export function publicSession(role) {
   return {
