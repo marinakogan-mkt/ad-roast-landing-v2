@@ -7453,6 +7453,13 @@ The full pattern synthesis. Including the SCA template, the product-category for
                 </div>
             );
 
+            /* A client's "home" — never the full portal. Direct clients (Aikido) see
+               their project list; partner-scoped clients see their client hub.
+               Used as the fallback for any view a client shouldn't reach. */
+            const clientHome = portalData.directClients[partnerId]
+                ? <DirectClientHub partnerId={partnerId} onNavigate={nav} accessMode={mode} />
+                : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+
             const page = (() => {
                 switch (view) {
                     case 'portal-root':
@@ -7460,11 +7467,11 @@ The full pattern synthesis. Including the SCA template, the product-category for
                             ? <PortalRoot onNavigate={nav} />
                             : mode === 'partner'
                             ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
-                            : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                            : clientHome;
                     case 'partner-workspace':
                         return (mode === 'master' || mode === 'partner')
                             ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
-                            : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                            : clientHome;
                     case 'client-workspace-hub':
                         return <DirectClientHub partnerId={partnerId} onNavigate={nav} accessMode={mode} />;
                     case 'client-hub':
@@ -7480,7 +7487,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                             ? <PortalRoot onNavigate={nav} />
                             : mode === 'partner'
                             ? <PartnerWorkspace partnerId={partnerId} onNavigate={nav} accessMode={mode} />
-                            : <ClientHub partnerId={partnerId} clientId={clientId} onNavigate={nav} accessMode={mode} />;
+                            : clientHome;
                 }
             })();
             return <>{page}<AuthIndicator /></>;
