@@ -4773,7 +4773,11 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     findings: "The ad's strongest weapon — 95% false-positive reduction — is buried at headline slot 14 while 'Best SAST Worldwide' vendor noise fills the top. Zero trust signals in a sale to security buyers who've already been burned by Snyk.",
                                     recommendations: "Move the 95% number to headline slot 1 and name the competitor. Quote Konstantin S leaving Snyk in the ad where buyers can read it before they click, not after.",
                                     auditUrl: "https://www.adroast.in/?id=6Yba3yPp",
-                                    adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR05790785529091981313",
+                                    adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR05205962441103507457",
+                                    siblingAds: [
+                                        { label: "Variant — Kotlin/Swift", url: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR02981050084763893761" },
+                                        { label: "Variant — alternate headline", url: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR05790785529091981313" }
+                                    ],
                                     landingPageUrl: "https://www.aikido.dev/code/sast-engine"
                                 },
                                 2: {
@@ -4792,6 +4796,12 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     recommendations: "Keep the risk reversal. Drop three of the clone headlines. Quote Dan Sherwood on compliance and add one CISO demo CTA so the enterprise buyer has a path in.",
                                     auditUrl: "https://www.adroast.in/?id=zVNStrvS",
                                     adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR15175644350546706433",
+                                    siblingAds: [
+                                        { label: "Variant — AU Pentesting (consolidated)", url: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR00078471191391633409" },
+                                        { label: "Variant — Pentest", url: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR07773284158809309185" },
+                                        { label: "Variant — Pentest", url: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR16434015754765991937" },
+                                        { label: "Variant — Pentest", url: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR07567504922673938433" }
+                                    ],
                                     landingPageUrl: "https://www.aikido.dev/attack/aipentest"
                                 },
                                 4: {
@@ -4801,6 +4811,9 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                     recommendations: "Drop the two policy-trigger headlines — restores eligibility within 72h. Replace the AI Code Review filler with LP positioning. Quote Salvatore Cuccurullo's SonarQube migration and put the price-parity line in the ad.",
                                     auditUrl: "https://www.adroast.in/?id=C78UmgSD",
                                     adUrl: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR10473496150383001601",
+                                    siblingAds: [
+                                        { label: "Variant — \"Why Everyone's Leaving SonarQube\"", url: "https://adstransparency.google.com/advertiser/AR10178884492211519489/creative/CR07035098989955383297" }
+                                    ],
                                     landingPageUrl: "https://www.aikido.dev/comparison/aikido-vs-sonarqube"
                                 },
                                 5: {
@@ -7079,7 +7092,7 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                             onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
                                         >{
                                             client.platform === 'Google'
-                                                ? (audit.adUrl && audit.adUrl.includes('/creative/') ? 'View Google Ad' : 'View Google Ads')
+                                                ? (audit.adUrl && audit.adUrl.includes('/creative/') ? 'View Audited Ad' : 'View Google Ads')
                                                 : 'View LinkedIn Ad'
                                         }<ExternalIcon /></a>
                                         <a href={audit.landingPageUrl} target="_blank" rel="noopener noreferrer"
@@ -7089,6 +7102,21 @@ The full pattern synthesis. Including the SCA template, the product-category for
                                             onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
                                         >View Landing Page<ExternalIcon /></a>
                                     </div>
+                                    {/* Related ads in the same campaign (sibling RSAs / variants) */}
+                                    {audit.siblingAds && audit.siblingAds.length > 0 && (
+                                        <div className="mt-5">
+                                            <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--slate)' }}>Related ads in this campaign</p>
+                                            <div className="flex flex-col gap-2">
+                                                {audit.siblingAds.map((ad, i) => (
+                                                    <a key={i} href={ad.url} target="_blank" rel="noopener noreferrer"
+                                                        className="inline-flex items-center text-sm hover:underline" style={{ color: 'var(--accent)' }}>
+                                                        {ad.label}
+                                                        <svg className="w-3 h-3 ml-1.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </section>
 
                                 {/* Brief Key Findings + Recommendations (Nudge-style summary).
