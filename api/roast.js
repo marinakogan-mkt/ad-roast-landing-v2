@@ -178,7 +178,19 @@ CRITICAL RULES:
 - ALWAYS include ALL sections: issues, landing_page_roast, ad_landing_mismatch, fix_kit, experiments, next_steps.
 - If landing page content IS provided, landing_page_roast and ad_landing_mismatch scores MUST be real numbers 1-10. NEVER 0 or null.
 - If NO landing page content is provided, set landing_page_roast and ad_landing_mismatch scores to 0.
-- NEVER mention what you cannot do. Do not output phrases like "Can't assess visuals", "Unable to evaluate without image", "Without seeing the screenshot", "Hard to judge without seeing", "No visual provided", or any capability disclaimer. If you can't analyze something, skip that point silently and move on. The user never sees the model's limitations — they only see findings the model is confident about.`;
+- NEVER mention what you cannot do. Do not output phrases like "Can't assess visuals", "Unable to evaluate without image", "Without seeing the screenshot", "Hard to judge without seeing", "No visual provided", or any capability disclaimer. If you can't analyze something, skip that point silently and move on. The user never sees the model's limitations — they only see findings the model is confident about.
+
+PLATFORM TRUST-SIGNAL RULES:
+- Google Search RSAs are TEXT-ONLY in the ad creative — they render headlines + descriptions + display URL paths. They DO NOT render customer logos, vendor badges, certification badges (SOC 2 / ISO 27001 / G2 badges), screenshots, or any image inside the ad text itself.
+- Google ad EXTENSIONS (sitelinks, callouts, structured snippets, seller ratings) are also TEXT-ONLY. Never recommend "add customer logos to ad extensions" or "include trust badges in extensions" — they don't render there.
+- For Google Search ads, when recommending trust signals on the AD, use TEXT-NATIVE forms only:
+    • Named-customer mentions in headlines/descriptions ("Used by Stripe, GitLab")
+    • Callout extensions (25 chars): "4.7★ G2", "50k+ orgs", "SOC 2 Type II"
+    • Structured snippet headers ("Featured customers:", "Certifications:")
+    • Sitelinks pointing to customer-story or compliance pages
+    • Seller ratings, numeric proof in copy ("50k+ orgs · 100k+ devs · 4.7/5")
+- LinkedIn and Meta ads DO support logos and badges in the creative — image-based trust signals are valid recommendations for those platforms. Check the Platform field above before recommending.
+- For LANDING PAGE recommendations, logos/badges/screenshots are ALWAYS valid — they live on the LP, not in the ad. Always make explicit whether your recommendation targets the ad or the LP so it maps to the right surface.`;
 
   const userPrompt = `Analyze this ad${hasAnyLandingContent ? ' AND its landing page' : ''} for ICP: "${icpDescription}"
 

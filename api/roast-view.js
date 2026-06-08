@@ -1,5 +1,27 @@
 // Fetch roast data by Report ID
+import { Redis } from '@upstash/redis';
+import { isPrivateReport, readSessionCookie } from './auth/_allowlist.js';
+
 const NOTION_DATABASE_ID = 'ca2dbc99d48c4ca8ab59375cf76d62cb';
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN
+});
+
+/* Confirm the session cookie maps to a real, unexpired portal session.
+   Returns the session payload or null. */
+async function lookupSession(req) {
+  const token = readSessionCookie(req);
+  if (!token) return null;
+  try {
+    const raw = await redis.get(`auth:session:${token}`);
+    if (!raw) return null;
+    return typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch (e) {
+    return null;
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -9,6 +31,20 @@ export default async function handler(req, res) {
   const { id } = req.query;
   if (!id) {
     return res.status(400).json({ error: 'Missing report ID' });
+  }
+
+  /* Portal-private reports require a valid session. Public roasts still flow through
+     as before. The 401 response includes `private: true` so the frontend can show
+     a "Sign in to view" gate instead of a generic error. */
+  if (isPrivateReport(id)) {
+    const session = await lookupSession(req);
+    if (!session) {
+      return res.status(401).json({
+        error: 'This audit is private. Sign in to view it.',
+        private: true,
+        signInUrl: '/#portal'
+      });
+    }
   }
 
   const NOTION_API_KEY = process.env.NOTION_API_KEY;

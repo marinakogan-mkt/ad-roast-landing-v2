@@ -15,12 +15,27 @@
  */
 
 import { Redis } from '@upstash/redis';
+import { isPrivateSynth, readSessionCookie } from './auth/_allowlist.js';
 
 const NOTION_DATABASE_ID = 'ca2dbc99d48c4ca8ab59375cf76d62cb';
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN
 });
+
+/* Confirm the session cookie maps to a real, unexpired portal session.
+   Returns the session payload or null. Used to gate private synth reads. */
+async function lookupSession(req) {
+  const token = readSessionCookie(req);
+  if (!token) return null;
+  try {
+    const raw = await redis.get(`auth:session:${token}`);
+    if (!raw) return null;
+    return typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch (e) {
+    return null;
+  }
+}
 
 function extractReportId(link) {
   try {
@@ -74,6 +89,19 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const id = (req.query?.id || '').trim();
     if (!id) return res.status(400).json({ error: 'Missing id' });
+    /* Portal-private synths (e.g. the Aikido positioning report) require a
+       valid session. Public synths still load anonymously. The 401 carries
+       `private: true` so the frontend can render the sign-in gate. */
+    if (isPrivateSynth(id)) {
+      const session = await lookupSession(req);
+      if (!session) {
+        return res.status(401).json({
+          error: 'This positioning report is private. Sign in to view it.',
+          private: true,
+          signInUrl: '/#portal'
+        });
+      }
+    }
     try {
       const data = await redis.get(`synth:${id}`);
       if (!data) return res.status(404).json({ error: 'Synthesis not found' });
@@ -321,7 +349,21 @@ PRESCRIPTION RULES (avoid absolutist recommendations):
 - For headline-level fixes, recommend testing 1-2 variants, not rewriting the whole asset stack.
 - Hero section / LP changes need explicit justification per asset ("the LP for AUDIT-X already does this — replicate on the AUDIT-Y LP"). Do not recommend hero rewrites blindly across the brand.
 - "Standardize on X" is allowed only for trust lines and similar single-string assets where consistency matters. Name the specific assets.
-- If you catch yourself writing "Lead with", "in all", "in every", "across the board", "everywhere" — rewrite using "Prioritize" + scoped audit IDs.`;
+- If you catch yourself writing "Lead with", "in all", "in every", "across the board", "everywhere" — rewrite using "Prioritize" + scoped audit IDs.
+
+PLATFORM TRUST-SIGNAL RULES (don't recommend trust signals the ad format can't actually carry):
+- Google Search RSAs are TEXT-ONLY in the ad creative. They render 3 of 15 headlines (30 chars) + 2 of 4 descriptions (90 chars) + display URL paths. They DO NOT render customer logos, vendor badges, certification badges (SOC 2 / ISO 27001 / G2 badges), screenshots, or any image inside the ad text itself.
+- Google ad EXTENSIONS (sitelinks, callouts, structured snippets, seller ratings) are also TEXT-ONLY. Never recommend "add customer logos to ad extensions" or "include trust badges in extensions" — they don't render there.
+- For Google Search ads, recommend TEXT-NATIVE trust signals instead:
+    • Named-customer mentions in headlines/descriptions: "Used by Stripe, GitLab, Disney"
+    • Callout extensions (25 chars): "4.7★ G2", "50k+ orgs", "SOC 2 Type II", "Gartner Cool Vendor"
+    • Structured snippet headers: "Featured customers:" or "Certifications:" + a list
+    • Sitelinks pointing to customer-story pages or compliance pages
+    • Seller ratings (auto-pulled from third-party review aggregators)
+    • Numeric proof in copy: "50k+ orgs · 100k+ devs · 4.7/5"
+- LinkedIn and Meta ads DO support logos and badges in the creative. If the audited platform is LinkedIn or Meta, image-based trust signals are valid recommendations. If the audited platform is Google Search, they are not.
+- For landing page (LP) recommendations, logos/badges/screenshots are always valid — they live in the LP, not the ad. Always distinguish "in the ad" vs "on the LP" so the recommendation maps to the right surface.
+- If a source audit recommends logos/badges inside a Google Search ad, treat it as a wrong-surface mistake and translate it to the right surface in the synthesis (either an LP recommendation or a text-based ad-extension recommendation).`;
 
   const userPrompt = `Synthesize the following ${fetched.length} ad audits into a single Evidence-Backed Audit Synthesis report for ${clientName}.\n\n${auditBlocks}`;
 

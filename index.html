@@ -171,6 +171,13 @@
       const [result, setResult] = useState(null);
       const [copied, setCopied] = useState({});
       const [error, setError] = useState(null);
+      /* When a portal-private audit is loaded by a non-signed-in viewer, surface
+         a dedicated sign-in gate instead of a generic error. Shape: { message, signInUrl }. */
+      const [privateAuditGate, setPrivateAuditGate] = useState(null);
+      /* Track the report ID currently being viewed so we can apply per-report
+         display overrides (e.g. hiding the wrong-surface trust_signals card on
+         Aikido audits). Source of truth lives server-side; this is display-only. */
+      const [currentReportId, setCurrentReportId] = useState(null);
       const [loading, setLoading] = useState(false);
       const [reportEmail, setReportEmail] = useState('');
       const [reportEmailErr, setReportEmailErr] = useState(null);
@@ -210,16 +217,32 @@
         // Synthesis report (shareable): /?synth=XXX
         if (synthId) {
           setView('loading-report');
-          fetch(`/api/synthesize?id=${encodeURIComponent(synthId)}`)
-            .then(r => r.json())
-            .then(d => {
-              if (d && d.markdown) {
-                setSynthResult(d);
+          /* Auto-detect portal session in parallel — gives signed-in viewers
+             the full report without needing &portal=1 (mirrors the audit flow). */
+          fetch('/api/auth?action=me', { credentials: 'same-origin' })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d && d.session) setIsPortalView(true); })
+            .catch(() => { /* not signed in — keep public flow */ });
+
+          fetch(`/api/synthesize?id=${encodeURIComponent(synthId)}`, { credentials: 'same-origin' })
+            .then(async r => ({ ok: r.ok, status: r.status, data: await r.json().catch(() => ({})) }))
+            .then(({ ok, status, data }) => {
+              if (ok && data && data.markdown) {
+                setSynthResult(data);
                 setView('synthesis-result');
-              } else {
-                setError('Synthesis report not found');
-                setView('landing');
+                return;
               }
+              /* Portal-private positioning report, viewer isn't signed in */
+              if (status === 401 && data.private) {
+                setPrivateAuditGate({
+                  message: data.error || 'This positioning report is private. Sign in to view it.',
+                  signInUrl: data.signInUrl || '/#portal'
+                });
+                setView('landing');
+                return;
+              }
+              setError('Synthesis report not found');
+              setView('landing');
             })
             .catch(e => { setError('Failed to load synthesis: ' + e.message); setView('landing'); });
           return;
@@ -287,19 +310,42 @@
 
         if (reportId) {
           setView('loading-report');
-          fetch(`/api/roast-view?id=${reportId}`)
-            .then(res => res.json())
-            .then(data => {
-              if (data.result) {
+          setCurrentReportId(reportId);
+          /* In parallel, ask the auth endpoint whether this browser already has
+             a portal session. If yes, we treat the viewer as a portal user
+             (no paywall blur) regardless of whether &portal=1 is in the URL.
+             Auth check is fire-and-forget; the report fetch isn't blocked on it. */
+          fetch('/api/auth?action=me', { credentials: 'same-origin' })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d && d.session) setIsPortalView(true); })
+            .catch(() => { /* not signed in — keep public flow */ });
+
+          fetch(`/api/roast-view?id=${reportId}`, { credentials: 'same-origin' })
+            .then(async res => {
+              const data = await res.json().catch(() => ({}));
+              return { ok: res.ok, status: res.status, data };
+            })
+            .then(({ ok, status, data }) => {
+              if (ok && data.result) {
                 setResult(data.result);
                 setIcp(data.icp || '');
                 setPlatform(data.platform || 'meta');
                 setIsSharedView(true);
                 setView('results');
-              } else {
-                setError('Report not found');
-                setView('landing');
+                return;
               }
+              /* Portal-private audit, viewer isn't signed in — surface a clear
+                 sign-in prompt and a link to the portal, not a generic error. */
+              if (status === 401 && data.private) {
+                setPrivateAuditGate({
+                  message: data.error || 'This audit is private. Sign in to view it.',
+                  signInUrl: data.signInUrl || '/#portal'
+                });
+                setView('landing');
+                return;
+              }
+              setError('Report not found');
+              setView('landing');
             })
             .catch(e => {
               console.error('Failed to load report:', e);
@@ -348,6 +394,7 @@
         setReportEmail(''); setReportEmailErr(null); setPdfStatus(null);
         setNeedsPayment(false); setPaymentVerified(false); setIsUnlocked(false); setShowUnlockModal(false);
         setUnlockEmail(''); setUnlockLoading(false); setUnlockError(null);
+        setCurrentReportId(null); setPrivateAuditGate(null);
       };
 
       const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -832,6 +879,58 @@
         { quote: "Burned three months on demos where prospects loved it but never bought. Marina built us a system that shows exactly what makes customers actually sign.", name: "Matt Heywood", role: "Founder, AI SaaS" },
       ];
 
+      /* Aikido report IDs — display only. The wrong-surface trust_signals issue
+         (e.g. "no customer logos, no security badges" inside a Google Search RSA)
+         is filtered out for these reports until they're re-run through the new
+         platform-aware roast prompt. Mirror server-side PORTAL_PRIVATE_REPORTS. */
+      const AIKIDO_REPORT_IDS = new Set(['6Yba3yPp', 'Gs6hNNTA', 'zVNStrvS', 'C78UmgSD', 'ttdKdxxc']);
+      const isAikidoReport = currentReportId && AIKIDO_REPORT_IDS.has(currentReportId);
+      const visibleIssues = (() => {
+        const issues = result?.issues || [];
+        if (!isAikidoReport) return issues;
+        /* Hide the trust_signals issue card on Aikido audits — its observation
+           ("no customer logos / no security badges") is wrong-surface for
+           Google Search RSAs, which are text-only. */
+        return issues.filter(i =>
+          i && i.category !== 'trust_signals' &&
+          !/\b(?:customer\s+)?logos?\b.*\b(?:security\s+|trust\s+|compliance\s+)?badges?\b/i.test(i.explanation || '')
+        );
+      })();
+
+      /* Private-audit sign-in gate: takes over the page when a non-signed-in
+         viewer follows a portal-private audit link (e.g. an Aikido ?id=…). */
+      if (view === 'landing' && privateAuditGate) return (
+        <div className="min-h-screen flex flex-col bg-white">
+          <header className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-50">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+              <div onClick={() => { setPrivateAuditGate(null); reset(); }} className="flex items-center gap-2.5 cursor-pointer">
+                <img src={ADROAST_LOGO} alt="AdRoast" className="w-9 h-9 rounded" />
+                <span className="text-gray-300 text-xl font-light">|</span>
+                <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
+              </div>
+            </div>
+          </header>
+          <main className="flex-1 flex items-center justify-center px-4 py-12">
+            <div className="max-w-md w-full bg-white border border-gray-200 rounded-2xl shadow-sm p-8 text-center">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: '#eef4fb' }}>
+                <Icon name="alertCircle" className="w-6 h-6" style={{ color: '#0a66c2' }} />
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900 mb-2">Private report</h1>
+              <p className="text-sm text-gray-600 mb-6 leading-relaxed">{privateAuditGate.message}</p>
+              <a
+                href={privateAuditGate.signInUrl}
+                onClick={() => setPrivateAuditGate(null)}
+                style={{ backgroundColor: '#0a66c2', color: '#fff' }}
+                className="inline-flex items-center justify-center w-full px-5 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"
+              >
+                Sign in to the portal
+              </a>
+              <p className="text-xs text-gray-400 mt-4">Need access? Contact Marina.</p>
+            </div>
+          </main>
+        </div>
+      );
+
       if (view === 'landing') return (
         <div className="min-h-screen flex flex-col bg-white" >
 
@@ -1270,6 +1369,31 @@
           out = out.replace(new RegExp(`\\bon all ${blanketTargets}\\b`, 'gi'), (m, t) => `on ${t}`);
           out = out.replace(/\bacross the board\b/gi, 'as a priority');
           out = out.replace(/\beverywhere\b/gi, 'as a priority');
+          /* Platform-aware trust signals: Google Search RSAs and ad extensions are
+             TEXT-ONLY. Logos/badges don't render there. Rewrite recommendations that
+             ask for logos/badges inside Google ad copy or extensions into the
+             text-native equivalent (named-customer mentions, callout extensions,
+             structured snippets). LP logo recommendations are valid and untouched. */
+          out = out.replace(
+            /\b(add|include|use|put)\s+(?:customer\s+)?logos?\s+(?:and\s+badges?\s+)?(?:in|to|inside|into)\s+(?:the\s+|your\s+|all\s+)?ad\s+extensions?\b/gi,
+            'add named-customer mentions via structured snippets and ratings via callout extensions'
+          );
+          out = out.replace(
+            /\b(?:customer\s+)?logos?\s+(?:and\s+badges?\s+)?(?:in|to)\s+(?:the\s+|your\s+|all\s+)?ad\s+extensions?\b/gi,
+            'named-customer mentions in structured snippets and callout extensions'
+          );
+          out = out.replace(
+            /\b(?:add|include|use)\s+(?:customer\s+)?logos?\s+(?:in|to|inside)\s+(?:the\s+)?ad\s+copy\b/gi,
+            'add named-customer mentions in headlines and descriptions'
+          );
+          out = out.replace(
+            /\btrust\s+badges?\s+(?:in|to|inside)\s+(?:the\s+|your\s+)?ad(?:s|\s+copy|\s+extensions?)\b/gi,
+            'text-based trust signals (callout extensions like "4.7★ G2" or "SOC 2 Type II")'
+          );
+          out = out.replace(
+            /\b(?:and\s+)?customer\s+logos?\s+to\s+all\s+ad\s+extensions?\b/gi,
+            'and named-customer mentions via structured snippets'
+          );
           /* Collapse any whitespace left behind by the deletions. */
           out = out.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/^\s+/gm, m => m.includes('\n') ? '\n' : '');
           return out;
@@ -2057,7 +2181,7 @@
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
                 <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900">Ad Issues</h2></div>
                 <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {result.issues.map((issue, i) => (
+                  {visibleIssues.map((issue, i) => (
                     <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="flex items-start justify-between mb-2"><span className="font-semibold text-sm text-gray-900">{issue.title}</span><span className={`px-2 py-0.5 rounded text-xs font-bold ${getScoreColor(issue.score)}`}>{issue.score}/10</span></div>
                       <p className="text-sm text-gray-600">{issue.explanation}</p>
@@ -3761,6 +3885,29 @@
                 ];
                 let out = text;
                 for (const [re, sub] of replacements) out = out.replace(re, sub);
+                /* Platform-aware trust signals: Google Search RSAs + extensions are
+                   text-only. Rewrite logo/badge-in-ad recommendations to text-native
+                   equivalents. LP recommendations untouched. */
+                out = out.replace(
+                    /\b(add|include|use|put)\s+(?:customer\s+)?logos?\s+(?:and\s+badges?\s+)?(?:in|to|inside|into)\s+(?:the\s+|your\s+|all\s+)?ad\s+extensions?\b/gi,
+                    'add named-customer mentions via structured snippets and ratings via callout extensions'
+                );
+                out = out.replace(
+                    /\b(?:customer\s+)?logos?\s+(?:and\s+badges?\s+)?(?:in|to)\s+(?:the\s+|your\s+|all\s+)?ad\s+extensions?\b/gi,
+                    'named-customer mentions in structured snippets and callout extensions'
+                );
+                out = out.replace(
+                    /\b(?:add|include|use)\s+(?:customer\s+)?logos?\s+(?:in|to|inside)\s+(?:the\s+)?ad\s+copy\b/gi,
+                    'add named-customer mentions in headlines and descriptions'
+                );
+                out = out.replace(
+                    /\btrust\s+badges?\s+(?:in|to|inside)\s+(?:the\s+|your\s+)?ad(?:s|\s+copy|\s+extensions?)\b/gi,
+                    'text-based trust signals (callout extensions like "4.7★ G2" or "SOC 2 Type II")'
+                );
+                out = out.replace(
+                    /\b(?:and\s+)?customer\s+logos?\s+to\s+all\s+ad\s+extensions?\b/gi,
+                    'and named-customer mentions via structured snippets'
+                );
                 return out;
             };
 
@@ -4350,6 +4497,40 @@
                 return () => { cancelled = true; };
             }, [reportId]);
 
+            /* Rewrite wrong-surface trust-signal recommendations. Google Search RSAs and
+               ad extensions are text-only — recommendations like "add customer logos to the ad"
+               or "no logos / no badges" (observed inside an AD issue) don't map to anything
+               the format supports. Translate to text-native equivalents. We only apply this to
+               AD issues (r.issues), NOT to landing_page_roast — LP logos/badges are valid. */
+            const scrubAdSurfaceTrustText = (text) => {
+                if (!text || typeof text !== 'string') return text;
+                let out = text;
+                /* Observational ("zero/no logos and badges") in an ad-trust-signals issue */
+                out = out.replace(
+                    /\bzero\s+social\s+proof,?\s*no\s+(?:customer\s+)?logos?,?\s*no\s+(?:security\s+|trust\s+|compliance\s+)?badges?\b/gi,
+                    'no text-based trust signals — no named-customer mentions in copy, no callout-extension ratings, no structured snippets'
+                );
+                out = out.replace(
+                    /\bno\s+(?:customer\s+)?logos?,?\s*no\s+(?:security\s+|trust\s+|compliance\s+)?badges?\b/gi,
+                    'no named-customer mentions in copy and no callout-extension ratings'
+                );
+                out = out.replace(
+                    /\bno\s+(?:customer\s+)?logos?\s+or\s+(?:security\s+|trust\s+|compliance\s+)?badges?\b/gi,
+                    'no named-customer mentions or callout-extension ratings'
+                );
+                /* Prescriptive ("add customer logos to the ad"). Alternation ordered
+                   longest-first so "ad extensions" matches before bare "ad". */
+                out = out.replace(
+                    /\b(add|include|use)\s+(?:enterprise\s+|customer\s+)?logos?(?:\s+and\s+(?:security\s+|trust\s+|compliance\s+)?(?:badges?|certifications?))?\s+(?:in|to|inside|into)\s+(?:the\s+|your\s+|all\s+)?(?:ad\s+extensions?|ad\s+copy|headlines?|descriptions?|ads|ad)\b/gi,
+                    'add named-customer mentions in headlines/descriptions and ratings via callout extensions (e.g., "4.7★ G2", "SOC 2 Type II")'
+                );
+                /* Bare "customer logos in/to extensions" without an action verb */
+                out = out.replace(
+                    /\b(?:customer\s+)?logos?\s+(?:and\s+(?:security\s+|trust\s+|compliance\s+)?badges?\s+)?(?:in|to)\s+(?:the\s+|your\s+|all\s+)?(?:ad\s+extensions?|ad\s+copy)\b/gi,
+                    'named-customer mentions and rating callouts'
+                );
+                return out;
+            };
             /* Filter out capability-disclaimer text the LLM sometimes emits
                (e.g. "Can't assess visuals", "Unable to evaluate", "Without seeing the image").
                These shouldn't surface in client-facing portal content. */
@@ -4363,6 +4544,12 @@
                     || /^(note|caveat|disclaimer):/i.test(text.trim());
             };
 
+            /* Aikido report IDs whose trust_signals issue describes the wrong surface
+               (Google RSAs are text-only — no logos/badges in ad creative). Drop the
+               whole issue from portal findings so it never surfaces. */
+            const AIKIDO_PORTAL_REPORT_IDS = new Set(['6Yba3yPp', 'Gs6hNNTA', 'zVNStrvS', 'C78UmgSD', 'ttdKdxxc']);
+            const isAikidoPortalReport = reportId && AIKIDO_PORTAL_REPORT_IDS.has(reportId);
+
             /* Derive a 2-3 line Findings summary + a 2-3 line Recommendations summary
                from the live roast data, matching the brief Nudge-style format. */
             const derivedFindings = (() => {
@@ -4371,7 +4558,13 @@
                 const issues = (r.issues || []).filter(i =>
                     i && i.title && (i.score !== undefined) &&
                     !isCapabilityDisclaimer(i.title) &&
-                    !isCapabilityDisclaimer(i.explanation)
+                    !isCapabilityDisclaimer(i.explanation) &&
+                    /* For Aikido reports, drop the trust_signals issue entirely — its
+                       observation doesn't map to anything Google Search RSAs can carry. */
+                    !(isAikidoPortalReport && (
+                        i.category === 'trust_signals' ||
+                        /\b(?:customer\s+)?logos?\b.*\b(?:security\s+|trust\s+|compliance\s+)?badges?\b/i.test(i.explanation || '')
+                    ))
                 );
                 if (issues.length === 0) {
                     /* Fall back to ad↔LP mismatch verdict if no issues */
@@ -4381,20 +4574,25 @@
                 /* Sort by lowest score first — those are the biggest problems */
                 const sorted = [...issues].sort((a, b) => (a.score || 0) - (b.score || 0));
                 const top = sorted.slice(0, 2);
-                return top;
+                /* Scrub any residual wrong-surface logo/badge text */
+                return top.map(i => ({
+                    ...i,
+                    title: scrubAdSurfaceTrustText(i.title),
+                    explanation: scrubAdSurfaceTrustText(i.explanation)
+                }));
             })();
             const derivedRecs = (() => {
                 if (!liveRoast) return null;
                 const r = liveRoast.result || liveRoast;
                 const filterRecs = (list) => list.filter(s => typeof s === 'string' && s.trim() && !isCapabilityDisclaimer(s));
                 const steps = filterRecs(r.next_steps || []);
-                if (steps.length > 0) return steps.slice(0, 3);
-                /* Fall back to landing-page quick wins */
+                if (steps.length > 0) return steps.slice(0, 3).map(scrubAdSurfaceTrustText);
+                /* Fall back to landing-page quick wins (LP-context — don't scrub logo text) */
                 const wins = filterRecs(r.landing_page_roast?.quick_wins || []);
                 if (wins.length > 0) return wins.slice(0, 3);
                 /* Last fallback: fix-kit rationale as one paragraph */
                 const rationale = r.fix_kit?.rationale;
-                if (rationale && !isCapabilityDisclaimer(rationale)) return [rationale];
+                if (rationale && !isCapabilityDisclaimer(rationale)) return [scrubAdSurfaceTrustText(rationale)];
                 return null;
             })();
 

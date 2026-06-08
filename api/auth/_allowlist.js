@@ -101,3 +101,39 @@ export function readSessionCookie(req) {
   const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`));
   return match ? decodeURIComponent(match[1]) : null;
 }
+
+/**
+ * Audit report IDs that live in the portal and must NOT be publicly viewable.
+ * Requests to /api/roast-view for these IDs require a valid portal session,
+ * else return 401. Add the report ID (the value after ?id= in the audit URL)
+ * for any client audit that should be portal-gated.
+ *
+ * Nudge audits live on brandswithpurpose.us and are not in this list —
+ * they're served by that domain's own backend.
+ */
+export const PORTAL_PRIVATE_REPORTS = new Set([
+  /* Aikido — 5 Google Search RSA audits */
+  '6Yba3yPp',  // SAST
+  'Gs6hNNTA',  // SCA
+  'zVNStrvS',  // AI Pentest
+  'C78UmgSD',  // vs SonarQube
+  'ttdKdxxc',  // SBOM
+]);
+
+export function isPrivateReport(id) {
+  return PORTAL_PRIVATE_REPORTS.has(String(id || '').trim());
+}
+
+/**
+ * Synthesis (positioning report) IDs that live in the portal and must NOT be
+ * publicly viewable. /api/synthesize?id=<id> returns 401 for these unless the
+ * caller has a valid portal session. Mirrors PORTAL_PRIVATE_REPORTS but for
+ * synth IDs (the value after ?synth= in the URL).
+ */
+export const PORTAL_PRIVATE_SYNTHS = new Set([
+  'b3SLj6YwW4',  // Aikido — Google Search Campaigns positioning report
+]);
+
+export function isPrivateSynth(id) {
+  return PORTAL_PRIVATE_SYNTHS.has(String(id || '').trim());
+}
