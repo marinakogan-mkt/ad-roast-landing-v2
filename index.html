@@ -879,22 +879,40 @@
         { quote: "Burned three months on demos where prospects loved it but never bought. Marina built us a system that shows exactly what makes customers actually sign.", name: "Matt Heywood", role: "Founder, AI SaaS" },
       ];
 
-      /* Aikido report IDs — display only. The wrong-surface trust_signals issue
-         (e.g. "no customer logos, no security badges" inside a Google Search RSA)
-         is filtered out for these reports until they're re-run through the new
-         platform-aware roast prompt. Mirror server-side PORTAL_PRIVATE_REPORTS. */
+      /* Platform-aware display filter for the Ad Issues grid.
+         Google Search RSAs render text only — no logos, customer logos, vendor
+         badges, security/compliance badges, or screenshots inside the ad creative
+         or ad extensions. So for Google ads, hide any issue card whose body
+         observes the absence of visual trust signals (or recommends adding them
+         to the ad). Meta and LinkedIn keep these cards intact because both
+         formats DO support visual trust elements in the ad itself.
+         Legacy Aikido reports may not have the `platform` field populated, so
+         their IDs are also matched as a fallback. */
       const AIKIDO_REPORT_IDS = new Set(['6Yba3yPp', 'Gs6hNNTA', 'zVNStrvS', 'C78UmgSD', 'ttdKdxxc']);
-      const isAikidoReport = currentReportId && AIKIDO_REPORT_IDS.has(currentReportId);
+      const platformIsGoogle = (() => {
+        const p = String(platform || '').toLowerCase();
+        if (p === 'google' || p === 'google_ads' || p === 'google ads') return true;
+        if (currentReportId && AIKIDO_REPORT_IDS.has(currentReportId)) return true;
+        return false;
+      })();
       const visibleIssues = (() => {
         const issues = result?.issues || [];
-        if (!isAikidoReport) return issues;
-        /* Hide the trust_signals issue card on Aikido audits — its observation
-           ("no customer logos / no security badges") is wrong-surface for
-           Google Search RSAs, which are text-only. */
-        return issues.filter(i =>
-          i && i.category !== 'trust_signals' &&
-          !/\b(?:customer\s+)?logos?\b.*\b(?:security\s+|trust\s+|compliance\s+)?badges?\b/i.test(i.explanation || '')
-        );
+        if (!platformIsGoogle) return issues;
+        return issues.filter(i => {
+          if (!i) return false;
+          const body = `${i.title || ''}  ${i.explanation || ''}`;
+          /* Wrong-surface visual-trust language for Google text ads. We catch
+             three shapes: (1) explicit logo+badge co-mention, (2) any logo
+             mention paired with social-proof framing, (3) trust_signals issue
+             whose body is about visual elements. */
+          const mentionsLogoAndBadge = /\b(?:customer\s+|enterprise\s+)?logos?\b[\s\S]*?\b(?:security\s+|trust\s+|compliance\s+|certification\s+)?badges?\b/i.test(body)
+                                    || /\b(?:security\s+|trust\s+|compliance\s+|certification\s+)?badges?\b[\s\S]*?\b(?:customer\s+|enterprise\s+)?logos?\b/i.test(body);
+          const isTrustSignalsIssueAboutVisuals = i.category === 'trust_signals'
+            && /\b(?:customer\s+|enterprise\s+)?logos?\b|\b(?:security\s+|trust\s+|compliance\s+|certification\s+)?badges?\b/i.test(body);
+          if (mentionsLogoAndBadge) return false;
+          if (isTrustSignalsIssueAboutVisuals) return false;
+          return true;
+        });
       })();
 
       /* Private-audit sign-in gate: takes over the page when a non-signed-in
@@ -4544,11 +4562,26 @@
                     || /^(note|caveat|disclaimer):/i.test(text.trim());
             };
 
-            /* Aikido report IDs whose trust_signals issue describes the wrong surface
-               (Google RSAs are text-only — no logos/badges in ad creative). Drop the
-               whole issue from portal findings so it never surfaces. */
+            /* Platform-aware filter mirroring the public viewer. Google Search RSAs
+               are text-only — drop any trust_signals issue (or any other) that
+               observes the absence of logos/badges. Meta/LinkedIn keep these cards.
+               Legacy Aikido IDs fall through as a backup if the platform field is
+               missing from the stored roast record. */
             const AIKIDO_PORTAL_REPORT_IDS = new Set(['6Yba3yPp', 'Gs6hNNTA', 'zVNStrvS', 'C78UmgSD', 'ttdKdxxc']);
-            const isAikidoPortalReport = reportId && AIKIDO_PORTAL_REPORT_IDS.has(reportId);
+            const liveRoastPlatform = liveRoast ? String((liveRoast.platform) || '').toLowerCase() : '';
+            const portalPlatformIsGoogle = liveRoastPlatform === 'google'
+                || liveRoastPlatform === 'google_ads'
+                || liveRoastPlatform === 'google ads'
+                || (reportId && AIKIDO_PORTAL_REPORT_IDS.has(reportId));
+            const isVisualTrustIssue = (i) => {
+                if (!i) return false;
+                const body = `${i.title || ''}  ${i.explanation || ''}`;
+                const co = /\b(?:customer\s+|enterprise\s+)?logos?\b[\s\S]*?\b(?:security\s+|trust\s+|compliance\s+|certification\s+)?badges?\b/i.test(body)
+                        || /\b(?:security\s+|trust\s+|compliance\s+|certification\s+)?badges?\b[\s\S]*?\b(?:customer\s+|enterprise\s+)?logos?\b/i.test(body);
+                if (co) return true;
+                if (i.category === 'trust_signals' && /\blogos?\b|\bbadges?\b/i.test(body)) return true;
+                return false;
+            };
 
             /* Derive a 2-3 line Findings summary + a 2-3 line Recommendations summary
                from the live roast data, matching the brief Nudge-style format. */
@@ -4559,12 +4592,7 @@
                     i && i.title && (i.score !== undefined) &&
                     !isCapabilityDisclaimer(i.title) &&
                     !isCapabilityDisclaimer(i.explanation) &&
-                    /* For Aikido reports, drop the trust_signals issue entirely — its
-                       observation doesn't map to anything Google Search RSAs can carry. */
-                    !(isAikidoPortalReport && (
-                        i.category === 'trust_signals' ||
-                        /\b(?:customer\s+)?logos?\b.*\b(?:security\s+|trust\s+|compliance\s+)?badges?\b/i.test(i.explanation || '')
-                    ))
+                    !(portalPlatformIsGoogle && isVisualTrustIssue(i))
                 );
                 if (issues.length === 0) {
                     /* Fall back to ad↔LP mismatch verdict if no issues */

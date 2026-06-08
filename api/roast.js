@@ -183,6 +183,7 @@ CRITICAL RULES:
 PLATFORM TRUST-SIGNAL RULES:
 - Google Search RSAs are TEXT-ONLY in the ad creative — they render headlines + descriptions + display URL paths. They DO NOT render customer logos, vendor badges, certification badges (SOC 2 / ISO 27001 / G2 badges), screenshots, or any image inside the ad text itself.
 - Google ad EXTENSIONS (sitelinks, callouts, structured snippets, seller ratings) are also TEXT-ONLY. Never recommend "add customer logos to ad extensions" or "include trust badges in extensions" — they don't render there.
+- WHEN THE PLATFORM ABOVE IS "google" OR "google_ads": the trust_signals issue (and any other issue or fix) MUST NOT mention or recommend customer logos, vendor logos, trust badges, security badges, compliance badges, certification badges, social-proof badges, or any image/screenshot inside the ad. Treat those as nonexistent surfaces for this audit. If the trust_signals issue body would have observed "no logos" or "no badges" — rewrite it to observe what IS missing in the ad text: no named-customer mentions in copy, no callout-extension ratings, no structured snippet of featured customers, no numeric proof in headlines, no seller ratings.
 - For Google Search ads, when recommending trust signals on the AD, use TEXT-NATIVE forms only:
     • Named-customer mentions in headlines/descriptions ("Used by Stripe, GitLab")
     • Callout extensions (25 chars): "4.7★ G2", "50k+ orgs", "SOC 2 Type II"
