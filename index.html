@@ -27,7 +27,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
   <style>
     body { font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -193,6 +193,9 @@
       const [unlockError, setUnlockError] = useState(null);
       const [isUnlocked, setIsUnlocked] = useState(false);
       const [showUnlockModal, setShowUnlockModal] = useState(false);
+      /* Declared here (with the other hooks) so the URL-sync useEffect below can
+         reference it; it must initialize before its first use to avoid a TDZ crash. */
+      const [synthResult, setSynthResult] = useState(null);
 
       // Auto-generate link after verified payment
       React.useEffect(() => {
@@ -732,7 +735,6 @@
       const [synthClientName, setSynthClientName] = useState(initialSynthDraft?.clientName || '');
       const [synthLibrary, setSynthLibrary] = useState(loadJSON(SYNTH_LIBRARY_KEY, []));
       const [synthLoading, setSynthLoading] = useState(false);
-      const [synthResult, setSynthResult] = useState(null);
 
       /* Persist draft on every change. */
       React.useEffect(() => {
