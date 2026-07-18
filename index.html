@@ -51,6 +51,10 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .card-lift { transition: transform 0.2s, box-shadow 0.2s; }
     .card-lift:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+    .floaty { animation:floatY 4s ease-in-out infinite; }
+    .gauge-bar { height:100%; width:0; border-radius:999px; transition:width 1.1s cubic-bezier(.22,1,.36,1) .15s; }
+    details > summary::-webkit-details-marker { display:none; }
 
     /* ─── Motion layer ─── */
     @keyframes revealUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -227,6 +231,49 @@
         "Add one quantified proof point above the fold",
         "Replace the triple CTA with a single primary action"
       ]
+    };
+
+    const scoreColor = s => s <= 3 ? 'text-red-600 bg-red-50 border-red-200' : s <= 6 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-green-600 bg-green-50 border-green-200';
+    const RoastPreview = () => {
+      const items = DEMO_ROAST.issues.slice(0, 3);
+      const [step, setStep] = useState(0);
+      const [cycle, setCycle] = useState(0);
+      useEffect(() => {
+        setStep(0);
+        const ts = [];
+        ts.push(setTimeout(() => setStep(1), 500));
+        ts.push(setTimeout(() => setStep(2), 1700));
+        ts.push(setTimeout(() => setStep(3), 2900));
+        ts.push(setTimeout(() => setStep(4), 4100));
+        ts.push(setTimeout(() => setCycle(c => c + 1), 7400));
+        return () => ts.forEach(clearTimeout);
+      }, [cycle]);
+      return (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-xl p-6 max-w-md w-full mx-auto text-left floaty">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-4"><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span><span className="font-semibold text-gray-800">LinkedIn ad</span> · roasting live</div>
+          <div className="flex items-center gap-4 mb-5">
+            <div className="flex-shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center border-2 border-red-200 bg-red-50">
+              <div className="text-2xl font-bold text-red-600 leading-none">{step >= 1 ? DEMO_ROAST.overall_score : '·'}</div>
+              <div className="text-[9px] text-red-400">/ 10</div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="h-2 rounded-full bg-gray-100 overflow-hidden"><div className="gauge-bar" style={{ width: step >= 1 ? '40%' : '0%', background: 'linear-gradient(90deg,#dc2626,#f59e0b)' }} /></div>
+              <p className="text-xs text-gray-400 mt-2 truncate">&ldquo;The #1 platform for cloud security&rdquo;</p>
+            </div>
+          </div>
+          <div className="space-y-2" style={{ minHeight: '250px' }}>
+            {items.map((it, i) => (
+              <div key={i} style={{ opacity: step >= i + 2 ? 1 : 0, transform: step >= i + 2 ? 'none' : 'translateX(-8px)', transition: 'all .5s cubic-bezier(.22,1,.36,1)' }} className="flex items-start gap-2.5 p-3 rounded-lg bg-gray-50">
+                <span className={`flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-xs font-bold border ${scoreColor(it.score)}`}>{it.score}</span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-800 leading-snug">{it.title}</div>
+                  <div className="text-xs text-gray-500 mt-1" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.5 }}>{it.explanation}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
     };
 
     const EMAIL_CONFIG = { service_id: 'service_ywioabe', template_id: 'template_gtqow85', public_key: '964Wa83HevoEa5KnS', notify_email: 'marina.kogan@adroast.in' };
@@ -1190,24 +1237,44 @@
             </div>
           </div>
 
-          {/* WHAT YOU GET */}
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 mb-3">
-            <p className="text-center text-xs text-gray-400 uppercase tracking-wide font-medium">Your roast includes</p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 max-w-3xl mx-auto px-4 sm:px-6 mb-10 sm:mb-20">
-            {[
-              { icon: 'users', title: "Am I targeting the right buyer?", desc: "ICP match, scored" },
-              { icon: 'alertCircle', title: "Why aren't demos converting?", desc: "5 issues with evidence from your copy" },
-              { icon: 'zap', title: "Where do I lose them?", desc: "Ad vs page disconnect, measured" },
-              { icon: 'sparkles', title: "What do I fix first?", desc: "Ranked by what moves demos" }
-            ].map((f, i) => (
-              <div key={i} className="p-4 bg-blue-50 border border-blue-200 transition-all">
-                <Icon name={f.icon} className="w-6 h-6 mb-2" style={{ color: '#0a66c2' }} />
-                <h3 className="font-semibold text-sm" style={{ color: '#0a66c2' }}>{f.title}</h3>
-                <p className="text-xs mt-1 text-blue-700 opacity-75">{f.desc}</p>
+          {/* WATCH IT WORK */}
+          <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-12 sm:pb-16 w-full">
+            <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
+              <div className="text-center md:text-left">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Watch it work</div>
+                <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>See your ad get roasted in real time.</h2>
+                <p className="text-gray-400 mb-6 md:max-w-sm" style={{ fontSize: '16px', lineHeight: 1.7 }}>Every ad scored against your ICP, every weak line flagged with the fix. About 2 minutes, no call.</p>
+                <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-7 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity cta-glow">Roast my Ad &rarr;</button>
               </div>
-            ))}
-          </div>
+              <RoastPreview />
+            </div>
+          </section>
+
+          {/* WHAT YOU GET (accordion) */}
+          <section className="max-w-2xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 w-full">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast includes</div>
+              <h2 className="text-gray-900 mt-3" style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Four answers, in two minutes.</h2>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
+              {[
+                { t: "Am I targeting the right buyer?", chip: "ICP 6/10", color: '#0a66c2', detail: "We read your ICP straight off your site, then score how sharply your ad speaks to that exact buyer, not a generic best-practice checklist." },
+                { t: "Why aren't demos converting?", chip: "5 issues", color: '#dc2626', detail: "5 scored issues — hook, proof, CTA, trust and specificity — each with the exact line from your copy that's costing you the click." },
+                { t: "Where do I lose them?", chip: "Match 3/10", color: '#d97706', detail: "We compare your ad's promise to your landing page and flag every message-drift gap where the scent breaks and demos leak." },
+                { t: "What do I fix first?", chip: "Fix kit", color: '#16a34a', detail: "Your fix kit: rewritten headlines, body and CTAs, plus a prioritized list ranked by what actually moves demos." }
+              ].map((f, i) => (
+                <details key={i} className="group">
+                  <summary className="flex items-center gap-3 p-4 cursor-pointer list-none hover:bg-gray-50 transition-colors">
+                    <span className="flex-1 min-w-0 font-semibold text-gray-900 text-sm">{f.t}</span>
+                    <span className="flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: f.color + '14', color: f.color }}>{f.chip}</span>
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  </summary>
+                  <p className="pb-4 px-4 text-sm text-gray-500" style={{ lineHeight: 1.6 }}>{f.detail}</p>
+                </details>
+              ))}
+            </div>
+            <p className="text-center text-xs text-gray-400 mt-3">Tap any answer to see what's inside.</p>
+          </section>
 
           {/* RESULTS */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
