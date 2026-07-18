@@ -276,6 +276,23 @@
       );
     };
 
+    const CountUp = ({ to, suffix = '', prefix = '', dur = 1300 }) => {
+      const ref = React.useRef(null);
+      const [n, setN] = useState(0);
+      useEffect(() => {
+        const el = ref.current; if (!el) return; let done = false;
+        const ob = new IntersectionObserver(([e]) => {
+          if (e.isIntersecting && !done) { done = true;
+            const t0 = performance.now();
+            const tick = (t) => { const p = Math.min(1, (t - t0) / dur); setN(Math.round(to * (1 - Math.pow(1 - p, 3)))); if (p < 1) requestAnimationFrame(tick); };
+            requestAnimationFrame(tick); ob.disconnect();
+          }
+        }, { threshold: 0.5 });
+        ob.observe(el); return () => ob.disconnect();
+      }, []);
+      return <span ref={ref}>{prefix}{n}{suffix}</span>;
+    };
+
     const EMAIL_CONFIG = { service_id: 'service_ywioabe', template_id: 'template_gtqow85', public_key: '964Wa83HevoEa5KnS', notify_email: 'marina.kogan@adroast.in' };
     const PAYMENT_URL = 'https://wise.com/pay/r/Xo-phJ5xD_25pN0';
 
@@ -1283,13 +1300,13 @@
             <p className="text-gray-400 mb-6 sm:mb-10 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>It's called Message Drift, and we've diagnosed it in 50+ cybersecurity funnels. Your Ad says one thing, your page says another, and demos disappear in between. It's the #1 reason demos leak, and it's invisible until someone scores it.</p>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { num: "50+", label: "cybersecurity teams repositioned" },
-                { num: "3\u00d7", label: <span>demos in 90 days <em className="font-normal">(same Ad spend)</em></span> },
-                { num: "47%", label: "demo increase in 8 weeks" },
-                { num: "31%", label: <span>CAC drop <em className="font-normal">(same Ad spend)</em></span> }
+                { to: 50, suffix: "+", label: "cybersecurity teams repositioned" },
+                { to: 3, suffix: "\u00d7", label: <span>demos in 90 days <em className="font-normal">(same Ad spend)</em></span> },
+                { to: 47, suffix: "%", label: "demo increase in 8 weeks" },
+                { to: 31, suffix: "%", label: <span>CAC drop <em className="font-normal">(same Ad spend)</em></span> }
               ].map((r, i) => (
-                <div key={i} className="p-5 sm:p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all">
-                  <div style={{ fontSize: 'clamp(32px, 8vw, 42px)', fontWeight: 300, color: '#0a66c2', letterSpacing: '-1px', lineHeight: 1 }} className="mb-3">{r.num}</div>
+                <div key={i} className="p-5 sm:p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all card-lift">
+                  <div style={{ fontSize: 'clamp(32px, 8vw, 42px)', fontWeight: 300, color: '#0a66c2', letterSpacing: '-1px', lineHeight: 1 }} className="mb-3"><CountUp to={r.to} suffix={r.suffix} /></div>
                   <div className="text-gray-600 text-sm sm:text-base font-medium">{r.label}</div>
                 </div>
               ))}
