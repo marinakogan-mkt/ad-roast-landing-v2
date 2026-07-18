@@ -4,21 +4,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AdRoast | Ad Positioning for B2B SaaS</title>
-  <meta name="description" content="Spending $20K+/month on Ads but demo quality still sucks? The real problem is your positioning. Fix it without touching your Ad budget.">
+  <title>AdRoast | Ad Positioning for Cybersecurity Teams</title>
+  <meta name="description" content="Spending $20K+/month on cybersecurity ads but demo quality still sucks? The real problem is your positioning. Fix it without touching your Ad budget.">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.brandswithpurpose.us">
   <meta property="og:site_name" content="AdRoast">
-  <meta property="og:title" content="Spending $20K+/month on Ads but demo quality still sucks?">
-  <meta property="og:description" content="You've tried better targeting and new creatives. The real problem: your positioning is broken. Fix it without touching your Ad budget.">
+  <meta property="og:title" content="Spending $20K+/month on cybersecurity ads but demo quality still sucks?">
+  <meta property="og:description" content="Convert the clicks you already paid for.">
   <meta property="og:image" content="https://www.brandswithpurpose.us/og-image.png">
 
   <!-- Twitter/X Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Spending $20K+/month on Ads but demo quality still sucks?">
-  <meta name="twitter:description" content="You've tried better targeting and new creatives. The real problem: your positioning is broken. Fix it without touching your Ad budget.">
+  <meta name="twitter:title" content="Spending $20K+/month on cybersecurity ads but demo quality still sucks?">
+  <meta name="twitter:description" content="Convert the clicks you already paid for.">
   <meta name="twitter:image" content="https://www.brandswithpurpose.us/og-image.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -51,6 +51,41 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .card-lift { transition: transform 0.2s, box-shadow 0.2s; }
     .card-lift:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+
+    /* ─── Motion layer ─── */
+    @keyframes revealUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .reveal > * { opacity: 0; animation: revealUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+    .reveal > *:nth-child(1) { animation-delay: 0.05s; }
+    .reveal > *:nth-child(2) { animation-delay: 0.15s; }
+    .reveal > *:nth-child(3) { animation-delay: 0.25s; }
+    .reveal > *:nth-child(4) { animation-delay: 0.35s; }
+    .reveal > *:nth-child(5) { animation-delay: 0.45s; }
+    .reveal > *:nth-child(6) { animation-delay: 0.55s; }
+    .reveal > *:nth-child(7) { animation-delay: 0.65s; }
+    .reveal > *:nth-child(8) { animation-delay: 0.75s; }
+    .reveal-up { opacity: 0; animation: revealUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards; }
+
+    /* Primary CTA: subtle breathing glow + press feedback */
+    @keyframes ctaGlow { 0%,100% { box-shadow: 0 2px 10px rgba(10,102,194,0.28); } 50% { box-shadow: 0 4px 22px rgba(10,102,194,0.48); } }
+    .cta-glow { animation: ctaGlow 3.2s ease-in-out infinite; transition: transform 0.15s ease; }
+    .cta-glow:hover { transform: translateY(-1px); }
+    .cta-glow:active { transform: translateY(0) scale(0.98); }
+
+    /* Input focus ring bloom */
+    .field-bloom { transition: box-shadow 0.25s ease, border-color 0.2s ease; }
+    .field-bloom:focus { box-shadow: 0 0 0 4px rgba(10,102,194,0.12); border-color: #0a66c2 !important; }
+
+    /* Ambient hero wash — slow, quiet, non-distracting */
+    @keyframes floatWash { 0%,100% { transform: translate(0,0) scale(1); opacity: 0.5; } 50% { transform: translate(2%, -3%) scale(1.08); opacity: 0.75; } }
+    .hero-wash { position: absolute; inset: -20% 0 auto 0; height: 460px; z-index: 0; pointer-events: none;
+      background: radial-gradient(600px 300px at 70% 20%, rgba(10,102,194,0.10), transparent 60%),
+                  radial-gradient(520px 280px at 25% 10%, rgba(124,92,255,0.08), transparent 60%);
+      animation: floatWash 14s ease-in-out infinite; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal > *, .reveal-up { opacity: 1 !important; animation: none !important; }
+      .cta-glow, .hero-wash, .animate-pulse { animation: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -81,6 +116,117 @@
         mail: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
       };
       return icons[name] || null;
+    };
+
+    /* ─── STAGED PROCESSING (replaces the plain spinner) ─── */
+    const ProcessingView = () => {
+      const steps = [
+        { icon: 'fileText', label: 'Reading your ad copy & hook' },
+        { icon: 'users',    label: 'Scoring against your ICP' },
+        { icon: 'linkBreak',label: 'Checking ad ↔ landing page match' },
+        { icon: 'zap',      label: 'Writing your fix kit & experiments' },
+      ];
+      const [active, setActive] = useState(0);
+      useEffect(() => {
+        const t = setInterval(() => setActive(a => (a < steps.length - 1 ? a + 1 : a)), 3200);
+        return () => clearInterval(t);
+      }, []);
+      const pct = Math.min(94, ((active + 1) / steps.length) * 100 - 6);
+      return (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+          <div className="w-full max-w-md fade-in">
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center gap-2.5 mb-6">
+                <div className="relative inline-block">
+                  <Icon name="linkedin" className="w-9 h-9" />
+                  <span className="absolute -top-2 -left-1.5 text-lg leading-none">🔥</span>
+                </div>
+                <span className="text-gray-300 text-2xl font-light">|</span>
+                <span className="text-2xl font-bold text-gray-900">AdRoast</span>
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900">Roasting your ad&hellip;</h2>
+              <p className="text-gray-500 text-sm mt-1">Analyzed against your specific ICP &mdash; usually ~15 seconds.</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mb-5">
+                <div className="h-full rounded-full" style={{ width: pct + '%', backgroundColor: '#0a66c2', transition: 'width 0.7s ease-out' }} />
+              </div>
+              <div className="space-y-1">
+                {steps.map((s, i) => {
+                  const done = i < active, current = i === active;
+                  return (
+                    <div key={i} className={`flex items-center gap-3 py-2.5 px-2 rounded-lg transition-colors ${current ? 'bg-blue-50' : ''}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${done ? 'bg-green-100' : current ? '' : 'bg-gray-100'}`} style={current ? { backgroundColor: '#e8f3ff' } : {}}>
+                        {done
+                          ? <Icon name="check" className="w-4 h-4" style={{ color: '#16a34a' }} />
+                          : current
+                            ? <div className="relative w-4 h-4"><div className="absolute inset-0 rounded-full border-2 border-gray-200" /><div style={{ borderColor: '#0a66c2', borderTopColor: 'transparent' }} className="absolute inset-0 rounded-full border-2 animate-spin" /></div>
+                            : <Icon name={s.icon} className="w-4 h-4" style={{ color: '#9ca3af' }} />}
+                      </div>
+                      <span className={`text-sm ${current ? 'font-semibold text-gray-900' : 'text-gray-400'}`}>{s.label}</span>
+                      {done && <span className="ml-auto text-xs font-medium" style={{ color: '#16a34a' }}>Done</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <p className="text-center text-gray-400 text-xs mt-4">Hang tight &mdash; building your report.</p>
+          </div>
+        </div>
+      );
+    };
+
+    /* TEMP DEMO DATA — remove before deploy (only used when ?demo=roast) */
+    const DEMO_ROAST = {
+      overall_score: 4,
+      icp_mismatch: "Your ad talks to 'security teams' broadly, but your ICP is CISOs who answer to a board. The hook never names their actual stakes.",
+      issues: [
+        { title: "Hook is about you, not them", score: 3, explanation: "“The #1 platform for cloud security” leads with your product, not the buyer's pain. A CISO scrolls past." },
+        { title: "No proof for a skeptical buyer", score: 4, explanation: "Zero numbers, logos, or specifics. Security buyers discount unquantified claims by default." },
+        { title: "CTA asks for too much, too soon", score: 5, explanation: "“Book a demo” is a big ask for a cold CISO with no lower-commitment step offered." },
+        { title: "Jargon without payoff", score: 5, explanation: "“AI-powered CNAPP” describes the tool, not the outcome the buyer actually wants." },
+        { title: "Visual competes with the message", score: 6, explanation: "Dense dashboard screenshot — nothing guides the eye to the one thing that matters." }
+      ],
+      landing_page_roast: {
+        overall_score: 5, headline_feedback: "Restates the ad instead of advancing the promise — the visitor learns nothing new.",
+        headline_score: 4, value_prop_feedback: "Buried below the fold.", value_prop_score: 5,
+        cta_feedback: "Three competing CTAs dilute the action.", cta_score: 5,
+        trust_feedback: "Logos present but no outcomes attached.", trust_score: 6,
+        top_issues: ["Headline duplicates the ad", "Value prop below the fold", "Three competing CTAs"],
+        quick_wins: ["Lead with the buyer's risk, not the product category", "Move one proof stat above the fold"]
+      },
+      ad_landing_mismatch: {
+        alignment_score: 3,
+        verdict: "The ad promises 'cut alert noise 80%'; the landing page never mentions alerts. The scent breaks on arrival.",
+        message_match_issues: ["Ad claim absent from the LP", "Different primary CTA than the ad implied"],
+        disconnects: [
+          { problem: "Ad says 'free trial', landing page only offers 'book a demo'", fix: "Match the offer — add the free-trial CTA to the LP hero." },
+          { problem: "The ad's '80% less noise' hook is nowhere on the page", fix: "Make that stat the LP headline — carry the promise through." }
+        ]
+      },
+      fix_kit: {
+        headlines: [
+          "Your CISO doesn't want another dashboard. They want to walk into the board meeting calm.",
+          "Cut alert noise 80% — without adding a single analyst.",
+          "The security tool your board actually asks about."
+        ],
+        body: "Lead with the risk your buyer carries, name the outcome (fewer alerts, faster audits), then prove it with one number. Save the product category for later.",
+        ctas: ["Show me the 80% (2-min tour)", "See it on my stack", "Get the alert-noise teardown"],
+        landing_page_headline: "Cut alert noise 80%. Keep the same team.",
+        landing_page_subhead: "The context-aware layer that tells your analysts what actually matters — proven across 40+ security teams.",
+        rationale: "Every rewrite moves from product-first to buyer-outcome-first, then earns the click with a specific, testable number."
+      },
+      experiments: [
+        { title: "Swap the hook to the board-risk angle", description: "Test “walk into the board meeting calm” against your current product-led hook. Same audience, same budget." },
+        { title: "Add the 80% stat above the fold", description: "Carry the ad's promise onto the LP hero and measure demo-request lift." },
+        { title: "Offer a lower-commitment CTA", description: "Test “2-min tour” vs “book a demo” for cold CISO traffic." }
+      ],
+      next_steps: [
+        "Rewrite the ad hook to lead with the buyer's risk, not the product category",
+        "Match the landing page headline to the ad's 80% promise",
+        "Add one quantified proof point above the fold",
+        "Replace the triple CTA with a single primary action"
+      ]
     };
 
     const EMAIL_CONFIG = { service_id: 'service_ywioabe', template_id: 'template_gtqow85', public_key: '964Wa83HevoEa5KnS', notify_email: 'marina.kogan@adroast.in' };
@@ -207,6 +353,14 @@
       const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.adScreenshot;
       const canProceed = platform && offerType && icp.length > 10;
       const showFull = isPortalView || isUnlocked;
+      /* TEMP DEMO — remove before deploy: ?demo=roast renders the results page with sample data */
+      React.useEffect(() => {
+        if (typeof window !== 'undefined' && window.location.search.includes('demo=roast')) {
+          setIcp('CISOs and security engineering leads at Series A+ cybersecurity startups');
+          setPlatform('linkedin'); setOfferType('demo'); setIsUnlocked(true); setResult(DEMO_ROAST);
+          setTimeout(() => setView('results'), 0);
+        }
+      }, []);
 
       // Check for shared report in URL on load
       React.useEffect(() => {
@@ -500,7 +654,7 @@
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'API error');
-          setResult(data); setView(adminMode ? 'results' : 'linkedin');
+          setResult(data); setView('results');
         } catch (err) { setError(err.message); setView('guided'); }
         setLoading(false);
       };
@@ -975,17 +1129,18 @@
           </header>
 
           {/* HERO */}
-          <section className="flex-shrink-0 text-center px-4 sm:px-6" style={{ paddingTop: '56px', paddingBottom: '40px' }}>
-            <div className="max-w-4xl mx-auto">
+          <section className="flex-shrink-0 text-center px-4 sm:px-6" style={{ paddingTop: '56px', paddingBottom: '40px', position: 'relative', overflow: 'hidden' }}>
+            <div className="hero-wash" />
+            <div className="max-w-4xl mx-auto reveal" style={{ position: 'relative', zIndex: 1 }}>
               <p className="text-left sm:text-center mb-5 sm:mb-6" style={{ color: '#0a66c2' }}>
                 <span className="hidden sm:inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-full">
-                  <Icon name="alertCircle" className="w-4 h-4 flex-shrink-0" style={{ color: '#0a66c2' }} />
-                  <span style={{ fontSize: '15px' }}>Positioning for Cybersecurity & AI teams running $20K+/mo on Ads</span>
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>
+                  <span style={{ fontSize: '15px' }}>Your live ads, brutally reviewed</span>
                 </span>
-                <span className="sm:hidden text-sm" style={{ color: '#0a66c2' }}>Positioning for Cybersecurity & AI teams running $20K+/mo on Ads</span>
+                <span className="sm:hidden inline-flex items-center gap-2 text-sm" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>Your live ads, brutally reviewed</span>
               </p>
-              <h1 className="text-left sm:text-center text-gray-900 mb-5" style={{ fontSize: 'clamp(30px, 5.5vw, 62px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>Spending $20K+/mo on Ads but<br />demo quality still sucks?</h1>
-              <p className="text-left sm:text-center text-gray-400 max-w-lg sm:mx-auto mb-8" style={{ fontSize: 'clamp(15px, 2.5vw, 18px)', lineHeight: 1.7 }}>2-minute roast to find out exactly where your demos leak.<br />Get a full diagnosis ranked by impact.</p>
+              <h1 className="text-left sm:text-center text-gray-900 mb-5" style={{ fontSize: 'clamp(30px, 5.5vw, 62px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>Find out why your ads<br />are not converting.</h1>
+              <p className="text-left sm:text-center text-gray-400 max-w-lg sm:mx-auto mb-8" style={{ fontSize: 'clamp(15px, 2.5vw, 18px)', lineHeight: 1.7 }}>A clear, scored breakdown of your ad, and what to fix first, in 2 minutes.</p>
               {/* Inline ad-link input + CTA — pill-shape matching the nav button, same height across both */}
               <div className="max-w-2xl mx-auto">
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch">
@@ -994,16 +1149,16 @@
                     placeholder="Paste your ad link (Meta, Google, LinkedIn)..."
                     value={inputs.copy}
                     onChange={(e) => setInputs(p => ({...p, copy: e.target.value}))}
-                    className="flex-1 px-5 py-2 bg-white border rounded-full text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm"
+                    className="flex-1 px-5 py-2 bg-white border rounded-full text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm field-bloom"
                     style={{ borderColor: '#e8e8f0' }}
                   />
                   <button
                     onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
-                    className="px-6 py-2 border rounded-full font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity"
+                    className="px-6 py-2 border rounded-full font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
                   >Roast my Ad →</button>
                 </div>
-                <p className="text-center text-gray-400 mt-3" style={{ fontSize: '14px' }}>Free &middot; 2-min audit &middot; no call required</p>
+                <p className="text-center text-gray-400 mt-3" style={{ fontSize: '14px' }}>🎁 Test AdRoast on your ad, first roast's on us &middot; no credit card required</p>
               </div>
             </div>
           </section>
@@ -1011,7 +1166,7 @@
           {/* TRUST STRIP */}
           <div className="max-w-3xl mx-auto px-4 sm:px-6 mb-8 sm:mb-10">
             <div className="border-t border-b border-gray-100 py-6 text-center">
-              <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wide font-medium">Trusted by 50+ B2B SaaS, AI & Cybersecurity teams</p>
+              <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wide font-medium">Trusted by 50+ growth teams</p>
             </div>
           </div>
 
@@ -1030,7 +1185,7 @@
               <Icon name="chevronRight" className="w-4 h-4 text-gray-300 hidden sm:block" />
               <div className="flex items-center gap-2">
                 <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>3</span>
-                <span style={{ fontSize: '15px' }} className="text-gray-600">Get your roast in 2 minutes</span>
+                <span style={{ fontSize: '15px' }} className="text-gray-600">See what to fix first</span>
               </div>
             </div>
           </div>
@@ -1058,10 +1213,10 @@
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Client Results</div>
             <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>60% of your demos leak between Ad and landing page.</h2>
-            <p className="text-gray-400 mb-6 sm:mb-10 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>It's called Message Drift, and we've diagnosed it in 50+ funnels. Your Ad says one thing, your page says another, and demos disappear in between. It's the #1 reason demos leak, and it's invisible until someone scores it.</p>
+            <p className="text-gray-400 mb-6 sm:mb-10 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>It's called Message Drift, and we've diagnosed it in 50+ cybersecurity funnels. Your Ad says one thing, your page says another, and demos disappear in between. It's the #1 reason demos leak, and it's invisible until someone scores it.</p>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { num: "50+", label: "B2B SaaS & AI teams repositioned" },
+                { num: "50+", label: "cybersecurity teams repositioned" },
                 { num: "3\u00d7", label: <span>demos in 90 days <em className="font-normal">(same Ad spend)</em></span> },
                 { num: "47%", label: "demo increase in 8 weeks" },
                 { num: "31%", label: <span>CAC drop <em className="font-normal">(same Ad spend)</em></span> }
@@ -2121,15 +2276,7 @@
         </div>
       );
 
-      if (view === 'processing') return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-          <div className="text-center">
-            <div className="relative w-16 h-16 mx-auto mb-6"><div className="absolute inset-0 rounded-full border-4 border-gray-200" /><div style={{ borderColor: '#0a66c2', borderTopColor: 'transparent' }} className="absolute inset-0 rounded-full border-4 animate-spin" /></div>
-            <h2 className="text-xl text-gray-900 mb-2">Analyzing your content...</h2>
-            <p className="text-gray-500 text-sm">This usually takes 10-15 seconds</p>
-          </div>
-        </div>
-      );
+      if (view === 'processing') return <ProcessingView />;
 
       if (view === 'linkedin') {
         const v = linkedin ? validateLinkedIn(linkedin) : { valid: false };
@@ -2446,6 +2593,46 @@
                   <Icon name="zap" className="w-5 h-5" /> Book a Free Call
                 </a>
               </div>)}
+
+              {/* ─── AFTER-RESULT: personal-review capture (moved here from the pre-gate) + involvement offers ─── */}
+              <div className="mt-8 fade-in">
+                <div className="rounded-xl border border-gray-200 bg-white p-6 mb-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#e8f3ff' }}><Icon name="linkedin" className="w-5 h-5" /></div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Want me to review this roast personally?</h3>
+                      <p className="text-gray-500 text-sm">Drop your LinkedIn — I read every one. No spam.</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input type="url" placeholder="https://linkedin.com/in/yourprofile" value={linkedin} onChange={(e) => { setLinkedin(e.target.value); setLinkedinErr(null); }} className="flex-1 px-4 py-2.5 bg-white border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 field-bloom text-gray-900" />
+                    <button onClick={submitLinkedIn} disabled={!linkedin || sending} style={linkedin && !sending ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`px-5 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${linkedin && !sending ? 'hover:opacity-90 cta-glow' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>{sending ? 'Sending…' : 'Send it over'}</button>
+                  </div>
+                  {linkedinErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{linkedinErr}</p>}
+                </div>
+
+                <p className="text-center text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">Where do you want to take it from here?</p>
+                <div className="grid sm:grid-cols-3 gap-4 reveal">
+                  <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#14a58b' }}>
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#14a58b' }}>Do it yourself</p>
+                    <h4 className="font-bold text-gray-900 mt-1">Keep roasting</h4>
+                    <p className="text-sm text-gray-500 mt-1">Run another ad through AdRoast &mdash; free.</p>
+                    <button onClick={reset} className="mt-4 text-sm font-semibold" style={{ color: '#0a66c2' }}>Roast another ad &rarr;</button>
+                  </div>
+                  <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#b8760a' }}>
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#b8760a' }}>Do it with you</p>
+                    <h4 className="font-bold text-gray-900 mt-1">Positioning Audit</h4>
+                    <p className="text-sm text-gray-500 mt-1">I diagnose your ads + positioning with you.</p>
+                    <a href="https://calendly.com/marina-kogan-adroast/30min" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-semibold" style={{ color: '#0a66c2' }}>Book the audit &rarr;</a>
+                  </div>
+                  <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#7b5cff' }}>
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#7b5cff' }}>Done for you</p>
+                    <h4 className="font-bold text-gray-900 mt-1">We run your ads</h4>
+                    <p className="text-sm text-gray-500 mt-1">Full management, for teams who want it handled.</p>
+                    <a href="https://calendly.com/marina-kogan-adroast/30min" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-semibold" style={{ color: '#0a66c2' }}>Talk to me &rarr;</a>
+                  </div>
+                </div>
+              </div>
             </main>
 
             {/* UNLOCK MODAL */}
