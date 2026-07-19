@@ -374,6 +374,7 @@
       const [platform, setPlatform] = useState(null);
       const [offerType, setOfferType] = useState(null);
       const [icp, setIcp] = useState('');
+      const [heroErr, setHeroErr] = useState('');
       const [linkedin, setLinkedin] = useState('');
       const [linkedinErr, setLinkedinErr] = useState(null);
       const [sending, setSending] = useState(false);
@@ -1212,17 +1213,19 @@
                     type="text"
                     placeholder="Paste your ad link (Meta, Google, LinkedIn)..."
                     value={inputs.copy}
-                    onChange={(e) => setInputs(p => ({...p, copy: e.target.value}))}
+                    onChange={(e) => { setInputs(p => ({...p, copy: e.target.value})); if (heroErr) setHeroErr(''); }}
                     className="flex-1 px-5 py-2 bg-white border rounded-full text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm field-bloom"
-                    style={{ borderColor: '#e8e8f0' }}
+                    style={{ borderColor: heroErr ? '#dc2626' : '#e8e8f0' }}
                   />
                   <button
-                    onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }}
+                    onClick={() => { if (!(inputs.copy?.trim() || inputs.adScreenshot)) { setHeroErr('Please paste your ad link first.'); return; } setHeroErr(''); setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
                     className="px-6 py-2 border rounded-full font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
                   >Roast my Ad →</button>
                 </div>
-                <p className="text-center text-gray-400 mt-3" style={{ fontSize: '14px' }}>🎁 Test AdRoast on your ad, first roast's on us &middot; no credit card required</p>
+                {heroErr
+                  ? <p className="text-center mt-3" style={{ fontSize: '14px', color: '#dc2626' }}>{heroErr}</p>
+                  : <p className="text-center text-gray-400 mt-3" style={{ fontSize: '14px' }}>🎁 Test AdRoast on your ad, first roast's on us &middot; no credit card required</p>}
               </div>
             </div>
           </section>
