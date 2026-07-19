@@ -266,7 +266,7 @@ Return this EXACT JSON structure (all fields required):
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 4000,
+        max_tokens: 8000,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }]
       })
@@ -278,8 +278,11 @@ Return this EXACT JSON structure (all fields required):
       return res.status(500).json({ error: data.error.message || 'API error', _meta: meta });
     }
 
-    if (data.content?.[0]?.text) {
-      const jsonMatch = data.content[0].text.match(/\{[\s\S]*\}/);
+    const modelText = Array.isArray(data.content)
+      ? data.content.filter(b => b && b.type === 'text' && typeof b.text === 'string').map(b => b.text).join('\n')
+      : (data.content?.[0]?.text || '');
+    if (modelText) {
+      const jsonMatch = modelText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         

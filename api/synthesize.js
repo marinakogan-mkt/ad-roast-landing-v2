@@ -386,7 +386,9 @@ PLATFORM TRUST-SIGNAL RULES (don't recommend trust signals the ad format can't a
     if (llmData.error) {
       return res.status(500).json({ error: llmData.error.message || 'LLM error', failures });
     }
-    const markdown = llmData.content?.[0]?.text || '';
+    const markdown = Array.isArray(llmData.content)
+      ? llmData.content.filter(b => b && b.type === 'text' && typeof b.text === 'string').map(b => b.text).join('\n')
+      : (llmData.content?.[0]?.text || '');
     if (!markdown) return res.status(500).json({ error: 'Empty synthesis from LLM', failures });
 
     const id = keepId || randomId(10);
