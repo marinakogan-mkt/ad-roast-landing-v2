@@ -374,6 +374,21 @@
       const [platform, setPlatform] = useState(null);
       const [offerType, setOfferType] = useState(null);
       const [icp, setIcp] = useState('');
+      const [icpAuto, setIcpAuto] = useState({ loading: false, err: '' });
+      const autoDetectIcp = async () => {
+        const url = (inputs.url || '').trim();
+        if (!url) { setIcpAuto({ loading: false, err: 'Add your website URL below first, then auto-detect.' }); return; }
+        setIcpAuto({ loading: true, err: '' });
+        try {
+          const r = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+          const data = await r.json();
+          if (!r.ok || data.error || !data.icp_text) throw new Error(data.error || 'no result');
+          setIcp(data.icp_text);
+          setIcpAuto({ loading: false, err: '' });
+        } catch (e) {
+          setIcpAuto({ loading: false, err: "Couldn't auto-detect — type it in." });
+        }
+      };
       const [linkedin, setLinkedin] = useState('');
       const [linkedinErr, setLinkedinErr] = useState(null);
       const [sending, setSending] = useState(false);
@@ -2187,11 +2202,17 @@
                     </div>
                   )}
                   {step.id === 'icp' && (
-                    <textarea
-                      placeholder="e.g., Engineering managers at Series B+ startups frustrated with slow CI/CD..."
-                      value={icp}
-                      onChange={(e) => setIcp(e.target.value)}
-                      className="w-full h-32 px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
+                    <div>
+                      <textarea
+                        placeholder="e.g., Engineering managers at Series B+ startups frustrated with slow CI/CD..."
+                        value={icp}
+                        onChange={(e) => setIcp(e.target.value)}
+                        className="w-full h-32 px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <button type="button" onClick={autoDetectIcp} disabled={icpAuto.loading} className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border bg-white transition-colors hover:bg-blue-50 disabled:opacity-60" style={{ borderColor: '#0a66c2', color: '#0a66c2' }}>{icpAuto.loading ? 'Detecting…' : '✨ Auto-detect from my website'}</button>
+                        {icpAuto.err && <span className="text-xs text-amber-600">{icpAuto.err}</span>}
+                      </div>
+                    </div>
                   )}
                   {step.id === 'platform' && (
                     <div className="grid grid-cols-3 gap-2">
