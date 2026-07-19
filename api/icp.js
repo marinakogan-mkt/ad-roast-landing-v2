@@ -8,7 +8,7 @@
 // Wire-up: call this when the user enters their site, then use `icp_text` to
 // prefill the `icpDescription` field the roast already expects.
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514';
+const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 
 function normalizeUrl(input) {
   let raw = (input || '').trim();
