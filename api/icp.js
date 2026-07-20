@@ -70,10 +70,14 @@ export default async function handler(req, res) {
   let site = { title: brand, desc: '', body: '' };
   try { site = await fetchSite(url); } catch (e) { /* keep fallback */ }
 
-  const systemPrompt = `You are a B2B go-to-market analyst. From a company website, infer the Ideal Customer Profile — the specific buyer the ads should target. Be concrete about role, company stage, and spend. Do not invent facts that contradict the site.
+  const systemPrompt = `You are a B2B go-to-market analyst. From a page, identify the advertiser company and infer its Ideal Customer Profile — the specific buyer its ads should target. Be concrete about role, company stage, and spend. Do not invent facts that contradict the content.
+
+The page may be the company's own website, OR an ad-library / ad-transparency page (Meta, Google, or LinkedIn) that shows one of the company's ads. If it is an ad-library page, identify the advertiser from the content and infer their real company website.
 
 Return ONLY valid JSON. No markdown, no backticks, no text before or after. Exact shape:
 {
+  "company": "the advertiser company name",
+  "website": "the company's own website as a full https:// URL (best guess)",
   "summary": "2-3 sentences on who this company sells to and the pain those buyers feel",
   "icp_text": "one tight sentence naming the target buyer, company profile, and ad spend",
   "tags": ["4-6 short chips like 'B2B Cybersecurity', 'Series A-C', 'CISOs', '$20K+/mo ad spend'"]
