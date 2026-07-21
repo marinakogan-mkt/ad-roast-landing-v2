@@ -396,7 +396,7 @@
           if (Array.isArray(data.tags)) setIcpTags(data.tags);
           setIcpAuto({ loading: false, err: '', done: true });
         } catch (e) {
-          setIcpAuto({ loading: false, err: "We couldn't auto-detect from your ad — fill these in below.", done: true });
+          setIcpAuto({ loading: false, err: "We couldn't auto-detect from your ad. Fill these in below.", done: true });
         }
       };
       const [linkedin, setLinkedin] = useState('');
@@ -1242,7 +1242,7 @@
                     style={{ borderColor: heroErr ? '#dc2626' : '#e8e8f0' }}
                   />
                   <button
-                    onClick={() => { const v = (inputs.copy || '').trim(); if (!v) { setHeroErr('Please paste your ad link first.'); return; } if (!isValidUrl(v)) { setHeroErr("That doesn't look like a valid link — paste your full ad URL."); return; } setHeroErr(''); setPlatform(platformFromLink(v)); setIcp(''); setSiteUrl(''); setIcpAuto({ loading: false, err: '', done: false }); setGuidedHadCopyAtStart(true); setGuidedStep(0); setView('guided'); detectFromAd(); }}
+                    onClick={() => { const v = (inputs.copy || '').trim(); if (!v) { setHeroErr('Please paste your ad link first.'); return; } if (!isValidUrl(v)) { setHeroErr("That doesn't look like a valid link. Paste your full ad URL."); return; } setHeroErr(''); setPlatform(platformFromLink(v)); setIcp(''); setSiteUrl(''); setIcpAuto({ loading: false, err: '', done: false }); setGuidedHadCopyAtStart(true); setGuidedStep(0); setView('guided'); detectFromAd(); }}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
                     className="px-6 py-2 border rounded-full font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
                   >Roast my Ad →</button>
@@ -2152,7 +2152,7 @@
         if (!guidedHadCopyAtStart) {
           steps.push({ id: 'adCopy', q: 'Paste your ad copy', valid: () => (inputs.copy?.trim().length > 0) || inputs.adScreenshot });
         }
-        steps.push({ id: 'review', q: "Here's what we found", hint: "Pulled from your ad link — edit anything that's off.", valid: () => icp?.trim().length > 0 });
+        steps.push({ id: 'review', q: "Here's what we found", hint: "Pulled from your ad link. Edit anything that's off.", valid: () => icp?.trim().length > 0 });
         steps.push({ id: 'offer', q: 'What type of offer is this?', valid: () => !!offerType });
         steps.push({ id: 'lpUrl', q: "What's the landing page URL?", hint: "We'll auto-extract all the copy from your page.", valid: () => !inputs.url?.trim() || isValidUrl(inputs.url) });
         const stepIdx = Math.min(guidedStep, steps.length - 1);
@@ -2239,8 +2239,8 @@
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-900 mb-1.5">Your ICP <span className="text-gray-400 font-normal">&mdash; edit if needed</span></label>
-                        <textarea value={icp} onChange={(e) => setIcp(e.target.value)} placeholder="Who your ads should target &mdash; role, company profile, pain points&hellip;"
+                        <label className="block text-sm font-semibold text-gray-900 mb-1.5">Your ICP <span className="text-gray-400 font-normal">(edit if needed)</span></label>
+                        <textarea value={icp} onChange={(e) => setIcp(e.target.value)} placeholder="Who your ads should target: role, company profile, pain points&hellip;"
                           className="w-full h-24 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
                         {icpTags.length > 0 && <div className="flex flex-wrap gap-1.5 mt-2.5">{icpTags.map((t, i) => <span key={i} className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: '#eef2ff', color: '#0a66c2' }}>{t}</span>)}</div>}
                       </div>
