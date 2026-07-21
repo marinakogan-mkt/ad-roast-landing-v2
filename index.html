@@ -734,7 +734,7 @@
 
       const generate = async () => {
         setError(null); setLoading(true); setView('processing');
-        const payload = { platform, offerType, icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null };
+        const payload = { platform, offerType, icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null };
         try {
           const res = await fetch('/api/roast', {
             method: 'POST',
@@ -2239,6 +2239,27 @@
                         <textarea value={icp} onChange={(e) => setIcp(e.target.value)} placeholder="Who your ads should target: role, company profile, pain points&hellip;"
                           className="w-full h-24 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
                         {icpTags.length > 0 && <div className="flex flex-wrap gap-1.5 mt-2.5">{icpTags.map((t, i) => <span key={i} className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: '#eef2ff', color: '#0a66c2' }}>{t}</span>)}</div>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-900 mb-1.5">Ad creative <span className="text-gray-400 font-normal">(optional, improves the roast)</span></label>
+                        {inputs.adScreenshotPreview ? (
+                          <div className="relative h-32 border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                            <img src={inputs.adScreenshotPreview} alt="Ad creative" className="w-full h-full object-contain" />
+                            <button type="button" onClick={() => setInputs(p => ({ ...p, adScreenshot: null, adScreenshotPreview: null, adScreenshotType: null }))} className="absolute top-1.5 right-1.5 w-6 h-6 bg-white border border-gray-300 rounded-full flex items-center justify-center text-gray-500 hover:text-red-500 text-xs font-bold">✕</button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                            <span className="text-xs text-gray-400">Upload your ad creative image</span>
+                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => {
+                              const file = e.target.files?.[0]; if (!file) return;
+                              if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
+                              const reader = new FileReader();
+                              reader.onload = () => { const b64 = String(reader.result).split(',')[1]; setInputs(p => ({ ...p, adScreenshot: b64, adScreenshotPreview: reader.result, adScreenshotType: file.type })); };
+                              reader.readAsDataURL(file);
+                            }} />
+                          </label>
+                        )}
+                        <p className="text-xs text-gray-400 mt-1.5">We read the copy on your creative too (creative + ad + landing page).</p>
                       </div>
                       <button type="button" onClick={detectFromAd} disabled={icpAuto.loading} className="text-xs font-semibold disabled:opacity-60 hover:underline" style={{ color: '#0a66c2' }}>&#8635; Re-detect from my ad</button>
                     </div>

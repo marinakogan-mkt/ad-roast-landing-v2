@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     body = {};
   }
 
-  const { platform, offerType, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit } = body;
+  const { platform, offerType, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType } = body;
 
   console.log('[AdRoast v4] Request body type:', typeof req.body);
   console.log('[AdRoast v4] Request body keys:', Object.keys(body));
@@ -203,6 +203,7 @@ Landing page content available: ${hasAnyLandingContent ? 'YES — SCORE IT 1-10'
 ${effectiveAdCopy ? (isAdvancedAudit ? `=== AD COPY (MULTI-VARIANT GOOGLE/PAID-ADS AUDIT — ${variants?.length || 0} variants) ===\n${effectiveAdCopy}\n\nNOTE: This is a structured Google Ads-style audit with multiple variants. Analyse the full ad structure: scoring should reflect the overall campaign quality across variants, and the 5 Ad Issues / Fix Kit / Experiments should cite specific headlines and descriptions (by variant + number) when relevant.` : `=== AD COPY ===\n${effectiveAdCopy}`) : '=== AD COPY ===\n[No ad copy provided]'}
 
 ${visualDescription ? `=== AD VISUAL DESCRIPTION ===\n${visualDescription}` : ''}
+${adScreenshot ? `=== AD CREATIVE IMAGE ATTACHED ===\nThe actual ad creative image is attached to this message. READ the copy/text rendered ON the creative (headline, overlay text, CTA, captions) and analyze it as the ad's creative copy. Factor the creative copy AND its visual into the issues, especially headline_clarity, visual_copy_match, cta_friction and trust_signals, citing specific words shown on the creative.` : ''}
 
 ${landingPageContent ? `=== LANDING PAGE CONTENT (AUTO-SCRAPED FROM URL) ===\n${landingPageContent}` : ''}
 
@@ -268,7 +269,9 @@ Return this EXACT JSON structure (all fields required):
         model: 'claude-sonnet-5',
         max_tokens: 8000,
         system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }]
+        messages: [{ role: 'user', content: adScreenshot
+          ? [{ type: 'text', text: userPrompt }, { type: 'image', source: { type: 'base64', media_type: (adScreenshotType || 'image/png'), data: adScreenshot } }]
+          : userPrompt }]
       })
     });
 
