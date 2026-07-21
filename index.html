@@ -34,6 +34,9 @@
     .animate-spin { animation: spin 1s linear infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes stepIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+    .step-in { animation: stepIn .35s cubic-bezier(.22,1,.36,1); }
+    @media (prefers-reduced-motion: reduce){ .step-in { animation:none !important; } }
     /* Portal styles */
     :root {
       --ink: #1a1a2e; --ink-light: #3d3d56; --slate: #64648b; --mist: #f4f4f8;
@@ -377,18 +380,20 @@
       const [heroErr, setHeroErr] = useState('');
       const [icpAuto, setIcpAuto] = useState({ loading: false, err: '', done: false });
       const [siteUrl, setSiteUrl] = useState('');
+      const [icpTags, setIcpTags] = useState([]);
       const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
       const platformFromLink = (link) => { const l = (link || '').toLowerCase(); return /linkedin/.test(l) ? 'linkedin' : /facebook|instagram|fb\.|meta/.test(l) ? 'meta' : /google|goog|youtube|doubleclick/.test(l) ? 'google' : 'linkedin'; };
       const detectFromAd = async () => {
         const link = (inputs.copy || '').trim();
         if (!link) { setIcpAuto({ loading: false, err: '', done: true }); return; }
-        setIcpAuto({ loading: true, err: '', done: false });
+        setIcpAuto({ loading: true, err: '', done: false }); setIcpTags([]);
         try {
           const r = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: link }) });
           const data = await r.json();
           if (!r.ok || data.error) throw new Error(data.error || 'no result');
           if (data.icp_text) setIcp(data.icp_text);
           if (data.website) setSiteUrl(data.website);
+          if (Array.isArray(data.tags)) setIcpTags(data.tags);
           setIcpAuto({ loading: false, err: '', done: true });
         } catch (e) {
           setIcpAuto({ loading: false, err: "We couldn't auto-detect from your ad — fill these in below.", done: true });
@@ -2170,13 +2175,23 @@
               </div>
             </header>
             <main className="max-w-md mx-auto px-4 py-10">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#0a66c2' }}>Step {stepIdx + 1} of {total}</p>
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 sm:p-7">
+                <div className="flex items-center gap-2 mb-6">
+                  {steps.map((s, i) => (
+                    <React.Fragment key={s.id}>
+                      <div className="flex items-center justify-center rounded-full text-xs font-bold flex-shrink-0 transition-all" style={{ width: 26, height: 26, background: i < stepIdx ? '#16a34a' : i === stepIdx ? '#0a66c2' : '#e8e8f0', color: i <= stepIdx ? '#fff' : '#94a3b8' }}>{i < stepIdx ? '✓' : i + 1}</div>
+                      {i < steps.length - 1 && <div className="flex-1 rounded-full transition-all" style={{ height: 3, background: i < stepIdx ? '#16a34a' : '#e8e8f0' }} />}
+                    </React.Fragment>
+                  ))}
                 </div>
-                <h1 className="text-2xl font-normal text-gray-900 mb-4 mt-2">{step.q}</h1>
-                {step.hint && <p className="text-gray-500 text-sm mb-5">{step.hint}</p>}
-                <div className="mb-6">
+                <div className="flex items-start gap-3 mb-5">
+                  <div className="flex items-center justify-center rounded-xl flex-shrink-0 text-lg" style={{ width: 42, height: 42, background: '#eef2ff' }}>{({ adCopy: '📋', review: '🎯', offer: '🎁', lpUrl: '🌐' })[step.id] || '✨'}</div>
+                  <div>
+                    <h1 className="text-xl font-semibold text-gray-900 leading-snug">{step.q}</h1>
+                    {step.hint && <p className="text-gray-500 text-sm mt-1">{step.hint}</p>}
+                  </div>
+                </div>
+                <div className="mb-6 step-in" key={step.id}>
                   {step.id === 'adCopy' && (
                     <div className="space-y-3">
                       <textarea
@@ -2211,19 +2226,25 @@
                   )}
                   {step.id === 'review' && (
                     <div className="space-y-4">
-                      {icpAuto.loading && <div className="flex items-center gap-2 text-sm text-gray-500"><span className="inline-block w-3.5 h-3.5 rounded-full border-2 border-gray-300 animate-spin" style={{ borderTopColor: '#0a66c2' }}></span>Reading your ad and finding your ICP&hellip;</div>}
-                      {icpAuto.err && <div className="text-xs text-amber-600">{icpAuto.err}</div>}
+                      {icpAuto.loading
+                        ? <div className="flex items-center gap-2.5 text-sm text-gray-600 p-3 rounded-lg bg-blue-50 border border-blue-100"><span className="inline-block w-4 h-4 rounded-full border-2 border-blue-200 animate-spin" style={{ borderTopColor: '#0a66c2' }}></span>Reading your ad and finding your ICP&hellip;</div>
+                        : icpAuto.err
+                          ? <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">{icpAuto.err}</div>
+                          : (siteUrl || icp) ? <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>✓ Detected from your ad</div> : null}
                       <div>
-                        <label className="block text-sm font-semibold text-gray-900 mb-1">Is this your website?</label>
-                        <input type="url" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} placeholder="https://yourcompany.com"
-                          className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900" />
+                        <label className="block text-sm font-semibold text-gray-900 mb-1.5">Is this your website?</label>
+                        <div className="flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-300 rounded-lg transition-all" style={{}}>
+                          <span className="text-base leading-none">🌐</span>
+                          <input type="url" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} placeholder="https://yourcompany.com" className="flex-1 bg-transparent text-sm focus:outline-none text-gray-900" />
+                        </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-900 mb-1">Your ICP <span className="text-gray-400 font-normal">&mdash; edit if needed</span></label>
+                        <label className="block text-sm font-semibold text-gray-900 mb-1.5">Your ICP <span className="text-gray-400 font-normal">&mdash; edit if needed</span></label>
                         <textarea value={icp} onChange={(e) => setIcp(e.target.value)} placeholder="Who your ads should target &mdash; role, company profile, pain points&hellip;"
-                          className="w-full h-28 px-3 py-2 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
+                          className="w-full h-24 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
+                        {icpTags.length > 0 && <div className="flex flex-wrap gap-1.5 mt-2.5">{icpTags.map((t, i) => <span key={i} className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: '#eef2ff', color: '#0a66c2' }}>{t}</span>)}</div>}
                       </div>
-                      <button type="button" onClick={detectFromAd} disabled={icpAuto.loading} className="text-xs font-semibold disabled:opacity-60" style={{ color: '#0a66c2' }}>&#8635; Re-detect from my ad</button>
+                      <button type="button" onClick={detectFromAd} disabled={icpAuto.loading} className="text-xs font-semibold disabled:opacity-60 hover:underline" style={{ color: '#0a66c2' }}>&#8635; Re-detect from my ad</button>
                     </div>
                   )}
                   {step.id === 'platform' && (
@@ -2234,19 +2255,25 @@
                     </div>
                   )}
                   {step.id === 'offer' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {[{ id: 'demo', label: 'Book a Demo' }, { id: 'trial', label: 'Free Trial' }].map((o) => (
-                        <button key={o.id} onClick={() => setOfferType(o.id)} style={offerType === o.id ? { borderColor: '#0a66c2', backgroundColor: '#e8f3ff', color: '#0a66c2' } : {}} className={`p-3 rounded border-2 text-sm font-medium transition-all ${offerType === o.id ? '' : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'}`}>{o.label}</button>
-                      ))}
+                    <div className="grid grid-cols-2 gap-3">
+                      {[{ id: 'demo', label: 'Book a Demo', icon: '📅', desc: 'Sales-led' }, { id: 'trial', label: 'Free Trial', icon: '🚀', desc: 'Self-serve' }].map((o) => {
+                        const on = offerType === o.id;
+                        return (
+                          <button key={o.id} onClick={() => setOfferType(o.id)} className="relative p-4 rounded-xl border-2 text-left transition-all card-lift" style={on ? { borderColor: '#0a66c2', background: '#eef2ff' } : { borderColor: '#e8e8f0', background: '#fff' }}>
+                            {on && <span className="absolute top-2 right-2.5 text-sm font-bold" style={{ color: '#0a66c2' }}>✓</span>}
+                            <div className="text-2xl mb-1.5">{o.icon}</div>
+                            <div className="font-semibold text-sm text-gray-900">{o.label}</div>
+                            <div className="text-xs text-gray-400 mt-0.5">{o.desc}</div>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                   {step.id === 'lpUrl' && (
-                    <input
-                      type="url"
-                      placeholder="https://your-landing-page.com"
-                      value={inputs.url}
-                      onChange={(e) => setInputs(p => ({ ...p, url: e.target.value }))}
-                      className="w-full px-3 py-2.5 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900" />
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-300 rounded-lg">
+                      <span className="text-base leading-none">🔗</span>
+                      <input type="url" placeholder="https://your-landing-page.com" value={inputs.url} onChange={(e) => setInputs(p => ({ ...p, url: e.target.value }))} className="flex-1 bg-transparent text-sm focus:outline-none text-gray-900" />
+                    </div>
                   )}
                 </div>
                 {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 flex items-center gap-2 text-sm"><Icon name="alertCircle" className="w-4 h-4" />{error}</div>}
@@ -2263,12 +2290,6 @@
                     className={`flex-1 py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 transition-all ${step.valid() ? 'hover:opacity-90' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
                     {stepIdx === total - 1 ? 'Roast my Ad' : 'Continue'} <Icon name="chevronRight" className="w-4 h-4" />
                   </button>
-                </div>
-                {/* Progress bar */}
-                <div className="mt-6">
-                  <div className="w-full bg-gray-200 rounded-full" style={{ height: 4 }}>
-                    <div className="rounded-full transition-all" style={{ height: 4, width: `${((stepIdx + 1) / total) * 100}%`, background: '#0a66c2' }} />
-                  </div>
                 </div>
               </div>
             </main>
