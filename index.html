@@ -467,7 +467,7 @@
              the full report without needing &portal=1 (mirrors the audit flow). */
           fetch('/api/auth?action=me', { credentials: 'same-origin' })
             .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d && d.session) setIsPortalView(true); })
+            .then(d => { if (d && d.session && d.session.mode !== 'roast') setIsPortalView(true); })
             .catch(() => { /* not signed in — keep public flow */ });
 
           fetch(`/api/synthesize?id=${encodeURIComponent(synthId)}`, { credentials: 'same-origin' })
@@ -563,7 +563,7 @@
              Auth check is fire-and-forget; the report fetch isn't blocked on it. */
           fetch('/api/auth?action=me', { credentials: 'same-origin' })
             .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d && d.session) setIsPortalView(true); })
+            .then(d => { if (d && d.session && d.session.mode !== 'roast') setIsPortalView(true); })
             .catch(() => { /* not signed in — keep public flow */ });
 
           fetch(`/api/roast-view?id=${reportId}`, { credentials: 'same-origin' })

@@ -166,26 +166,29 @@ async function handleVerify(req, res) {
   }
   if (!magicData) return res.redirect(302, '/?auth=expired#portal');
 
+  const isRoast = magicData.mode === 'roast';
   const sessionToken = randomToken(32);
   try {
-    await redis.set(`auth:session:${sessionToken}`, JSON.stringify({
+    await redis.set(`auth:session:${sessionToken}`, JSON.stringify(isRoast ? {
+      email: magicData.email, mode: 'roast', via: 'magic', createdAt: Date.now()
+    } : {
       email: magicData.email, roleId: magicData.roleId, mode: magicData.mode,
       partnerId: magicData.partnerId, clientId: magicData.clientId, via: 'magic', createdAt: Date.now()
     }), { ex: SESSION_TTL_SECONDS });
     await redis.del(`auth:magic:${token}`);
     await redis.lpush(`auth:log:${magicData.email}`, JSON.stringify({
-      at: new Date().toISOString(), via: 'magic', roleId: magicData.roleId,
+      at: new Date().toISOString(), via: 'magic', roleId: magicData.roleId || 'roast',
       ip: clientIp(req), ua: req.headers['user-agent'] || 'unknown'
     }));
     await redis.ltrim(`auth:log:${magicData.email}`, 0, 49);
   } catch (e) {
-    return res.redirect(302, '/?auth=error#portal');
+    return res.redirect(302, isRoast ? '/?auth=error' : '/?auth=error#portal');
   }
 
   res.setHeader('Set-Cookie', buildSessionCookie(sessionToken));
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, must-revalidate');
-  return res.status(200).send(htmlRedirect('/#portal', 'Welcome to the portal.'));
+  return res.status(200).send(htmlRedirect(isRoast ? '/?signedin=1' : '/#portal', isRoast ? 'Signed in — back to your roast.' : 'Welcome to the portal.'));
 }
 
 async function handleGoogleStart(req, res) {
@@ -196,9 +199,10 @@ async function handleGoogleStart(req, res) {
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   const redirectUri = `${proto}://${host}/api/auth/google/callback`;
 
+  const mode = (req.query?.mode === 'roast') ? 'roast' : 'portal';
   const state = randomToken(24);
   try {
-    await redis.set(`auth:oauth_state:${state}`, '1', { ex: 600 });
+    await redis.set(`auth:oauth_state:${state}`, mode, { ex: 600 });
   } catch (e) {
     return res.status(500).send('Could not start Google sign-in. Please try again.');
   }
@@ -213,6 +217,53 @@ async function handleGoogleStart(req, res) {
     prompt: 'select_account'
   });
   return res.redirect(302, `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+}
+
+/* Passwordless sign-up/sign-in for the PUBLIC roast tool (any email, no allowlist).
+   Kept separate from request-link (which is portal-only, allowlist + password). */
+async function handleRoastLink(req, res) {
+  let body = req.body;
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
+  if (!body || typeof body !== 'object') body = {};
+  const email = (body.email || '').trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
+
+  try {
+    const emailKey = `auth:ratelimit:email:${email}`;
+    const ipKey = `auth:ratelimit:ip:${clientIp(req)}`;
+    const ec = await redis.incr(emailKey); if (ec === 1) await redis.expire(emailKey, 3600);
+    const ic = await redis.incr(ipKey); if (ic === 1) await redis.expire(ipKey, 3600);
+    if (ec > 5 || ic > 30) return res.status(429).json({ error: 'Too many attempts. Please try again in an hour.' });
+  } catch (e) { /* fail open */ }
+
+  const token = randomToken(24);
+  try {
+    await redis.set(`auth:magic:${token}`, JSON.stringify({ email, mode: 'roast', createdAt: Date.now() }), { ex: 15 * 60 });
+  } catch (e) {
+    return res.status(500).json({ error: 'Could not generate a sign-in link. Please try again.' });
+  }
+
+  const proto = (req.headers['x-forwarded-proto'] || 'https');
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const magicLink = `${proto}://${host}/api/auth?action=verify&token=${encodeURIComponent(token)}`;
+  try {
+    const message = `Click to sign in to AdRoast and get your free roast. This link expires in 15 minutes and can only be used once.\n\n${magicLink}\n\nIf you didn't request this, you can ignore this email.\n\n— AdRoast`;
+    const emailPayload = {
+      service_id: EMAILJS_SERVICE_ID, template_id: EMAILJS_TEMPLATE_ID, user_id: EMAILJS_PUBLIC_KEY,
+      template_params: { to_email: email, subject: 'Your AdRoast sign-in link', message }
+    };
+    if (process.env.EMAILJS_PRIVATE_KEY) emailPayload.accessToken = process.env.EMAILJS_PRIVATE_KEY;
+    const emailRes = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(emailPayload)
+    });
+    if (!emailRes.ok) {
+      console.error('[auth roast-link] EmailJS error:', emailRes.status, await emailRes.text());
+      return res.status(500).json({ error: "Couldn't send the email. Try signing in with Google instead." });
+    }
+  } catch (e) {
+    return res.status(500).json({ error: "Couldn't send the email. Try signing in with Google instead." });
+  }
+  return res.status(200).json({ success: true, message: 'Check your inbox for a sign-in link (expires in 15 min).' });
 }
 
 /* ---- router --------------------------------------------------------------- */
@@ -234,6 +285,9 @@ export default async function handler(req, res) {
       case 'verify':
         if (req.method !== 'GET') return res.status(405).send('Method not allowed');
         return await handleVerify(req, res);
+      case 'roast-link':
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+        return await handleRoastLink(req, res);
       case 'google-start':
         if (req.method !== 'GET') return res.status(405).send('Method not allowed');
         return await handleGoogleStart(req, res);

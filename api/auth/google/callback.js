@@ -61,10 +61,12 @@ export default async function handler(req, res) {
     return res.redirect(302, '/?auth=error#portal');
   }
 
-  /* Verify CSRF state */
+  /* Verify CSRF state (value encodes the flow: 'roast' = public roast sign-up, else portal) */
+  let oauthMode = 'portal';
   try {
-    const ok = await redis.get(`auth:oauth_state:${state}`);
-    if (!ok) return res.redirect(302, '/?auth=error#portal');
+    const stateVal = await redis.get(`auth:oauth_state:${state}`);
+    if (!stateVal) return res.redirect(302, '/?auth=error#portal');
+    oauthMode = (stateVal === 'roast') ? 'roast' : 'portal';
     await redis.del(`auth:oauth_state:${state}`);
   } catch (e) {
     console.error('[auth/google/callback] state check error:', e.message);
@@ -120,6 +122,31 @@ export default async function handler(req, res) {
   }
 
   const email = String(claims.email).trim().toLowerCase();
+
+  /* ROAST sign-up: any Google account, NO allowlist, isolated 'roast' session
+     (mode:'roast' never grants portal access — see portal-data / roast-view gates). */
+  if (oauthMode === 'roast') {
+    const roastToken = randomToken(32);
+    try {
+      await redis.set(`auth:session:${roastToken}`, JSON.stringify({
+        email, mode: 'roast', via: 'google', createdAt: Date.now()
+      }), { ex: SESSION_TTL_SECONDS });
+      await redis.lpush(`auth:log:${email}`, JSON.stringify({
+        at: new Date().toISOString(), via: 'google', roleId: 'roast',
+        ip: (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown',
+        ua: req.headers['user-agent'] || 'unknown'
+      }));
+      await redis.ltrim(`auth:log:${email}`, 0, 49);
+    } catch (e) {
+      console.error('[auth/google/callback] roast session store error:', e.message);
+      return res.redirect(302, '/?auth=error');
+    }
+    res.setHeader('Set-Cookie', buildSessionCookie(roastToken));
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, must-revalidate');
+    return res.status(200).send(htmlRedirect('/?signedin=1', 'Signed in — back to your roast.'));
+  }
+
   const role = findRoleByEmail(email);
   if (!role) {
     /* Authenticated with Google, but not on the portal allowlist */

@@ -31,7 +31,10 @@ async function lookupSession(req) {
   try {
     const raw = await redis.get(`auth:session:${token}`);
     if (!raw) return null;
-    return typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const s = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    /* Roast-tool accounts (mode:'roast') must NOT count as a portal session. */
+    if (s && s.mode === 'roast') return null;
+    return s;
   } catch (e) {
     return null;
   }

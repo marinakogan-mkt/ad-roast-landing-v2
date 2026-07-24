@@ -43,6 +43,10 @@ export default async function handler(req, res) {
   if (!session) {
     return res.status(401).json({ error: 'Session expired' });
   }
+  /* Roast-tool accounts (mode:'roast') have NO portal data — isolation from the client portal. */
+  if (session.mode === 'roast') {
+    return res.status(403).json({ error: 'This account has no portal access.' });
+  }
 
   /* Build the authorized slice based on the session role. */
   const empty = { partners: {}, directClients: {} };
