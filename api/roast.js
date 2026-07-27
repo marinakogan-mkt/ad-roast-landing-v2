@@ -1,6 +1,31 @@
+import { Redis } from '@upstash/redis';
+import { readSessionCookie } from './auth/_allowlist.js';
+
+const _redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN
+});
+
+/* Resolve the current roast-tool account (mode:'roast') from the session cookie.
+   Returns the lowercased email or null. Portal sessions are ignored here — the
+   roast paywall only ever counts against roast accounts. */
+async function roastAccountEmail(req) {
+  try {
+    const token = readSessionCookie(req);
+    if (!token) return null;
+    const raw = await _redis.get(`auth:session:${token}`);
+    if (!raw) return null;
+    const s = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (s && s.mode === 'roast' && s.email) return String(s.email).trim().toLowerCase();
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   const API_VERSION = 'v4';
-  
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', _version: API_VERSION });
   }
@@ -334,6 +359,26 @@ Return this EXACT JSON structure (all fields required):
         // Add meta for frontend debugging
         parsed._meta = meta;
         parsed._version = API_VERSION;
+
+        /* Account-based paywall (monetization 2b): for a signed-in roast account,
+           count each roast. The 1st roast per account is FULL (free); the 2nd+ is
+           gated (blurred) until paid. Anonymous callers stay gated (the frontend
+           requires sign-up before the roast runs). Redis failures fail OPEN so a
+           transient outage never wrongly blurs a user's free roast. */
+        try {
+          const acctEmail = await roastAccountEmail(req);
+          const ent = { authed: !!acctEmail, email: acctEmail || null, count: null, full: false };
+          if (acctEmail) {
+            const c = await _redis.incr(`roast:count:${acctEmail}`);
+            ent.count = c;
+            ent.full = (c <= 1);
+          }
+          parsed._entitlement = ent;
+        } catch (e) {
+          console.error('[AdRoast] entitlement error:', e.message);
+          parsed._entitlement = { authed: false, email: null, count: null, full: true };
+        }
+
         return res.status(200).json(parsed);
       }
     }

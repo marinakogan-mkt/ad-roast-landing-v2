@@ -431,6 +431,13 @@
       /* Declared here (with the other hooks) so the URL-sync useEffect below can
          reference it; it must initialize before its first use to avoid a TDZ crash. */
       const [synthResult, setSynthResult] = useState(null);
+      /* Monetization 2b — roast-tool account (mode:'roast'). Null until we confirm a
+         session via /api/auth?action=me. Shape: { email, roastCount, freeAvailable }. */
+      const [roastSession, setRoastSession] = useState(null);
+      /* Sign-up gate shown between the wizard's last step and the roast running. */
+      const [showSignupGate, setShowSignupGate] = useState(false);
+      const [signupEmail, setSignupEmail] = useState('');
+      const [signup, setSignup] = useState({ loading: false, sent: false, err: null });
 
       // Auto-generate link after verified payment
       React.useEffect(() => {
@@ -459,6 +466,7 @@
         const portalParam = params.get('portal');
         const paymentStatus = params.get('payment');
         const stripeSessionId = params.get('session_id');
+        const signedinParam = params.get('signedin');
 
         // Synthesis report (shareable): /?synth=XXX
         if (synthId) {
@@ -495,6 +503,47 @@
         }
 
         if (portalParam === '1') setIsPortalView(true);
+
+        /* Roast-account sign-in return (?signedin=1) — set after Google/magic-link.
+           Confirm the session, then resume the roast the user was about to run
+           (payload stashed in sessionStorage right before we sent them to sign in). */
+        if (signedinParam === '1') {
+          window.history.replaceState({}, '', window.location.pathname);
+          fetch('/api/auth?action=me', { credentials: 'same-origin' })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+              if (d && d.session && d.session.mode === 'roast') {
+                setRoastSession({ email: d.session.email, roastCount: d.roastCount || 0, freeAvailable: !!d.freeAvailable });
+              }
+            })
+            .catch(() => {});
+
+          let pending = null;
+          try { pending = JSON.parse(localStorage.getItem('adroast_pending_roast')); } catch (e) {}
+          if (pending && pending.payload) {
+            localStorage.removeItem('adroast_pending_roast');
+            setIcp(pending.payload.icpDescription || '');
+            setPlatform(pending.payload.platform || null);
+            setOfferType(pending.payload.offerType || null);
+            setInputs(pending.inputs || { url: '', copy: '', visual: '', adScreenshot: null, adScreenshotPreview: null });
+            setView('processing');
+            fetch('/api/roast', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin',
+              body: JSON.stringify(pending.payload)
+            })
+              .then(r => r.json())
+              .then(data => {
+                if (data && !data.error) { applyRoastResult(data); }
+                else { setError((data && data.error) || 'Roast failed'); setView('guided'); }
+              })
+              .catch(err => { setError(err.message); setView('guided'); });
+          } else {
+            setView('landing');
+          }
+          return;
+        }
 
         // Handle Stripe payment return
         if (paymentStatus === 'success' && stripeSessionId) {
@@ -599,6 +648,17 @@
               setView('landing');
             });
         }
+
+        /* Passively detect an existing roast-tool session so a returning signed-in
+           user isn't re-prompted to sign up at the end of the wizard. Fire-and-forget. */
+        fetch('/api/auth?action=me', { credentials: 'same-origin' })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => {
+            if (d && d.session && d.session.mode === 'roast') {
+              setRoastSession({ email: d.session.email, roastCount: d.roastCount || 0, freeAvailable: !!d.freeAvailable });
+            }
+          })
+          .catch(() => {});
       }, []);
 
       /* Keep the browser URL bar in sync with the current view + report id.
@@ -732,20 +792,51 @@
         setSending(false); setView('results');
       };
 
+      /* Apply a fresh roast result + its account entitlement (monetization 2b).
+         The server marks the account's 1st roast full (free); the 2nd+ comes back
+         gated, so we blur it and route the unlock modal straight to payment. */
+      const applyRoastResult = (data) => {
+        setResult(data);
+        const ent = data && data._entitlement;
+        if (ent && ent.authed) {
+          if (ent.full) { setIsUnlocked(true); setNeedsPayment(false); }
+          else { setIsUnlocked(false); setNeedsPayment(true); }
+          if (ent.email) setReportEmail(ent.email);
+          setRoastSession(prev => ({
+            email: ent.email || (prev && prev.email) || '',
+            roastCount: (typeof ent.count === 'number' ? ent.count : (prev ? prev.roastCount : 0)),
+            freeAvailable: false
+          }));
+        }
+        setView('results');
+        setLoading(false);
+      };
+
       const generate = async () => {
-        setError(null); setLoading(true); setView('processing');
         const payload = { platform, offerType, icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null };
+
+        /* Monetization 2b: require a roast-tool account before running the roast.
+           Stash the pending roast so we can resume it after sign-in (?signedin=1). */
+        if (!roastSession) {
+          try {
+            localStorage.setItem('adroast_pending_roast', JSON.stringify({ payload, inputs }));
+          } catch (e) {}
+          setShowSignupGate(true);
+          return;
+        }
+
+        setError(null); setLoading(true); setView('processing');
         try {
           const res = await fetch('/api/roast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify(payload)
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'API error');
-          setResult(data); setView('results');
-        } catch (err) { setError(err.message); setView('guided'); }
-        setLoading(false);
+          applyRoastResult(data);
+        } catch (err) { setError(err.message); setView('guided'); setLoading(false); }
       };
 
       /* Admin-only: submit a multi-variant audit. Flattens all variants — including pin
@@ -2308,6 +2399,52 @@
                 </div>
               </div>
             </main>
+
+            {/* Monetization 2b — sign-up gate: shown when the wizard finishes but no
+                roast account exists yet. Google or magic-link; the pending roast was
+                already stashed in localStorage and resumes after ?signedin=1. */}
+            {showSignupGate && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4" onClick={() => setShowSignupGate(false)}>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-lg font-semibold text-gray-900">Your first roast is on us</h3>
+                    <button onClick={() => setShowSignupGate(false)} className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer"><Icon name="x" className="w-5 h-5" /></button>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-5">Create a free account to see your full roast. One free full report, no card required.</p>
+
+                  {signup.sent ? (
+                    <div className="text-center py-4">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style={{ background: '#dcfce7' }}><Icon name="check" className="w-6 h-6 text-green-600" /></div>
+                      <p className="text-sm text-gray-800 font-medium mb-1">Check your inbox</p>
+                      <p className="text-xs text-gray-500">We sent a sign-in link to {signupEmail}. Click it and your roast runs automatically.</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <a href="/api/auth?action=google-start&mode=roast" className="w-full py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors no-underline">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                        Continue with Google
+                      </a>
+                      <div className="flex items-center gap-3 my-4"><div className="flex-1 h-px bg-gray-200" /><span className="text-xs text-gray-400">or</span><div className="flex-1 h-px bg-gray-200" /></div>
+                      <input type="email" placeholder="you@company.com" value={signupEmail} onChange={(e) => { setSignupEmail(e.target.value); setSignup(s => ({ ...s, err: null })); }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mb-2" />
+                      {signup.err && <p className="text-red-500 text-xs mb-2">{signup.err}</p>}
+                      <button onClick={async () => {
+                        if (!signupEmail || !signupEmail.includes('@')) { setSignup(s => ({ ...s, err: 'Enter a valid email' })); return; }
+                        setSignup({ loading: true, sent: false, err: null });
+                        try {
+                          const res = await fetch('/api/auth?action=roast-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: signupEmail }) });
+                          const data = await res.json().catch(() => ({}));
+                          if (res.ok && data.success) setSignup({ loading: false, sent: true, err: null });
+                          else setSignup({ loading: false, sent: false, err: data.error || 'Could not send the link. Try Google instead.' });
+                        } catch (e) { setSignup({ loading: false, sent: false, err: 'Something went wrong. Try again.' }); }
+                      }} disabled={signup.loading} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
+                        {signup.loading ? 'Sending…' : 'Email me a sign-in link'}
+                      </button>
+                      <p className="text-gray-400 text-xs mt-3 text-center">Your roast is saved — it runs the moment you sign in.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         );
       }
@@ -2807,12 +2944,15 @@
                       </div>
                       <button onClick={async () => {
                         setUnlockLoading(true);
+                        /* Signed-in roast accounts never type an email in this modal, so
+                           fall back to their account email (or the report email). */
+                        const payEmail = unlockEmail || (roastSession && roastSession.email) || reportEmail;
                         try {
-                          sessionStorage.setItem('adroast_pending', JSON.stringify({ result, icp, platform, email: unlockEmail, linkedin }));
-                          const res = await fetch('/api/create-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: unlockEmail }) });
+                          sessionStorage.setItem('adroast_pending', JSON.stringify({ result, icp, platform, email: payEmail, linkedin }));
+                          const res = await fetch('/api/create-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ email: payEmail }) });
                           const data = await res.json();
                           if (data.url) window.location.href = data.url;
-                          else { setUnlockError('Failed to start checkout.'); setUnlockLoading(false); }
+                          else { setUnlockError(data.error || 'Failed to start checkout.'); setUnlockLoading(false); }
                         } catch (e) { setUnlockError('Failed to start checkout.'); setUnlockLoading(false); }
                       }} disabled={unlockLoading} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
                         {unlockLoading ? 'Redirecting to checkout...' : 'Pay $35 & Unlock'}
