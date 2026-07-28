@@ -192,10 +192,10 @@
         { title: "No proof for a skeptical buyer", score: 4, explanation: "Zero numbers, logos, or specifics. Security buyers discount unquantified claims by default." },
         { title: "CTA asks for too much, too soon", score: 5, explanation: "“Book a demo” is a big ask for a cold CISO with no lower-commitment step offered." },
         { title: "Jargon without payoff", score: 5, explanation: "“AI-powered CNAPP” describes the tool, not the outcome the buyer actually wants." },
-        { title: "Visual competes with the message", score: 6, explanation: "Dense dashboard screenshot — nothing guides the eye to the one thing that matters." }
+        { title: "Visual competes with the message", score: 6, explanation: "Dense dashboard screenshot, nothing guides the eye to the one thing that matters." }
       ],
       landing_page_roast: {
-        overall_score: 5, headline_feedback: "Restates the ad instead of advancing the promise — the visitor learns nothing new.",
+        overall_score: 5, headline_feedback: "Restates the ad instead of advancing the promise, the visitor learns nothing new.",
         headline_score: 4, value_prop_feedback: "Buried below the fold.", value_prop_score: 5,
         cta_feedback: "Three competing CTAs dilute the action.", cta_score: 5,
         trust_feedback: "Logos present but no outcomes attached.", trust_score: 6,
@@ -207,20 +207,20 @@
         verdict: "The ad promises 'cut alert noise 80%'; the landing page never mentions alerts. The scent breaks on arrival.",
         message_match_issues: ["Ad claim absent from the LP", "Different primary CTA than the ad implied"],
         disconnects: [
-          { problem: "Ad says 'free trial', landing page only offers 'book a demo'", fix: "Match the offer — add the free-trial CTA to the LP hero." },
-          { problem: "The ad's '80% less noise' hook is nowhere on the page", fix: "Make that stat the LP headline — carry the promise through." }
+          { problem: "Ad says 'free trial', landing page only offers 'book a demo'", fix: "Match the offer: add the free-trial CTA to the LP hero." },
+          { problem: "The ad's '80% less noise' hook is nowhere on the page", fix: "Make that stat the LP headline and carry the promise through." }
         ]
       },
       fix_kit: {
         headlines: [
           "Your CISO doesn't want another dashboard. They want to walk into the board meeting calm.",
-          "Cut alert noise 80% — without adding a single analyst.",
+          "Cut alert noise 80%, without adding a single analyst.",
           "The security tool your board actually asks about."
         ],
         body: "Lead with the risk your buyer carries, name the outcome (fewer alerts, faster audits), then prove it with one number. Save the product category for later.",
         ctas: ["Show me the 80% (2-min tour)", "See it on my stack", "Get the alert-noise teardown"],
         landing_page_headline: "Cut alert noise 80%. Keep the same team.",
-        landing_page_subhead: "The context-aware layer that tells your analysts what actually matters — proven across 40+ security teams.",
+        landing_page_subhead: "The context-aware layer that tells your analysts what actually matters, proven across 40+ security teams.",
         rationale: "Every rewrite moves from product-first to buyer-outcome-first, then earns the click with a specific, testable number."
       },
       experiments: [
@@ -383,8 +383,8 @@
       const [icpTags, setIcpTags] = useState([]);
       const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
       const platformFromLink = (link) => { const l = (link || '').toLowerCase(); return /linkedin/.test(l) ? 'linkedin' : /facebook|instagram|fb\.|meta/.test(l) ? 'meta' : /google|goog|youtube|doubleclick/.test(l) ? 'google' : 'linkedin'; };
-      const detectFromAd = async () => {
-        const link = (inputs.copy || '').trim();
+      const detectFromAd = async (overrideLink) => {
+        const link = ((typeof overrideLink === 'string' ? overrideLink : inputs.copy) || '').trim();
         if (!link) { setIcpAuto({ loading: false, err: '', done: true }); return; }
         setIcpAuto({ loading: true, err: '', done: false }); setIcpTags([]);
         try {
@@ -438,6 +438,10 @@
       const [showSignupGate, setShowSignupGate] = useState(false);
       const [signupEmail, setSignupEmail] = useState('');
       const [signup, setSignup] = useState({ loading: false, sent: false, err: null });
+      /* Quick "roast another ad" popup shown from the results header. */
+      const [showReroast, setShowReroast] = useState(false);
+      const [reroastLink, setReroastLink] = useState('');
+      const [reroastErr, setReroastErr] = useState('');
 
       // Auto-generate link after verified payment
       React.useEffect(() => {
@@ -701,6 +705,26 @@
         setNeedsPayment(false); setPaymentVerified(false); setIsUnlocked(false); setShowUnlockModal(false);
         setUnlockEmail(''); setUnlockLoading(false); setUnlockError(null);
         setCurrentReportId(null); setPrivateAuditGate(null);
+      };
+
+      /* "Roast another ad" from the results header: clear the previous roast (but
+         keep the signed-in account), seed the pasted link, and jump straight into
+         the guided flow + auto-detect, exactly like the hero CTA. */
+      const startReroast = () => {
+        const v = (reroastLink || '').trim();
+        if (!v) { setReroastErr('Please paste your Ad Library link first.'); return; }
+        if (!isValidUrl(v)) { setReroastErr("That doesn't look like a valid link. Paste your full ad URL."); return; }
+        setReroastErr('');
+        setResult(null); setError(null);
+        setIsUnlocked(false); setNeedsPayment(false); setPaymentVerified(false); setShowUnlockModal(false);
+        setReportEmail(''); setReportEmailErr(null); setPdfStatus(null); setShareableLink(''); setCurrentReportId(null); setIsSharedView(false);
+        setIcp(''); setSiteUrl(''); setIcpTags([]); setIcpAuto({ loading: false, err: '', done: false });
+        setInputs({ url: '', copy: v, visual: '', adScreenshot: null, adScreenshotPreview: null });
+        setPlatform(platformFromLink(v));
+        setGuidedHadCopyAtStart(true); setGuidedStep(0);
+        setShowReroast(false);
+        setView('guided');
+        detectFromAd(v);
       };
 
       const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -1093,7 +1117,7 @@
           .map(u => ({
             id: 'r' + Math.random().toString(36).slice(2, 10),
             url: u,
-            label: synthClientName ? `${synthClientName} — Audit` : '',
+            label: synthClientName ? `${synthClientName}: Audit` : '',
             addedAt: new Date().toISOString()
           }));
         if (!additions.length) return;
@@ -1190,7 +1214,7 @@
           }
           /* Currently only CSV is parsed client-side. Other formats fall through. */
           if (data.format !== 'csv') {
-            setError('This link returned a ' + data.format + ' file. CSV/Google Sheets links are parsed automatically; PDF/Excel parsing is coming soon — for now please export to CSV.');
+            setError('This link returned a ' + data.format + ' file. CSV/Google Sheets links are parsed automatically. PDF/Excel parsing is coming soon; for now please export to CSV.');
             setImportLoading(false);
             return;
           }
@@ -1613,7 +1637,7 @@
                 className="inline-flex items-center gap-1.5 mb-4 text-sm font-medium text-gray-600 hover:text-blue-600 bg-transparent border-0 cursor-pointer">← Back to home</button>
               <h1 className="text-2xl font-semibold text-gray-900 mb-1">Synthesis Report</h1>
               <p className="text-sm text-gray-500 mb-6">
-                Paste links to multiple completed AdRoast reports. The synthesis engine compares them and produces a strategic positioning report — the same format as Nudge's Evidence-Backed Audit Synthesis.
+                Paste links to multiple completed AdRoast reports. The synthesis engine compares them and produces a strategic positioning report, the same format as Nudge's Evidence-Backed Audit Synthesis.
               </p>
               {error && <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded text-red-700 flex items-center gap-2 text-sm"><Icon name="alertCircle" className="w-4 h-4" />{error}</div>}
 
@@ -1812,7 +1836,7 @@
            with metadata-only body. Promote that section title into the report title and
            drop the section from the rendered list. */
         if (rawSections.length > 0 && isMetaOnly(rawSections[0].body) && /Positioning Report|Evidence-Backed Audit Synthesis/i.test(reportTitle)) {
-          reportTitle = `${rawSections[0].title} — Evidence-Backed Audit Synthesis`;
+          reportTitle = `${rawSections[0].title}: Evidence-Backed Audit Synthesis`;
         }
         /* Drop empty and meta-only sections from the rendered list. */
         const sections = rawSections.filter(s => s.body && s.body.length > 0 && !isMetaOnly(s.body));
@@ -2010,7 +2034,7 @@
                           const lower = (file.name || '').toLowerCase();
                           const isCsv = lower.endsWith('.csv') || (file.type || '').includes('csv');
                           if (!isCsv) {
-                            setError('CSV is supported today. PDF / Excel parsing is coming soon — please export your sheet to CSV, or paste a public Google Sheets link instead.');
+                            setError('CSV is supported today. PDF / Excel parsing is coming soon; please export your sheet to CSV, or paste a public Google Sheets link instead.');
                             e.target.value = '';
                             return;
                           }
@@ -2610,7 +2634,7 @@
             <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
               <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
                 <div onClick={reset} className="flex items-center gap-2 cursor-pointer"><img src="data:image/png;base64,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" alt="AdRoast" className="w-9 h-9 rounded" /><span className="text-gray-300 text-lg font-light">|</span><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div>
-                {!isSharedView && <button onClick={reset} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="rotateCcw" className="w-4 h-4" /> New Analysis</button>}
+                {!isSharedView && <button onClick={() => { setReroastLink(''); setReroastErr(''); setShowReroast(true); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="rotateCcw" className="w-4 h-4" /> Roast another ad</button>}
                 {isSharedView && <a href={window.location.origin + window.location.pathname} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="flame" className="w-4 h-4" /> Roast My Ad</a>}
               </div>
             </header>
@@ -2924,6 +2948,26 @@
                 </div>
               </div>
             </main>
+
+            {/* ROAST ANOTHER AD — quick popup to paste a new Ad Library link */}
+            {showReroast && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4" onClick={() => setShowReroast(false)}>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-lg font-semibold text-gray-900">Roast another ad</h3>
+                    <button onClick={() => setShowReroast(false)} className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer"><Icon name="x" className="w-5 h-5" /></button>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-4">Paste the Ad Library link for the next ad you want scored.</p>
+                  <input type="text" autoFocus placeholder="Paste your Ad Library link (Meta, Google, LinkedIn)..." value={reroastLink}
+                    onChange={(e) => { setReroastLink(e.target.value); if (reroastErr) setReroastErr(''); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') startReroast(); }}
+                    style={{ borderColor: reroastErr ? '#dc2626' : '#d1d5db' }}
+                    className="w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                  {reroastErr && <p className="text-red-500 text-xs mt-2">{reroastErr}</p>}
+                  <button onClick={startReroast} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full mt-4 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">Roast this ad <Icon name="chevronRight" className="w-4 h-4" /></button>
+                </div>
+              </div>
+            )}
 
             {/* UNLOCK MODAL */}
             {showUnlockModal && (
