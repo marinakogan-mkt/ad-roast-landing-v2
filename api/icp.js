@@ -81,7 +81,8 @@ Return ONLY valid JSON. No markdown, no backticks, no text before or after. Exac
   "summary": "2-3 sentences on who this company sells to and the pain those buyers feel",
   "icp_text": "one tight sentence naming the target buyer, company profile, and ad spend",
   "tags": ["4-6 short chips like 'B2B Cybersecurity', 'Series A-C', 'CISOs', '$20K+/mo ad spend'"]
-}`;
+}
+Never use em dashes or en dashes in any field value. Use commas, colons, or periods instead.`;
 
   const userPrompt = `Company domain: ${domain}
 Page title: ${site.title}

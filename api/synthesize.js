@@ -317,13 +317,13 @@ Evidence: short rationale.
 
 The fix is not <X>. The fix is:
 1. **<short bold step title>** — <short description>
-2. **<short bold step title>** — <short description>
-3. **<short bold step title>** — <short description>
-4. **<short bold step title>** — <short description>
+2. **<short bold step title>**: <short description>
+3. **<short bold step title>**: <short description>
+4. **<short bold step title>**: <short description>
 
-(Use numbered list 1. 2. 3. 4. — NOT bullets. Each fix step starts with a bold short title, em-dash, then description.)
+(Use numbered list 1. 2. 3. 4., NOT bullets. Each fix step starts with a bold short title, a colon, then the description.)
 
-> short closing line — one sentence that summarizes the call to action
+> short closing line, one sentence that summarizes the call to action
 
 CRITICAL RULES:
 - Cite specific audit evidence (e.g., "AUDIT-2 (the SCA ad) scored 8/10 while AUDIT-1 (SAST) only scored 5/10").
@@ -333,6 +333,7 @@ CRITICAL RULES:
 
 LANGUAGE & TONE RULES:
 - Write in plain, neutral B2B consulting language. Direct, evidence-led, professional.
+- Never use em dashes or en dashes. Use commas, colons, periods, or parentheses instead.
 - DO NOT use medical, violent, mental-health, or sensationalist metaphors.
   Banned words/phrases include (non-exhaustive): "schizophrenic", "bipolar", "hemorrhaging", "bleeding", "dying", "killing", "killer", "kills", "death", "weaponize", "nuclear", "cancer", "toxic", "insane", "crazy", "psycho", "manic", "anxiety-inducing".
 - Prefer plain alternatives: "inconsistent" instead of "schizophrenic", "losing conversions" instead of "hemorrhaging conversions", "the biggest issue" instead of "the killer", "underperforming" instead of "dying".
