@@ -508,6 +508,9 @@
 
         if (portalParam === '1') setIsPortalView(true);
 
+        /* Direct link to the services page (adroast.in/#services). */
+        if (window.location.hash === '#services') setView('services');
+
         /* Roast-account sign-in return (?signedin=1) — set after Google/magic-link.
            Confirm the session, then resume the roast the user was about to run
            (payload stashed in sessionStorage right before we sent them to sign in). */
@@ -517,7 +520,7 @@
             .then(r => r.ok ? r.json() : null)
             .then(d => {
               if (d && d.session && d.session.mode === 'roast') {
-                setRoastSession({ email: d.session.email, roastCount: d.roastCount || 0, freeAvailable: !!d.freeAvailable });
+                setRoastSession({ email: d.session.email, plan: d.plan || 'free', tokens: (typeof d.tokens === 'number' ? d.tokens : 0) });
               }
             })
             .catch(() => {});
@@ -549,12 +552,14 @@
           return;
         }
 
-        // Handle Stripe payment return
+        // Handle Stripe payment return (plan purchase — monetization #3)
         if (paymentStatus === 'success' && stripeSessionId) {
-          // Restore saved state
+          // A blurred roast may have been stashed before checkout (paywall path).
+          let hadSaved = false;
           try {
             const saved = JSON.parse(sessionStorage.getItem('adroast_pending'));
-            if (saved) {
+            if (saved && saved.result) {
+              hadSaved = true;
               setResult(saved.result);
               setIcp(saved.icp || '');
               setPlatform(saved.platform || null);
@@ -563,28 +568,31 @@
             }
           } catch(e) {}
 
-          // Verify payment with Stripe
+          const refreshAccount = () => fetch('/api/auth?action=me', { credentials: 'same-origin' })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d && d.session && d.session.mode === 'roast') setRoastSession({ email: d.session.email, plan: d.plan || 'free', tokens: (typeof d.tokens === 'number' ? d.tokens : 0) }); })
+            .catch(() => {});
+
           fetch('/api/verify-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({ sessionId: stripeSessionId })
           })
             .then(res => res.json())
             .then(data => {
+              refreshAccount();
               if (data.paid) {
                 sessionStorage.removeItem('adroast_pending');
-                setPaymentVerified(true);
-                setIsUnlocked(true);
-                setView('results');
+                setNeedsPayment(false);
+                if (hadSaved) { setIsUnlocked(true); setView('results'); }
+                else { setView('landing'); }
               } else {
-                setNeedsPayment(true);
-                setView('results');
+                if (hadSaved) { setNeedsPayment(true); setView('results'); }
+                else { setView('landing'); }
               }
             })
-            .catch(() => {
-              setNeedsPayment(true);
-              setView('results');
-            });
+            .catch(() => { if (hadSaved) { setNeedsPayment(true); setView('results'); } else { setView('landing'); } });
 
           window.history.replaceState({}, '', window.location.pathname);
           return;
@@ -691,6 +699,14 @@
         } catch (e) { /* clipboard blocked — silently ignore */ }
       }, [view, synthResult, shareableLink]);
 
+      /* Route to the services page whenever the hash becomes #services (covers
+         in-app hash changes and back/forward, alongside the on-load check). */
+      React.useEffect(() => {
+        const onHash = () => { if (window.location.hash === '#services') setView('services'); };
+        window.addEventListener('hashchange', onHash);
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+
       const copy = async (text, key) => {
         await navigator.clipboard.writeText(text);
         setCopied(p => ({ ...p, [key]: true }));
@@ -725,6 +741,24 @@
         setShowReroast(false);
         setView('guided');
         detectFromAd(v);
+      };
+
+      /* Start a Stripe checkout for a paid plan (monetization #3). Buying needs an
+         account (tokens are keyed to the email), so unsigned visitors hit the
+         sign-up gate first. Signed-in users go straight to Stripe. */
+      const [checkoutBusy, setCheckoutBusy] = useState('');
+      const startCheckout = async (plan) => {
+        if (!roastSession || !roastSession.email) { setShowSignupGate(true); return; }
+        setCheckoutBusy(plan);
+        try {
+          const res = await fetch('/api/create-checkout', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+            body: JSON.stringify({ email: roastSession.email, plan })
+          });
+          const data = await res.json();
+          if (data.url) { window.location.href = data.url; return; }
+          setCheckoutBusy('');
+        } catch (e) { setCheckoutBusy(''); }
       };
 
       const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -816,9 +850,9 @@
         setSending(false); setView('results');
       };
 
-      /* Apply a fresh roast result + its account entitlement (monetization 2b).
-         The server marks the account's 1st roast full (free); the 2nd+ comes back
-         gated, so we blur it and route the unlock modal straight to payment. */
+      /* Apply a fresh roast result + its token entitlement (monetization #3).
+         full=true means a token was spent and the roast is shown in full; full=false
+         means the account is out of tokens, so we blur it and sell a plan. */
       const applyRoastResult = (data) => {
         setResult(data);
         const ent = data && data._entitlement;
@@ -828,8 +862,8 @@
           if (ent.email) setReportEmail(ent.email);
           setRoastSession(prev => ({
             email: ent.email || (prev && prev.email) || '',
-            roastCount: (typeof ent.count === 'number' ? ent.count : (prev ? prev.roastCount : 0)),
-            freeAvailable: false
+            plan: ent.plan || (prev && prev.plan) || 'free',
+            tokens: (typeof ent.remaining === 'number' ? ent.remaining : (prev ? prev.tokens : 0))
           }));
         }
         setView('results');
@@ -1457,71 +1491,71 @@
 
           {/* PRICING TIERS */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>How It Works</div>
-            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Diagnose what's broken, get the fix, or have us build it.</h2>
-            <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>Three ways to work together, depending on how deep your positioning problem runs.</p>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Pricing</div>
+            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Your first roast is free. Then pick your pace.</h2>
+            <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>One roast costs one token. Every plan scores your creative, ad copy, and landing page against your ICP.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-              {/* TIER 1: DIAGNOSE */}
+              {/* PLAN 1: FREE */}
               <div className="p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all flex flex-col">
-                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Free Audit</div>
-                <h3 className="text-gray-900 mb-1" style={{ fontSize: '22px', fontWeight: 500, letterSpacing: '-0.2px' }}>Ad Roast</h3>
+                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Free</div>
+                <h3 className="text-gray-900 mb-1" style={{ fontSize: '22px', fontWeight: 500, letterSpacing: '-0.2px' }}>Your first roast</h3>
                 <div className="mb-4">
                   <span className="text-gray-900" style={{ fontSize: '32px', fontWeight: 300, letterSpacing: '-0.5px' }}>Free</span>
-                  <span className="text-gray-400 text-sm ml-1">- 2min</span>
+                  <span className="text-gray-400 text-sm ml-1">1 roast</span>
                 </div>
-                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>See exactly why your Ad isn't converting. No call required.</p>
+                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>See exactly why your ad isn't converting. No card required.</p>
                 <ul className="space-y-2 mb-7 flex-grow">
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Where buyers drop off</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>What's killing your demos</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>1 full ad roast</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Creative, ad copy, and landing page scored</span></li>
                   <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Top fixes ranked by impact</span></li>
                 </ul>
                 <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors">Roast my Ad</button>
-                <p className="text-center text-xs text-gray-400 mt-2">Runs on autopilot · 2 minutes end-to-end</p>
+                <p className="text-center text-xs text-gray-400 mt-2">Runs on autopilot · about 2 minutes</p>
               </div>
 
-              {/* TIER 2: AUDIT — RECOMMENDED */}
+              {/* PLAN 2: MONTHLY */}
               <div className="p-7 border-2 rounded-lg hover:shadow-lg transition-all flex flex-col relative" style={{ borderColor: '#0a66c2' }}>
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>MOST POPULAR</div>
-                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Ready-to-implement Action Plan</div>
-                <h3 className="text-gray-900 mb-1" style={{ fontSize: '22px', fontWeight: 500, letterSpacing: '-0.2px' }}>Conversion Roadmap</h3>
+                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Monthly</div>
+                <h3 className="text-gray-900 mb-1" style={{ fontSize: '22px', fontWeight: 500, letterSpacing: '-0.2px' }}>Roast regularly</h3>
                 <div className="mb-4">
-                  <span className="text-gray-900" style={{ fontSize: '32px', fontWeight: 300, letterSpacing: '-0.5px' }}>$6K</span>
-                  <span className="text-gray-400 text-sm ml-1">- one-time · delivered in 10 days</span>
+                  <span className="text-gray-900" style={{ fontSize: '32px', fontWeight: 300, letterSpacing: '-0.5px' }}>$24</span>
+                  <span className="text-gray-400 text-sm ml-1">/mo</span>
                 </div>
-                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>Clear positioning direction with Ad copy and landing page fixes your team can ship next week.</p>
+                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>For teams testing ads every week. Score, fix, ship, repeat.</p>
                 <ul className="space-y-2 mb-7 flex-grow">
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Why demos aren't converting</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Sharper ICP and positioning</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Copy snippets for landing pages and creatives</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Implementation roadmap ranked by revenue impact</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span><strong>20 roasts per month</strong></span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Creative, ad copy, and landing page scored</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Fix Kit with rewritten copy + experiments</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Cancel anytime</span></li>
                 </ul>
-                <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="w-full px-6 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity no-underline text-center">Book a Call</a>
-                <p className="text-center text-xs text-gray-400 mt-2">Find out if it's a fit</p>
+                <button onClick={() => startCheckout('monthly')} disabled={checkoutBusy === 'monthly'} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="w-full px-6 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-60">{checkoutBusy === 'monthly' ? 'Redirecting…' : 'Start monthly'}</button>
+                <p className="text-center text-xs text-gray-400 mt-2">Resets to 20 each month</p>
               </div>
 
-              {/* TIER 3: SPRINT */}
+              {/* PLAN 3: LIFETIME */}
               <div className="p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all flex flex-col">
-                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>End-to-end Campaign</div>
-                <h3 className="text-gray-900 mb-1" style={{ fontSize: '22px', fontWeight: 500, letterSpacing: '-0.2px' }}>Done-For-You Rebuild</h3>
+                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Lifetime</div>
+                <h3 className="text-gray-900 mb-1" style={{ fontSize: '22px', fontWeight: 500, letterSpacing: '-0.2px' }}>Pay once, keep roasting</h3>
                 <div className="mb-4">
-                  <span className="text-gray-900" style={{ fontSize: '32px', fontWeight: 300, letterSpacing: '-0.5px' }}>$8K/mo</span>
-                  <span className="text-gray-400 text-sm ml-1">- 3 month sprint</span>
+                  <span className="text-gray-900" style={{ fontSize: '32px', fontWeight: 300, letterSpacing: '-0.5px' }}>$482</span>
+                  <span className="text-gray-400 text-sm ml-1">once</span>
                 </div>
-                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>Everything in the roadmap, built and launched. We run the Ads and optimize until demo conversion doubles.</p>
+                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>One payment, 20 roasts every month for life. Best value if you run ads long-term.</p>
                 <ul className="space-y-2 mb-7 flex-grow">
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Everything in the Conversion Roadmap</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>New Ad creatives built and shipped</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Landing page rebuilt to match the Ad narrative</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Campaign launch and Ad management</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Weekly optimization and testing</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span><strong>20 roasts per month, forever</strong></span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Everything in Monthly</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>No recurring charge</span></li>
                 </ul>
-                <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors no-underline text-center">Book a Call</a>
-                <p className="text-center text-xs text-gray-400 mt-2">Casual chat to see if there's a fit</p>
+                <button onClick={() => startCheckout('lifetime')} disabled={checkoutBusy === 'lifetime'} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors disabled:opacity-60">{checkoutBusy === 'lifetime' ? 'Redirecting…' : 'Get lifetime'}</button>
+                <p className="text-center text-xs text-gray-400 mt-2">Pays for itself in about 20 months</p>
               </div>
 
             </div>
+
+            <p className="text-center text-sm text-gray-500 mt-8">Want us to fix it for you, not just score it? <button onClick={() => { window.location.hash = 'services'; setView('services'); }} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>See our done-with-you and done-for-you services →</button></p>
           </section>
 
           {/* TESTIMONIALS */}
@@ -2257,6 +2291,71 @@
         );
       }
 
+      /* ─── SERVICES (done-with-you / done-for-you, moved off the main pricing) ─── */
+      if (view === 'services') return (
+        <div className="min-h-screen bg-gray-100">
+          <header className="bg-white border-b border-gray-200">
+            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div onClick={() => { window.location.hash = ''; reset(); }} className="flex items-center gap-2 cursor-pointer">
+                <img src={ADROAST_LOGO} alt="AdRoast" className="w-9 h-9 rounded" />
+                <span className="text-gray-300 text-lg font-light">|</span>
+                <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
+              </div>
+              <button onClick={() => { window.location.hash = ''; reset(); }} className="text-sm font-semibold bg-transparent border-none cursor-pointer" style={{ color: '#0a66c2' }}>← Back to the roaster</button>
+            </div>
+          </header>
+          <main className="max-w-5xl mx-auto px-4 py-10 sm:py-16 w-full">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Work with us</div>
+            <h1 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(28px, 4vw, 46px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>Spending $20K+/mo on ads but demo quality still sucks?</h1>
+            <p className="text-gray-500 mb-10 max-w-2xl" style={{ fontSize: '16px', lineHeight: 1.7 }}>The roaster tells you what's broken. When you want it fixed, we step in, from a ready-to-ship positioning roadmap to a full done-for-you rebuild.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* CONVERSION ROADMAP */}
+              <div className="p-8 border-2 rounded-xl hover:shadow-lg transition-all flex flex-col relative" style={{ borderColor: '#0a66c2' }}>
+                <div className="absolute -top-3 left-8 px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>MOST POPULAR</div>
+                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Done with you</div>
+                <h3 className="text-gray-900 mb-1" style={{ fontSize: '24px', fontWeight: 500, letterSpacing: '-0.2px' }}>Conversion Roadmap</h3>
+                <div className="mb-4">
+                  <span className="text-gray-900" style={{ fontSize: '34px', fontWeight: 300, letterSpacing: '-0.5px' }}>$6K</span>
+                  <span className="text-gray-400 text-sm ml-1">one-time, delivered in 10 days</span>
+                </div>
+                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>Clear positioning direction with ad copy and landing page fixes your team can ship next week.</p>
+                <ul className="space-y-2 mb-7 flex-grow">
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Why demos aren't converting</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Sharper ICP and positioning</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Copy snippets for landing pages and creatives</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Implementation roadmap ranked by revenue impact</span></li>
+                </ul>
+                <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="w-full px-6 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity no-underline text-center">Book a call</a>
+                <p className="text-center text-xs text-gray-400 mt-2">Find out if it's a fit</p>
+              </div>
+
+              {/* DONE-FOR-YOU */}
+              <div className="p-8 border border-gray-200 rounded-xl hover:shadow-md hover:border-blue-200 transition-all flex flex-col">
+                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Done for you</div>
+                <h3 className="text-gray-900 mb-1" style={{ fontSize: '24px', fontWeight: 500, letterSpacing: '-0.2px' }}>Done-For-You Rebuild</h3>
+                <div className="mb-4">
+                  <span className="text-gray-900" style={{ fontSize: '34px', fontWeight: 300, letterSpacing: '-0.5px' }}>$8K/mo</span>
+                  <span className="text-gray-400 text-sm ml-1">3 month engagement</span>
+                </div>
+                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>Everything in the roadmap, built and launched. We run the ads and optimize until demo conversion doubles.</p>
+                <ul className="space-y-2 mb-7 flex-grow">
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Everything in the Conversion Roadmap</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>New ad creatives built and shipped</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Landing page rebuilt to match the ad narrative</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Campaign launch and ad management</span></li>
+                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Weekly optimization and testing</span></li>
+                </ul>
+                <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors no-underline text-center">Book a call</a>
+                <p className="text-center text-xs text-gray-400 mt-2">Casual chat to see if there's a fit</p>
+              </div>
+            </div>
+
+            <p className="text-center text-sm text-gray-500 mt-10">Just want to score an ad yourself? <button onClick={() => { window.location.hash = ''; reset(); }} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>Run a free roast →</button></p>
+          </main>
+        </div>
+      );
+
       /* ─── GUIDED (step-by-step questions, replaces onboarding + input forms) ─── */
       if (view === 'guided') {
         /* Step list adapts to whether ad copy was already pasted on the landing page.
@@ -2634,7 +2733,12 @@
             <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
               <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
                 <div onClick={reset} className="flex items-center gap-2 cursor-pointer"><img src="data:image/png;base64,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" alt="AdRoast" className="w-9 h-9 rounded" /><span className="text-gray-300 text-lg font-light">|</span><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div>
-                {!isSharedView && <button onClick={() => { setReroastLink(''); setReroastErr(''); setShowReroast(true); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="rotateCcw" className="w-4 h-4" /> Roast another ad</button>}
+                {!isSharedView && (
+                  <div className="flex items-center gap-3">
+                    {roastSession && <span className="text-xs font-medium px-2.5 py-1 rounded-full hidden sm:inline" style={{ background: roastSession.tokens > 0 ? '#dcfce7' : '#fef2f2', color: roastSession.tokens > 0 ? '#15803d' : '#b91c1c' }}>{roastSession.tokens} roast{roastSession.tokens === 1 ? '' : 's'} left</span>}
+                    <button onClick={() => { setReroastLink(''); setReroastErr(''); setShowReroast(true); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="rotateCcw" className="w-4 h-4" /> Roast another ad</button>
+                  </div>
+                )}
                 {isSharedView && <a href={window.location.origin + window.location.pathname} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="flame" className="w-4 h-4" /> Roast My Ad</a>}
               </div>
             </header>
@@ -2971,65 +3075,26 @@
 
             {/* UNLOCK MODAL */}
             {showUnlockModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={() => setShowUnlockModal(false)}>
-                <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 p-6" onClick={e => e.stopPropagation()}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">{needsPayment ? 'Unlock for $35' : 'Get the Full Diagnosis'}</h3>
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4" onClick={() => setShowUnlockModal(false)}>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-lg font-semibold text-gray-900">You're out of roasts</h3>
                     <button onClick={() => setShowUnlockModal(false)} className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer"><Icon name="x" className="w-5 h-5" /></button>
                   </div>
-                  {needsPayment ? (
-                    <div>
-                      <p className="text-sm text-gray-500 mb-4">You've already claimed your free audit. Unlock this report for a one-time payment.</p>
-                      <div className="space-y-2 text-sm text-gray-600 mb-4">
-                        <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Full mismatch analysis</span></div>
-                        <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Fix Kit with rewritten copy</span></div>
-                        <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>3 experiments + next steps</span></div>
-                        <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Permanent shareable link</span></div>
-                      </div>
-                      <button onClick={async () => {
-                        setUnlockLoading(true);
-                        /* Signed-in roast accounts never type an email in this modal, so
-                           fall back to their account email (or the report email). */
-                        const payEmail = unlockEmail || (roastSession && roastSession.email) || reportEmail;
-                        try {
-                          sessionStorage.setItem('adroast_pending', JSON.stringify({ result, icp, platform, email: payEmail, linkedin }));
-                          const res = await fetch('/api/create-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ email: payEmail }) });
-                          const data = await res.json();
-                          if (data.url) window.location.href = data.url;
-                          else { setUnlockError(data.error || 'Failed to start checkout.'); setUnlockLoading(false); }
-                        } catch (e) { setUnlockError('Failed to start checkout.'); setUnlockLoading(false); }
-                      }} disabled={unlockLoading} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
-                        {unlockLoading ? 'Redirecting to checkout...' : 'Pay $35 & Unlock'}
-                      </button>
-                      {unlockError && <p className="text-red-500 text-xs mt-2 text-center">{unlockError}</p>}
-                      <p className="text-gray-400 text-xs mt-2 text-center">Secure payment via Stripe</p>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-sm text-gray-500 mb-4">Enter your email to access the complete analysis, fix kit, and experiments.</p>
-                      <input type="email" placeholder="you@company.com" value={unlockEmail} onChange={(e) => { setUnlockEmail(e.target.value); setUnlockError(null); }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mb-3" />
-                      {unlockError && <p className="text-red-500 text-xs mb-2">{unlockError}</p>}
-                      <button onClick={async () => {
-                        if (!unlockEmail || !unlockEmail.includes('@')) { setUnlockError('Enter a valid email'); return; }
-                        setUnlockLoading(true); setUnlockError(null);
-                        try {
-                          const res = await fetch('/api/check-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: unlockEmail, linkedin }) });
-                          const data = await res.json();
-                          if (data.free) {
-                            setIsUnlocked(true);
-                            setReportEmail(unlockEmail);
-                            setShowUnlockModal(false);
-                          } else {
-                            setNeedsPayment(true);
-                          }
-                        } catch (e) { setUnlockError('Something went wrong. Try again.'); }
-                        setUnlockLoading(false);
-                      }} disabled={unlockLoading} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
-                        {unlockLoading ? 'Checking...' : 'Get the Full Diagnosis'}
-                      </button>
-                      <p className="text-gray-400 text-xs mt-2 text-center">First audit is free. No card required.</p>
-                    </div>
-                  )}
+                  <p className="text-sm text-gray-500 mb-4">You've used your free roast. Pick a plan to unlock this report and keep roasting. One roast costs one token.</p>
+                  <div className="space-y-2 text-sm text-gray-600 mb-5">
+                    <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Full mismatch analysis</span></div>
+                    <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Fix Kit with rewritten copy</span></div>
+                    <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>3 experiments + next steps</span></div>
+                    <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Permanent shareable link</span></div>
+                  </div>
+                  <button onClick={() => startCheckout('monthly')} disabled={!!checkoutBusy} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-60">
+                    {checkoutBusy === 'monthly' ? 'Redirecting…' : 'Monthly · $24/mo · 20 roasts'}
+                  </button>
+                  <button onClick={() => startCheckout('lifetime')} disabled={!!checkoutBusy} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full mt-2 py-2.5 bg-white border-2 rounded-full font-semibold text-sm hover:bg-blue-50 transition-colors disabled:opacity-60">
+                    {checkoutBusy === 'lifetime' ? 'Redirecting…' : 'Lifetime · $482 once · 20/mo for life'}
+                  </button>
+                  <p className="text-gray-400 text-xs mt-3 text-center">Secure payment via Stripe · cancel anytime</p>
                 </div>
               </div>
             )}

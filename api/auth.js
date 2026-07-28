@@ -21,6 +21,7 @@ import {
   readSessionCookie,
   SESSION_TTL_SECONDS
 } from './auth/_allowlist.js';
+import { peekAccount } from './_tokens.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -64,14 +65,12 @@ async function handleMe(req, res) {
   }
   if (!session) return res.status(401).json({ error: 'Session expired' });
   const out = { success: true, session: publicSession(session) };
-  /* For roast-tool accounts, surface how many roasts they've run so the UI can
-     tell whether their free (1st) roast is still available. Read-only — the
-     authoritative increment happens in /api/roast. */
+  /* For roast-tool accounts, surface the plan + remaining token balance so the
+     UI can show "N roasts left" and gate at zero. Read-only (no consume). */
   if (session.mode === 'roast' && session.email) {
     try {
-      const c = await redis.get(`roast:count:${String(session.email).trim().toLowerCase()}`);
-      out.roastCount = Number(c) || 0;
-      out.freeAvailable = (Number(c) || 0) < 1;
+      const acct = await peekAccount(redis, session.email);
+      if (acct) { out.plan = acct.plan; out.tokens = acct.tokens; }
     } catch (e) { /* non-fatal */ }
   }
   return res.status(200).json(out);

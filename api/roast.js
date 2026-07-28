@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { readSessionCookie } from './auth/_allowlist.js';
+import { consumeToken } from './_tokens.js';
 
 const _redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -361,23 +362,22 @@ Return this EXACT JSON structure (all fields required):
         parsed._meta = meta;
         parsed._version = API_VERSION;
 
-        /* Account-based paywall (monetization 2b): for a signed-in roast account,
-           count each roast. The 1st roast per account is FULL (free); the 2nd+ is
-           gated (blurred) until paid. Anonymous callers stay gated (the frontend
-           requires sign-up before the roast runs). Redis failures fail OPEN so a
-           transient outage never wrongly blurs a user's free roast. */
+        /* Token paywall (monetization #3): a roast costs one token. A signed-in
+           account with tokens gets a FULL roast (token consumed); at zero tokens
+           the roast is gated (blurred) and the UI sells a plan. Anonymous callers
+           stay gated (the frontend requires sign-up first). Redis failures fail
+           OPEN so a transient outage never wrongly blurs a paid user's roast. */
         try {
           const acctEmail = await roastAccountEmail(req);
-          const ent = { authed: !!acctEmail, email: acctEmail || null, count: null, full: false };
           if (acctEmail) {
-            const c = await _redis.incr(`roast:count:${acctEmail}`);
-            ent.count = c;
-            ent.full = (c <= 1);
+            const t = await consumeToken(_redis, acctEmail);
+            parsed._entitlement = { authed: true, email: acctEmail, full: t.full, remaining: t.remaining, plan: t.plan };
+          } else {
+            parsed._entitlement = { authed: false, email: null, full: false, remaining: 0, plan: null };
           }
-          parsed._entitlement = ent;
         } catch (e) {
           console.error('[AdRoast] entitlement error:', e.message);
-          parsed._entitlement = { authed: false, email: null, count: null, full: true };
+          parsed._entitlement = { authed: false, email: null, full: true, remaining: null, plan: null };
         }
 
         return res.status(200).json(parsed);
