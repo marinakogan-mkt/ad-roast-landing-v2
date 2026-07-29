@@ -165,16 +165,29 @@ If you didn't request this, you can ignore this email — the link won't grant a
 
 async function handleVerify(req, res) {
   const token = (req.query?.token || '').trim();
-  if (!token) return res.redirect(302, '/?auth=missing#portal');
+  /* Before the token is read we can't know whether it was a roast or portal link,
+     and most sign-ins are roast. So failures here return to the roaster with a
+     clear message (not the portal gate). */
+  if (!token) return res.redirect(302, '/?signin=expired');
 
   let magicData = null;
+  let fromGrace = false;
   try {
     const raw = await redis.get(`auth:magic:${token}`);
-    if (raw) magicData = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (raw) {
+      magicData = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } else {
+      /* Not in the live key. Email clients and browsers often PREFETCH the link,
+         which consumes a single-use token before the human actually clicks it. To
+         survive that, a just-consumed token is kept under a short grace key so the
+         real click still signs in. */
+      const doneRaw = await redis.get(`auth:magic_done:${token}`);
+      if (doneRaw) { magicData = typeof doneRaw === 'string' ? JSON.parse(doneRaw) : doneRaw; fromGrace = true; }
+    }
   } catch (e) {
-    return res.redirect(302, '/?auth=error#portal');
+    return res.redirect(302, '/?signin=error');
   }
-  if (!magicData) return res.redirect(302, '/?auth=expired#portal');
+  if (!magicData) return res.redirect(302, '/?signin=expired');
 
   const isRoast = magicData.mode === 'roast';
   const sessionToken = randomToken(32);
@@ -185,14 +198,19 @@ async function handleVerify(req, res) {
       email: magicData.email, roleId: magicData.roleId, mode: magicData.mode,
       partnerId: magicData.partnerId, clientId: magicData.clientId, via: 'magic', createdAt: Date.now()
     }), { ex: SESSION_TTL_SECONDS });
-    await redis.del(`auth:magic:${token}`);
-    await redis.lpush(`auth:log:${magicData.email}`, JSON.stringify({
-      at: new Date().toISOString(), via: 'magic', roleId: magicData.roleId || 'roast',
-      ip: clientIp(req), ua: req.headers['user-agent'] || 'unknown'
-    }));
-    await redis.ltrim(`auth:log:${magicData.email}`, 0, 49);
+    if (!fromGrace) {
+      /* Move the token from live to a 3-minute grace key so a prefetch+click pair
+         both succeed, then it's gone for good. */
+      await redis.set(`auth:magic_done:${token}`, JSON.stringify(magicData), { ex: 180 });
+      await redis.del(`auth:magic:${token}`);
+      await redis.lpush(`auth:log:${magicData.email}`, JSON.stringify({
+        at: new Date().toISOString(), via: 'magic', roleId: magicData.roleId || 'roast',
+        ip: clientIp(req), ua: req.headers['user-agent'] || 'unknown'
+      }));
+      await redis.ltrim(`auth:log:${magicData.email}`, 0, 49);
+    }
   } catch (e) {
-    return res.redirect(302, isRoast ? '/?auth=error' : '/?auth=error#portal');
+    return res.redirect(302, isRoast ? '/?signin=error' : '/?auth=error#portal');
   }
 
   res.setHeader('Set-Cookie', buildSessionCookie(sessionToken));

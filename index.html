@@ -438,6 +438,8 @@
       const [showSignupGate, setShowSignupGate] = useState(false);
       const [signupEmail, setSignupEmail] = useState('');
       const [signup, setSignup] = useState({ loading: false, sent: false, err: null });
+      /* Friendly message when a magic sign-in link fails (expired / already used). */
+      const [signinMsg, setSigninMsg] = useState('');
       /* Quick "roast another ad" popup shown from the results header. */
       const [showReroast, setShowReroast] = useState(false);
       const [reroastLink, setReroastLink] = useState('');
@@ -510,6 +512,16 @@
 
         /* Direct link to the services page (adroast.in/#services). */
         if (window.location.hash === '#services') setView('services');
+
+        /* Magic sign-in link failed (expired / already used) — show a clear message
+           on the landing instead of dumping the user into the portal gate. */
+        const signinParam = params.get('signin');
+        if (signinParam) {
+          setSigninMsg(signinParam === 'error'
+            ? 'Something went wrong signing you in. Please request a new link.'
+            : 'That sign-in link expired or was already used. Paste your ad below to get a fresh one.');
+          window.history.replaceState({}, '', window.location.pathname);
+        }
 
         /* Roast-account sign-in return (?signedin=1) — set after Google/magic-link.
            Confirm the session, then resume the roast the user was about to run
@@ -1345,6 +1357,13 @@
 
       if (view === 'landing') return (
         <div className="min-h-screen flex flex-col bg-white" >
+
+          {signinMsg && (
+            <div className="w-full px-4 py-2.5 text-sm text-center flex items-center justify-center gap-3" style={{ background: '#fef3c7', color: '#92400e' }}>
+              <span>{signinMsg}</span>
+              <button onClick={() => setSigninMsg('')} className="bg-transparent border-none cursor-pointer font-bold" style={{ color: '#92400e' }} aria-label="Dismiss">✕</button>
+            </div>
+          )}
 
           {/* NAV */}
           <header className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-50" style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
