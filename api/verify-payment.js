@@ -38,21 +38,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ received: true });
   }
 
-  /* TEMP one-time: register the webhook endpoint in Stripe. Removed next commit. */
-  if (body.setup === 'register_hook' && body.secret === 'qz7Kp2Rm9xVt') {
-    const siteUrl = process.env.SITE_URL || 'https://adroast.in';
-    const payload = `url=${encodeURIComponent(siteUrl + '/api/verify-payment?hook=stripe')}`
-      + `&enabled_events[]=customer.subscription.deleted`
-      + `&enabled_events[]=invoice.payment_failed`;
-    const r = await fetch('https://api.stripe.com/v1/webhook_endpoints', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${STRIPE}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: payload
-    });
-    const j = await r.json();
-    return res.status(200).json({ id: j.id || null, url: j.url || null, status: j.status || null, error: j.error || null });
-  }
-
   /* ---- Normal path: verify a checkout session + grant the plan ---------------- */
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
