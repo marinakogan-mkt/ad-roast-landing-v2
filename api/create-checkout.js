@@ -16,6 +16,22 @@ export default async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') try { body = JSON.parse(body); } catch(e) { body = {}; }
 
+  /* TEMP one-time setup: create stable Stripe Products/Prices and return their IDs.
+     Removed immediately after the IDs are hardcoded below. */
+  if (body.setup === 'make_prices' && body.secret === 'qz7Kp2Rm9xVt') {
+    const mk = async (params) => {
+      const r = await fetch('https://api.stripe.com/v1/prices', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(params).toString()
+      });
+      return r.json();
+    };
+    const monthly = await mk({ 'currency': 'usd', 'unit_amount': '2400', 'recurring[interval]': 'month', 'product_data[name]': 'AdRoast Monthly' });
+    const lifetime = await mk({ 'currency': 'usd', 'unit_amount': '48200', 'product_data[name]': 'AdRoast Lifetime' });
+    return res.status(200).json({ monthly: monthly.id || null, monthlyErr: monthly.error || null, lifetime: lifetime.id || null, lifetimeErr: lifetime.error || null });
+  }
+
   const { email } = body;
   const plan = PLANS[body.plan] ? body.plan : 'monthly';
   if (!email) return res.status(400).json({ error: 'Email required' });
