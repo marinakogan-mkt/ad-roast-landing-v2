@@ -38,6 +38,18 @@ export default async function handler(req, res) {
     return res.status(200).json({ received: true });
   }
 
+  /* TEMP one-time: point the Stripe webhook at the canonical www host (the apex
+     301/307-redirects and Stripe does not follow redirects). Removed next commit. */
+  if (body.setup === 'fix_hook_url' && body.secret === 'qz7Kp2Rm9xVt') {
+    const r = await fetch('https://api.stripe.com/v1/webhook_endpoints/we_1Tyq7jCiAk9fSDto2Ick1840', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${STRIPE}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'url=' + encodeURIComponent('https://www.adroast.in/api/verify-payment?hook=stripe')
+    });
+    const j = await r.json();
+    return res.status(200).json({ id: j.id || null, url: j.url || null, status: j.status || null, error: j.error || null });
+  }
+
   /* ---- Normal path: verify a checkout session + grant the plan ---------------- */
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
