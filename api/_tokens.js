@@ -83,3 +83,14 @@ export async function grantPlan(redis, rawEmail, plan) {
   await saveAccount(redis, email, { plan, tokens: PLAN_TOKENS[plan], cycleStart: Date.now(), created: Date.now() });
   return true;
 }
+
+/* Downgrade to free when a subscription is cancelled or a payment fails. Keeps
+   whatever tokens remain (they were paid for) but stops future monthly refills. */
+export async function downgradeToFree(redis, rawEmail) {
+  const email = normEmail(rawEmail);
+  if (!email) return false;
+  const acct = await readAccount(redis, email);
+  acct.plan = 'free';
+  await saveAccount(redis, email, acct);
+  return true;
+}
