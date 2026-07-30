@@ -719,6 +719,29 @@
         return () => window.removeEventListener('hashchange', onHash);
       }, []);
 
+      /* Browser back-button support inside the guided wizard. We push a history
+         entry when entering the wizard and on each step forward, so the browser's
+         Back arrow walks back a step (and out to the landing from step 0) instead
+         of leaving the site. Refs avoid stale-closure reads inside the listener. */
+      const viewRef = React.useRef(view); viewRef.current = view;
+      const stepRef = React.useRef(guidedStep); stepRef.current = guidedStep;
+      const prevViewRef = React.useRef(null);
+      React.useEffect(() => {
+        if (view === 'guided' && prevViewRef.current !== 'guided') {
+          try { window.history.pushState({ wizard: 0 }, ''); } catch (e) {}
+        }
+        prevViewRef.current = view;
+      }, [view]);
+      React.useEffect(() => {
+        const onPop = () => {
+          if (viewRef.current !== 'guided') return;
+          if (stepRef.current > 0) setGuidedStep(s => Math.max(0, s - 1));
+          else setView('landing');
+        };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+      }, []);
+
       const copy = async (text, key) => {
         await navigator.clipboard.writeText(text);
         setCopied(p => ({ ...p, [key]: true }));
@@ -2396,6 +2419,7 @@
           if (stepIdx === total - 1) { generate(); return; }
           const next = steps[stepIdx + 1];
           if (next && next.id === 'review' && !icpAuto.done && !icpAuto.loading) { setPlatform(platformFromLink(inputs.copy)); detectFromAd(); }
+          try { window.history.pushState({ wizard: stepIdx + 1 }, ''); } catch (e) {}
           setGuidedStep(stepIdx + 1);
         };
         return (
@@ -2527,10 +2551,7 @@
                 {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 flex items-center gap-2 text-sm"><Icon name="alertCircle" className="w-4 h-4" />{error}</div>}
                 <div className="flex gap-2 items-center">
                   <button
-                    onClick={() => {
-                      if (stepIdx > 0) setGuidedStep(stepIdx - 1);
-                      else setView('landing');
-                    }}
+                    onClick={() => { window.history.back(); }}
                     className="px-4 py-2.5 rounded-full font-semibold text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors bg-white cursor-pointer"
                   >← Back</button>
                   <button onClick={onContinue} disabled={!step.valid()}
