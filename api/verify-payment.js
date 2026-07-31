@@ -52,7 +52,15 @@ export default async function handler(req, res) {
       const email = (session.metadata && session.metadata.email) || session.customer_email;
       const plan = session.metadata && session.metadata.plan;
       if (email && (plan === 'monthly' || plan === 'lifetime')) {
-        try { await grantPlan(kv, email, plan); } catch (e) { console.error('[verify-payment] grantPlan failed:', e.message); }
+        /* Idempotent per checkout session: refreshing /?payment=success must NOT
+           re-grant 20 tokens. We only grant once per session id. */
+        try {
+          const already = await kv.get(`roast:granted:${sessionId}`);
+          if (!already) {
+            await grantPlan(kv, email, plan);
+            await kv.set(`roast:granted:${sessionId}`, '1', { ex: 60 * 60 * 24 * 90 });
+          }
+        } catch (e) { console.error('[verify-payment] grantPlan failed:', e.message); }
       }
       return res.status(200).json({ ok: true, paid: true, email, plan: plan || null });
     }

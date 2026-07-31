@@ -32,6 +32,24 @@ const EMAILJS_SERVICE_ID = 'service_ywioabe';
 const EMAILJS_TEMPLATE_ID = 'template_gtqow85';
 const EMAILJS_PUBLIC_KEY = '964Wa83HevoEa5KnS';
 
+/* Disposable/temporary email domains — blocked from the free roast sign-up so the
+   free tier can't be farmed with throwaway addresses. Not exhaustive; covers the
+   common ones. */
+const DISPOSABLE_DOMAINS = new Set([
+  'mailinator.com','guerrillamail.com','guerrillamail.info','sharklasers.com','grr.la',
+  '10minutemail.com','10minutemail.net','temp-mail.org','tempmail.com','tempmail.net',
+  'yopmail.com','yopmail.fr','throwawaymail.com','getnada.com','nada.email','maildrop.cc',
+  'dispostable.com','mailnesia.com','trashmail.com','trashmail.de','mintemail.com',
+  'fakeinbox.com','tempinbox.com','mailcatch.com','mohmal.com','emailondeck.com',
+  'spam4.me','tempr.email','discard.email','moakt.com','tempmailo.com','1secmail.com',
+  'inboxkitten.com','mailpoof.com','burnermail.io','tempmailaddress.com','mail-temp.com'
+]);
+function isDisposableEmail(email) {
+  const at = email.lastIndexOf('@');
+  if (at < 0) return false;
+  return DISPOSABLE_DOMAINS.has(email.slice(at + 1));
+}
+
 function randomToken(n = 24) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
   let out = '';
@@ -255,6 +273,7 @@ async function handleRoastLink(req, res) {
   if (!body || typeof body !== 'object') body = {};
   const email = (body.email || '').trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
+  if (isDisposableEmail(email)) return res.status(400).json({ error: 'Please use a work email. Temporary email addresses are not supported.' });
 
   try {
     const emailKey = `auth:ratelimit:email:${email}`;
