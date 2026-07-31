@@ -3069,25 +3069,27 @@
                   {linkedinErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{linkedinErr}</p>}
                 </div>
 
-                <p className="text-center text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">Where do you want to take it from here?</p>
+                {(result?.overall_score != null && result.overall_score <= 6)
+                  ? <p className="text-center text-sm mb-3"><span className="font-semibold text-gray-900">Your ad scored {result.overall_score}/10.</span> <span className="text-gray-500">Want it fixed, not just scored? Here's how we can help.</span></p>
+                  : <p className="text-center text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">Where do you want to take it from here?</p>}
                 <div className="grid sm:grid-cols-3 gap-4 reveal">
                   <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#14a58b' }}>
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#14a58b' }}>Do it yourself</p>
                     <h4 className="font-bold text-gray-900 mt-1">Keep roasting</h4>
-                    <p className="text-sm text-gray-500 mt-1">Run another ad through AdRoast &mdash; free.</p>
-                    <button onClick={reset} className="mt-4 text-sm font-semibold" style={{ color: '#0a66c2' }}>Roast another ad &rarr;</button>
+                    <p className="text-sm text-gray-500 mt-1">Run another ad through AdRoast, free.</p>
+                    <button onClick={reset} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>Roast another ad &rarr;</button>
                   </div>
                   <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#b8760a' }}>
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#b8760a' }}>Do it with you</p>
-                    <h4 className="font-bold text-gray-900 mt-1">Positioning Audit</h4>
-                    <p className="text-sm text-gray-500 mt-1">I diagnose your ads + positioning with you.</p>
-                    <a href="https://calendly.com/marina-kogan-adroast/30min" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-semibold" style={{ color: '#0a66c2' }}>Book the audit &rarr;</a>
+                    <h4 className="font-bold text-gray-900 mt-1">Conversion Roadmap</h4>
+                    <p className="text-sm text-gray-500 mt-1">A $6K positioning roadmap your team can ship in weeks.</p>
+                    <button onClick={() => { window.location.hash = 'services'; setView('services'); }} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>See the roadmap &rarr;</button>
                   </div>
                   <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#7b5cff' }}>
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#7b5cff' }}>Done for you</p>
-                    <h4 className="font-bold text-gray-900 mt-1">We run your ads</h4>
-                    <p className="text-sm text-gray-500 mt-1">Full management, for teams who want it handled.</p>
-                    <a href="https://calendly.com/marina-kogan-adroast/30min" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-semibold" style={{ color: '#0a66c2' }}>Talk to me &rarr;</a>
+                    <h4 className="font-bold text-gray-900 mt-1">Done-For-You</h4>
+                    <p className="text-sm text-gray-500 mt-1">We rebuild and run your ads. $8K/mo, fully managed.</p>
+                    <button onClick={() => { window.location.hash = 'services'; setView('services'); }} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>See the service &rarr;</button>
                   </div>
                 </div>
               </div>
