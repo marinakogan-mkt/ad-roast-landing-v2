@@ -2349,7 +2349,13 @@
           <main className="max-w-5xl mx-auto px-4 py-10 sm:py-16 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Work with us</div>
             <h1 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(28px, 4vw, 46px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>Spending $20K+/mo on ads but demo quality still sucks?</h1>
-            <p className="text-gray-500 mb-10 max-w-2xl" style={{ fontSize: '16px', lineHeight: 1.7 }}>The roaster tells you what's broken. When you want it fixed, we step in, from a ready-to-ship positioning roadmap to a full done-for-you rebuild.</p>
+            <p className="text-gray-500 mb-8 max-w-2xl" style={{ fontSize: '16px', lineHeight: 1.7 }}>The roaster tells you what's broken. When you want it fixed, we step in, from a ready-to-ship positioning roadmap to a full done-for-you rebuild.</p>
+
+            {/* SOCIAL PROOF STRIP */}
+            <div className="border-y border-gray-200 py-4 mb-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-center">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Trusted by 50+ B2B growth teams</span>
+              <span className="text-sm text-gray-400">SaltAndGreen · TCR Media · Series A-C cybersecurity + SaaS</span>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* CONVERSION ROADMAP */}
@@ -2393,7 +2399,101 @@
               </div>
             </div>
 
-            <p className="text-center text-sm text-gray-500 mt-10">Just want to score an ad yourself? <button onClick={() => { window.location.hash = ''; reset(); }} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>Run a free roast →</button></p>
+            {/* PROBLEM CHECKLIST */}
+            <section className="mt-16 sm:mt-20">
+              <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Sound familiar?</h2>
+              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3 max-w-3xl">
+                {[
+                  "You're spending $20K+/mo on ads but demo quality keeps sliding.",
+                  "Prospects book a demo, nod along, then disappear.",
+                  "Your landing page repeats the ad instead of advancing the promise.",
+                  "Sales says the leads aren't a fit; marketing says sales can't close.",
+                  "You've rewritten the homepage three times and nothing moved.",
+                  "You know the positioning is off, but can't see it from the inside."
+                ].map((t, i) => (
+                  <div key={i} className="flex items-start gap-2.5 text-sm text-gray-600"><span className="mt-1 flex-shrink-0" style={{ color: '#dc2626' }}>✕</span><span style={{ lineHeight: 1.55 }}>{t}</span></div>
+                ))}
+              </div>
+              <p className="text-gray-500 text-sm mt-6 max-w-3xl" style={{ lineHeight: 1.7 }}>If two or more of these hit, it's almost never the ad execution. It's the positioning underneath it, and that's exactly what we fix.</p>
+            </section>
+
+            {/* HOW IT WORKS */}
+            <section className="mt-16 sm:mt-20">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>How it works</div>
+              <div className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <h3 className="text-gray-900 mb-4 font-semibold">Conversion Roadmap · 2 weeks</h3>
+                  <ol className="space-y-4">
+                    {[
+                      ["Days 1-3 · Diagnose", "We pull apart your live ads, landing pages, and ICP against real buyer language."],
+                      ["Days 4-7 · Reposition", "We realign the message and draft the fixes, ranked by revenue impact."],
+                      ["Days 8-10 · Deliver", "You get the roadmap plus copy snippets your team can ship the same week."]
+                    ].map(([h, d], i) => (
+                      <li key={i} className="flex gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center" style={{ background: '#eef2ff', color: '#0a66c2' }}>{i + 1}</span>
+                        <div><p className="text-sm font-semibold text-gray-900">{h}</p><p className="text-sm text-gray-500" style={{ lineHeight: 1.6 }}>{d}</p></div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+                <div>
+                  <h3 className="text-gray-900 mb-4 font-semibold">Done-For-You · 3 months</h3>
+                  <ol className="space-y-4">
+                    {[
+                      ["Month 1 · Build", "Everything in the roadmap, implemented. New creatives and a rebuilt landing page."],
+                      ["Month 2 · Launch", "Campaigns go live. We manage the ads day to day."],
+                      ["Month 3 · Optimize", "We test and tune until demo conversion actually moves."]
+                    ].map(([h, d], i) => (
+                      <li key={i} className="flex gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center" style={{ background: '#eef2ff', color: '#0a66c2' }}>{i + 1}</span>
+                        <div><p className="text-sm font-semibold text-gray-900">{h}</p><p className="text-sm text-gray-500" style={{ lineHeight: 1.6 }}>{d}</p></div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            </section>
+
+            {/* TESTIMONIALS */}
+            <section className="mt-16 sm:mt-20">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What founders say</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {CLIENT_QUOTES.map((t, i) => (
+                  <div key={i} className="p-5 sm:p-7 border border-gray-200 rounded-lg bg-white flex flex-col justify-between">
+                    <p className="text-gray-700 text-sm italic mb-6" style={{ lineHeight: 1.7 }}>{`“${t.quote}”`}</p>
+                    <div><p className="text-sm font-semibold text-gray-900">{t.name}</p><p className="text-xs text-gray-400">{t.role}</p></div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* FAQ */}
+            <section className="mt-16 sm:mt-20">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Questions</div>
+              <div className="grid md:grid-cols-2 gap-x-10 gap-y-7 max-w-4xl">
+                {[
+                  ["How much of my time does this take?", "A couple of short calls plus async review. We do the heavy lifting."],
+                  ["Do you interview my customers?", "Optional. We can mine your call recordings, reviews, and won/lost notes instead."],
+                  ["What if I only want the roadmap, not the build?", "That's the Conversion Roadmap. Ship it yourself, or upgrade to Done-For-You later."],
+                  ["What's the refund policy?", "The Conversion Roadmap has a 7-day revision window, with a full refund if the revised scope still misses."],
+                  ["Who is this for?", "B2B SaaS spending $20K+/mo on ads whose demos aren't converting."],
+                  ["How do we start?", "Book a 30-minute call. We'll tell you straight if it's a fit."]
+                ].map(([q, a], i) => (
+                  <div key={i}>
+                    <p className="text-sm font-semibold text-gray-900 mb-1.5">{q}</p>
+                    <p className="text-sm text-gray-500" style={{ lineHeight: 1.65 }}>{a}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* FINAL CTA */}
+            <section className="mt-16 sm:mt-20 text-center border-t border-gray-200 pt-12">
+              <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Ready to fix the positioning under your ads?</h2>
+              <p className="text-gray-500 mb-6 max-w-lg mx-auto" style={{ fontSize: '15px', lineHeight: 1.7 }}>One call to see if it's a fit. No pitch, no pressure, just a straight read on what's costing you demos.</p>
+              <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-block px-8 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
+              <p className="text-sm text-gray-500 mt-5">Just want to score an ad yourself? <button onClick={() => { window.location.hash = ''; reset(); }} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>Run a free roast →</button></p>
+            </section>
           </main>
         </div>
       );
