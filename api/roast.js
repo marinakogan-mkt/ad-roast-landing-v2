@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { readSessionCookie } from './auth/_allowlist.js';
-import { consumeToken } from './_tokens.js';
+import { consumeToken, peekAccount } from './_tokens.js';
 
 const _redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -24,6 +24,33 @@ async function roastAccountEmail(req) {
   }
 }
 
+/* Static locked teaser (optimization #2): served — blurred — to callers who have
+   no tokens and no cached prior roast, so the paywall has plausible content behind
+   it WITHOUT spending an Anthropic call. Real scores/text are never exposed here. */
+const LOCKED_SAMPLE = {
+  icp_mismatch: 'Unlock to see how well this ad matches your ICP.',
+  overall_score: 5,
+  issues: [
+    { category: 'headline_clarity', title: 'Headline Clarity', score: 5, explanation: 'Unlock to reveal.' },
+    { category: 'cta_friction', title: 'CTA Friction', score: 5, explanation: 'Unlock to reveal.' },
+    { category: 'visual_copy_match', title: 'Visual-Copy Match', score: 5, explanation: 'Unlock to reveal.' },
+    { category: 'benefit_specificity', title: 'Benefit Specificity', score: 5, explanation: 'Unlock to reveal.' },
+    { category: 'trust_signals', title: 'Trust Signals', score: 5, explanation: 'Unlock to reveal.' }
+  ],
+  landing_page_roast: {
+    overall_score: 0, headline_score: 0, headline_feedback: '', value_prop_score: 0, value_prop_feedback: '',
+    cta_score: 0, cta_feedback: '', trust_score: 0, trust_feedback: '', top_issues: [], quick_wins: []
+  },
+  ad_landing_mismatch: { alignment_score: 0, verdict: '', disconnects: [], message_match_issues: '' },
+  fix_kit: { headlines: ['Unlock', 'Unlock', 'Unlock'], body: 'Unlock to reveal.', ctas: ['Unlock', 'Unlock'], landing_page_headline: 'Unlock to reveal.', landing_page_subhead: 'Unlock to reveal.', rationale: 'Unlock to reveal.' },
+  experiments: [
+    { title: 'Unlock to reveal', description: 'Unlock to reveal.' },
+    { title: 'Unlock to reveal', description: 'Unlock to reveal.' },
+    { title: 'Unlock to reveal', description: 'Unlock to reveal.' }
+  ],
+  next_steps: ['Unlock to reveal.', 'Unlock to reveal.', 'Unlock to reveal.', 'Unlock to reveal.']
+};
+
 export default async function handler(req, res) {
   const API_VERSION = 'v4';
 
@@ -41,6 +68,35 @@ export default async function handler(req, res) {
   }
 
   const { platform, offerType, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType } = body;
+
+  /* Pre-LLM token gate (optimization #2): a roast only warrants an Anthropic call
+     when the caller is a signed-in account WITH tokens. Out-of-token or anonymous
+     callers get a gated (blurred) response with NO model call and NO scraping —
+     re-serving their last real roast when we have one, else a static locked sample.
+     This kills the "spend a full Sonnet call just to show a blur they already saw"
+     waste on every out-of-token retry. Redis failure fails OPEN (treat as entitled)
+     so a transient outage never wrongly blocks a paying user. */
+  const acctEmail = await roastAccountEmail(req);
+  let acctBal = null, redisDown = false;
+  if (acctEmail) {
+    try { acctBal = await peekAccount(_redis, acctEmail); }
+    catch (e) { redisDown = true; console.error('[AdRoast] peek failed:', e.message); }
+  }
+  const entitled = redisDown || !!(acctEmail && acctBal && acctBal.tokens > 0);
+  if (!entitled) {
+    let cached = null;
+    if (acctEmail) {
+      try { const raw = await _redis.get(`roast:last:${acctEmail}`); cached = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; }
+      catch (e) {}
+    }
+    const gated = cached || LOCKED_SAMPLE;
+    gated._gated = true;
+    gated._version = API_VERSION;
+    gated._entitlement = acctEmail
+      ? { authed: true, email: acctEmail, full: false, remaining: 0, plan: (acctBal && acctBal.plan) || 'free' }
+      : { authed: false, email: null, full: false, remaining: 0, plan: null };
+    return res.status(200).json(gated);
+  }
 
   console.log('[AdRoast v4] Request body type:', typeof req.body);
   console.log('[AdRoast v4] Request body keys:', Object.keys(body));
@@ -153,13 +209,16 @@ export default async function handler(req, res) {
       const html = await pageRes.text();
       
       // Extract text content, removing scripts/styles
+      // Optimization #3: trim the raw page dump to ~3.5K chars. The key elements
+      // (title / H1s / meta) are extracted separately below, so a shorter body
+      // keeps the signal while cutting input tokens per roast substantially.
       landingPageContent = html
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .slice(0, 8000);
+        .slice(0, 3500);
       
       const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
       const h1Match = html.match(/<h1[^>]*>([^<]*)<\/h1>/gi);
@@ -295,7 +354,10 @@ Return this EXACT JSON structure (all fields required):
       body: JSON.stringify({
         model: 'claude-sonnet-5',
         max_tokens: 8000,
-        system: systemPrompt,
+        // Optimization #1: prompt-cache the large static system prompt. It's
+        // byte-identical across every roast, so after the first call it bills at
+        // ~0.1x (cache read) instead of full input price. 5-min ephemeral TTL.
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: adScreenshot
           ? [{ type: 'text', text: userPrompt }, { type: 'image', source: { type: 'base64', media_type: (adScreenshotType || 'image/png'), data: adScreenshot } }]
           : userPrompt }]
@@ -362,22 +424,24 @@ Return this EXACT JSON structure (all fields required):
         parsed._meta = meta;
         parsed._version = API_VERSION;
 
-        /* Token paywall (monetization #3): a roast costs one token. A signed-in
-           account with tokens gets a FULL roast (token consumed); at zero tokens
-           the roast is gated (blurred) and the UI sells a plan. Anonymous callers
-           stay gated (the frontend requires sign-up first). Redis failures fail
-           OPEN so a transient outage never wrongly blurs a paid user's roast. */
-        try {
-          const acctEmail = await roastAccountEmail(req);
-          if (acctEmail) {
+        /* Token consume + entitlement. We only reach here when `entitled` was true
+           at the gate above (account has tokens, or Redis was down and we failed
+           open). Consume one token for this successful roast, and cache the full
+           result to roast:last so any out-of-token retry re-serves it — blurred —
+           with no further Anthropic call (optimization #2). */
+        if (acctEmail && !redisDown) {
+          try {
             const t = await consumeToken(_redis, acctEmail);
             parsed._entitlement = { authed: true, email: acctEmail, full: t.full, remaining: t.remaining, plan: t.plan };
-          } else {
-            parsed._entitlement = { authed: false, email: null, full: false, remaining: 0, plan: null };
+          } catch (e) {
+            console.error('[AdRoast] consume error:', e.message);
+            parsed._entitlement = { authed: true, email: acctEmail, full: true, remaining: null, plan: (acctBal && acctBal.plan) || null };
           }
-        } catch (e) {
-          console.error('[AdRoast] entitlement error:', e.message);
-          parsed._entitlement = { authed: false, email: null, full: true, remaining: null, plan: null };
+          try { await _redis.set(`roast:last:${acctEmail}`, JSON.stringify(parsed), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
+        } else {
+          /* Fail-open path (Redis unavailable at the gate): serve the full roast,
+             never blur — a transient outage must not block a paying user. */
+          parsed._entitlement = { authed: !!acctEmail, email: acctEmail || null, full: true, remaining: null, plan: null };
         }
 
         return res.status(200).json(parsed);

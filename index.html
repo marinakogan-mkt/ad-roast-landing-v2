@@ -889,6 +889,41 @@
         setSending(false); setView('results');
       };
 
+      /* Downscale an uploaded creative to <=1024px (long edge) and re-encode as JPEG
+         before base64-ing it into the roast payload (optimization #3). Phone
+         screenshots are often 3-6MB / millions of pixels; the model doesn't need
+         that resolution to read ad copy, and the smaller image is far fewer input
+         tokens (and a faster upload). Falls back to the original file on any error,
+         and keeps images already under the cap unchanged. Resolves { base64, dataUrl, type }. */
+      const downscaleImage = (file, maxEdge = 1024, quality = 0.85) => new Promise((resolve) => {
+        const done = (base64, dataUrl, type) => resolve({ base64, dataUrl, type });
+        const keepOriginal = () => {
+          const r = new FileReader();
+          r.onload = () => done(String(r.result).split(',')[1], String(r.result), file.type);
+          r.onerror = () => done(null, null, file.type);
+          r.readAsDataURL(file);
+        };
+        try {
+          const img = new Image();
+          const url = URL.createObjectURL(file);
+          img.onload = () => {
+            try {
+              const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+              if (scale >= 1) { URL.revokeObjectURL(url); return keepOriginal(); }
+              const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+              const canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              const dataUrl = canvas.toDataURL('image/jpeg', quality);
+              URL.revokeObjectURL(url);
+              done(dataUrl.split(',')[1], dataUrl, 'image/jpeg');
+            } catch (e) { URL.revokeObjectURL(url); keepOriginal(); }
+          };
+          img.onerror = () => { URL.revokeObjectURL(url); keepOriginal(); };
+          img.src = url;
+        } catch (e) { keepOriginal(); }
+      });
+
       /* Apply a fresh roast result + its token entitlement (monetization #3).
          full=true means a token was spent and the roast is shown in full; full=false
          means the account is out of tokens, so we blur it and sell a plan. */
@@ -2378,6 +2413,39 @@
               ))}
             </div>
 
+            {/* BEFORE / AFTER */}
+            <section className="mb-14">
+              <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(20px, 2.6vw, 30px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Same ad. Different positioning.</h2>
+              <div className="grid md:grid-cols-[1fr_auto_1fr] items-center gap-4 sm:gap-5">
+                {/* BEFORE */}
+                <div className="rounded-2xl border-2 p-5 sm:p-6 bg-white" style={{ borderColor: '#fecaca' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: '#fef2f2', color: '#dc2626' }}>Before</span>
+                    <span style={{ fontSize: '30px', fontWeight: 300, color: '#dc2626', lineHeight: 1 }}>4<span className="text-base text-gray-400">/10</span></span>
+                  </div>
+                  <ul className="space-y-2.5">
+                    {["Hook is about you, not the buyer","No proof for a skeptical buyer","CTA asks for a demo, too soon"].map((t, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><span className="mt-0.5 flex-shrink-0" style={{ color: '#dc2626' }}>✕</span><span style={{ lineHeight: 1.5 }}>{t}</span></li>
+                    ))}
+                  </ul>
+                </div>
+                {/* ARROW */}
+                <div className="flex md:flex-col items-center justify-center py-1"><div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ background: '#0a66c2' }}><Icon name="arrowRight" className="w-5 h-5" /></div></div>
+                {/* AFTER */}
+                <div className="rounded-2xl border-2 p-5 sm:p-6" style={{ borderColor: '#bbf7d0', background: '#f0fdf4' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>After</span>
+                    <span style={{ fontSize: '30px', fontWeight: 300, color: '#15803d', lineHeight: 1 }}>9<span className="text-base text-gray-400">/10</span></span>
+                  </div>
+                  <ul className="space-y-2.5">
+                    {["Hook leads with the buyer's risk","One proof stat above the fold","A lower-commitment first step"].map((t, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-700"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#15803d' }} /><span style={{ lineHeight: 1.5 }}>{t}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </section>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 reveal">
               {/* CONVERSION ROADMAP */}
               <div className="p-8 border-2 rounded-xl hover:shadow-lg transition-all flex flex-col relative" style={{ borderColor: '#0a66c2' }}>
@@ -2419,6 +2487,65 @@
                 <p className="text-center text-xs text-gray-400 mt-2">Casual chat to see if there's a fit</p>
               </div>
             </div>
+
+            {/* WHAT YOU GET — visual deliverable previews */}
+            <section className="mt-16 sm:mt-20">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What you get</div>
+              <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Not a slide deck. Things you can ship.</h2>
+              <div className="grid md:grid-cols-3 gap-5 reveal">
+                {/* Positioning */}
+                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col">
+                  <div className="p-5 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+                    <div className="space-y-2">
+                      <div className="h-2 rounded" style={{ width: '45%', background: '#0a66c2' }} />
+                      <div className="h-2 rounded bg-gray-200" style={{ width: '90%' }} />
+                      <div className="h-2 rounded bg-gray-200" style={{ width: '80%' }} />
+                      <div className="h-2 rounded bg-gray-200" style={{ width: '60%' }} />
+                      <div className="mt-3 p-2 rounded" style={{ background: '#eff5fc' }}><div className="h-2 rounded" style={{ width: '70%', background: '#93c5fd' }} /></div>
+                    </div>
+                  </div>
+                  <div className="p-5 flex-1">
+                    <h4 className="font-semibold text-gray-900 mb-1">Positioning direction</h4>
+                    <p className="text-sm text-gray-500" style={{ lineHeight: 1.6 }}>A sharp ICP and the one message your ads should lead with.</p>
+                  </div>
+                </div>
+                {/* Copy */}
+                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col">
+                  <div className="p-5 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+                    <div className="rounded-lg bg-white border border-gray-200 p-3 mb-2">
+                      <div className="text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Ad headline</div>
+                      <div className="h-2 rounded mb-1.5" style={{ width: '95%', background: '#1a1a1a' }} />
+                      <div className="h-2 rounded bg-gray-300" style={{ width: '70%' }} />
+                    </div>
+                    <div className="rounded-lg bg-white border border-gray-200 p-3">
+                      <div className="text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Landing hero</div>
+                      <div className="h-2 rounded bg-gray-300" style={{ width: '85%' }} />
+                    </div>
+                  </div>
+                  <div className="p-5 flex-1">
+                    <h4 className="font-semibold text-gray-900 mb-1">Copy you can ship</h4>
+                    <p className="text-sm text-gray-500" style={{ lineHeight: 1.6 }}>Rewritten hooks, ad copy, and landing-page lines, ready to paste.</p>
+                  </div>
+                </div>
+                {/* Roadmap */}
+                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col">
+                  <div className="p-5 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+                    <div className="space-y-2">
+                      {[['#0a66c2', '92%'], ['#3b82f6', '74%'], ['#93c5fd', '55%']].map(([c, w], i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full text-[11px] font-bold text-white flex items-center justify-center flex-shrink-0" style={{ background: c }}>{i + 1}</span>
+                          <div className="h-2.5 rounded" style={{ width: w, background: c, opacity: 0.35 }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-5 flex-1">
+                    <h4 className="font-semibold text-gray-900 mb-1">Ranked roadmap</h4>
+                    <p className="text-sm text-gray-500" style={{ lineHeight: 1.6 }}>Every fix ordered by revenue impact, so you know what to do first.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
 
             {/* PROBLEM CHECKLIST (interactive) */}
             <section className="mt-16 sm:mt-20">
@@ -2609,12 +2736,9 @@
                             const file = e.target.files?.[0];
                             if (!file) return;
                             if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              const base64 = reader.result.split(',')[1];
-                              setInputs(p => ({ ...p, adScreenshot: base64, adScreenshotPreview: reader.result }));
-                            };
-                            reader.readAsDataURL(file);
+                            downscaleImage(file).then(({ base64, dataUrl, type }) => {
+                              setInputs(p => ({ ...p, adScreenshot: base64, adScreenshotPreview: dataUrl, adScreenshotType: type }));
+                            });
                           }} />
                         </label>
                       )}
@@ -2653,9 +2777,7 @@
                             <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => {
                               const file = e.target.files?.[0]; if (!file) return;
                               if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
-                              const reader = new FileReader();
-                              reader.onload = () => { const b64 = String(reader.result).split(',')[1]; setInputs(p => ({ ...p, adScreenshot: b64, adScreenshotPreview: reader.result, adScreenshotType: file.type })); };
-                              reader.readAsDataURL(file);
+                              downscaleImage(file).then(({ base64, dataUrl, type }) => { setInputs(p => ({ ...p, adScreenshot: base64, adScreenshotPreview: dataUrl, adScreenshotType: type })); });
                             }} />
                           </label>
                         )}
@@ -2840,12 +2962,9 @@
                             const file = e.target.files?.[0];
                             if (!file) return;
                             if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              const base64 = reader.result.split(',')[1];
-                              setInputs(p => ({ ...p, adScreenshot: base64, adScreenshotPreview: reader.result }));
-                            };
-                            reader.readAsDataURL(file);
+                            downscaleImage(file).then(({ base64, dataUrl, type }) => {
+                              setInputs(p => ({ ...p, adScreenshot: base64, adScreenshotPreview: dataUrl, adScreenshotType: type }));
+                            });
                           }} />
                         </label>
                       )}

@@ -8,7 +8,11 @@
 // Wire-up: call this when the user enters their site, then use `icp_text` to
 // prefill the `icpDescription` field the roast already expects.
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
+// Optimization #4: ICP detection is a simple extraction task, so run it on Haiku
+// (~1/3 the input cost, ~1/3 the output cost of Sonnet) instead of the roast model.
+// Output is editable by the user in the review step, so the quality tradeoff is safe.
+// Its own env var (not the shared ANTHROPIC_MODEL) so it doesn't inherit Sonnet.
+const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
 
 function normalizeUrl(input) {
   let raw = (input || '').trim();

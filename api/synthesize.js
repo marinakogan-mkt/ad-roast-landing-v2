@@ -382,7 +382,8 @@ PLATFORM TRUST-SIGNAL RULES (don't recommend trust signals the ad format can't a
       body: JSON.stringify({
         model: 'claude-sonnet-5',
         max_tokens: 8000,
-        system: systemPrompt,
+        // Optimization #1: prompt-cache the large static synthesis system prompt.
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: userPrompt }]
       })
     });
