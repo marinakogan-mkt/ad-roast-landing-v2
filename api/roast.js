@@ -51,6 +51,57 @@ const LOCKED_SAMPLE = {
   next_steps: ['Unlock to reveal.', 'Unlock to reveal.', 'Unlock to reveal.', 'Unlock to reveal.']
 };
 
+/* Static output schema (optimization #5). Lives in the cached system prefix so the
+   ~500-token JSON contract is billed once (cache read ~0.1x) instead of at full
+   input price on every roast. Score fields are described statically; whether to use
+   1-10 vs 0 is driven by the CRITICAL RULES and the per-request "Landing page content
+   available" flag in the user message, so no per-request interpolation is needed. */
+const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all fields required; no markdown, no backticks, no text before or after). For landing_page_roast and ad_landing_mismatch scores: use real 1-10 numbers when landing page content is available, otherwise 0.
+{
+  "icp_mismatch": "string",
+  "overall_score": <number 1-10>,
+  "issues": [
+    {"category": "headline_clarity", "title": "Headline Clarity", "score": <1-10>, "explanation": "string"},
+    {"category": "cta_friction", "title": "CTA Friction", "score": <1-10>, "explanation": "string"},
+    {"category": "visual_copy_match", "title": "Visual-Copy Match", "score": <1-10>, "explanation": "string"},
+    {"category": "benefit_specificity", "title": "Benefit Specificity", "score": <1-10>, "explanation": "string"},
+    {"category": "trust_signals", "title": "Trust Signals", "score": <1-10>, "explanation": "string"}
+  ],
+  "landing_page_roast": {
+    "overall_score": <1-10 if landing content available, else 0>,
+    "headline_score": <1-10 or 0>,
+    "headline_feedback": "string",
+    "value_prop_score": <1-10 or 0>,
+    "value_prop_feedback": "string",
+    "cta_score": <1-10 or 0>,
+    "cta_feedback": "string",
+    "trust_score": <1-10 or 0>,
+    "trust_feedback": "string",
+    "top_issues": ["string", "string", "string"],
+    "quick_wins": ["string", "string", "string"]
+  },
+  "ad_landing_mismatch": {
+    "alignment_score": <1-10 if landing content available, else 0>,
+    "verdict": "string",
+    "disconnects": [{"problem": "string", "fix": "string"}],
+    "message_match_issues": "string"
+  },
+  "fix_kit": {
+    "headlines": ["string", "string", "string"],
+    "body": "string",
+    "ctas": ["string", "string"],
+    "landing_page_headline": "string",
+    "landing_page_subhead": "string",
+    "rationale": "string"
+  },
+  "experiments": [
+    {"title": "string", "description": "string"},
+    {"title": "string", "description": "string"},
+    {"title": "string", "description": "string"}
+  ],
+  "next_steps": ["string", "string", "string", "string"]
+}`;
+
 export default async function handler(req, res) {
   const API_VERSION = 'v4';
 
@@ -297,51 +348,7 @@ ${landingCopy?.trim() ? `=== LANDING PAGE CONTENT (USER-PROVIDED) ===\n${landing
 
 ${!hasAnyLandingContent ? 'NO LANDING PAGE CONTENT AVAILABLE. Set all landing_page_roast scores to 0 and ad_landing_mismatch alignment_score to 0.' : 'LANDING PAGE CONTENT IS AVAILABLE ABOVE. You MUST provide real scores (1-10) for landing_page_roast and ad_landing_mismatch. Do NOT use 0.'}
 
-Return this EXACT JSON structure (all fields required):
-{
-  "icp_mismatch": "string",
-  "overall_score": <number 1-10>,
-  "issues": [
-    {"category": "headline_clarity", "title": "Headline Clarity", "score": <1-10>, "explanation": "string"},
-    {"category": "cta_friction", "title": "CTA Friction", "score": <1-10>, "explanation": "string"},
-    {"category": "visual_copy_match", "title": "Visual-Copy Match", "score": <1-10>, "explanation": "string"},
-    {"category": "benefit_specificity", "title": "Benefit Specificity", "score": <1-10>, "explanation": "string"},
-    {"category": "trust_signals", "title": "Trust Signals", "score": <1-10>, "explanation": "string"}
-  ],
-  "landing_page_roast": {
-    "overall_score": <${hasAnyLandingContent ? '1-10 REQUIRED — NOT 0' : '0'}>,
-    "headline_score": <${hasAnyLandingContent ? '1-10' : '0'}>,
-    "headline_feedback": "string",
-    "value_prop_score": <${hasAnyLandingContent ? '1-10' : '0'}>,
-    "value_prop_feedback": "string",
-    "cta_score": <${hasAnyLandingContent ? '1-10' : '0'}>,
-    "cta_feedback": "string",
-    "trust_score": <${hasAnyLandingContent ? '1-10' : '0'}>,
-    "trust_feedback": "string",
-    "top_issues": ["string", "string", "string"],
-    "quick_wins": ["string", "string", "string"]
-  },
-  "ad_landing_mismatch": {
-    "alignment_score": <${hasAnyLandingContent ? '1-10 REQUIRED — NOT 0' : '0'}>,
-    "verdict": "string",
-    "disconnects": [{"problem": "string", "fix": "string"}],
-    "message_match_issues": "string"
-  },
-  "fix_kit": {
-    "headlines": ["string", "string", "string"],
-    "body": "string",
-    "ctas": ["string", "string"],
-    "landing_page_headline": "string",
-    "landing_page_subhead": "string",
-    "rationale": "string"
-  },
-  "experiments": [
-    {"title": "string", "description": "string"},
-    {"title": "string", "description": "string"},
-    {"title": "string", "description": "string"}
-  ],
-  "next_steps": ["string", "string", "string", "string"]
-}`;
+Return the JSON object defined in the output contract. All fields required.`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -354,10 +361,12 @@ Return this EXACT JSON structure (all fields required):
       body: JSON.stringify({
         model: 'claude-sonnet-5',
         max_tokens: 8000,
-        // Optimization #1: prompt-cache the large static system prompt. It's
-        // byte-identical across every roast, so after the first call it bills at
-        // ~0.1x (cache read) instead of full input price. 5-min ephemeral TTL.
-        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        // Optimization #1 + #5: prompt-cache the large static system prompt AND the
+        // JSON output contract together. Both are byte-identical across every roast,
+        // so after the first call the whole prefix bills at ~0.1x (cache read) instead
+        // of full input price. Moving the ~500-token schema out of the (uncached) user
+        // message and into this cached prefix is the bulk of the per-roast saving.
+        system: [{ type: 'text', text: systemPrompt + '\n\n' + OUTPUT_CONTRACT, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: adScreenshot
           ? [{ type: 'text', text: userPrompt }, { type: 'image', source: { type: 'base64', media_type: (adScreenshotType || 'image/png'), data: adScreenshot } }]
           : userPrompt }]
