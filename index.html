@@ -2510,61 +2510,98 @@
               <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#fff', color: '#0a2540' }} className="inline-block px-8 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
             </section>
 
-            {/* ══ 7. DELIVERABLE BREAKDOWN (Deliverable 1/2/3, each with a preview, mirrors Fletch) ══ */}
-            <section className="mb-16 space-y-12">
-              {/* Deliverable 1 — text left / preview right */}
+            {/* ══ 7. DELIVERABLE BREAKDOWN — real report sections (anonymized) as previews ══ */}
+            <section className="mb-16">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Inside the deliverable</div>
+              <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Real sections from a positioning report.</h2>
+              <p className="text-gray-400 text-sm mb-10">Anonymized from client work. This is the depth you get, not a slide deck.</p>
+              <div className="space-y-12">
+
+              {/* Deliverable 1 — text left / report preview right */}
               <div className="grid md:grid-cols-2 gap-6 sm:gap-10 items-center reveal">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Deliverable 1</div>
                   <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>A sharper ICP and the one message to lead with</h3>
-                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>We audit your live ads, landing pages, sales calls, competitors, and ICP to find the positioning your ads should lead with, ranked by revenue impact so you know exactly what to change first.</p>
+                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>We audit your live ads, landing pages, sales calls, competitors, and ICP to find the positioning your ads should lead with, ranked by risk so you know exactly what to change first.</p>
                 </div>
-                <div className="rounded-2xl border border-gray-200 bg-white p-6" style={{ background: '#f8fafc' }}>
-                  <div className="space-y-2">
-                    <div className="h-2.5 rounded" style={{ width: '45%', background: '#0a66c2' }} />
-                    <div className="h-2.5 rounded bg-gray-200" style={{ width: '90%' }} />
-                    <div className="h-2.5 rounded bg-gray-200" style={{ width: '80%' }} />
-                    <div className="h-2.5 rounded bg-gray-200" style={{ width: '65%' }} />
-                    <div className="mt-3 p-3 rounded-lg" style={{ background: '#eff5fc' }}><div className="h-2.5 rounded" style={{ width: '70%', background: '#93c5fd' }} /></div>
+                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                  <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fca5a5' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fde68a' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#86efac' }} />
+                    <span className="text-[11px] text-gray-400 ml-2">positioning-report · section A</span>
+                  </div>
+                  <div className="p-5">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide mb-2.5" style={{ color: '#0a66c2' }}>A · Recommended Positioning</div>
+                    <div className="rounded-xl p-4 mb-3" style={{ background: '#eff5fc', borderLeft: '3px solid #0a66c2' }}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#0a66c2' }}>Core Positioning Statement</p>
+                      <p className="text-sm text-gray-800" style={{ lineHeight: 1.55 }}>For security teams buried in SaaS they can't see, [the product] maps every app touching your data in minutes, turning reactive cleanup into continuous control.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>Bet 1 · Low risk</span>
+                      <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: '#fef9c3', color: '#a16207' }}>Bet 2 · Medium</span>
+                      <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: '#f1f5f9', color: '#64748b' }}>Bet 3 · Bold</span>
+                    </div>
                   </div>
                 </div>
               </div>
-              {/* Deliverable 2 — preview left / text right */}
+
+              {/* Deliverable 2 — report preview left / text right */}
               <div className="grid md:grid-cols-2 gap-6 sm:gap-10 items-center reveal">
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 md:order-1" style={{ background: '#f8fafc' }}>
-                  <div className="rounded-lg bg-white border border-gray-200 p-4 mb-3">
-                    <div className="text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Ad headline</div>
-                    <div className="h-2.5 rounded mb-2" style={{ width: '95%', background: '#1a1a1a' }} />
-                    <div className="h-2.5 rounded bg-gray-300" style={{ width: '70%' }} />
+                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm md:order-1">
+                  <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fca5a5' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fde68a' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#86efac' }} />
+                    <span className="text-[11px] text-gray-400 ml-2">positioning-report · section F</span>
                   </div>
-                  <div className="rounded-lg bg-white border border-gray-200 p-4">
-                    <div className="text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Landing hero</div>
-                    <div className="h-2.5 rounded bg-gray-300" style={{ width: '85%' }} />
+                  <div className="p-5">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>F · Messaging Pillars + Proof</div>
+                    <div className="space-y-2.5">
+                      {[["1", "Complete discovery", "See every app and integration, even the ones no one approved."], ["2", "Security-first visibility", "Know what can reach your data before an attacker does."], ["3", "Zero-friction setup", "Full visibility in minutes. No agents, no network changes."]].map(([n, title, msg], i) => (
+                        <div key={i} className="flex gap-3 items-start rounded-lg border border-gray-100 p-3">
+                          <span className="w-6 h-6 rounded-full text-[11px] font-bold text-white flex items-center justify-center flex-shrink-0" style={{ background: '#0a66c2' }}>{n}</span>
+                          <div><p className="text-xs font-semibold text-gray-900">{title}</p><p className="text-xs text-gray-500 mt-0.5" style={{ lineHeight: 1.5 }}>{`“${msg}”`}</p></div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 <div className="md:order-2">
                   <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Deliverable 2</div>
-                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>Copy snippets you can ship this week</h3>
-                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>Rewritten hooks, ad copy, and landing-page lines mapped to the new positioning, ready to paste. Not a slide deck, things your team can run.</p>
+                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>Messaging pillars with proof, and copy to ship</h3>
+                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>3-5 messaging pillars, each with the exact line to lead with and the proof point it needs, plus rewritten hooks, ad copy, and landing-page lines ready to paste.</p>
                 </div>
               </div>
-              {/* Deliverable 3 — text left / preview right */}
+
+              {/* Deliverable 3 — text left / report preview right */}
               <div className="grid md:grid-cols-2 gap-6 sm:gap-10 items-center reveal">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Deliverable 3</div>
-                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>An implementation roadmap ranked by impact</h3>
-                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>Every fix ordered by revenue impact, with the reasoning, so your team knows exactly what to do first, second, and third. No retainer required.</p>
+                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>A 2-week action plan ranked by impact</h3>
+                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>Every fix ordered by revenue impact, day by day, with the reasoning, so your team knows exactly what to do first, second, and third. No retainer required.</p>
                 </div>
-                <div className="rounded-2xl border border-gray-200 bg-white p-6" style={{ background: '#f8fafc' }}>
-                  <div className="space-y-2.5">
-                    {[['#0a66c2', '92%'], ['#3b82f6', '74%'], ['#93c5fd', '55%']].map(([c, w], i) => (
-                      <div key={i} className="flex items-center gap-2.5">
-                        <span className="w-6 h-6 rounded-full text-[11px] font-bold text-white flex items-center justify-center flex-shrink-0" style={{ background: c }}>{i + 1}</span>
-                        <div className="h-3 rounded" style={{ width: w, background: c, opacity: 0.35 }} />
-                      </div>
-                    ))}
+                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+                  <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-gray-100" style={{ background: '#f8fafc' }}>
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fca5a5' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fde68a' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#86efac' }} />
+                    <span className="text-[11px] text-gray-400 ml-2">positioning-report · section K</span>
+                  </div>
+                  <div className="p-5">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>K · 2-Week Action Plan</div>
+                    <div className="relative">
+                      <div className="absolute w-0.5" style={{ left: '11px', top: '10px', bottom: '10px', background: '#dbeafe' }} />
+                      <ol className="space-y-2.5 relative">
+                        {[["Day 1-2", "Rewrite LP headlines to match each ad's promise"], ["Day 2", 'Kill every "Learn more" CTA; swap in action-first copy'], ["Day 3", "Add trust signals to the top-spend ads"]].map(([day, title], i) => (
+                          <li key={i} className="flex gap-3 items-start">
+                            <span className="relative z-10 w-6 h-6 rounded-full text-[11px] font-bold text-white flex items-center justify-center flex-shrink-0" style={{ background: '#0a66c2' }}>{i + 1}</span>
+                            <div className="rounded-lg border border-gray-100 bg-white p-2.5 flex-1">
+                              <p className="text-[11px] font-semibold" style={{ color: '#0a66c2' }}>{day}</p>
+                              <p className="text-xs text-gray-600" style={{ lineHeight: 1.45 }}>{title}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
                   </div>
                 </div>
+              </div>
+
               </div>
             </section>
 
