@@ -2386,153 +2386,236 @@
             </div>
           </header>
           <main className="max-w-5xl mx-auto px-4 py-10 sm:py-16 w-full">
+
+            {/* ══ 1. HERO (mirrors Fletch: H1 + 1-sentence credibility subhead + 2 CTAs + logos) ══ */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Work with us</div>
-            <h1 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(28px, 4vw, 46px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>Spending $20K+/mo on ads but demo quality still sucks?</h1>
-            <p className="text-gray-500 mb-7 max-w-2xl" style={{ fontSize: '16px', lineHeight: 1.7 }}>We fix the positioning underneath your ads: a sharper ICP, the one message worth leading with, and copy your team ships next week. 50+ B2B software teams, from a 10-day roadmap to a full done-for-you rebuild.</p>
+            <h1 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(30px, 5vw, 52px)', fontWeight: 300, letterSpacing: '-0.5px', lineHeight: 1.1 }}>Let's fix the positioning<br className="hidden sm:block" /> under your ads.</h1>
+            <p className="text-gray-500 mb-7 max-w-2xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>AdRoast is a positioning studio that has helped 50+ B2B software teams find the message their ads should lead with, align the team on it, and ship it across their creatives and landing pages.</p>
             <div className="flex flex-wrap items-center gap-3 mb-8">
               <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-block px-7 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
               <button onClick={() => { const el = document.getElementById('svc-beforeafter'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }} className="inline-flex items-center gap-1.5 px-6 py-3 rounded-full font-semibold text-sm bg-white border transition-colors hover:bg-blue-50 cursor-pointer" style={{ borderColor: '#0a66c2', color: '#0a66c2' }}>See before &amp; afters <Icon name="arrowRight" className="w-4 h-4" /></button>
             </div>
-
-            {/* SOCIAL PROOF STRIP */}
-            <div className="border-y border-gray-200 py-4 mb-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-center">
+            <div className="border-y border-gray-200 py-4 mb-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-center">
               <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Trusted by 50+ B2B growth teams</span>
               <span className="text-sm text-gray-400">SaltAndGreen · TCR Media · Series A-C cybersecurity + SaaS</span>
             </div>
 
-            {/* STATS BAND */}
-            <div className="grid grid-cols-3 gap-4 mb-12 reveal">
-              {[
-                { to: 10, suffix: '-day', label: 'positioning roadmap', icon: 'zap' },
-                { to: 2, suffix: '×', label: 'target on demo conversion', icon: 'target' },
-                { to: 50, suffix: '+', label: 'B2B growth teams', icon: 'flame' }
-              ].map((s, i) => (
-                <div key={i} className="card-lift rounded-xl border border-gray-200 bg-white p-5 sm:p-6 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1" style={{ color: '#0a66c2', fontSize: 'clamp(26px, 5vw, 38px)', fontWeight: 300, letterSpacing: '-1px', lineHeight: 1 }}>
-                    <Icon name={s.icon} className="w-5 h-5 sm:w-6 sm:h-6 hidden sm:inline" />
-                    <span><CountUp to={s.to} suffix={s.suffix} /></span>
+            {/* ══ 2. OFFER CARD (3-column productized offer, mirrors Fletch) ══ */}
+            <section className="rounded-2xl border-2 bg-white p-6 sm:p-8 relative reveal mb-10" style={{ borderColor: '#0a2540' }}>
+              <div className="grid md:grid-cols-[1.1fr_1.25fr_0.95fr] gap-8">
+                {/* col 1: the product */}
+                <div>
+                  <h2 className="text-gray-900 mb-3" style={{ fontSize: '26px', fontWeight: 500, letterSpacing: '-0.3px', lineHeight: 1.15 }}>Conversion Roadmap</h2>
+                  <p className="text-gray-600 text-sm mb-5" style={{ lineHeight: 1.7 }}>A focused 10-day sprint on Zoom to nail the positioning under your ads, capture it in a roadmap that aligns your team, and hand you ad + landing-page copy you can ship the same week.</p>
+                  <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-block px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
+                </div>
+                {/* col 2: what you get */}
+                <div className="md:border-l md:border-gray-200 md:pl-8">
+                  <p className="text-sm font-semibold text-gray-900 mb-4">What you get:</p>
+                  <ul className="space-y-4">
+                    {[
+                      ["Positioning ranked by revenue impact", "We audit your live ads, landing pages, sales calls, competitors, and ICP to find the sharpest angle, and rank the fixes by what moves demos first."],
+                      ["Copy snippets for ads and landing pages", "Rewritten hooks, ad copy, and landing-page lines mapped to the new positioning, ready to paste."],
+                      ["An implementation roadmap", "A step-by-step plan your team can ship next week. No retainer required."]
+                    ].map(([h, d], i) => (
+                      <li key={i} className="flex gap-2.5">
+                        <Icon name="check" className="w-4 h-4 mt-1 flex-shrink-0" style={{ color: '#0a66c2' }} />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{h}</p>
+                          <p className="text-sm text-gray-500 mt-0.5" style={{ lineHeight: 1.55 }}>{d}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {/* col 3: pricing by scope */}
+                <div className="md:border-l md:border-gray-200 md:pl-8">
+                  <p className="text-sm font-semibold text-gray-900 mb-1">Pricing by scope:</p>
+                  <p className="text-xs text-gray-400 mb-4">(done-with-you, or fully done-for-you)</p>
+                  <div className="rounded-xl border-2 p-4 mb-3" style={{ borderColor: '#0a66c2', background: '#f8fbff' }}>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: '#0a66c2' }}>Done with you · 10 days</div>
+                    <p className="text-sm font-semibold text-gray-900">Conversion Roadmap</p>
+                    <p className="text-gray-900" style={{ fontSize: '28px', fontWeight: 300, letterSpacing: '-0.5px' }}>$6,000<span className="text-gray-400 text-xs ml-1 font-normal">one-time</span></p>
                   </div>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-2" style={{ lineHeight: 1.4 }}>{s.label}</p>
+                  <div className="rounded-xl border border-gray-200 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide mb-0.5" style={{ color: '#0a66c2' }}>Done for you · 3 months</div>
+                    <p className="text-sm font-semibold text-gray-900">Done-For-You Rebuild</p>
+                    <p className="text-gray-900" style={{ fontSize: '28px', fontWeight: 300, letterSpacing: '-0.5px' }}>$8,000<span className="text-gray-400 text-xs ml-1 font-normal">/mo</span></p>
+                    <p className="text-xs text-gray-500 mt-1.5" style={{ lineHeight: 1.5 }}>Everything in the roadmap, built, launched, and optimized until demo conversion doubles.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* ══ 3. TESTIMONIAL STRIP (4 outcome quotes right after the offer, mirrors Fletch) ══ */}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16 reveal">
+              {CLIENT_QUOTES.map((t, i) => (
+                <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col justify-between">
+                  <p className="text-gray-700 text-xs italic mb-3" style={{ lineHeight: 1.6 }}>{`“${t.quote}”`}</p>
+                  <div><p className="text-xs font-semibold text-gray-900">{t.name}</p><p className="text-[11px] text-gray-400">{t.role}</p></div>
                 </div>
               ))}
             </div>
 
-            {/* ── THE OFFER (single productized) ── */}
-            <section className="mb-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>The offer</div>
-              <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>One productized sprint. Fixed price, fixed timeline.</h2>
-              <div className="rounded-2xl border-2 bg-white p-7 sm:p-9 relative reveal" style={{ borderColor: '#0a66c2' }}>
-                <div className="absolute -top-3 left-8 px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>MOST POPULAR</div>
-                <div className="grid md:grid-cols-[1.25fr_1fr] gap-8 items-start">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Done with you · 10 days</div>
-                    <h3 className="text-gray-900 mb-2" style={{ fontSize: '28px', fontWeight: 500, letterSpacing: '-0.3px' }}>Conversion Roadmap</h3>
-                    <div className="mb-4"><span className="text-gray-900" style={{ fontSize: '40px', fontWeight: 300, letterSpacing: '-0.5px' }}>$6K</span><span className="text-gray-400 text-sm ml-2">one-time · delivered in 10 days</span></div>
-                    <p className="text-gray-600 text-sm mb-6" style={{ lineHeight: 1.7 }}>Clear positioning direction with ad copy and landing-page fixes your team can ship next week. You buy the artifacts, not a consulting retainer.</p>
-                    <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-block px-7 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
-                    <p className="text-xs text-gray-400 mt-2">30 minutes. We'll tell you straight if it's a fit.</p>
-                  </div>
-                  <div className="rounded-xl p-5" style={{ background: '#f8fafc' }}>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-3">What you walk away with</p>
-                    <ul className="space-y-2.5">
-                      {["Why your demos aren't converting","A sharper ICP and the one message to lead with","Copy snippets for ads and landing pages","An implementation roadmap ranked by revenue impact"].map((t, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span style={{ lineHeight: 1.5 }}>{t}</span></li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+            {/* ══ 4. PROBLEM CHECKLIST ("Do you have a positioning problem?", mirrors Fletch) ══ */}
+            <section className="mb-16">
+              <h2 className="text-gray-900 mb-1" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Do you have a positioning problem?</h2>
+              <p className="text-gray-400 text-sm mb-6">(Check all that apply)</p>
+              <div className="grid sm:grid-cols-2 gap-3 max-w-3xl">
+                {[
+                  "You're spending $20K+/mo on ads but demo quality keeps sliding.",
+                  "Prospects book a demo, nod along, then disappear.",
+                  "You're going after multiple segments and don't know who to prioritize.",
+                  "Your landing page repeats the ad instead of advancing the promise.",
+                  "Sales and marketing use different language to explain what you do.",
+                  "You've rewritten the homepage three times and nothing moved."
+                ].map((t, i) => {
+                  const on = svcChecked.includes(i);
+                  return (
+                    <button key={i} onClick={() => setSvcChecked(prev => on ? prev.filter(x => x !== i) : [...prev, i])}
+                      className="text-left flex items-start gap-3 p-3.5 rounded-xl border-2 transition-all cursor-pointer card-lift"
+                      style={on ? { borderColor: '#0a66c2', background: '#eff5fc' } : { borderColor: '#e8e8f0', background: '#fff' }}>
+                      <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors" style={on ? { borderColor: '#0a66c2', background: '#0a66c2' } : { borderColor: '#cbd5e1' }}>
+                        {on && <Icon name="check" className="w-3.5 h-3.5 text-white" />}
+                      </span>
+                      <span className="text-sm" style={{ lineHeight: 1.5, color: on ? '#0a2540' : '#475569' }}>{t}</span>
+                    </button>
+                  );
+                })}
               </div>
-
-              {/* Done-For-You upgrade */}
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 justify-between reveal">
-                <div className="flex-1">
-                  <div className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#0a66c2' }}>Want us to build &amp; run it too?</div>
-                  <p className="text-sm text-gray-600" style={{ lineHeight: 1.6 }}><strong className="text-gray-900">Done-For-You Rebuild · $8K/mo (3-month engagement).</strong> Everything in the roadmap, implemented: new creatives, a rebuilt landing page, campaign launch, and weekly optimization until demo conversion doubles.</p>
-                </div>
-                <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="whitespace-nowrap px-6 py-2.5 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors no-underline text-center">Talk to us →</a>
+              <div className="mt-6 max-w-3xl flex items-start gap-3">
+                <span style={{ fontSize: 22, lineHeight: 1 }}>{svcChecked.length >= 1 ? '😊' : '👀'}</span>
+                <p className="text-sm" style={{ color: '#0a2540', lineHeight: 1.6 }}>{svcChecked.length === 0 ? "Most teams check at least three. Any of these is positioning, not ad execution, and that's exactly what we fix." : <><strong>{svcChecked.length} of 6. No problem.</strong> That's positioning, not execution, and it's exactly what the Conversion Roadmap fixes.</>}</p>
               </div>
             </section>
 
-            {/* WHAT YOU GET — visual deliverable previews */}
-            <section className="mt-16 sm:mt-20">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What you get</div>
-              <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Not a slide deck. Things you can ship.</h2>
-              <div className="grid md:grid-cols-3 gap-5 reveal">
-                {/* Positioning */}
-                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col">
-                  <div className="p-5 border-b border-gray-100" style={{ background: '#f8fafc' }}>
-                    <div className="space-y-2">
-                      <div className="h-2 rounded" style={{ width: '45%', background: '#0a66c2' }} />
-                      <div className="h-2 rounded bg-gray-200" style={{ width: '90%' }} />
-                      <div className="h-2 rounded bg-gray-200" style={{ width: '80%' }} />
-                      <div className="h-2 rounded bg-gray-200" style={{ width: '60%' }} />
-                      <div className="mt-3 p-2 rounded" style={{ background: '#eff5fc' }}><div className="h-2 rounded" style={{ width: '70%', background: '#93c5fd' }} /></div>
-                    </div>
+            {/* ══ 5. BEFORE / AFTER (the transformation; target of hero secondary CTA) ══ */}
+            <section id="svc-beforeafter" className="mb-16 scroll-mt-24">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Before &amp; after</div>
+              <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(20px, 2.6vw, 30px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Same ad. Different positioning.</h2>
+              <div className="grid md:grid-cols-[1fr_auto_1fr] items-center gap-4 sm:gap-5">
+                <div className="rounded-2xl border-2 p-5 sm:p-6 bg-white" style={{ borderColor: '#fecaca' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: '#fef2f2', color: '#dc2626' }}>Before</span>
+                    <span style={{ fontSize: '30px', fontWeight: 300, color: '#dc2626', lineHeight: 1 }}>4<span className="text-base text-gray-400">/10</span></span>
                   </div>
-                  <div className="p-5 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#0a66c2' }}>Fixes: a vague "everyone" ICP</p>
-                    <h4 className="font-semibold text-gray-900 mb-1">Positioning direction</h4>
-                    <p className="text-sm text-gray-500" style={{ lineHeight: 1.6 }}>A sharp ICP and the one message your ads should lead with.</p>
-                  </div>
+                  <ul className="space-y-2.5">
+                    {["Hook is about you, not the buyer","No proof for a skeptical buyer","CTA asks for a demo, too soon"].map((t, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><span className="mt-0.5 flex-shrink-0" style={{ color: '#dc2626' }}>✕</span><span style={{ lineHeight: 1.5 }}>{t}</span></li>
+                    ))}
+                  </ul>
                 </div>
-                {/* Copy */}
-                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col">
-                  <div className="p-5 border-b border-gray-100" style={{ background: '#f8fafc' }}>
-                    <div className="rounded-lg bg-white border border-gray-200 p-3 mb-2">
-                      <div className="text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Ad headline</div>
-                      <div className="h-2 rounded mb-1.5" style={{ width: '95%', background: '#1a1a1a' }} />
-                      <div className="h-2 rounded bg-gray-300" style={{ width: '70%' }} />
-                    </div>
-                    <div className="rounded-lg bg-white border border-gray-200 p-3">
-                      <div className="text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Landing hero</div>
-                      <div className="h-2 rounded bg-gray-300" style={{ width: '85%' }} />
-                    </div>
+                <div className="flex md:flex-col items-center justify-center py-1"><div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ background: '#0a66c2' }}><Icon name="arrowRight" className="w-5 h-5" /></div></div>
+                <div className="rounded-2xl border-2 p-5 sm:p-6" style={{ borderColor: '#bbf7d0', background: '#f0fdf4' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>After</span>
+                    <span style={{ fontSize: '30px', fontWeight: 300, color: '#15803d', lineHeight: 1 }}>9<span className="text-base text-gray-400">/10</span></span>
                   </div>
-                  <div className="p-5 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#0a66c2' }}>Fixes: copy that talks about you, not the buyer</p>
-                    <h4 className="font-semibold text-gray-900 mb-1">Copy you can ship</h4>
-                    <p className="text-sm text-gray-500" style={{ lineHeight: 1.6 }}>Rewritten hooks, ad copy, and landing-page lines, ready to paste.</p>
-                  </div>
-                </div>
-                {/* Roadmap */}
-                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col">
-                  <div className="p-5 border-b border-gray-100" style={{ background: '#f8fafc' }}>
-                    <div className="space-y-2">
-                      {[['#0a66c2', '92%'], ['#3b82f6', '74%'], ['#93c5fd', '55%']].map(([c, w], i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full text-[11px] font-bold text-white flex items-center justify-center flex-shrink-0" style={{ background: c }}>{i + 1}</span>
-                          <div className="h-2.5 rounded" style={{ width: w, background: c, opacity: 0.35 }} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="p-5 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#0a66c2' }}>Fixes: not knowing what to change first</p>
-                    <h4 className="font-semibold text-gray-900 mb-1">Ranked roadmap</h4>
-                    <p className="text-sm text-gray-500" style={{ lineHeight: 1.6 }}>Every fix ordered by revenue impact, so you know what to do first.</p>
-                  </div>
+                  <ul className="space-y-2.5">
+                    {["Hook leads with the buyer's risk","One proof stat above the fold","A lower-commitment first step"].map((t, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-700"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#15803d' }} /><span style={{ lineHeight: 1.5 }}>{t}</span></li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </section>
 
-            {/* HOW IT WORKS */}
-            <section className="mt-16 sm:mt-20">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>How it works</div>
+            {/* ══ 6. MID-CTA ("Book the Conversion Roadmap", mirrors Fletch's mid-page CTA) ══ */}
+            <section className="mb-16 text-center rounded-2xl py-10 px-6" style={{ background: '#0a2540' }}>
+              <h2 className="text-white mb-2" style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Book the Conversion Roadmap</h2>
+              <p className="mb-6" style={{ color: '#9db8d8', fontSize: '15px' }}>Here's exactly what you get 👇</p>
+              <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#fff', color: '#0a2540' }} className="inline-block px-8 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
+            </section>
+
+            {/* ══ 7. DELIVERABLE BREAKDOWN (Deliverable 1/2/3, each with a preview, mirrors Fletch) ══ */}
+            <section className="mb-16 space-y-12">
+              {/* Deliverable 1 — text left / preview right */}
+              <div className="grid md:grid-cols-2 gap-6 sm:gap-10 items-center reveal">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Deliverable 1</div>
+                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>A sharper ICP and the one message to lead with</h3>
+                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>We audit your live ads, landing pages, sales calls, competitors, and ICP to find the positioning your ads should lead with, ranked by revenue impact so you know exactly what to change first.</p>
+                </div>
+                <div className="rounded-2xl border border-gray-200 bg-white p-6" style={{ background: '#f8fafc' }}>
+                  <div className="space-y-2">
+                    <div className="h-2.5 rounded" style={{ width: '45%', background: '#0a66c2' }} />
+                    <div className="h-2.5 rounded bg-gray-200" style={{ width: '90%' }} />
+                    <div className="h-2.5 rounded bg-gray-200" style={{ width: '80%' }} />
+                    <div className="h-2.5 rounded bg-gray-200" style={{ width: '65%' }} />
+                    <div className="mt-3 p-3 rounded-lg" style={{ background: '#eff5fc' }}><div className="h-2.5 rounded" style={{ width: '70%', background: '#93c5fd' }} /></div>
+                  </div>
+                </div>
+              </div>
+              {/* Deliverable 2 — preview left / text right */}
+              <div className="grid md:grid-cols-2 gap-6 sm:gap-10 items-center reveal">
+                <div className="rounded-2xl border border-gray-200 bg-white p-6 md:order-1" style={{ background: '#f8fafc' }}>
+                  <div className="rounded-lg bg-white border border-gray-200 p-4 mb-3">
+                    <div className="text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Ad headline</div>
+                    <div className="h-2.5 rounded mb-2" style={{ width: '95%', background: '#1a1a1a' }} />
+                    <div className="h-2.5 rounded bg-gray-300" style={{ width: '70%' }} />
+                  </div>
+                  <div className="rounded-lg bg-white border border-gray-200 p-4">
+                    <div className="text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Landing hero</div>
+                    <div className="h-2.5 rounded bg-gray-300" style={{ width: '85%' }} />
+                  </div>
+                </div>
+                <div className="md:order-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Deliverable 2</div>
+                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>Copy snippets you can ship this week</h3>
+                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>Rewritten hooks, ad copy, and landing-page lines mapped to the new positioning, ready to paste. Not a slide deck, things your team can run.</p>
+                </div>
+              </div>
+              {/* Deliverable 3 — text left / preview right */}
+              <div className="grid md:grid-cols-2 gap-6 sm:gap-10 items-center reveal">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Deliverable 3</div>
+                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>An implementation roadmap ranked by impact</h3>
+                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>Every fix ordered by revenue impact, with the reasoning, so your team knows exactly what to do first, second, and third. No retainer required.</p>
+                </div>
+                <div className="rounded-2xl border border-gray-200 bg-white p-6" style={{ background: '#f8fafc' }}>
+                  <div className="space-y-2.5">
+                    {[['#0a66c2', '92%'], ['#3b82f6', '74%'], ['#93c5fd', '55%']].map(([c, w], i) => (
+                      <div key={i} className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-full text-[11px] font-bold text-white flex items-center justify-center flex-shrink-0" style={{ background: c }}>{i + 1}</span>
+                        <div className="h-3 rounded" style={{ width: w, background: c, opacity: 0.35 }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* ══ 8. PROCESS ("Here's exactly what the sprint looks like", day-by-day, mirrors Fletch) ══ */}
+            <section className="mb-16">
+              <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Here's exactly what the sprint looks like</h2>
+
+              {/* Pre-work: your team / our team */}
+              <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                <div className="rounded-xl border border-gray-200 bg-white p-5">
+                  <div className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#0a66c2' }}>Pre-work · your team</div>
+                  <p className="text-sm text-gray-500" style={{ lineHeight: 1.6 }}>Send us your live ads, landing pages, ICP, and any sales-call recordings. 30 minutes of gathering, tops.</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white p-5">
+                  <div className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#0a66c2' }}>Pre-work · our team</div>
+                  <p className="text-sm text-gray-500" style={{ lineHeight: 1.6 }}>We audit it all against real buyer language and build 4-6 positioning angles to bring to the first call.</p>
+                </div>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-8 sm:gap-10">
                 {[
-                  { title: 'Conversion Roadmap · 2 weeks', steps: [
-                    ["Days 1-3 · Diagnose", "We pull apart your live ads, landing pages, and ICP against real buyer language."],
-                    ["Days 4-7 · Reposition", "We realign the message and draft the fixes, ranked by revenue impact."],
-                    ["Days 8-10 · Deliver", "You get the roadmap plus copy snippets your team can ship the same week."]
+                  { week: 'Week 1 · Diagnose & reposition', steps: [
+                    ["Days 1-2 · Teardown", "We pull apart your live ads, landing pages, and ICP against real buyer language."],
+                    ["Day 3 · Positioning workshop", "60 min. We present the angles and pick the one your ads should lead with."],
+                    ["Days 4-5 · Draft", "We draft the ad and landing-page fixes, ranked by revenue impact."]
                   ] },
-                  { title: 'Done-For-You · 3 months', steps: [
-                    ["Month 1 · Build", "Everything in the roadmap, implemented. New creatives and a rebuilt landing page."],
-                    ["Month 2 · Launch", "Campaigns go live. We manage the ads day to day."],
-                    ["Month 3 · Optimize", "We test and tune until demo conversion actually moves."]
+                  { week: 'Week 2 · Ship', steps: [
+                    ["Days 6-7 · Copy & wireframe", "Production-ready copy and a landing-page wireframe mapped to the new positioning."],
+                    ["Day 8 · Review call", "45 min. We walk the roadmap and copy, and gather your feedback."],
+                    ["Days 9-10 · Revisions & delivery", "Final edits, then we hand over the full roadmap you can ship."]
                   ] }
                 ].map((col, c) => (
                   <div key={c}>
-                    <h3 className="text-gray-900 mb-5 font-semibold">{col.title}</h3>
+                    <h3 className="text-gray-900 mb-5 font-semibold">{col.week}</h3>
                     <div className="relative">
                       <div className="absolute w-0.5" style={{ left: '15px', top: '16px', bottom: '16px', background: '#dbeafe' }} />
                       <ol className="space-y-4 relative reveal">
@@ -2550,61 +2633,17 @@
                   </div>
                 ))}
               </div>
+
+              <p className="text-sm text-gray-500 mt-8 rounded-xl p-4" style={{ background: '#eff5fc', lineHeight: 1.6 }}><strong className="text-gray-900">Going Done-For-You?</strong> Weeks 3-12 we build the new creatives, rebuild the landing page, launch the campaigns, and optimize weekly until demo conversion doubles.</p>
             </section>
 
-            {/* ── PROOF: Before / After (anchor for hero secondary CTA) ── */}
-            <section id="svc-beforeafter" className="mt-16 sm:mt-20 scroll-mt-24">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Before &amp; after</div>
-              <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(20px, 2.6vw, 30px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Same ad. Different positioning.</h2>
-              <div className="grid md:grid-cols-[1fr_auto_1fr] items-center gap-4 sm:gap-5">
-                {/* BEFORE */}
-                <div className="rounded-2xl border-2 p-5 sm:p-6 bg-white" style={{ borderColor: '#fecaca' }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: '#fef2f2', color: '#dc2626' }}>Before</span>
-                    <span style={{ fontSize: '30px', fontWeight: 300, color: '#dc2626', lineHeight: 1 }}>4<span className="text-base text-gray-400">/10</span></span>
-                  </div>
-                  <ul className="space-y-2.5">
-                    {["Hook is about you, not the buyer","No proof for a skeptical buyer","CTA asks for a demo, too soon"].map((t, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><span className="mt-0.5 flex-shrink-0" style={{ color: '#dc2626' }}>✕</span><span style={{ lineHeight: 1.5 }}>{t}</span></li>
-                    ))}
-                  </ul>
-                </div>
-                {/* ARROW */}
-                <div className="flex md:flex-col items-center justify-center py-1"><div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ background: '#0a66c2' }}><Icon name="arrowRight" className="w-5 h-5" /></div></div>
-                {/* AFTER */}
-                <div className="rounded-2xl border-2 p-5 sm:p-6" style={{ borderColor: '#bbf7d0', background: '#f0fdf4' }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>After</span>
-                    <span style={{ fontSize: '30px', fontWeight: 300, color: '#15803d', lineHeight: 1 }}>9<span className="text-base text-gray-400">/10</span></span>
-                  </div>
-                  <ul className="space-y-2.5">
-                    {["Hook leads with the buyer's risk","One proof stat above the fold","A lower-commitment first step"].map((t, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-700"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#15803d' }} /><span style={{ lineHeight: 1.5 }}>{t}</span></li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </section>
-
-            {/* TESTIMONIALS */}
-            <section className="mt-16 sm:mt-20">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What founders say</div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 reveal">
-                {CLIENT_QUOTES.map((t, i) => (
-                  <div key={i} className="card-lift p-5 sm:p-7 border border-gray-200 rounded-lg bg-white flex flex-col justify-between">
-                    <p className="text-gray-700 text-sm italic mb-6" style={{ lineHeight: 1.7 }}>{`“${t.quote}”`}</p>
-                    <div><p className="text-sm font-semibold text-gray-900">{t.name}</p><p className="text-xs text-gray-400">{t.role}</p></div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* FAQ */}
-            <section className="mt-16 sm:mt-20">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Questions</div>
+            {/* ══ 9. FAQ ══ */}
+            <section className="mb-16">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>FAQs</div>
               <div className="max-w-3xl border-t border-gray-200">
                 {[
-                  ["How much of my time does this take?", "A couple of short calls plus async review. We do the heavy lifting."],
+                  ["How much time should I budget across the sprint?", "A couple of short calls (about 2 hours total) plus async review. We do the heavy lifting."],
+                  ["What's the typical wait before we start?", "Usually within a week of the kickoff call, depending on the queue. We'll tell you the exact date on the call."],
                   ["Do you interview my customers?", "Optional. We can mine your call recordings, reviews, and won/lost notes instead."],
                   ["What if I only want the roadmap, not the build?", "That's the Conversion Roadmap. Ship it yourself, or upgrade to Done-For-You later."],
                   ["What's the refund policy?", "The Conversion Roadmap has a 7-day revision window, with a full refund if the revised scope still misses."],
@@ -2625,8 +2664,8 @@
               </div>
             </section>
 
-            {/* FINAL CTA */}
-            <section className="mt-16 sm:mt-20 text-center border-t border-gray-200 pt-12">
+            {/* ══ 10. FINAL CTA ══ */}
+            <section className="text-center border-t border-gray-200 pt-12">
               <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Ready to fix the positioning under your ads?</h2>
               <p className="text-gray-500 mb-6 max-w-lg mx-auto" style={{ fontSize: '15px', lineHeight: 1.7 }}>One call to see if it's a fit. No pitch, no pressure, just a straight read on what's costing you demos.</p>
               <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-block px-8 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
