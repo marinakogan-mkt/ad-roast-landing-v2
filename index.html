@@ -2417,39 +2417,6 @@
               ))}
             </div>
 
-            {/* ── PROBLEM: Sound familiar (interactive) ── */}
-            <section className="mb-16">
-              <h2 className="text-gray-900 mb-1" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Sound familiar?</h2>
-              <p className="text-gray-400 text-sm mb-6">Tap the ones that hit.</p>
-              <div className="grid sm:grid-cols-2 gap-3 max-w-3xl">
-                {[
-                  "You're spending $20K+/mo on ads but demo quality keeps sliding.",
-                  "Prospects book a demo, nod along, then disappear.",
-                  "Your landing page repeats the ad instead of advancing the promise.",
-                  "Sales says the leads aren't a fit; marketing says sales can't close.",
-                  "You've rewritten the homepage three times and nothing moved.",
-                  "You know the positioning is off, but can't see it from the inside."
-                ].map((t, i) => {
-                  const on = svcChecked.includes(i);
-                  return (
-                    <button key={i} onClick={() => setSvcChecked(prev => on ? prev.filter(x => x !== i) : [...prev, i])}
-                      className="text-left flex items-start gap-3 p-3.5 rounded-xl border-2 transition-all cursor-pointer card-lift"
-                      style={on ? { borderColor: '#0a66c2', background: '#eff5fc' } : { borderColor: '#e8e8f0', background: '#fff' }}>
-                      <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors" style={on ? { borderColor: '#0a66c2', background: '#0a66c2' } : { borderColor: '#cbd5e1' }}>
-                        {on && <Icon name="check" className="w-3.5 h-3.5 text-white" />}
-                      </span>
-                      <span className="text-sm" style={{ lineHeight: 1.5, color: on ? '#0a2540' : '#475569' }}>{t}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-6 max-w-3xl">
-                {svcChecked.length === 0
-                  ? <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>Most teams check at least three. If any of these hit, it's almost never the ad execution, it's the positioning underneath it.</p>
-                  : <p className="text-sm p-4 rounded-xl step-in" style={{ background: '#eff5fc', color: '#0a2540', lineHeight: 1.7 }}><strong>{svcChecked.length} of 6.</strong> {svcChecked.length >= 3 ? " That's a positioning problem, not an execution one, and that's exactly what we fix." : " Even one of these is usually positioning, not execution. That's what we fix."}</p>}
-              </div>
-            </section>
-
             {/* ── THE OFFER (single productized) ── */}
             <section className="mb-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>The offer</div>
@@ -2548,40 +2515,6 @@
               </div>
             </section>
 
-            {/* ── PROOF: Before / After (anchor for hero secondary CTA) ── */}
-            <section id="svc-beforeafter" className="mt-16 sm:mt-20 scroll-mt-24">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Before &amp; after</div>
-              <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(20px, 2.6vw, 30px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Same ad. Different positioning.</h2>
-              <div className="grid md:grid-cols-[1fr_auto_1fr] items-center gap-4 sm:gap-5">
-                {/* BEFORE */}
-                <div className="rounded-2xl border-2 p-5 sm:p-6 bg-white" style={{ borderColor: '#fecaca' }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: '#fef2f2', color: '#dc2626' }}>Before</span>
-                    <span style={{ fontSize: '30px', fontWeight: 300, color: '#dc2626', lineHeight: 1 }}>4<span className="text-base text-gray-400">/10</span></span>
-                  </div>
-                  <ul className="space-y-2.5">
-                    {["Hook is about you, not the buyer","No proof for a skeptical buyer","CTA asks for a demo, too soon"].map((t, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><span className="mt-0.5 flex-shrink-0" style={{ color: '#dc2626' }}>✕</span><span style={{ lineHeight: 1.5 }}>{t}</span></li>
-                    ))}
-                  </ul>
-                </div>
-                {/* ARROW */}
-                <div className="flex md:flex-col items-center justify-center py-1"><div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ background: '#0a66c2' }}><Icon name="arrowRight" className="w-5 h-5" /></div></div>
-                {/* AFTER */}
-                <div className="rounded-2xl border-2 p-5 sm:p-6" style={{ borderColor: '#bbf7d0', background: '#f0fdf4' }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>After</span>
-                    <span style={{ fontSize: '30px', fontWeight: 300, color: '#15803d', lineHeight: 1 }}>9<span className="text-base text-gray-400">/10</span></span>
-                  </div>
-                  <ul className="space-y-2.5">
-                    {["Hook leads with the buyer's risk","One proof stat above the fold","A lower-commitment first step"].map((t, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-700"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#15803d' }} /><span style={{ lineHeight: 1.5 }}>{t}</span></li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </section>
-
             {/* HOW IT WORKS */}
             <section className="mt-16 sm:mt-20">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>How it works</div>
@@ -2616,6 +2549,40 @@
                     </div>
                   </div>
                 ))}
+              </div>
+            </section>
+
+            {/* ── PROOF: Before / After (anchor for hero secondary CTA) ── */}
+            <section id="svc-beforeafter" className="mt-16 sm:mt-20 scroll-mt-24">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Before &amp; after</div>
+              <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(20px, 2.6vw, 30px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Same ad. Different positioning.</h2>
+              <div className="grid md:grid-cols-[1fr_auto_1fr] items-center gap-4 sm:gap-5">
+                {/* BEFORE */}
+                <div className="rounded-2xl border-2 p-5 sm:p-6 bg-white" style={{ borderColor: '#fecaca' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: '#fef2f2', color: '#dc2626' }}>Before</span>
+                    <span style={{ fontSize: '30px', fontWeight: 300, color: '#dc2626', lineHeight: 1 }}>4<span className="text-base text-gray-400">/10</span></span>
+                  </div>
+                  <ul className="space-y-2.5">
+                    {["Hook is about you, not the buyer","No proof for a skeptical buyer","CTA asks for a demo, too soon"].map((t, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><span className="mt-0.5 flex-shrink-0" style={{ color: '#dc2626' }}>✕</span><span style={{ lineHeight: 1.5 }}>{t}</span></li>
+                    ))}
+                  </ul>
+                </div>
+                {/* ARROW */}
+                <div className="flex md:flex-col items-center justify-center py-1"><div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ background: '#0a66c2' }}><Icon name="arrowRight" className="w-5 h-5" /></div></div>
+                {/* AFTER */}
+                <div className="rounded-2xl border-2 p-5 sm:p-6" style={{ borderColor: '#bbf7d0', background: '#f0fdf4' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>After</span>
+                    <span style={{ fontSize: '30px', fontWeight: 300, color: '#15803d', lineHeight: 1 }}>9<span className="text-base text-gray-400">/10</span></span>
+                  </div>
+                  <ul className="space-y-2.5">
+                    {["Hook leads with the buyer's risk","One proof stat above the fold","A lower-commitment first step"].map((t, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-700"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#15803d' }} /><span style={{ lineHeight: 1.5 }}>{t}</span></li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </section>
 
