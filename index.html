@@ -2486,12 +2486,12 @@
             <section id="svc-beforeafter" className="mb-16 scroll-mt-24">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Before &amp; after</div>
               <h2 className="text-gray-900 mb-1" style={{ fontSize: 'clamp(20px, 2.6vw, 30px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Roasted ads → report-driven rebuilds.</h2>
-              <p className="text-gray-400 text-sm mb-6">Real client work, anonymized. Same creative, new story.</p>
+              <p className="text-gray-400 text-sm mb-6">Real Nudge Security ads, roasted then rebuilt from the positioning report. Click through to the live LinkedIn ads.</p>
               {(() => {
                 const BA = [
-                  { label: 'SaaS sprawl', before: { concept: 'Playful cat-and-laser video riffing on "SaaS sprawl."', hook: 'Secure Shadow SaaS', cta: 'Learn more', ad: 7, match: 5 }, after: { concept: 'Same video, rewritten to the positioning report.', hook: "Chasing shadow SaaS? You're responsible for data in apps you didn't approve. Get complete visibility on Day One, in under 5 minutes.", cta: 'Kill your shadow-SaaS blindspots ▶', ad: 9, match: 9 }, note: 'Problem-first hook, Day-One promise in the headline, action CTA replaces "Learn more."' },
-                  { label: 'Feature page', before: { concept: 'Feature-led "find every SaaS account" button ad.', hook: 'AI & SaaS Discovery', cta: 'Learn more', ad: 7, match: 6 }, after: { concept: 'Security-first reframe (messaging pillar 2).', hook: "You can't secure what you can't see. Find shadow AI today, apps, users, and risky integrations.", cta: "Don't click unless you want to find EVERY shadow app ⚠", ad: 9, match: 9 }, note: 'Complete-discovery promise surfaced; curiosity + action CTA; feature-spec headline gone.' },
-                  { label: 'CISO nightmare', before: { concept: 'Brilliant founder hook, then a generic 14-day-trial page.', hook: 'Go from chaos to control in 14 days', cta: 'See how to get started', ad: 7, match: 4 }, after: { concept: 'Dedicated narrative LP + customer proof.', hook: 'Problem-first ad now routes to a conversion page built for it, not a generic trial page.', cta: "Don't click unless you want control of shadow-AI risk ▶", ad: 9, match: 9 }, note: 'Best ad, worst handoff, fixed: dedicated LP replaces the generic trial page, trust signal added.' }
+                  { label: 'SaaS sprawl', before: { concept: 'Playful cat-and-laser video riffing on "SaaS sprawl."', hook: 'Secure Shadow SaaS', cta: 'Learn more', ad: 7, match: 5, link: 'https://www.linkedin.com/ad-library/detail/1021588116' }, after: { concept: 'Same video, rewritten to the positioning report.', hook: "Chasing shadow SaaS? You're responsible for data in apps you didn't approve. Get complete visibility on Day One, in under 5 minutes.", cta: 'Kill your shadow-SaaS blindspots ▶', ad: 9, match: 9, link: 'https://www.linkedin.com/ad-library/detail/1408922896' }, note: 'Problem-first hook, Day-One promise in the headline, action CTA replaces "Learn more."' },
+                  { label: 'Feature page', before: { concept: 'Feature-led "find every SaaS account" button ad.', hook: 'AI & SaaS Discovery', cta: 'Learn more', ad: 7, match: 6, link: 'https://www.linkedin.com/ad-library/detail/856848906' }, after: { concept: 'Security-first reframe (messaging pillar 2).', hook: "You can't secure what you can't see. Find shadow AI today, apps, users, and risky integrations.", cta: "Don't click unless you want to find EVERY shadow app ⚠", ad: 9, match: 9, link: 'https://www.linkedin.com/ad-library/detail/1381110196' }, note: 'Complete-discovery promise surfaced; curiosity + action CTA; feature-spec headline gone.' },
+                  { label: 'CISO nightmare', before: { concept: 'Brilliant founder hook, then a generic 14-day-trial page.', hook: 'Go from chaos to control in 14 days', cta: 'See how to get started', ad: 7, match: 4, link: 'https://www.linkedin.com/posts/russell-spitler_if-i-were-a-ciso-trying-to-secure-a-modern-activity-7422674209866158080-YpyX' }, after: { concept: 'Dedicated narrative LP + customer proof.', hook: 'Problem-first ad now routes to a conversion page built for it, not a generic trial page.', cta: "Don't click unless you want control of shadow-AI risk ▶", ad: 9, match: 9, link: 'https://www.linkedin.com/ad-library/detail/1380985986' }, note: 'Best ad, worst handoff, fixed: dedicated LP replaces the generic trial page, trust signal added.' }
                 ];
                 const ex = BA[baTab];
                 const AdCard = ({ tone, data, kind }) => (
@@ -2502,12 +2502,15 @@
                     </div>
                     <div className="p-4 flex-1 flex flex-col">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: '#0a2540' }}>S</span>
-                        <div className="leading-tight"><p className="text-xs font-semibold text-gray-900">Security platform</p><p className="text-[10px] text-gray-400">Promoted</p></div>
+                        <span className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: '#0a2540' }}>n</span>
+                        <div className="leading-tight"><p className="text-xs font-semibold text-gray-900">Nudge Security</p><p className="text-[10px] text-gray-400">Promoted</p></div>
                       </div>
                       <p className="text-xs text-gray-400 italic mb-2">{data.concept}</p>
-                      <p className="text-sm text-gray-800 mb-3" style={{ lineHeight: 1.5 }}>{kind === 'lp' ? '' : `“${data.hook}”`}</p>
-                      <span className="mt-auto self-start text-xs font-semibold px-3 py-1.5 rounded-full" style={tone === 'before' ? { background: '#f1f5f9', color: '#64748b' } : { background: '#0a66c2', color: '#fff' }}>{data.cta}</span>
+                      <p className="text-sm text-gray-800 mb-3" style={{ lineHeight: 1.5 }}>{`“${data.hook}”`}</p>
+                      <div className="mt-auto">
+                        <span className="inline-block text-xs font-semibold px-3 py-1.5 rounded-full" style={tone === 'before' ? { background: '#f1f5f9', color: '#64748b' } : { background: '#0a66c2', color: '#fff' }}>{data.cta}</span>
+                        {data.link && <a href={data.link} target="_blank" rel="noopener" className="block mt-2 text-[11px] font-semibold no-underline hover:underline" style={{ color: '#0a66c2' }}>{tone === 'before' ? 'View original ad ↗' : 'View live ad ↗'}</a>}
+                      </div>
                     </div>
                   </div>
                 );
