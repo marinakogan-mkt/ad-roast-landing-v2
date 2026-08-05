@@ -1439,7 +1439,7 @@
       const ServiceOffers = () => {
         const toggle = (k) => setOpenOffers(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
         const offers = [
-          { key: 'roadmap', popular: true, primary: true, tag: 'Ready-to-implement action plan', name: 'Conversion Roadmap', price: '$6K', sub: 'one-time · 10 days', desc: 'Clear positioning direction with ad copy and landing-page fixes your team can ship next week.', cta: 'Book a call', fit: "Find out if it's a fit", bullets: ["A read on why your demos aren't converting", "A sharper ICP and the one message to lead with", "Copy snippets for your ads and landing pages", "An implementation roadmap ranked by revenue impact"] },
+          { key: 'roadmap', popular: true, primary: true, tag: 'Ready-to-implement action plan', name: 'Conversion Roadmap', price: '$6K', sub: 'one-time · 10 days', desc: 'We pinpoint why your ads pull unqualified demos, then reposition the campaign around your buyer. You get the ad and landing-page copy, ready to ship.', cta: 'Book a call', fit: "Find out if it's a fit", bullets: ["A read on why your demos aren't converting", "A sharper ICP and the one message to lead with", "Copy snippets for your ads and landing pages", "An implementation roadmap ranked by revenue impact"] },
           { key: 'dfy', popular: false, primary: false, tag: 'End-to-end campaign', name: 'Done-For-You Rebuild', price: '$8K/mo', sub: '3-month sprint', desc: 'Everything in the roadmap, built and launched. We run the ads and optimize until demo conversion doubles.', cta: 'Talk to us →', fit: "Casual chat to see if there's a fit", bullets: ["Everything in the Conversion Roadmap", "New ad creatives built and shipped", "Landing page rebuilt to match the ad narrative", "Campaign launch and ongoing ad management", "Weekly optimization and testing"] }
         ];
         return (
@@ -1455,7 +1455,7 @@
                   <p className="text-gray-500 text-sm mb-4" style={{ lineHeight: 1.6 }}>{o.desc}</p>
                   <button onClick={() => toggle(o.key)} className="flex items-center justify-between gap-2 w-full text-left text-sm font-semibold text-gray-900 bg-transparent border-t border-gray-100 cursor-pointer py-3">
                     <span>See what's included</span>
-                    <Icon name="chevronRight" className="w-4 h-4 flex-shrink-0 transition-transform" style={{ color: '#0a66c2', transform: open ? 'rotate(90deg)' : 'none' }} />
+                    <Icon name="chevronRight" className="w-4 h-4 flex-shrink-0 transition-transform" style={{ color: '#0a66c2', transform: open ? 'rotate(270deg)' : 'rotate(90deg)' }} />
                   </button>
                   {open && (
                     <ul className="space-y-2 pb-4 step-in">
@@ -1688,6 +1688,40 @@
             <p className="text-center text-xs text-gray-400 mt-3">Tap any answer to see what's inside.</p>
           </section>
 
+          {/* SERVICE PRICING — the paid offers live on the main page; the roast-token
+              upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
+          <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Work with us</div>
+            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Want it fixed, not just scored?</h2>
+            <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>The roaster shows you what's broken. Getting clicks but unqualified demos? The fix usually isn't more budget, it's repositioning so the right buyer recognizes themselves in your ads. We've done it for 50+ B2B paid campaigns.</p>
+
+            {/* Free roast vs paid Roadmap — make the value gap obvious */}
+            <div className="grid sm:grid-cols-2 gap-4 mb-10">
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">The free roast</div>
+                <p className="text-gray-900 font-semibold mb-4" style={{ fontSize: '17px' }}>Tells you what's broken.</p>
+                <ul className="space-y-2.5">
+                  {["Scores one ad in two minutes", "Automated, no human in the loop", "Points at the problem, not the fix"].map((t, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-gray-500"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#cbd5e1' }} /><span>{t}</span></li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-2xl border-2 bg-white p-6 relative" style={{ borderColor: '#0a66c2' }}>
+                <div className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>The Conversion Roadmap · $6K</div>
+                <p className="text-gray-900 font-semibold mb-4" style={{ fontSize: '17px' }}>Fixes it, done with you.</p>
+                <ul className="space-y-2.5">
+                  {["Repositions your whole campaign, not one ad", "A positioning expert does the work", "Hands you the new angle and copy, ready to ship"].map((t, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>{t}</span></li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {ServiceOffers()}
+
+            <p className="text-center text-sm text-gray-500 mt-8">See exactly what you get, the deliverables, and how the sprint works <button onClick={goService} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>on the full services page →</button></p>
+          </section>
+
           {/* RESULTS */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Client Results</div>
@@ -1706,18 +1740,6 @@
                 </div>
               ))}
             </div>
-          </section>
-
-          {/* SERVICE PRICING — the paid offers live on the main page; the roast-token
-              upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
-          <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Work with us</div>
-            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Want it fixed, not just scored?</h2>
-            <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>The roaster shows you what's broken. When you want it fixed, we step in, from a ready-to-ship positioning roadmap to a full done-for-you rebuild.</p>
-
-            {ServiceOffers()}
-
-            <p className="text-center text-sm text-gray-500 mt-8">See exactly what you get, the deliverables, and how the sprint works <button onClick={goService} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>on the full services page →</button></p>
           </section>
 
           {/* More about the service on the main page (deliverables + sprint) */}
