@@ -1404,6 +1404,12 @@
          primary Book-a-call CTA, shared by the tool and service pages. Mobile collapses
          to a menu (navOpen). Called as a plain function to avoid remount on re-render. */
       const goTool = () => { setNavOpen(false); try { window.history.pushState({}, '', '/'); } catch (e) {} reset(); };
+      const goPricing = () => {
+        setNavOpen(false);
+        const doScroll = () => { const el = document.getElementById('work-with-us'); if (el) { const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; el.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' }); } };
+        if (document.getElementById('work-with-us')) doScroll();
+        else { setView('landing'); setTimeout(doScroll, 80); }
+      };
       const navLink = (label, on, isActive) => (
         <button onClick={on} className="bg-transparent border-none cursor-pointer p-0 text-sm" style={isActive ? { color: '#0a66c2', fontWeight: 600, borderBottom: '2px solid #0a66c2', paddingBottom: 2 } : { color: '#475569' }}>{label}</button>
       );
@@ -1416,6 +1422,7 @@
             </button>
             <nav className="hidden sm:flex items-center gap-6">
               {navLink('Roast an ad', goTool, active === 'tool')}
+              {navLink('Work with us', goPricing, false)}
               <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="text-sm font-semibold no-underline rounded-full px-5 py-2 hover:opacity-90 transition-opacity">Book a call</a>
             </nav>
             <button onClick={() => setNavOpen(o => !o)} className="sm:hidden bg-transparent border-none cursor-pointer p-1.5" aria-label="Menu">
@@ -1427,6 +1434,7 @@
           {navOpen && (
             <div className="sm:hidden border-t border-gray-100 px-4 py-3 flex flex-col items-start gap-3">
               {navLink('Roast an ad', goTool, active === 'tool')}
+              {navLink('Work with us', goPricing, false)}
               <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="text-sm font-semibold no-underline rounded-full px-5 py-2">Book a call</a>
             </div>
           )}
@@ -1716,7 +1724,7 @@
 
           {/* SERVICE PRICING — the paid offers live on the main page; the roast-token
               upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
-          <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
+          <section id="work-with-us" className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full scroll-mt-20">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Work with us</div>
             <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Want it fixed, not just scored?</h2>
             <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>Getting clicks but unqualified demos? The fix usually isn't more budget, it's repositioning so the right buyer recognizes themselves in your ads. A positioning expert reworks your whole campaign and hands you the copy ready to ship, the way we have for 50+ B2B software teams.</p>
@@ -1812,7 +1820,6 @@
                 ["How much time should I budget?", "About 3 hours total, a working session and a review call. We do the heavy lifting."],
                 ["What if I only want the roadmap, not the build?", "That's the Conversion Roadmap. Ship it yourself, or upgrade to Done-For-You later."],
                 ["Do you interview my customers?", "Optional. We can mine your call recordings, reviews, and won/lost notes instead."],
-                ["What's the refund policy?", "The Conversion Roadmap has a 7-day revision window, with a full refund if the revised scope still misses."],
                 ["Who is this for?", "B2B SaaS spending $20K+/mo on ads whose demos aren't converting."],
                 ["How do we start?", "Book a 30-minute call. We'll tell you straight if it's a fit."]
               ].map(([q, a], i) => {
