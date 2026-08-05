@@ -1854,7 +1854,7 @@
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={() => setLegalModal(null)}>
               <div className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto p-8" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-gray-900">{legalModal === 'terms' ? 'Terms & Conditions' : legalModal === 'delivery' ? 'Delivery Policy' : 'Refund & Cancellation Policy'}</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">{legalModal === 'terms' ? 'Terms & Conditions' : 'Delivery Policy'}</h2>
                   <button onClick={() => setLegalModal(null)} className="text-gray-400 hover:text-gray-600"><Icon name="x" className="w-5 h-5" /></button>
                 </div>
                 
@@ -1863,7 +1863,7 @@
                     <p><strong>Creativeer OÜ</strong> (registry code: 16776498), registered at Tööstuse 75-71, Tallinn, 10416, Estonia, provides B2B positioning, messaging, and advertising consulting services under the brand name AdRoast.</p>
                     <p><strong>Services offered:</strong></p>
                     <p>1. <strong>Ad Roast (Free Audit)</strong>: Free, AI-powered diagnostic of your Ad copy, landing page, and ICP alignment. Delivered instantly via the website. No payment required.</p>
-                    <p>2. <strong>Conversion Roadmap ($6,000 one-time)</strong>: A 2-week positioning audit including review of live campaigns and landing pages, ICP realignment, positioning direction, copy snippets for landing pages and creatives, and an implementation roadmap ranked by revenue impact. Delivered digitally.</p>
+                    <p>2. <strong>Conversion Roadmap ($6,000 one-time)</strong>: A 10-day positioning sprint including a full campaign teardown, ICP realignment and a new positioning direction, positioning angles ranked by upside, rewritten ad and landing-page messaging, and an implementation roadmap ranked by revenue impact. Delivered digitally.</p>
                     <p>3. <strong>Done-For-You Rebuild ($8,000/month, 3-month engagement)</strong>: Full implementation including everything in the Conversion Roadmap, plus new Ad creatives, landing page rebuild, campaign launch, Ad management, and weekly optimization. Delivered digitally and through managed services.</p>
                     <p><strong>Engagement:</strong> Paid services begin after a discovery call and mutual agreement on scope. All work is delivered remotely and digitally. By purchasing any paid service, you agree to these terms.</p>
                     <p><strong>Intellectual property:</strong> All deliverables become the client's property upon full payment. Creativeer OÜ retains the right to reference the engagement anonymously in case studies unless otherwise agreed.</p>
@@ -1876,7 +1876,7 @@
                 {legalModal === 'delivery' && (
                   <div className="text-sm text-gray-600 space-y-4" style={{ lineHeight: 1.7 }}>
                     <p><strong>Ad Roast (Free Audit):</strong> Delivered instantly via the website upon submission. No waiting period.</p>
-                    <p><strong>Conversion Roadmap ($6,000):</strong> Delivered digitally within 14 business days of the kickoff call. Deliverables include a positioning document, copy snippets, and implementation roadmap, shared via email or shared workspace.</p>
+                    <p><strong>Conversion Roadmap ($6,000):</strong> Delivered digitally within 10 business days of the kickoff call. Deliverables include the campaign teardown, positioning direction, ranked positioning angles, rewritten ad and landing-page messaging, and the ranked action plan, shared via email or shared workspace.</p>
                     <p><strong>Done-For-You Rebuild ($8,000/month):</strong> Work begins within 5 business days of the signed agreement and first payment. The engagement runs for 3 months with weekly deliverables and optimization reports shared digitally.</p>
                     <p><strong>Format:</strong> All deliverables are digital (documents, copy files, campaign assets, reports). No physical goods are shipped.</p>
                     <p><strong>Communication:</strong> All project communication happens via email, video calls, or shared workspace tools agreed upon during the kickoff call.</p>
@@ -1884,15 +1884,6 @@
                   </div>
                 )}
 
-                {legalModal === 'refund' && (
-                  <div className="text-sm text-gray-600 space-y-4" style={{ lineHeight: 1.7 }}>
-                    <p><strong>Ad Roast (Free Audit):</strong> No payment is collected. No refund applicable.</p>
-                    <p><strong>Conversion Roadmap ($6,000):</strong> If you are unsatisfied with the deliverables, you may request a revision within 7 days of delivery. If the revised deliverables still do not meet the agreed scope, a full refund will be issued within 14 business days. No refund is available after the 7-day revision window.</p>
-                    <p><strong>Done-For-You Rebuild ($8,000/month):</strong> Either party may cancel the engagement with 14 days written notice. If cancelled by the client before the end of a paid month, no refund is issued for that month. Work completed up to the cancellation date remains the client's property. No charges will apply for subsequent months after cancellation.</p>
-                    <p><strong>How to request a refund or cancellation:</strong> Email marina.kogan@adroast.in with subject line "Refund Request" or "Cancellation Request." All requests are processed within 14 business days.</p>
-                    <p><strong>Contact:</strong> marina.kogan@adroast.in</p>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -1907,7 +1898,6 @@
             <div className="flex justify-center gap-4 mb-4 flex-wrap">
               <button onClick={() => setLegalModal('terms')} className="text-gray-300 text-xs hover:text-gray-500 transition-colors bg-transparent border-none cursor-pointer">Terms & Conditions</button>
               <button onClick={() => setLegalModal('delivery')} className="text-gray-300 text-xs hover:text-gray-500 transition-colors bg-transparent border-none cursor-pointer">Delivery Policy</button>
-              <button onClick={() => setLegalModal('refund')} className="text-gray-300 text-xs hover:text-gray-500 transition-colors bg-transparent border-none cursor-pointer">Refund & Cancellation</button>
             </div>
             <p className="text-gray-300 text-xs">Creativeer OÜ &middot; Tööstuse 75-71, Tallinn, 10416, Estonia</p>
           </footer>
