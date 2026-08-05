@@ -1649,7 +1649,7 @@
                     onClick={() => { const v = (inputs.copy || '').trim(); if (!v) { setHeroErr('Please paste your Ad Library link first.'); return; } if (!isValidUrl(v)) { setHeroErr("That doesn't look like a valid link. Paste your full ad URL."); return; } setHeroErr(''); setPlatform(platformFromLink(v)); setIcp(''); setSiteUrl(''); setIcpAuto({ loading: false, err: '', done: false }); setGuidedHadCopyAtStart(true); setGuidedStep(0); setView('guided'); detectFromAd(); }}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
                     className="px-6 py-2 border rounded-full font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
-                  >Roast my Ad →</button>
+                  >Roast my Ad — free →</button>
                 </div>
                 {heroErr
                   ? <p className="text-center mt-3" style={{ fontSize: '14px', color: '#dc2626' }}>{heroErr}</p>
@@ -1692,7 +1692,7 @@
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Watch it work</div>
                 <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>See your ad get roasted in real time.</h2>
                 <p className="text-gray-400 mb-6 md:max-w-sm" style={{ fontSize: '16px', lineHeight: 1.7 }}>Every ad scored against your ICP, every weak line flagged with the fix. About 2 minutes, no call.</p>
-                <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-7 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity cta-glow">Roast my Ad &rarr;</button>
+                <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-7 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity cta-glow">Roast my Ad — free &rarr;</button>
               </div>
               <RoastPreview />
             </div>
@@ -1844,7 +1844,7 @@
             <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
             <p className="text-gray-400 mb-8" style={{ fontSize: 'clamp(14px, 3vw, 16px)', lineHeight: 1.6 }}>Same spend, aligned message, 3x demos.</p>
             <div className="flex items-center justify-center">
-              <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad</button>
+              <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad — free</button>
             </div>
             <p className="text-gray-400 mt-3 text-xs">Free &middot; 2 minutes &middot; no call required</p>
           </section>
