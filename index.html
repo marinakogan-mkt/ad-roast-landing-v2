@@ -446,6 +446,7 @@
       const [faqOpen, setFaqOpen] = useState(null);
       const [baTab, setBaTab] = useState(0);
       const [navOpen, setNavOpen] = useState(false);
+      const svcPreview = typeof window !== 'undefined' && window.location.search.includes('preview');
       /* Quick "roast another ad" popup shown from the results header. */
       const [showReroast, setShowReroast] = useState(false);
       const [reroastLink, setReroastLink] = useState('');
@@ -1436,65 +1437,24 @@
          main-page 'Work with us' block, so there's one source of truth. */
       const ServiceDeliverables = () => (
         <section className="mb-16">
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-3" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What you actually get</div>
-            <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Positioning you can ship, with the copy to prove it.</h2>
-            <p className="text-gray-500 text-sm max-w-xl" style={{ lineHeight: 1.6 }}>Not a strategy doc that sits in a drawer, real direction, real lines, and a plan ranked by what moves demos first.</p>
+          <div className="mb-6">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-3" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What you get</div>
+            <h2 className="text-gray-900" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Positioning you can actually ship.</h2>
           </div>
-          <div className="space-y-5">
-
-            {/* 01 — positioning direction */}
-            <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
-              <div className="p-5 sm:p-7 grid md:grid-cols-[0.85fr_1.15fr] gap-5 sm:gap-8 items-center">
-                <div>
-                  <div className="flex items-center gap-2.5 mb-2"><span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: '#eff5fc', color: '#0a66c2' }}>01</span><span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Positioning + ICP</span></div>
-                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(18px, 2.1vw, 22px)', fontWeight: 600, letterSpacing: '-0.2px' }}>The one message your ads should lead with</h3>
-                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.6 }}>We review your live ads, landing pages, sales calls, and competitors, then hand you the single angle to lead with and the exact ICP to say it to. No more guessing which message to test.</p>
-                </div>
-                <div className="rounded-xl p-5" style={{ background: '#f8fbff', border: '1px solid #dbeafe' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#0a66c2' }}>Example</p>
-                  <p className="text-gray-900 mb-3" style={{ fontSize: '15px', fontWeight: 500, lineHeight: 1.5 }}>“You can't secure what you can't see. Map every app touching your data, before an attacker does.”</p>
-                  <p className="text-xs text-gray-500" style={{ lineHeight: 1.5 }}>Leads with the buyer's #1 risk, not a feature list. Aimed at security leads at SaaS-heavy mid-market, not everyone.</p>
+          <div className="space-y-3">
+            {[
+              { icon: 'target', n: '01', title: 'A clear positioning direction', line: 'The one message to lead with, and the exact ICP to say it to.' },
+              { icon: 'sparkles', n: '02', title: 'Messaging pillars, with proof', line: 'The few points that hold it up, each with the proof it needs.' },
+              { icon: 'zap', n: '03', title: 'Rewritten copy and a ranked plan', line: 'New ad and landing-page lines, plus what to ship first.' }
+            ].map((it, i) => (
+              <div key={i} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-5 card-lift reveal">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#eff5fc' }}><Icon name={it.icon} className="w-5 h-5" style={{ color: '#0a66c2' }} /></div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2"><span className="text-[11px] font-bold" style={{ color: '#0a66c2' }}>{it.n}</span><h3 className="text-gray-900 font-semibold" style={{ fontSize: 'clamp(16px, 1.9vw, 19px)', letterSpacing: '-0.2px' }}>{it.title}</h3></div>
+                  <p className="text-sm text-gray-500 mt-0.5" style={{ lineHeight: 1.5 }}>{it.line}</p>
                 </div>
               </div>
-            </div>
-
-            {/* 02 — messaging pillars with proof */}
-            <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
-              <div className="p-5 sm:p-7 grid md:grid-cols-[0.85fr_1.15fr] gap-5 sm:gap-8 items-center">
-                <div>
-                  <div className="flex items-center gap-2.5 mb-2"><span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: '#eff5fc', color: '#0a66c2' }}>02</span><span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Messaging pillars</span></div>
-                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(18px, 2.1vw, 22px)', fontWeight: 600, letterSpacing: '-0.2px' }}>3-5 pillars, each with the proof that makes it land</h3>
-                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.6 }}>The handful of points that hold up your positioning, each written as the exact line to use, plus the proof point a skeptical buyer needs to believe it.</p>
-                </div>
-                <div className="rounded-xl p-5" style={{ background: '#f8fbff', border: '1px solid #dbeafe' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#0a66c2' }}>Example pillar</p>
-                  <p className="text-gray-900 mb-2.5" style={{ fontSize: '15px', fontWeight: 500, lineHeight: 1.5 }}>“Full visibility in minutes, no agents, no rip-and-replace.”</p>
-                  <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}><Icon name="check" className="w-3.5 h-3.5" /> Proof: average time-to-first-value under 10 minutes</div>
-                </div>
-              </div>
-            </div>
-
-            {/* 03 — copy + ranked plan */}
-            <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
-              <div className="p-5 sm:p-7 grid md:grid-cols-[0.85fr_1.15fr] gap-5 sm:gap-8 items-center">
-                <div>
-                  <div className="flex items-center gap-2.5 mb-2"><span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: '#eff5fc', color: '#0a66c2' }}>03</span><span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Copy + action plan</span></div>
-                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(18px, 2.1vw, 22px)', fontWeight: 600, letterSpacing: '-0.2px' }}>Rewritten copy, and a plan ranked by impact</h3>
-                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.6 }}>New hooks, CTAs, and landing-page lines mapped to the positioning, plus a day-by-day plan so your team knows exactly what to ship first, second, and third.</p>
-                </div>
-                <div className="rounded-xl p-5" style={{ background: '#f8fbff', border: '1px solid #dbeafe' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: '#0a66c2' }}>Example fix</p>
-                  <div className="flex items-center gap-2 mb-3 flex-wrap">
-                    <span className="text-xs font-medium px-2.5 py-1 rounded-full line-through" style={{ background: '#fef2f2', color: '#dc2626' }}>“Learn more”</span>
-                    <Icon name="arrowRight" className="w-4 h-4" style={{ color: '#0a66c2' }} />
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>“See what's exposed in 5 minutes”</span>
-                  </div>
-                  <p className="text-xs text-gray-500" style={{ lineHeight: 1.5 }}>A vague CTA becomes a concrete next step. First to ship: rewrite each landing-page headline to match the ad that sent them there.</p>
-                </div>
-              </div>
-            </div>
-
+            ))}
           </div>
         </section>
       );
@@ -1752,7 +1712,7 @@
 
           {/* More about the service on the main page (deliverables + sprint) */}
           <section className="max-w-5xl mx-auto px-4 pb-6 w-full">
-            {ServiceDeliverables()}
+            {svcPreview && ServiceDeliverables()}
             {ServiceSprint()}
           </section>
 
@@ -2596,7 +2556,7 @@
             </section>
 
             {/* ══ 7. DELIVERABLES — based on the real positioning-report sections (D/E, F, G/I) ══ */}
-            {ServiceDeliverables()}
+            {svcPreview && ServiceDeliverables()}
 
             {/* ══ 8. PROCESS — compact visual timeline (minimal text) ══ */}
             {ServiceSprint()}
