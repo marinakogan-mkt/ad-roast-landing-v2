@@ -445,6 +445,7 @@
       const [svcChecked, setSvcChecked] = useState([]);
       const [faqOpen, setFaqOpen] = useState(null);
       const [baTab, setBaTab] = useState(0);
+      const [navOpen, setNavOpen] = useState(false);
       /* Quick "roast another ad" popup shown from the results header. */
       const [showReroast, setShowReroast] = useState(false);
       const [reroastLink, setReroastLink] = useState('');
@@ -516,7 +517,7 @@
         if (portalParam === '1') setIsPortalView(true);
 
         /* Direct link to the services page (adroast.in/#services). */
-        if (window.location.hash === '#services') setView('services');
+        if (window.location.hash === '#services' || window.location.pathname.replace(/\/+$/, '') === '/services') setView('services');
 
         /* Magic sign-in link failed (expired / already used) — show a clear message
            on the landing instead of dumping the user into the portal gate. */
@@ -739,9 +740,15 @@
       }, [view]);
       React.useEffect(() => {
         const onPop = () => {
-          if (viewRef.current !== 'guided') return;
-          if (stepRef.current > 0) setGuidedStep(s => Math.max(0, s - 1));
-          else setView('landing');
+          if (viewRef.current === 'guided') {
+            if (stepRef.current > 0) setGuidedStep(s => Math.max(0, s - 1));
+            else setView('landing');
+            return;
+          }
+          /* Keep the tool/service pages in sync with the URL on back/forward. */
+          const onServicesUrl = window.location.pathname.replace(/\/+$/, '') === '/services' || window.location.hash === '#services';
+          if (onServicesUrl) setView('services');
+          else if (viewRef.current === 'services') setView('landing');
         };
         window.addEventListener('popstate', onPop);
         return () => window.removeEventListener('popstate', onPop);
@@ -1391,6 +1398,42 @@
         });
       })();
 
+      /* Persistent site nav — two clear paths (Roast an ad / Work with us) plus the
+         primary Book-a-call CTA, shared by the tool and service pages. Mobile collapses
+         to a menu (navOpen). Called as a plain function to avoid remount on re-render. */
+      const goTool = () => { setNavOpen(false); try { window.history.pushState({}, '', '/'); } catch (e) {} reset(); };
+      const goService = () => { setNavOpen(false); try { window.history.pushState({}, '', '/services'); } catch (e) {} setView('services'); };
+      const navLink = (label, on, isActive) => (
+        <button onClick={on} className="bg-transparent border-none cursor-pointer p-0 text-sm" style={isActive ? { color: '#0a66c2', fontWeight: 600, borderBottom: '2px solid #0a66c2', paddingBottom: 2 } : { color: '#475569' }}>{label}</button>
+      );
+      const SiteNav = ({ active }) => (
+        <header className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-50" style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <button onClick={goTool} className="flex items-center gap-2.5 cursor-pointer bg-transparent border-none p-0">
+              <img src={ADROAST_LOGO} alt="AdRoast" className="w-8 h-8 rounded" />
+              <span className="text-lg text-gray-800 font-semibold">AdRoast</span>
+            </button>
+            <nav className="hidden sm:flex items-center gap-6">
+              {navLink('Roast an ad', goTool, active === 'tool')}
+              {navLink('Work with us', goService, active === 'service')}
+              <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="text-sm font-semibold no-underline rounded-full px-5 py-2 hover:opacity-90 transition-opacity">Book a call</a>
+            </nav>
+            <button onClick={() => setNavOpen(o => !o)} className="sm:hidden bg-transparent border-none cursor-pointer p-1.5" aria-label="Menu">
+              <span style={{ display: 'block', width: 20, height: 2, background: '#334155', margin: '4px 0', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 20, height: 2, background: '#334155', margin: '4px 0', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 20, height: 2, background: '#334155', margin: '4px 0', borderRadius: 2 }} />
+            </button>
+          </div>
+          {navOpen && (
+            <div className="sm:hidden border-t border-gray-100 px-4 py-3 flex flex-col items-start gap-3">
+              {navLink('Roast an ad', goTool, active === 'tool')}
+              {navLink('Work with us', goService, active === 'service')}
+              <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="text-sm font-semibold no-underline rounded-full px-5 py-2">Book a call</a>
+            </div>
+          )}
+        </header>
+      );
+
       /* Private-audit sign-in gate: takes over the page when a non-signed-in
          viewer follows a portal-private audit link (e.g. an Aikido ?id=…). */
       if (view === 'landing' && privateAuditGate) return (
@@ -1435,25 +1478,23 @@
             </div>
           )}
 
-          {/* NAV */}
-          <header className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-50" style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-              <div onClick={reset} className="flex items-center gap-2.5 cursor-pointer">
-                <img src={ADROAST_LOGO} alt="AdRoast" className="w-9 h-9 rounded" />
-                <span className="text-gray-300 text-xl font-light">|</span>
-                <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
-              </div>
-              {adminMode ? (
+          {/* NAV — persistent two-path nav on the tool page; admin keeps its toolbar */}
+          {adminMode ? (
+            <header className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-50" style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
+              <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+                <div onClick={reset} className="flex items-center gap-2.5 cursor-pointer">
+                  <img src={ADROAST_LOGO} alt="AdRoast" className="w-9 h-9 rounded" />
+                  <span className="text-gray-300 text-xl font-light">|</span>
+                  <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
+                </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button onClick={() => setView('admin-builder')} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-5 py-2 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Advanced audit</button>
                   <button onClick={() => setView('synthesis-builder')} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="px-5 py-2 border-2 bg-white rounded-full font-medium text-sm hover:bg-blue-50 transition-colors">Synthesis report</button>
                   <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full border border-green-300">INTERNAL</span>
                 </div>
-              ) : (
-                <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-6 py-2 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad</button>
-              )}
-            </div>
-          </header>
+              </div>
+            </header>
+          ) : SiteNav({ active: 'tool' })}
 
           {/* HERO */}
           <section className="flex-shrink-0 text-center px-4 sm:px-6" style={{ paddingTop: '56px', paddingBottom: '40px', position: 'relative', overflow: 'hidden' }}>
@@ -2383,16 +2424,7 @@
       /* ─── SERVICES (done-with-you / done-for-you, moved off the main pricing) ─── */
       if (view === 'services') return (
         <div className="min-h-screen bg-gray-100">
-          <header className="bg-white border-b border-gray-200">
-            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-              <div onClick={() => { window.location.hash = ''; reset(); }} className="flex items-center gap-2 cursor-pointer">
-                <img src={ADROAST_LOGO} alt="AdRoast" className="w-9 h-9 rounded" />
-                <span className="text-gray-300 text-lg font-light">|</span>
-                <span className="text-xl text-gray-800 font-semibold">AdRoast</span>
-              </div>
-              <button onClick={() => { window.location.hash = ''; reset(); }} className="text-sm font-semibold bg-transparent border-none cursor-pointer" style={{ color: '#0a66c2' }}>← Back to the roaster</button>
-            </div>
-          </header>
+          {SiteNav({ active: 'service' })}
           <main className="max-w-5xl mx-auto px-4 py-10 sm:py-16 w-full">
 
             {/* ══ 1. HERO (compact) — sized so hero + offer fit the first screen ══ */}
