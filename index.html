@@ -2527,77 +2527,74 @@
               <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#fff', color: '#0a2540' }} className="inline-block px-8 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
             </section>
 
-            {/* ══ 7. DELIVERABLE BREAKDOWN — Fletch-style: plain benefit copy + clean visual previews ══ */}
-            <section className="mb-16 space-y-12">
+            {/* ══ 7. DELIVERABLES — full-width visual cards, stacked one below the other ══ */}
+            <section className="mb-16 space-y-5">
 
-              {/* Deliverable 1 — positioning angles (options preview) */}
-              <div className="grid md:grid-cols-2 gap-6 sm:gap-10 items-center reveal">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Deliverable 1</div>
-                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>4-6 positioning angles for your ads, ranked by risk</h3>
-                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>We pull apart your live ads, landing pages, and sales calls to find the angles your ads could lead with. Each one comes with the risk and what it changes.</p>
+              {/* 01 — positioning angles */}
+              <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
+                <div className="p-5 sm:p-6 flex items-baseline gap-3 flex-wrap">
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: '#eff5fc', color: '#0a66c2' }}>01</span>
+                  <h3 className="text-gray-900" style={{ fontSize: 'clamp(18px, 2.2vw, 24px)', fontWeight: 500, letterSpacing: '-0.2px' }}>Your sharpest positioning angles, ranked by risk</h3>
                 </div>
-                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                  <div className="px-4 py-2.5 border-b border-gray-100 text-[11px] font-semibold uppercase tracking-wide text-gray-400" style={{ background: '#f8fafc' }}>Positioning options</div>
-                  <div className="p-5 space-y-2.5">
+                <div className="px-5 sm:px-6 pb-6">
+                  <div className="rounded-xl border border-gray-200 p-5 sm:p-6 grid sm:grid-cols-3 gap-3" style={{ background: '#f8fafc' }}>
                     {[['Angle A', '#dcfce7', '#15803d', 'Low risk'], ['Angle B', '#fef9c3', '#a16207', 'Medium'], ['Angle C', '#fee2e2', '#dc2626', 'Bold']].map(([n, bg, fg, r], i) => (
-                      <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-100 p-3">
-                        <span className="text-xs font-bold text-gray-900 w-16 flex-shrink-0">{n}</span>
-                        <div className="flex-1 space-y-1.5"><div className="h-2 rounded bg-gray-200" style={{ width: '85%' }} /><div className="h-2 rounded bg-gray-100" style={{ width: '60%' }} /></div>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: bg, color: fg }}>{r}</span>
+                      <div key={i} className="rounded-lg border border-gray-100 bg-white p-4">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <span className="text-xs font-bold text-gray-900">{n}</span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: bg, color: fg }}>{r}</span>
+                        </div>
+                        <div className="space-y-1.5"><div className="h-2 rounded bg-gray-200" style={{ width: '90%' }} /><div className="h-2 rounded bg-gray-100" style={{ width: '65%' }} /></div>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Deliverable 2 — positioning deck (deck preview) */}
-              <div className="grid md:grid-cols-2 gap-6 sm:gap-10 items-center reveal">
-                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm md:order-1">
-                  <div className="px-4 py-2.5 border-b border-gray-100 text-[11px] font-semibold uppercase tracking-wide text-gray-400" style={{ background: '#f8fafc' }}>Positioning deck</div>
-                  <div className="p-5">
-                    <div className="rounded-lg p-4" style={{ background: '#0a2540' }}>
-                      <div className="h-2.5 rounded mb-3" style={{ width: '55%', background: '#4d90d6' }} />
-                      <div className="space-y-2">
-                        <div className="h-2 rounded" style={{ width: '90%', background: 'rgba(255,255,255,0.35)' }} />
-                        <div className="h-2 rounded" style={{ width: '78%', background: 'rgba(255,255,255,0.25)' }} />
-                        <div className="h-2 rounded" style={{ width: '85%', background: 'rgba(255,255,255,0.25)' }} />
+              {/* 02 — positioning one-pager / deck */}
+              <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
+                <div className="p-5 sm:p-6 flex items-baseline gap-3 flex-wrap">
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: '#eff5fc', color: '#0a66c2' }}>02</span>
+                  <h3 className="text-gray-900" style={{ fontSize: 'clamp(18px, 2.2vw, 24px)', fontWeight: 500, letterSpacing: '-0.2px' }}>One page that gets your whole team saying the same thing</h3>
+                </div>
+                <div className="px-5 sm:px-6 pb-6">
+                  <div className="rounded-xl border border-gray-200 p-5 sm:p-6" style={{ background: '#f8fafc' }}>
+                    <div className="rounded-lg p-5 sm:p-6" style={{ background: '#0a2540' }}>
+                      <div className="h-3 rounded mb-4" style={{ width: '45%', background: '#4d90d6' }} />
+                      <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
+                        {['What you do', "Who it's for", 'The problem', 'Why you win'].map((lbl, i) => (
+                          <div key={i}>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#7fb0e0' }}>{lbl}</p>
+                            <div className="h-2 rounded mb-1" style={{ width: '95%', background: 'rgba(255,255,255,0.3)' }} />
+                            <div className="h-2 rounded" style={{ width: '70%', background: 'rgba(255,255,255,0.2)' }} />
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      {[0, 1, 2, 3].map((i) => <div key={i} className="h-8 flex-1 rounded border border-gray-200" style={{ background: i === 0 ? '#eff5fc' : '#f8fafc' }} />)}
                     </div>
                   </div>
                 </div>
-                <div className="md:order-2">
-                  <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Deliverable 2</div>
-                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>A short positioning deck your whole team can use</h3>
-                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>The exact words for what you do, who it's for, the problem you solve, and why you win, so your ads, landing pages, and sales calls finally say the same thing.</p>
-                </div>
               </div>
 
-              {/* Deliverable 3 — ad + landing-page copy (preview) */}
-              <div className="grid md:grid-cols-2 gap-6 sm:gap-10 items-center reveal">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Deliverable 3</div>
-                  <h3 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(20px, 2.4vw, 26px)', fontWeight: 500, letterSpacing: '-0.2px' }}>Rewritten ad and landing-page copy, ready to ship</h3>
-                  <p className="text-gray-500 text-sm" style={{ lineHeight: 1.7 }}>Your new positioning turned into hooks, ad copy, and landing-page lines your team can paste in this week. Not a strategy doc, things you can run.</p>
+              {/* 03 — ad + landing-page copy */}
+              <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
+                <div className="p-5 sm:p-6 flex items-baseline gap-3 flex-wrap">
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: '#eff5fc', color: '#0a66c2' }}>03</span>
+                  <h3 className="text-gray-900" style={{ fontSize: 'clamp(18px, 2.2vw, 24px)', fontWeight: 500, letterSpacing: '-0.2px' }}>Ad and landing-page copy you can ship this week</h3>
                 </div>
-                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                  <div className="px-4 py-2.5 border-b border-gray-100 text-[11px] font-semibold uppercase tracking-wide text-gray-400" style={{ background: '#f8fafc' }}>Ad + landing page</div>
-                  <div className="p-5 grid grid-cols-2 gap-3">
-                    <div className="rounded-lg border border-gray-200 bg-white p-3">
-                      <div className="text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Ad</div>
-                      <div className="h-2 rounded mb-1.5" style={{ width: '95%', background: '#1a1a1a' }} />
-                      <div className="h-2 rounded bg-gray-300 mb-2.5" style={{ width: '70%' }} />
-                      <div className="h-5 rounded-full" style={{ width: '65%', background: '#0a66c2' }} />
+                <div className="px-5 sm:px-6 pb-6">
+                  <div className="rounded-xl border border-gray-200 p-5 sm:p-6 grid sm:grid-cols-2 gap-4" style={{ background: '#f8fafc' }}>
+                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                      <div className="text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">Ad</div>
+                      <div className="h-2.5 rounded mb-2" style={{ width: '95%', background: '#1a1a1a' }} />
+                      <div className="h-2 rounded bg-gray-300 mb-3.5" style={{ width: '70%' }} />
+                      <div className="h-6 rounded-full" style={{ width: '62%', background: '#0a66c2' }} />
                     </div>
-                    <div className="rounded-lg border border-gray-200 bg-white p-3">
-                      <div className="text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">Landing page</div>
-                      <div className="h-2.5 rounded mb-1.5" style={{ width: '90%', background: '#1a1a1a' }} />
-                      <div className="h-2 rounded bg-gray-200 mb-1" style={{ width: '80%' }} />
-                      <div className="h-2 rounded bg-gray-200 mb-2.5" style={{ width: '65%' }} />
-                      <div className="h-5 rounded-full" style={{ width: '55%', background: '#0a66c2' }} />
+                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                      <div className="text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">Landing page</div>
+                      <div className="h-2.5 rounded mb-2" style={{ width: '88%', background: '#1a1a1a' }} />
+                      <div className="h-2 rounded bg-gray-200 mb-1.5" style={{ width: '80%' }} />
+                      <div className="h-2 rounded bg-gray-200 mb-3.5" style={{ width: '60%' }} />
+                      <div className="h-6 rounded-full" style={{ width: '52%', background: '#0a66c2' }} />
                     </div>
                   </div>
                 </div>
