@@ -2527,79 +2527,81 @@
               <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#fff', color: '#0a2540' }} className="inline-block px-8 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
             </section>
 
-            {/* ══ 7. DELIVERABLES — full-width visual cards, stacked one below the other ══ */}
-            <section className="mb-16 space-y-5">
+            {/* ══ 7. DELIVERABLES — based on the real positioning-report sections (D/E, F, G/I) ══ */}
+            <section className="mb-16">
+              <div className="mb-6">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-3" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Inside your positioning report</div>
+                <p className="text-gray-500 text-sm max-w-xl" style={{ lineHeight: 1.6 }}>Every one of these is a real section of the report you walk away with.</p>
+              </div>
+              <div className="space-y-5">
 
-              {/* 01 — positioning angles */}
-              <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
-                <div className="p-5 sm:p-6 flex items-baseline gap-3 flex-wrap">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: '#eff5fc', color: '#0a66c2' }}>01</span>
-                  <h3 className="text-gray-900" style={{ fontSize: 'clamp(18px, 2.2vw, 24px)', fontWeight: 500, letterSpacing: '-0.2px' }}>Your sharpest positioning angles, ranked by risk</h3>
+                {/* 01 — Recommended Positioning + ICP (report sections D & E) */}
+                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
+                  <div className="p-5 sm:p-6 flex items-baseline gap-3 flex-wrap">
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: '#eff5fc', color: '#0a66c2' }}>01</span>
+                    <h3 className="text-gray-900" style={{ fontSize: 'clamp(18px, 2.2vw, 24px)', fontWeight: 500, letterSpacing: '-0.2px' }}>A recommended positioning, and who to target</h3>
+                    <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide text-gray-400 hidden sm:block">Report · Positioning + ICP</span>
+                  </div>
+                  <div className="px-5 sm:px-6 pb-6">
+                    <div className="rounded-xl border border-gray-200 p-5 sm:p-6" style={{ background: '#f8fafc' }}>
+                      <div className="rounded-lg p-4 mb-3.5" style={{ background: '#eff5fc', borderLeft: '3px solid #0a66c2' }}>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#0a66c2' }}>The positioning to lead with</p>
+                        <div className="space-y-1.5"><div className="h-2.5 rounded" style={{ width: '95%', background: '#93c5fd' }} /><div className="h-2.5 rounded bg-gray-200" style={{ width: '78%' }} /></div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: '#0a66c2', color: '#fff' }}>Primary ICP</span>
+                        <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: '#e2e8f0', color: '#64748b' }}>Segment B</span>
+                        <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: '#e2e8f0', color: '#64748b' }}>Segment C</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="px-5 sm:px-6 pb-6">
-                  <div className="rounded-xl border border-gray-200 p-5 sm:p-6 grid sm:grid-cols-3 gap-3" style={{ background: '#f8fafc' }}>
-                    {[['Angle A', '#dcfce7', '#15803d', 'Low risk'], ['Angle B', '#fef9c3', '#a16207', 'Medium'], ['Angle C', '#fee2e2', '#dc2626', 'Bold']].map(([n, bg, fg, r], i) => (
-                      <div key={i} className="rounded-lg border border-gray-100 bg-white p-4">
-                        <div className="flex items-center justify-between mb-2.5">
-                          <span className="text-xs font-bold text-gray-900">{n}</span>
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: bg, color: fg }}>{r}</span>
+
+                {/* 02 — Messaging Pillars + Proof (report section F) */}
+                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
+                  <div className="p-5 sm:p-6 flex items-baseline gap-3 flex-wrap">
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: '#eff5fc', color: '#0a66c2' }}>02</span>
+                    <h3 className="text-gray-900" style={{ fontSize: 'clamp(18px, 2.2vw, 24px)', fontWeight: 500, letterSpacing: '-0.2px' }}>Messaging pillars, each with its proof</h3>
+                    <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide text-gray-400 hidden sm:block">Report · Messaging Pillars</span>
+                  </div>
+                  <div className="px-5 sm:px-6 pb-6">
+                    <div className="rounded-xl border border-gray-200 p-5 sm:p-6 grid sm:grid-cols-3 gap-3" style={{ background: '#f8fafc' }}>
+                      {[1, 2, 3].map((n) => (
+                        <div key={n} className="rounded-lg border border-gray-100 bg-white p-4">
+                          <span className="w-6 h-6 rounded-full text-[11px] font-bold text-white flex items-center justify-center" style={{ background: '#0a66c2' }}>{n}</span>
+                          <div className="mt-3 space-y-1.5"><div className="h-2 rounded bg-gray-300" style={{ width: '90%' }} /><div className="h-2 rounded bg-gray-200" style={{ width: '65%' }} /></div>
+                          <div className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>Proof</div>
                         </div>
-                        <div className="space-y-1.5"><div className="h-2 rounded bg-gray-200" style={{ width: '90%' }} /><div className="h-2 rounded bg-gray-100" style={{ width: '65%' }} /></div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 03 — Offer/CTA direction + ranked action plan (report sections G & I) */}
+                <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
+                  <div className="p-5 sm:p-6 flex items-baseline gap-3 flex-wrap">
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: '#eff5fc', color: '#0a66c2' }}>03</span>
+                    <h3 className="text-gray-900" style={{ fontSize: 'clamp(18px, 2.2vw, 24px)', fontWeight: 500, letterSpacing: '-0.2px' }}>New CTAs and a ranked action plan</h3>
+                    <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide text-gray-400 hidden sm:block">Report · CTAs + Action Plan</span>
+                  </div>
+                  <div className="px-5 sm:px-6 pb-6">
+                    <div className="rounded-xl border border-gray-200 p-5 sm:p-6" style={{ background: '#f8fafc' }}>
+                      <div className="relative">
+                        <div className="absolute w-0.5" style={{ left: '11px', top: '10px', bottom: '10px', background: '#dbeafe' }} />
+                        <ol className="space-y-2.5 relative">
+                          {[['#0a66c2', '88%'], ['#3b82f6', '76%'], ['#60a5fa', '64%'], ['#93c5fd', '52%']].map(([c, w], i) => (
+                            <li key={i} className="flex items-center gap-3">
+                              <span className="relative z-10 w-6 h-6 rounded-full text-[11px] font-bold text-white flex items-center justify-center flex-shrink-0" style={{ background: c }}>{i + 1}</span>
+                              <div className="flex-1 rounded-lg border border-gray-100 bg-white px-3 py-2.5"><div className="h-2 rounded" style={{ width: w, background: c, opacity: 0.4 }} /></div>
+                            </li>
+                          ))}
+                        </ol>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* 02 — positioning one-pager / deck */}
-              <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
-                <div className="p-5 sm:p-6 flex items-baseline gap-3 flex-wrap">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: '#eff5fc', color: '#0a66c2' }}>02</span>
-                  <h3 className="text-gray-900" style={{ fontSize: 'clamp(18px, 2.2vw, 24px)', fontWeight: 500, letterSpacing: '-0.2px' }}>One page that gets your whole team saying the same thing</h3>
-                </div>
-                <div className="px-5 sm:px-6 pb-6">
-                  <div className="rounded-xl border border-gray-200 p-5 sm:p-6" style={{ background: '#f8fafc' }}>
-                    <div className="rounded-lg p-5 sm:p-6" style={{ background: '#0a2540' }}>
-                      <div className="h-3 rounded mb-4" style={{ width: '45%', background: '#4d90d6' }} />
-                      <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
-                        {['What you do', "Who it's for", 'The problem', 'Why you win'].map((lbl, i) => (
-                          <div key={i}>
-                            <p className="text-[10px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#7fb0e0' }}>{lbl}</p>
-                            <div className="h-2 rounded mb-1" style={{ width: '95%', background: 'rgba(255,255,255,0.3)' }} />
-                            <div className="h-2 rounded" style={{ width: '70%', background: 'rgba(255,255,255,0.2)' }} />
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* 03 — ad + landing-page copy */}
-              <div className="card-lift rounded-2xl border border-gray-200 bg-white overflow-hidden reveal">
-                <div className="p-5 sm:p-6 flex items-baseline gap-3 flex-wrap">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0" style={{ background: '#eff5fc', color: '#0a66c2' }}>03</span>
-                  <h3 className="text-gray-900" style={{ fontSize: 'clamp(18px, 2.2vw, 24px)', fontWeight: 500, letterSpacing: '-0.2px' }}>Ad and landing-page copy you can ship this week</h3>
-                </div>
-                <div className="px-5 sm:px-6 pb-6">
-                  <div className="rounded-xl border border-gray-200 p-5 sm:p-6 grid sm:grid-cols-2 gap-4" style={{ background: '#f8fafc' }}>
-                    <div className="rounded-lg border border-gray-200 bg-white p-4">
-                      <div className="text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">Ad</div>
-                      <div className="h-2.5 rounded mb-2" style={{ width: '95%', background: '#1a1a1a' }} />
-                      <div className="h-2 rounded bg-gray-300 mb-3.5" style={{ width: '70%' }} />
-                      <div className="h-6 rounded-full" style={{ width: '62%', background: '#0a66c2' }} />
-                    </div>
-                    <div className="rounded-lg border border-gray-200 bg-white p-4">
-                      <div className="text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">Landing page</div>
-                      <div className="h-2.5 rounded mb-2" style={{ width: '88%', background: '#1a1a1a' }} />
-                      <div className="h-2 rounded bg-gray-200 mb-1.5" style={{ width: '80%' }} />
-                      <div className="h-2 rounded bg-gray-200 mb-3.5" style={{ width: '60%' }} />
-                      <div className="h-6 rounded-full" style={{ width: '52%', background: '#0a66c2' }} />
-                    </div>
-                  </div>
-                </div>
               </div>
-
             </section>
 
             {/* ══ 8. PROCESS — compact visual timeline (minimal text) ══ */}
