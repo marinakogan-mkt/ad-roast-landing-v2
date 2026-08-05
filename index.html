@@ -1619,73 +1619,46 @@
             </div>
           </section>
 
-          {/* PRICING TIERS */}
+          {/* SERVICE PRICING — the paid offers live on the main page; the roast-token
+              upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Pricing</div>
-            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Your first roast is free. Then pick your pace.</h2>
-            <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>One roast costs one token. Every plan scores your creative, ad copy, and landing page against your ICP.</p>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Work with us</div>
+            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Want it fixed, not just scored?</h2>
+            <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>The roaster shows you what's broken. When you want it fixed, we step in, from a ready-to-ship positioning roadmap to a full done-for-you rebuild.</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-
-              {/* PLAN 1: FREE */}
-              <div className="p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all flex flex-col">
-                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Free</div>
-                <h3 className="text-gray-900 mb-1" style={{ fontSize: '22px', fontWeight: 500, letterSpacing: '-0.2px' }}>Your first roast</h3>
-                <div className="mb-4">
-                  <span className="text-gray-900" style={{ fontSize: '32px', fontWeight: 300, letterSpacing: '-0.5px' }}>Free</span>
-                  <span className="text-gray-400 text-sm ml-1">1 roast</span>
-                </div>
-                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>See exactly why your ad isn't converting. No card required.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Conversion Roadmap */}
+              <div className="p-7 sm:p-8 border-2 rounded-2xl hover:shadow-lg transition-all flex flex-col relative" style={{ borderColor: '#0a66c2' }}>
+                <div className="absolute -top-3 left-8 px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>MOST POPULAR</div>
+                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Ready-to-implement action plan</div>
+                <h3 className="text-gray-900 mb-1" style={{ fontSize: '24px', fontWeight: 500, letterSpacing: '-0.2px' }}>Conversion Roadmap</h3>
+                <div className="mb-4"><span className="text-gray-900" style={{ fontSize: '34px', fontWeight: 300, letterSpacing: '-0.5px' }}>$6K</span><span className="text-gray-400 text-sm ml-1">one-time · delivered in 10 days</span></div>
+                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>Clear positioning direction with ad copy and landing-page fixes your team can ship next week.</p>
                 <ul className="space-y-2 mb-7 flex-grow">
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>1 full ad roast</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Creative, ad copy, and landing page scored</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Top fixes ranked by impact</span></li>
+                  {["Why demos aren't converting", "Sharper ICP and positioning", "Copy snippets for landing pages and creatives", "Implementation roadmap ranked by revenue impact"].map((t, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>{t}</span></li>
+                  ))}
                 </ul>
-                <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors">Roast my Ad</button>
-                <p className="text-center text-xs text-gray-400 mt-2">Runs on autopilot · about 2 minutes</p>
+                <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="w-full px-6 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline text-center">Book a call</a>
+                <p className="text-center text-xs text-gray-400 mt-2">Find out if it's a fit</p>
               </div>
-
-              {/* PLAN 2: MONTHLY */}
-              <div className="p-7 border-2 rounded-lg hover:shadow-lg transition-all flex flex-col relative" style={{ borderColor: '#0a66c2' }}>
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>MOST POPULAR</div>
-                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Monthly</div>
-                <h3 className="text-gray-900 mb-1" style={{ fontSize: '22px', fontWeight: 500, letterSpacing: '-0.2px' }}>Roast regularly</h3>
-                <div className="mb-4">
-                  <span className="text-gray-900" style={{ fontSize: '32px', fontWeight: 300, letterSpacing: '-0.5px' }}>$24</span>
-                  <span className="text-gray-400 text-sm ml-1">/mo</span>
-                </div>
-                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>For teams testing ads every week. Score, fix, ship, repeat.</p>
+              {/* Done-For-You Rebuild */}
+              <div className="p-7 sm:p-8 border border-gray-200 rounded-2xl hover:shadow-md hover:border-blue-200 transition-all flex flex-col">
+                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>End-to-end campaign</div>
+                <h3 className="text-gray-900 mb-1" style={{ fontSize: '24px', fontWeight: 500, letterSpacing: '-0.2px' }}>Done-For-You Rebuild</h3>
+                <div className="mb-4"><span className="text-gray-900" style={{ fontSize: '34px', fontWeight: 300, letterSpacing: '-0.5px' }}>$8K/mo</span><span className="text-gray-400 text-sm ml-1">3-month sprint</span></div>
+                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>Everything in the roadmap, built and launched. We run the ads and optimize until demo conversion doubles.</p>
                 <ul className="space-y-2 mb-7 flex-grow">
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span><strong>20 roasts per month</strong></span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Creative, ad copy, and landing page scored</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Fix Kit with rewritten copy + experiments</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Cancel anytime</span></li>
+                  {["Everything in the Conversion Roadmap", "New ad creatives built and shipped", "Landing page rebuilt to match the ad narrative", "Campaign launch and ad management", "Weekly optimization and testing"].map((t, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>{t}</span></li>
+                  ))}
                 </ul>
-                <button onClick={() => startCheckout('monthly')} disabled={checkoutBusy === 'monthly'} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="w-full px-6 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-60">{checkoutBusy === 'monthly' ? 'Redirecting…' : 'Start monthly'}</button>
-                <p className="text-center text-xs text-gray-400 mt-2">Resets to 20 each month</p>
+                <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border-2 rounded-full font-semibold text-sm hover:bg-blue-50 transition-colors no-underline text-center">Book a call</a>
+                <p className="text-center text-xs text-gray-400 mt-2">Casual chat to see if there's a fit</p>
               </div>
-
-              {/* PLAN 3: LIFETIME */}
-              <div className="p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all flex flex-col">
-                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Lifetime</div>
-                <h3 className="text-gray-900 mb-1" style={{ fontSize: '22px', fontWeight: 500, letterSpacing: '-0.2px' }}>Pay once, keep roasting</h3>
-                <div className="mb-4">
-                  <span className="text-gray-900" style={{ fontSize: '32px', fontWeight: 300, letterSpacing: '-0.5px' }}>$482</span>
-                  <span className="text-gray-400 text-sm ml-1">once</span>
-                </div>
-                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>One payment, 20 roasts every month for life. Best value if you run ads long-term.</p>
-                <ul className="space-y-2 mb-7 flex-grow">
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span><strong>20 roasts per month, forever</strong></span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>Everything in Monthly</span></li>
-                  <li className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>No recurring charge</span></li>
-                </ul>
-                <button onClick={() => startCheckout('lifetime')} disabled={checkoutBusy === 'lifetime'} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border rounded-full font-medium text-sm hover:bg-blue-50 transition-colors disabled:opacity-60">{checkoutBusy === 'lifetime' ? 'Redirecting…' : 'Get lifetime'}</button>
-                <p className="text-center text-xs text-gray-400 mt-2">Pays for itself in about 20 months</p>
-              </div>
-
             </div>
 
-            <p className="text-center text-sm text-gray-500 mt-8">Want us to fix it for you, not just score it? <button onClick={() => { window.location.hash = 'services'; setView('services'); }} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>See our done-with-you and done-for-you services →</button></p>
+            <p className="text-center text-sm text-gray-500 mt-8">See exactly what you get, the deliverables, and how the sprint works <button onClick={goService} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>on the full services page →</button></p>
           </section>
 
           {/* TESTIMONIALS */}
