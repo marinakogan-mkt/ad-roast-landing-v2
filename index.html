@@ -1475,19 +1475,21 @@
         <section className="mb-16">
           <div className="mb-6">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-3" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What you get</div>
-            <h2 className="text-gray-900" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>A roadmap you can ship next week.</h2>
+            <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Here's exactly what you get.</h2>
+            <p className="text-gray-400 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>Five concrete pieces you can act on, delivered in 10 days, not a deck of theory.</p>
           </div>
           <div className="space-y-3">
             {[
-              { icon: 'target', n: '01', title: "Why your demos aren't converting", line: 'A straight read on what breaks between your ad, your landing page, and the demo.' },
-              { icon: 'sparkles', n: '02', title: 'A sharper ICP and positioning', line: 'The one message to lead with, and exactly who to say it to.' },
-              { icon: 'zap', n: '03', title: 'Copy for your ads and landing pages', line: 'Rewritten hooks, ad lines, and landing-page copy, ready to paste in.' },
-              { icon: 'check', n: '04', title: 'An implementation roadmap', line: 'Every fix ranked by revenue impact, so you know what to ship first.' }
+              { icon: 'linkBreak', title: 'A campaign teardown', line: 'Exactly where your ads, landing page, and demo lose the right buyer.' },
+              { icon: 'sparkles', title: 'Positioning angles, ranked by upside', line: 'The messaging directions worth testing, ranked so you know where to start.' },
+              { icon: 'fileText', title: 'A one-page positioning brief', line: 'Your ICP, core message, and proof, on a page your whole team can rally behind.' },
+              { icon: 'copy', title: 'Ready-to-ship ad and landing-page copy', line: 'Rewritten hooks and lines, ready to paste into your campaigns this week.' },
+              { icon: 'check', title: 'A ranked action plan', line: 'Every fix ordered by revenue impact, so the biggest win ships first.' }
             ].map((it, i) => (
               <div key={i} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-5 card-lift reveal">
                 <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#eff5fc' }}><Icon name={it.icon} className="w-5 h-5" style={{ color: '#0a66c2' }} /></div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-2"><span className="text-[11px] font-bold" style={{ color: '#0a66c2' }}>{it.n}</span><h3 className="text-gray-900 font-semibold" style={{ fontSize: 'clamp(16px, 1.9vw, 19px)', letterSpacing: '-0.2px' }}>{it.title}</h3></div>
+                  <h3 className="text-gray-900 font-semibold" style={{ fontSize: 'clamp(16px, 1.9vw, 19px)', letterSpacing: '-0.2px' }}>{it.title}</h3>
                   <p className="text-sm text-gray-500 mt-0.5" style={{ lineHeight: 1.5 }}>{it.line}</p>
                 </div>
               </div>
@@ -1499,12 +1501,13 @@
       const ServiceSprint = () => (
 <section className="mb-16">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>The sprint</div>
-              <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Ten days, start to shipped.</h2>
+              <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Ten days, start to shipped.</h2>
+              <p className="text-gray-400 mb-8 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>Your time: about 3 hours total, a working session and a review call. We handle the rest.</p>
               <div className="relative">
                 <div className="hidden md:block absolute left-[8%] right-[8%] top-6 h-0.5" style={{ background: '#dbeafe' }} />
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-y-6 gap-x-2 reveal">
                   {[
-                    { icon: 'target', day: 'Days 1-2', label: 'Diagnose' },
+                    { icon: 'alertCircle', day: 'Days 1-2', label: 'Diagnose' },
                     { icon: 'sparkles', day: 'Day 3', label: 'Reposition' },
                     { icon: 'zap', day: 'Days 4-5', label: 'Rewrite copy' },
                     { icon: 'check', day: 'Days 6-7', label: 'Build roadmap' },
