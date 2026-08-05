@@ -1626,36 +1626,33 @@
             <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Want it fixed, not just scored?</h2>
             <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>The roaster shows you what's broken. When you want it fixed, we step in, from a ready-to-ship positioning roadmap to a full done-for-you rebuild.</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Conversion Roadmap */}
-              <div className="p-7 sm:p-8 border-2 rounded-2xl hover:shadow-lg transition-all flex flex-col relative" style={{ borderColor: '#0a66c2' }}>
-                <div className="absolute -top-3 left-8 px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>MOST POPULAR</div>
-                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>Ready-to-implement action plan</div>
-                <h3 className="text-gray-900 mb-1" style={{ fontSize: '24px', fontWeight: 500, letterSpacing: '-0.2px' }}>Conversion Roadmap</h3>
-                <div className="mb-4"><span className="text-gray-900" style={{ fontSize: '34px', fontWeight: 300, letterSpacing: '-0.5px' }}>$6K</span><span className="text-gray-400 text-sm ml-1">one-time · delivered in 10 days</span></div>
-                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>Clear positioning direction with ad copy and landing-page fixes your team can ship next week.</p>
-                <ul className="space-y-2 mb-7 flex-grow">
-                  {["Why demos aren't converting", "Sharper ICP and positioning", "Copy snippets for landing pages and creatives", "Implementation roadmap ranked by revenue impact"].map((t, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>{t}</span></li>
-                  ))}
-                </ul>
-                <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="w-full px-6 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline text-center">Book a call</a>
-                <p className="text-center text-xs text-gray-400 mt-2">Find out if it's a fit</p>
+            <div className="rounded-2xl border-2 bg-white p-5 sm:p-6 relative reveal" style={{ borderColor: '#0a66c2' }}>
+              <div className="absolute -top-3 left-6 px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>MOST POPULAR</div>
+              <div className="grid md:grid-cols-[1fr_1.15fr] gap-5 sm:gap-8">
+                <div className="flex flex-col">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#0a66c2' }}>Ready-to-implement action plan</div>
+                  <h3 className="text-gray-900 mb-1" style={{ fontSize: '22px', fontWeight: 500, letterSpacing: '-0.2px' }}>Conversion Roadmap</h3>
+                  <div className="mb-2.5"><span className="text-gray-900" style={{ fontSize: '32px', fontWeight: 300, letterSpacing: '-0.5px' }}>$6K</span><span className="text-gray-400 text-xs ml-1">one-time · 10 days</span></div>
+                  <p className="text-gray-500 text-sm mb-4" style={{ lineHeight: 1.5 }}>Clear positioning direction with ad copy and landing-page fixes your team can ship next week.</p>
+                  <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-block px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline text-center mt-auto">Book a call</a>
+                  <p className="text-center text-xs text-gray-400 mt-1.5">Find out if it's a fit</p>
+                </div>
+                <div className="md:border-l md:border-gray-200 md:pl-8">
+                  <p className="text-sm font-semibold text-gray-900 mb-3">What you get:</p>
+                  <ul className="space-y-2.5">
+                    {["Why demos aren't converting", "Sharper ICP and positioning", "Copy snippets for landing pages and creatives", "Implementation roadmap ranked by revenue impact"].map((t, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span style={{ lineHeight: 1.45 }}>{t}</span></li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              {/* Done-For-You Rebuild */}
-              <div className="p-7 sm:p-8 border border-gray-200 rounded-2xl hover:shadow-md hover:border-blue-200 transition-all flex flex-col">
-                <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>End-to-end campaign</div>
-                <h3 className="text-gray-900 mb-1" style={{ fontSize: '24px', fontWeight: 500, letterSpacing: '-0.2px' }}>Done-For-You Rebuild</h3>
-                <div className="mb-4"><span className="text-gray-900" style={{ fontSize: '34px', fontWeight: 300, letterSpacing: '-0.5px' }}>$8K/mo</span><span className="text-gray-400 text-sm ml-1">3-month sprint</span></div>
-                <p className="text-gray-500 text-sm mb-5" style={{ lineHeight: 1.6 }}>Everything in the roadmap, built and launched. We run the ads and optimize until demo conversion doubles.</p>
-                <ul className="space-y-2 mb-7 flex-grow">
-                  {["Everything in the Conversion Roadmap", "New ad creatives built and shipped", "Landing page rebuilt to match the ad narrative", "Campaign launch and ad management", "Weekly optimization and testing"].map((t, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-gray-600"><Icon name="check" className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#0a66c2' }} /><span>{t}</span></li>
-                  ))}
-                </ul>
-                <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full px-6 py-3 bg-white border-2 rounded-full font-semibold text-sm hover:bg-blue-50 transition-colors no-underline text-center">Book a call</a>
-                <p className="text-center text-xs text-gray-400 mt-2">Casual chat to see if there's a fit</p>
+            </div>
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between reveal">
+              <div className="flex-1">
+                <div className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#0a66c2' }}>End-to-end campaign</div>
+                <p className="text-sm text-gray-600" style={{ lineHeight: 1.55 }}><strong className="text-gray-900">Done-For-You Rebuild · $8K/mo (3-month sprint).</strong> Everything in the roadmap, built and launched. We run the ads and optimize until demo conversion doubles.</p>
               </div>
+              <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="whitespace-nowrap px-6 py-2.5 bg-white border-2 rounded-full font-semibold text-sm hover:bg-blue-50 transition-colors no-underline text-center">Talk to us →</a>
             </div>
 
             <p className="text-center text-sm text-gray-500 mt-8">See exactly what you get, the deliverables, and how the sprint works <button onClick={goService} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>on the full services page →</button></p>
@@ -1666,7 +1663,7 @@
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What Founders Say</div>
             <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(28px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Words from clients.</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {TOOL_QUOTES.map((t, i) => (
+              {CLIENT_QUOTES.map((t, i) => (
                 <div key={i} className="p-5 sm:p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between">
                   <p className="text-gray-700 text-sm italic mb-6" style={{ lineHeight: 1.7 }}>{`\u201c${t.quote}\u201d`}</p>
                   <div>
@@ -2443,9 +2440,9 @@
               </div>
             </section>
 
-            {/* ══ 3. TESTIMONIAL STRIP — service-voice quotes only (tool quotes live on the roaster page) ══ */}
-            <div className="grid sm:grid-cols-2 gap-4 mb-16 reveal">
-              {SERVICE_QUOTES.map((t, i) => (
+            {/* ══ 3. TESTIMONIAL STRIP — all client quotes ══ */}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16 reveal">
+              {CLIENT_QUOTES.map((t, i) => (
                 <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col justify-between">
                   <p className="text-gray-700 text-xs italic mb-3" style={{ lineHeight: 1.6 }}>{`“${t.quote}”`}</p>
                   <div><p className="text-xs font-semibold text-gray-900">{t.name}</p><p className="text-[11px] text-gray-400">{t.role}</p></div>
