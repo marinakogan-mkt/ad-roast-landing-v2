@@ -449,6 +449,7 @@
       const svcPreview = typeof window !== 'undefined' && window.location.search.includes('preview');
       const [openOffers, setOpenOffers] = useState([]);
       const [openDeliv, setOpenDeliv] = useState([]);
+      const [openSprint, setOpenSprint] = useState(null);
       /* Quick "roast another ad" popup shown from the results header. */
       const [showReroast, setShowReroast] = useState(false);
       const [reroastLink, setReroastLink] = useState('');
@@ -520,7 +521,7 @@
         if (portalParam === '1') setIsPortalView(true);
 
         /* Direct link to the services page (adroast.in/#services). */
-        if (window.location.hash === '#services' || window.location.pathname.replace(/\/+$/, '') === '/services') setView('services');
+        if (window.location.hash === '#services' || window.location.pathname.replace(/\/+$/, '') === '/services') { try { window.history.replaceState({}, '', '/'); } catch (e) {} }
 
         /* Magic sign-in link failed (expired / already used) — show a clear message
            on the landing instead of dumping the user into the portal gate. */
@@ -723,7 +724,7 @@
       /* Route to the services page whenever the hash becomes #services (covers
          in-app hash changes and back/forward, alongside the on-load check). */
       React.useEffect(() => {
-        const onHash = () => { if (window.location.hash === '#services') setView('services'); };
+        const onHash = () => { if (window.location.hash === '#services') { try { window.history.replaceState({}, '', '/'); } catch (e) {} } };
         window.addEventListener('hashchange', onHash);
         return () => window.removeEventListener('hashchange', onHash);
       }, []);
@@ -749,9 +750,7 @@
             return;
           }
           /* Keep the tool/service pages in sync with the URL on back/forward. */
-          const onServicesUrl = window.location.pathname.replace(/\/+$/, '') === '/services' || window.location.hash === '#services';
-          if (onServicesUrl) setView('services');
-          else if (viewRef.current === 'services') setView('landing');
+          if (window.location.pathname.replace(/\/+$/, '') === '/services' || window.location.hash === '#services') setView('landing');
         };
         window.addEventListener('popstate', onPop);
         return () => window.removeEventListener('popstate', onPop);
@@ -1405,7 +1404,6 @@
          primary Book-a-call CTA, shared by the tool and service pages. Mobile collapses
          to a menu (navOpen). Called as a plain function to avoid remount on re-render. */
       const goTool = () => { setNavOpen(false); try { window.history.pushState({}, '', '/'); } catch (e) {} reset(); };
-      const goService = () => { setNavOpen(false); try { window.history.pushState({}, '', '/services'); } catch (e) {} setView('services'); };
       const navLink = (label, on, isActive) => (
         <button onClick={on} className="bg-transparent border-none cursor-pointer p-0 text-sm" style={isActive ? { color: '#0a66c2', fontWeight: 600, borderBottom: '2px solid #0a66c2', paddingBottom: 2 } : { color: '#475569' }}>{label}</button>
       );
@@ -1510,34 +1508,46 @@
         );
       };
 
-      const ServiceSprint = () => (
-<section className="mb-16">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>The sprint</div>
-              <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Ten days, start to shipped.</h2>
-              <p className="text-gray-400 mb-8 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>Your time: about 3 hours total, a working session and a review call. We handle the rest.</p>
-              <div className="relative">
-                <div className="hidden md:block absolute left-[8%] right-[8%] top-6 h-0.5" style={{ background: '#dbeafe' }} />
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-y-6 gap-x-2 reveal">
-                  {[
-                    { icon: 'alertCircle', day: 'Days 1-2', label: 'Diagnose', sub: 'where demos leak' },
-                    { icon: 'sparkles', day: 'Day 3', label: 'Reposition', sub: 'the new angle' },
-                    { icon: 'zap', day: 'Days 4-5', label: 'Rework messaging', sub: 'ads + landing page' },
-                    { icon: 'check', day: 'Days 6-7', label: 'Build roadmap', sub: 'ranked fixes' },
-                    { icon: 'rotateCcw', day: 'Day 8', label: 'Review call', sub: 'align + refine' },
-                    { icon: 'arrowRight', day: 'Days 9-10', label: 'Deliver', sub: 'ready to ship' }
-                  ].map((s, i) => (
-                    <div key={i} className="relative flex flex-col items-center text-center">
-                      <div className="w-12 h-12 rounded-full bg-white border-2 flex items-center justify-center relative z-10 card-lift" style={{ borderColor: '#0a66c2' }}><Icon name={s.icon} className="w-5 h-5" style={{ color: '#0a66c2' }} /></div>
+      const ServiceSprint = () => {
+        const steps = [
+          { icon: 'alertCircle', day: 'Days 1-2', label: 'Diagnose', sub: 'where demos leak', more: 'We pull apart your live ads, landing pages, and demo flow and pinpoint exactly where the wrong buyers opt in and the right ones drop off.' },
+          { icon: 'sparkles', day: 'Day 3', label: 'Reposition', sub: 'the new angle', more: 'In a working session we lock the new direction: the segment to lead with, the category you compete in, and the core message your buyer recognizes.' },
+          { icon: 'zap', day: 'Days 4-5', label: 'Rework messaging', sub: 'ads + landing page', more: 'We rework the whole campaign to the new direction, ad hooks and body, landing-page headline and sections, so every touchpoint tells one story.' },
+          { icon: 'check', day: 'Days 6-7', label: 'Build roadmap', sub: 'ranked fixes', more: 'We turn the fixes into a ranked rollout plan, ordered by revenue impact, so you know exactly what to ship first and what can wait.' },
+          { icon: 'rotateCcw', day: 'Day 8', label: 'Review call', sub: 'align + refine', more: 'We walk you through everything on a call, refine whatever needs it, and make sure your team is aligned on the new direction.' },
+          { icon: 'arrowRight', day: 'Days 9-10', label: 'Deliver', sub: 'ready to ship', more: 'You get the full package, teardown, direction, ranked angles, reworked campaign, and action plan, ready to ship.' }
+        ];
+        return (
+          <section className="mb-16">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>The sprint</div>
+            <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Ten days, start to shipped.</h2>
+            <p className="text-gray-400 mb-8 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>Your time: about 3 hours total, a working session and a review call. We handle the rest. Tap any day to see what happens.</p>
+            <div className="relative">
+              <div className="hidden md:block absolute left-[8%] right-[8%] top-6 h-0.5" style={{ background: '#dbeafe' }} />
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-y-6 gap-x-2 reveal">
+                {steps.map((s, i) => {
+                  const active = openSprint === i;
+                  return (
+                    <button key={i} onClick={() => setOpenSprint(active ? null : i)} className="relative flex flex-col items-center text-center bg-transparent border-none cursor-pointer p-0">
+                      <div className="w-12 h-12 rounded-full border-2 flex items-center justify-center relative z-10" style={{ borderColor: '#0a66c2', backgroundColor: active ? '#0a66c2' : '#fff', transform: active ? 'scale(1.08)' : 'none', transition: 'transform 0.15s' }}><Icon name={s.icon} className="w-5 h-5" style={{ color: active ? '#fff' : '#0a66c2' }} /></div>
                       <p className="text-[11px] font-bold mt-2.5" style={{ color: '#0a66c2' }}>{s.day}</p>
                       <p className="text-sm font-semibold text-gray-900 leading-tight">{s.label}</p>
                       <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">{s.sub}</p>
-                    </div>
-                  ))}
-                </div>
+                    </button>
+                  );
+                })}
               </div>
-              <p className="text-sm text-gray-500 mt-8 text-center">Prefer it built for you? <strong className="text-gray-900">Done-For-You</strong> runs weeks 3-12: build, launch, optimize.</p>
-            </section>
-      );
+              {openSprint !== null && (
+                <div className="mt-6 rounded-2xl border border-gray-200 p-5 step-in" style={{ background: '#f8fbff' }}>
+                  <div className="flex items-center gap-2 mb-1.5"><span className="text-[11px] font-bold" style={{ color: '#0a66c2' }}>{steps[openSprint].day}</span><span className="text-sm font-semibold text-gray-900">{steps[openSprint].label}</span></div>
+                  <p className="text-sm text-gray-600" style={{ lineHeight: 1.65 }}>{steps[openSprint].more}</p>
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-gray-500 mt-8 text-center">Prefer it built for you? <strong className="text-gray-900">Done-For-You</strong> runs weeks 3-12: build, launch, optimize.</p>
+          </section>
+        );
+      };
 
       /* Private-audit sign-in gate: takes over the page when a non-signed-in
          viewer follows a portal-private audit link (e.g. an Aikido ?id=…). */
@@ -1713,7 +1723,6 @@
 
             {ServiceOffers()}
 
-            <p className="text-center text-sm text-gray-500 mt-8">See exactly what you get, the deliverables, and how the sprint works <button onClick={goService} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>on the full services page →</button></p>
           </section>
 
           {/* RESULTS */}
@@ -1742,20 +1751,82 @@
             {ServiceSprint()}
           </section>
 
+          {/* POSITIONING-PROBLEM CHECKLIST (one column, condensed from the old services page) */}
+          <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
+            <h2 className="text-gray-900 mb-1" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Do you have a positioning problem?</h2>
+            <p className="text-gray-400 text-sm mb-6">(Check all that apply)</p>
+            <div className="grid grid-cols-1 gap-3 max-w-2xl">
+              {[
+                "People click your ad but don't get what you do.",
+                "People get what you do, but not why to pick you over the competition.",
+                "Your ad, landing page, and demo each tell a different story.",
+                "Prospects book a demo, then go quiet."
+              ].map((t, i) => {
+                const on = svcChecked.includes(i);
+                return (
+                  <button key={i} onClick={() => setSvcChecked(prev => on ? prev.filter(x => x !== i) : [...prev, i])}
+                    className="text-left flex items-start gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer card-lift"
+                    style={on ? { borderColor: '#0a66c2', background: '#eff5fc' } : { borderColor: '#e8e8f0', background: '#fff' }}>
+                    <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors" style={on ? { borderColor: '#0a66c2', background: '#0a66c2' } : { borderColor: '#cbd5e1' }}>
+                      {on && <Icon name="check" className="w-3.5 h-3.5 text-white" />}
+                    </span>
+                    <span className="text-sm" style={{ lineHeight: 1.5, color: on ? '#0a2540' : '#475569' }}>{t}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-6 max-w-md">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${(svcChecked.length / 4) * 100}%`, background: svcChecked.length >= 2 ? '#0a66c2' : '#93c5fd', transition: 'width .25s ease' }} />
+                </div>
+                <span className="text-xs font-bold text-gray-500 tabular-nums">{svcChecked.length}/4</span>
+              </div>
+              <p className="text-sm font-medium" style={{ color: svcChecked.length >= 2 ? '#0a2540' : '#64748b' }}>
+                {svcChecked.length === 0 ? 'Tap the ones that hit.' : svcChecked.length < 2 ? "That's positioning, not ad execution." : "Definitely positioning. We fix exactly this."}
+              </p>
+              {svcChecked.length >= 2 && <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-flex items-center gap-1.5 mt-3 px-5 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline step-in">Book a call <Icon name="arrowRight" className="w-4 h-4" /></a>}
+            </div>
+          </section>
+
           {/* TESTIMONIALS */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What Founders Say</div>
             <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(28px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Words from clients.</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {CLIENT_QUOTES.map((t, i) => (
-                <div key={i} className="p-5 sm:p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between">
-                  <p className="text-gray-700 text-sm italic mb-6" style={{ lineHeight: 1.7 }}>{`\u201c${t.quote}\u201d`}</p>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                    <p className="text-xs text-gray-400">{t.role}</p>
-                  </div>
+                <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col justify-between">
+                  <p className="text-gray-700 text-xs italic mb-3" style={{ lineHeight: 1.6 }}>{`\u201c${t.quote}\u201d`}</p>
+                  <div><p className="text-xs font-semibold text-gray-900">{t.name}</p><p className="text-[11px] text-gray-400">{t.role}</p></div>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* FAQ (Q&A, condensed from the old services page) */}
+          <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>FAQs</div>
+            <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Questions, answered.</h2>
+            <div className="max-w-3xl border-t border-gray-200">
+              {[
+                ["How much time should I budget?", "About 3 hours total, a working session and a review call. We do the heavy lifting."],
+                ["What if I only want the roadmap, not the build?", "That's the Conversion Roadmap. Ship it yourself, or upgrade to Done-For-You later."],
+                ["Do you interview my customers?", "Optional. We can mine your call recordings, reviews, and won/lost notes instead."],
+                ["What's the refund policy?", "The Conversion Roadmap has a 7-day revision window, with a full refund if the revised scope still misses."],
+                ["Who is this for?", "B2B SaaS spending $20K+/mo on ads whose demos aren't converting."],
+                ["How do we start?", "Book a 30-minute call. We'll tell you straight if it's a fit."]
+              ].map(([q, a], i) => {
+                const open = faqOpen === i;
+                return (
+                  <div key={i} className="border-b border-gray-200">
+                    <button onClick={() => setFaqOpen(open ? null : i)} className="w-full flex items-center justify-between gap-4 py-4 text-left bg-transparent border-none cursor-pointer">
+                      <span className="text-sm sm:text-base font-semibold text-gray-900">{q}</span>
+                      <Icon name="chevronRight" className="w-4 h-4 flex-shrink-0 transition-transform" style={{ color: '#0a66c2', transform: open ? 'rotate(270deg)' : 'rotate(90deg)' }} />
+                    </button>
+                    {open && <p className="text-sm text-gray-500 pb-4 pr-8 step-in" style={{ lineHeight: 1.7 }}>{a}</p>}
+                  </div>
+                );
+              })}
             </div>
           </section>
 
@@ -2476,125 +2547,6 @@
       }
 
       /* ─── SERVICES (done-with-you / done-for-you, moved off the main pricing) ─── */
-      if (view === 'services') return (
-        <div className="min-h-screen bg-gray-100">
-          {SiteNav({ active: 'service' })}
-          <main className="max-w-5xl mx-auto px-4 py-10 sm:py-16 w-full">
-
-            {/* ══ 1. HERO (compact) — sized so hero + offer fit the first screen ══ */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium uppercase tracking-wide mb-3" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Work with us</div>
-            <h1 className="text-gray-900 mb-2.5" style={{ fontSize: 'clamp(26px, 3.6vw, 40px)', fontWeight: 300, letterSpacing: '-0.5px', lineHeight: 1.08 }}>Let's fix the positioning under your ads.</h1>
-            <p className="text-gray-500 mb-5 max-w-2xl" style={{ fontSize: '15px', lineHeight: 1.55 }}>A positioning studio for B2B software teams: find the message your ads should lead with, align the team, and ship it. Trusted by teams like Aikido and Nudge Security.</p>
-            <div className="flex flex-wrap items-center gap-3 mb-7">
-              <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-block px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
-            </div>
-
-            {/* ══ 2. OFFER — main Conversion Roadmap card (fits first screen) + DFY strip below ══ */}
-            <section className="mb-16">
-              {ServiceOffers()}
-            </section>
-
-            {/* ══ 3. TESTIMONIAL STRIP — all client quotes ══ */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16 reveal">
-              {CLIENT_QUOTES.map((t, i) => (
-                <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col justify-between">
-                  <p className="text-gray-700 text-xs italic mb-3" style={{ lineHeight: 1.6 }}>{`“${t.quote}”`}</p>
-                  <div><p className="text-xs font-semibold text-gray-900">{t.name}</p><p className="text-[11px] text-gray-400">{t.role}</p></div>
-                </div>
-              ))}
-            </div>
-
-            {/* ══ 4. PROBLEM CHECKLIST ("Do you have a positioning problem?", mirrors Fletch) ══ */}
-            <section className="mb-16">
-              <h2 className="text-gray-900 mb-1" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Do you have a positioning problem?</h2>
-              <p className="text-gray-400 text-sm mb-6">(Check all that apply)</p>
-              <div className="grid sm:grid-cols-2 gap-3 max-w-3xl">
-                {[
-                  "People click your ad but don't get what you do.",
-                  "People get what you do, but not why to pick you over the competition.",
-                  "You're going after multiple segments and don't know who to prioritize.",
-                  "Your ad, landing page, and demo each tell a different story.",
-                  "Prospects book a demo, then go quiet.",
-                  "You run multiple products and can't explain the suite simply."
-                ].map((t, i) => {
-                  const on = svcChecked.includes(i);
-                  return (
-                    <button key={i} onClick={() => setSvcChecked(prev => on ? prev.filter(x => x !== i) : [...prev, i])}
-                      className="text-left flex items-start gap-3 p-3.5 rounded-xl border-2 transition-all cursor-pointer card-lift"
-                      style={on ? { borderColor: '#0a66c2', background: '#eff5fc' } : { borderColor: '#e8e8f0', background: '#fff' }}>
-                      <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors" style={on ? { borderColor: '#0a66c2', background: '#0a66c2' } : { borderColor: '#cbd5e1' }}>
-                        {on && <Icon name="check" className="w-3.5 h-3.5 text-white" />}
-                      </span>
-                      <span className="text-sm" style={{ lineHeight: 1.5, color: on ? '#0a2540' : '#475569' }}>{t}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-6 max-w-md">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${(svcChecked.length / 6) * 100}%`, background: svcChecked.length >= 3 ? '#0a66c2' : '#93c5fd', transition: 'width .25s ease' }} />
-                  </div>
-                  <span className="text-xs font-bold text-gray-500 tabular-nums">{svcChecked.length}/6</span>
-                </div>
-                <p className="text-sm font-medium" style={{ color: svcChecked.length >= 3 ? '#0a2540' : '#64748b' }}>
-                  {svcChecked.length === 0 ? 'Tap the ones that hit.' : svcChecked.length < 3 ? "That's positioning, not ad execution." : "Definitely positioning. We fix exactly this."}
-                </p>
-                {svcChecked.length >= 3 && <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-flex items-center gap-1.5 mt-3 px-5 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline step-in">Book a call <Icon name="arrowRight" className="w-4 h-4" /></a>}
-              </div>
-            </section>
-
-            {/* ══ 6. MID-CTA ("Book the Conversion Roadmap", mirrors Fletch's mid-page CTA) ══ */}
-            <section className="mb-16 text-center rounded-2xl py-10 px-6" style={{ background: '#0a2540' }}>
-              <h2 className="text-white mb-2" style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Book the Conversion Roadmap</h2>
-              <p className="mb-6" style={{ color: '#9db8d8', fontSize: '15px' }}>Here's exactly what you get 👇</p>
-              <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#fff', color: '#0a2540' }} className="inline-block px-8 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
-            </section>
-
-            {/* ══ 7. DELIVERABLES — based on the real positioning-report sections (D/E, F, G/I) ══ */}
-            {ServiceDeliverables()}
-
-            {/* ══ 8. PROCESS — compact visual timeline (minimal text) ══ */}
-            {ServiceSprint()}
-
-            {/* ══ 9. FAQ ══ */}
-            <section className="mb-16">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>FAQs</div>
-              <div className="max-w-3xl border-t border-gray-200">
-                {[
-                  ["How much time should I budget across the sprint?", "A couple of short calls (about 2 hours total) plus async review. We do the heavy lifting."],
-                  ["What's the typical wait before we start?", "Usually within a week of the kickoff call, depending on the queue. We'll tell you the exact date on the call."],
-                  ["Do you interview my customers?", "Optional. We can mine your call recordings, reviews, and won/lost notes instead."],
-                  ["What if I only want the roadmap, not the build?", "That's the Conversion Roadmap. Ship it yourself, or upgrade to Done-For-You later."],
-                  ["What's the refund policy?", "The Conversion Roadmap has a 7-day revision window, with a full refund if the revised scope still misses."],
-                  ["Who is this for?", "B2B SaaS spending $20K+/mo on ads whose demos aren't converting."],
-                  ["How do we start?", "Book a 30-minute call. We'll tell you straight if it's a fit."]
-                ].map(([q, a], i) => {
-                  const open = faqOpen === i;
-                  return (
-                    <div key={i} className="border-b border-gray-200">
-                      <button onClick={() => setFaqOpen(open ? null : i)} className="w-full flex items-center justify-between gap-4 py-4 text-left bg-transparent border-none cursor-pointer">
-                        <span className="text-sm sm:text-base font-semibold text-gray-900">{q}</span>
-                        <Icon name="chevronRight" className="w-4 h-4 flex-shrink-0 transition-transform" style={{ color: '#0a66c2', transform: open ? 'rotate(90deg)' : 'none' }} />
-                      </button>
-                      {open && <p className="text-sm text-gray-500 pb-4 pr-8 step-in" style={{ lineHeight: 1.7 }}>{a}</p>}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* ══ 10. FINAL CTA ══ */}
-            <section className="text-center border-t border-gray-200 pt-12">
-              <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Ready to fix the positioning under your ads?</h2>
-              <p className="text-gray-500 mb-6 max-w-lg mx-auto" style={{ fontSize: '15px', lineHeight: 1.7 }}>One call to see if it's a fit. No pitch, no pressure, just a straight read on what's costing you demos.</p>
-              <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-block px-8 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">Book a call</a>
-              <p className="text-sm text-gray-500 mt-5">Just want to score an ad yourself? <button onClick={() => { window.location.hash = ''; reset(); }} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>Run a free roast →</button></p>
-            </section>
-          </main>
-        </div>
-      );
-
       /* ─── GUIDED (step-by-step questions, replaces onboarding + input forms) ─── */
       if (view === 'guided') {
         /* Step list adapts to whether ad copy was already pasted on the landing page.
