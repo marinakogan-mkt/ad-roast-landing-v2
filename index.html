@@ -448,6 +448,7 @@
       const [navOpen, setNavOpen] = useState(false);
       const svcPreview = typeof window !== 'undefined' && window.location.search.includes('preview');
       const [openOffers, setOpenOffers] = useState([]);
+      const [openDeliv, setOpenDeliv] = useState([]);
       /* Quick "roast another ad" popup shown from the results header. */
       const [showReroast, setShowReroast] = useState(false);
       const [reroastLink, setReroastLink] = useState('');
@@ -1439,7 +1440,7 @@
       const ServiceOffers = () => {
         const toggle = (k) => setOpenOffers(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
         const offers = [
-          { key: 'roadmap', popular: true, primary: true, tag: 'Ready-to-implement action plan', name: 'Conversion Roadmap', price: '$6K', sub: 'one-time · 10 days', desc: 'We pinpoint why your ads pull unqualified demos, then reposition the campaign around your buyer. You get the ad and landing-page copy, ready to ship.', cta: 'Book a call', fit: "Find out if it's a fit", bullets: ["A read on why your demos aren't converting", "A sharper ICP and the one message to lead with", "Copy snippets for your ads and landing pages", "An implementation roadmap ranked by revenue impact"] },
+          { key: 'roadmap', popular: true, primary: true, tag: 'Ready-to-implement action plan', name: 'Conversion Roadmap', price: '$6K', sub: 'one-time · 10 days', desc: 'We pinpoint why your ads pull unqualified demos, then reposition the campaign around your buyer. You get the rewritten ad and landing-page messaging, ready to ship.', cta: 'Book a call', fit: "Find out if it's a fit", bullets: ["Pinpoint exactly where you're losing qualified demos", "The one message that makes the right buyer recognize themselves", "3-5 positioning angles to test, ranked by upside", "Rewritten ad and landing-page messaging, ready to ship, no rewriting", "A fix-list ranked by revenue impact, so the biggest win ships first"] },
           { key: 'dfy', popular: false, primary: false, tag: 'End-to-end campaign', name: 'Done-For-You Rebuild', price: '$8K/mo', sub: '3-month sprint', desc: 'Everything in the roadmap, built and launched. We run the ads and optimize until demo conversion doubles.', cta: 'Talk to us →', fit: "Casual chat to see if there's a fit", bullets: ["Everything in the Conversion Roadmap", "New ad creatives built and shipped", "Landing page rebuilt to match the ad narrative", "Campaign launch and ongoing ad management", "Weekly optimization and testing"] }
         ];
         return (
@@ -1471,32 +1472,43 @@
         );
       };
 
-      const ServiceDeliverables = () => (
-        <section className="mb-16">
-          <div className="mb-6">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-3" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What you get</div>
-            <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Here's exactly what you get.</h2>
-            <p className="text-gray-400 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>Five concrete pieces you can act on, delivered in 10 days, not a deck of theory.</p>
-          </div>
-          <div className="space-y-3">
-            {[
-              { icon: 'linkBreak', title: 'A campaign teardown', line: 'Exactly where your ads, landing page, and demo lose the right buyer.' },
-              { icon: 'sparkles', title: 'Positioning angles, ranked by upside', line: 'The messaging directions worth testing, ranked so you know where to start.' },
-              { icon: 'fileText', title: 'A one-page positioning brief', line: 'Your ICP, core message, and proof, on a page your whole team can rally behind.' },
-              { icon: 'copy', title: 'Ready-to-ship ad and landing-page copy', line: 'Rewritten hooks and lines, ready to paste into your campaigns this week.' },
-              { icon: 'check', title: 'A ranked action plan', line: 'Every fix ordered by revenue impact, so the biggest win ships first.' }
-            ].map((it, i) => (
-              <div key={i} className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-5 card-lift reveal">
-                <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#eff5fc' }}><Icon name={it.icon} className="w-5 h-5" style={{ color: '#0a66c2' }} /></div>
-                <div className="flex-1">
-                  <h3 className="text-gray-900 font-semibold" style={{ fontSize: 'clamp(16px, 1.9vw, 19px)', letterSpacing: '-0.2px' }}>{it.title}</h3>
-                  <p className="text-sm text-gray-500 mt-0.5" style={{ lineHeight: 1.5 }}>{it.line}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      );
+      const ServiceDeliverables = () => {
+        const toggle = (i) => setOpenDeliv(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
+        const items = [
+          { icon: 'linkBreak', title: 'A campaign teardown', line: 'Exactly where your ads, landing page, and demo lose the right buyer.', more: 'We walk your live funnel the way your buyer does, ads, landing pages, and demo flow, and map every point where the wrong people opt in and the right ones drop off. You get the specific breakpoints, not a generic score.' },
+          { icon: 'sparkles', title: 'A new positioning direction', line: 'Not tweaks to your words, a clear answer on who you win with and why.', more: 'The strategic core the whole campaign is built on: the segment to lead with, the category you compete in, the core message, and the narrative that ties it together. This is direction, not a copy pass.' },
+          { icon: 'zap', title: 'Positioning angles, ranked by upside', line: 'The messaging directions worth testing, ranked so you know where to start.', more: 'Three to five distinct angles to take to market, each with its hook, the buyer it targets, and why it could work, ranked by upside so you test the highest-leverage message first instead of guessing.' },
+          { icon: 'copy', title: 'A rewritten campaign, end to end', line: 'Ad and landing-page messaging that finally carries one story, ready to ship.', more: 'The whole campaign reworked to the new direction: ad hooks and body, landing-page headline and sections, so your ad, page, and demo tell the same story. Ready to paste in, no rewriting.' },
+          { icon: 'check', title: 'A ranked action plan', line: 'Every fix ordered by revenue impact, so the biggest win ships first.', more: 'A prioritized rollout: what to change, in what order, and the expected impact of each move, so your team knows exactly what to ship first and what can wait.' }
+        ];
+        return (
+          <section className="mb-16">
+            <div className="mb-6">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-3" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What you get</div>
+              <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Your whole campaign, repositioned.</h2>
+              <p className="text-gray-400 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>The whole funnel repositioned, not just reworded, delivered in 10 days. Tap any piece to see what's inside.</p>
+            </div>
+            <div className="space-y-3">
+              {items.map((it, i) => {
+                const open = openDeliv.includes(i);
+                return (
+                  <div key={i} className="rounded-2xl border border-gray-200 bg-white hover:border-blue-200 transition-colors reveal">
+                    <button onClick={() => toggle(i)} className="w-full flex items-center gap-4 p-5 text-left bg-transparent border-none cursor-pointer">
+                      <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#eff5fc' }}><Icon name={it.icon} className="w-5 h-5" style={{ color: '#0a66c2' }} /></div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-gray-900 font-semibold" style={{ fontSize: 'clamp(16px, 1.9vw, 19px)', letterSpacing: '-0.2px' }}>{it.title}</h3>
+                        <p className="text-sm text-gray-500 mt-0.5" style={{ lineHeight: 1.5 }}>{it.line}</p>
+                      </div>
+                      <Icon name="chevronRight" className="w-4 h-4 flex-shrink-0 transition-transform" style={{ color: '#0a66c2', transform: open ? 'rotate(270deg)' : 'rotate(90deg)' }} />
+                    </button>
+                    {open && <div className="px-5 pb-5 md:pl-20 step-in"><p className="text-sm text-gray-600" style={{ lineHeight: 1.65 }}>{it.more}</p></div>}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      };
 
       const ServiceSprint = () => (
 <section className="mb-16">
@@ -1507,17 +1519,18 @@
                 <div className="hidden md:block absolute left-[8%] right-[8%] top-6 h-0.5" style={{ background: '#dbeafe' }} />
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-y-6 gap-x-2 reveal">
                   {[
-                    { icon: 'alertCircle', day: 'Days 1-2', label: 'Diagnose' },
-                    { icon: 'sparkles', day: 'Day 3', label: 'Reposition' },
-                    { icon: 'zap', day: 'Days 4-5', label: 'Rewrite copy' },
-                    { icon: 'check', day: 'Days 6-7', label: 'Build roadmap' },
-                    { icon: 'rotateCcw', day: 'Day 8', label: 'Review call' },
-                    { icon: 'arrowRight', day: 'Days 9-10', label: 'Deliver' }
+                    { icon: 'alertCircle', day: 'Days 1-2', label: 'Diagnose', sub: 'where demos leak' },
+                    { icon: 'sparkles', day: 'Day 3', label: 'Reposition', sub: 'the new angle' },
+                    { icon: 'zap', day: 'Days 4-5', label: 'Rework messaging', sub: 'ads + landing page' },
+                    { icon: 'check', day: 'Days 6-7', label: 'Build roadmap', sub: 'ranked fixes' },
+                    { icon: 'rotateCcw', day: 'Day 8', label: 'Review call', sub: 'align + refine' },
+                    { icon: 'arrowRight', day: 'Days 9-10', label: 'Deliver', sub: 'ready to ship' }
                   ].map((s, i) => (
                     <div key={i} className="relative flex flex-col items-center text-center">
                       <div className="w-12 h-12 rounded-full bg-white border-2 flex items-center justify-center relative z-10 card-lift" style={{ borderColor: '#0a66c2' }}><Icon name={s.icon} className="w-5 h-5" style={{ color: '#0a66c2' }} /></div>
                       <p className="text-[11px] font-bold mt-2.5" style={{ color: '#0a66c2' }}>{s.day}</p>
                       <p className="text-sm font-semibold text-gray-900 leading-tight">{s.label}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">{s.sub}</p>
                     </div>
                   ))}
                 </div>
