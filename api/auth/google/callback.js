@@ -13,6 +13,7 @@
 
 import { Redis } from '@upstash/redis';
 import { findRoleByEmail, buildSessionCookie, SESSION_TTL_SECONDS } from '../_allowlist.js';
+import { sendWelcomeEmail } from '../../_welcome.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -41,7 +42,7 @@ function decodeJwtPayload(jwt) {
 function htmlRedirect(url, message) {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta http-equiv="refresh" content="0; url=${url}">
-<title>AdRoast — Signing you in</title>
+<title>AdRoast: Signing you in</title>
 <style>body{font-family:-apple-system,system-ui,sans-serif;background:#f5f5f7;color:#1a1a1a;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:32px;text-align:center;max-width:380px}.spinner{width:28px;height:28px;border:3px solid #e5e7eb;border-top-color:#0a66c2;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}@keyframes spin{to{transform:rotate(360deg)}}p{margin:4px 0;font-size:14px;line-height:1.5;color:#6b7280}a{color:#0a66c2;text-decoration:none}</style>
 </head><body><div class="card"><div class="spinner"></div><p><strong style="color:#1a1a1a">${message}</strong></p><p>Redirecting…</p><p style="margin-top:12px;font-size:12px"><a href="${url}">Continue</a></p></div></body></html>`;
 }
@@ -137,6 +138,8 @@ export default async function handler(req, res) {
         ua: req.headers['user-agent'] || 'unknown'
       }));
       await redis.ltrim(`auth:log:${email}`, 0, 49);
+      /* Welcome email for brand-new roast accounts (once ever, fail-open). */
+      await sendWelcomeEmail(redis, email);
     } catch (e) {
       console.error('[auth/google/callback] roast session store error:', e.message);
       return res.redirect(302, '/?auth=error');
@@ -144,7 +147,7 @@ export default async function handler(req, res) {
     res.setHeader('Set-Cookie', buildSessionCookie(roastToken));
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store, must-revalidate');
-    return res.status(200).send(htmlRedirect('/?signedin=1', 'Signed in — back to your roast.'));
+    return res.status(200).send(htmlRedirect('/?signedin=1', 'Signed in. Back to your roast.'));
   }
 
   const role = findRoleByEmail(email);

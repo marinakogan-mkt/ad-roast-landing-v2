@@ -22,6 +22,7 @@ import {
   SESSION_TTL_SECONDS
 } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
+import { sendWelcomeEmail } from './_welcome.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -233,6 +234,9 @@ async function handleVerify(req, res) {
         ip: clientIp(req), ua: req.headers['user-agent'] || 'unknown'
       }));
       await redis.ltrim(`auth:log:${magicData.email}`, 0, 49);
+      /* Welcome email for brand-new roast accounts (once ever, fail-open). Only
+         on the real click, not the prefetch grace path. */
+      if (isRoast) await sendWelcomeEmail(redis, magicData.email);
     }
   } catch (e) {
     return res.redirect(302, isRoast ? '/?signin=error' : '/?auth=error#portal');
