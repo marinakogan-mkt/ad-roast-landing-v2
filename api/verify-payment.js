@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import { grantPlan, downgradeToFree } from './_tokens.js';
+import { grantPlan, downgradeToFree, forceRenew, settleAllAccounts } from './_tokens.js';
 const kv = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
 
 const STRIPE = process.env.STRIPE_SECRET_KEY;
@@ -13,6 +13,24 @@ export default async function handler(req, res) {
   if (typeof body === 'string') try { body = JSON.parse(body); } catch(e) { body = {}; }
   if (!body || typeof body !== 'object') body = {};
 
+  /* ---- Daily cron: settle recurring credits ---------------------------------
+     Vercel Cron hits this once a day. It refills any paid account whose 30-day
+     cycle rolled over and emails them once, so lifetime accounts (which get no
+     Stripe renewal event) still receive their monthly roasts on time. Protected
+     by CRON_SECRET: Vercel sends it as a Bearer token when the env var is set. */
+  if (req.query && req.query.cron === 'refills') {
+    const secret = process.env.CRON_SECRET;
+    const auth = req.headers['authorization'] || '';
+    if (!secret || auth !== `Bearer ${secret}`) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const summary = await settleAllAccounts(kv);
+      return res.status(200).json({ ok: true, ...summary });
+    } catch (e) {
+      console.error('[cron refills] error:', e.message);
+      return res.status(200).json({ ok: false });
+    }
+  }
+
   /* ---- Stripe webhook: subscription lifecycle (monetization #3) --------------
      Stripe POSTs subscription events here. We don't trust the payload blindly —
      we re-fetch the event from Stripe by id to confirm it's genuine, then act on
@@ -24,14 +42,28 @@ export default async function handler(req, res) {
       const evtId = body.id;
       if (evtId) {
         const evt = await stripeGet(`events/${encodeURIComponent(evtId)}`);
-        if (evt && !evt.error && (evt.type === 'customer.subscription.deleted' || evt.type === 'invoice.payment_failed')) {
+        if (evt && !evt.error) {
           const obj = (evt.data && evt.data.object) || {};
-          let email = obj.customer_email || null;
-          if (!email && obj.customer) {
-            const cust = await stripeGet(`customers/${obj.customer}`);
-            email = cust && cust.email;
+          const resolveEmail = async () => {
+            let email = obj.customer_email || null;
+            if (!email && obj.customer) {
+              const cust = await stripeGet(`customers/${obj.customer}`);
+              email = cust && cust.email;
+            }
+            return email;
+          };
+          /* Cancellation / failed payment: stop future refills. */
+          if (evt.type === 'customer.subscription.deleted' || evt.type === 'invoice.payment_failed') {
+            const email = await resolveEmail();
+            if (email) { try { await downgradeToFree(kv, email); } catch (e) { console.error('[webhook] downgrade failed:', e.message); } }
           }
-          if (email) { try { await downgradeToFree(kv, email); } catch (e) { console.error('[webhook] downgrade failed:', e.message); } }
+          /* Monthly renewal: Stripe charged the card for a new cycle. Refill the
+             20 roasts now and email. Only on subscription_cycle (a renewal), not
+             subscription_create (the first invoice, already handled at checkout). */
+          if (evt.type === 'invoice.payment_succeeded' && obj.billing_reason === 'subscription_cycle') {
+            const email = await resolveEmail();
+            if (email) { try { await forceRenew(kv, email); } catch (e) { console.error('[webhook] renew failed:', e.message); } }
+          }
         }
       }
     } catch (e) { console.error('[webhook] error:', e.message); }

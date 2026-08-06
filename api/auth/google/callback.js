@@ -13,7 +13,7 @@
 
 import { Redis } from '@upstash/redis';
 import { findRoleByEmail, buildSessionCookie, SESSION_TTL_SECONDS } from '../_allowlist.js';
-import { sendWelcomeEmail } from '../../_welcome.js';
+import { onNewSignup } from '../../_welcome.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -138,8 +138,9 @@ export default async function handler(req, res) {
         ua: req.headers['user-agent'] || 'unknown'
       }));
       await redis.ltrim(`auth:log:${email}`, 0, 49);
-      /* Welcome email for brand-new roast accounts (once ever, fail-open). */
-      await sendWelcomeEmail(redis, email);
+      /* Onboarding for brand-new roast accounts (once ever, fail-open). Routes
+         to Loops when configured, else a single EmailJS welcome. */
+      await onNewSignup(redis, email);
     } catch (e) {
       console.error('[auth/google/callback] roast session store error:', e.message);
       return res.redirect(302, '/?auth=error');
