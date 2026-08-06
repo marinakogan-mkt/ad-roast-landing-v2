@@ -83,7 +83,7 @@ export function publicSession(role) {
 
 /** Cookie name + standard attributes used across endpoints. */
 export const SESSION_COOKIE = 'adroast_session';
-export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
+export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 90; // 90 days (refreshed on every /me, so active users stay signed in)
 
 export function buildSessionCookie(token, maxAge = SESSION_TTL_SECONDS) {
   /* HttpOnly = no JS access (XSS protection). Secure = HTTPS only.

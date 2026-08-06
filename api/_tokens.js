@@ -20,6 +20,11 @@
 export const PLAN_TOKENS = { free: 1, monthly: 20, lifetime: 20 };
 const CYCLE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+/* Accounts with unlimited roasts (owner / internal). These never consume a
+   token and always pass the entitlement gate, regardless of Redis state. */
+const UNLIMITED_EMAILS = new Set(['marina.kogan@adroast.in']);
+const UNLIMITED_BALANCE = 999999;
+
 function normEmail(email) { return String(email || '').trim().toLowerCase(); }
 
 async function readAccount(redis, email) {
@@ -56,6 +61,7 @@ async function saveAccount(redis, email, acct) {
 export async function peekAccount(redis, rawEmail) {
   const email = normEmail(rawEmail);
   if (!email) return null;
+  if (UNLIMITED_EMAILS.has(email)) return { plan: 'unlimited', tokens: UNLIMITED_BALANCE };
   const acct = applyReset(await readAccount(redis, email), Date.now());
   await saveAccount(redis, email, acct);
   return { plan: acct.plan, tokens: acct.tokens };
@@ -66,6 +72,7 @@ export async function peekAccount(redis, rawEmail) {
 export async function consumeToken(redis, rawEmail) {
   const email = normEmail(rawEmail);
   if (!email) return { authed: false, full: false, remaining: 0, plan: null };
+  if (UNLIMITED_EMAILS.has(email)) return { authed: true, full: true, remaining: UNLIMITED_BALANCE, plan: 'unlimited' };
   const acct = applyReset(await readAccount(redis, email), Date.now());
   if (acct.tokens > 0) {
     acct.tokens -= 1;

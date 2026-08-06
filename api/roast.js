@@ -90,6 +90,8 @@ const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all f
     "headlines": ["string", "string", "string"],
     "body": "string",
     "ctas": ["string", "string"],
+    "button_cta": "string (ONLY for LinkedIn/Meta: the single best pre-set CTA button label chosen from that platform's fixed list below. Empty string \"\" for Google or when no button applies)",
+    "button_cta_reason": "string (one short sentence on why that button beats the alternatives for this offer. Empty string \"\" when button_cta is empty)",
     "landing_page_headline": "string",
     "landing_page_subhead": "string",
     "rationale": "string"
@@ -328,7 +330,17 @@ PLATFORM TRUST-SIGNAL RULES:
     • Sitelinks pointing to customer-story or compliance pages
     • Seller ratings, numeric proof in copy ("50k+ orgs · 100k+ devs · 4.7/5")
 - LinkedIn and Meta ads DO support logos and badges in the creative — image-based trust signals are valid recommendations for those platforms. Check the Platform field above before recommending.
-- For LANDING PAGE recommendations, logos/badges/screenshots are ALWAYS valid — they live on the LP, not in the ad. Always make explicit whether your recommendation targets the ad or the LP so it maps to the right surface.`;
+- For LANDING PAGE recommendations, logos/badges/screenshots are ALWAYS valid — they live on the LP, not in the ad. Always make explicit whether your recommendation targets the ad or the LP so it maps to the right surface.
+
+CTA RULES (three distinct CTA surfaces, do not blur them together):
+- There are up to THREE separate calls to action in a paid-social ad, and they are NOT the same thing:
+  1. The PRE-SET CTA BUTTON. On LinkedIn and Meta this is a fixed dropdown the advertiser picks from a closed list (it is NOT free text). You cannot invent a label.
+  2. The WRITTEN CTA inside the ad copy or on the creative (free text, e.g. "See the 2-minute teardown").
+  3. The LANDING PAGE CTA (the button/headline on the destination page).
+- LinkedIn pre-set CTA button options (Sponsored Content), choose ONLY from this list: Apply, Download, View Quote, Learn More, Sign Up, Subscribe, Register, Join, Attend, Request Demo, Get Quote, Get Started.
+- Meta (Facebook/Instagram) pre-set CTA button options, choose ONLY from this list: Learn More, Sign Up, Subscribe, Download, Get Quote, Request Time, Book Now, Contact Us, Apply Now, Get Started, Shop Now, Watch More, Send Message.
+- When the Platform is linkedin OR meta: set fix_kit.button_cta to the SINGLE best label from that platform's list for this offer type (e.g. a book-a-demo offer usually wants "Request Demo" or "Sign Up"; a self-serve trial usually wants "Sign Up" or "Get Started"; top-of-funnel content wants "Learn More" or "Download"). Put a one-sentence justification in fix_kit.button_cta_reason. Because the list is short, weigh the realistic options against each other and name why the winner beats "Learn More" (the lazy default). The written CTAs in fix_kit.ctas are SEPARATE free-text suggestions for the copy/creative, and the LP CTA is covered by landing_page_headline/subhead: keep all three consistent but do not confuse the pre-set button with them.
+- When the Platform is google or google_ads: there is no pre-set CTA button. Set fix_kit.button_cta to "" and fix_kit.button_cta_reason to "". Google's CTA lives in the ad copy and sitelinks, so only use fix_kit.ctas.`;
 
   const userPrompt = `Analyze this ad${hasAnyLandingContent ? ' AND its landing page' : ''} for ICP: "${icpDescription}"
 

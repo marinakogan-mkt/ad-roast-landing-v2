@@ -316,7 +316,7 @@ Evidence: short rationale.
 **The pattern is clear:** <one paragraph summarizing the central insight>.
 
 The fix is not <X>. The fix is:
-1. **<short bold step title>** — <short description>
+1. **<short bold step title>**: <short description>
 2. **<short bold step title>**: <short description>
 3. **<short bold step title>**: <short description>
 4. **<short bold step title>**: <short description>
@@ -346,12 +346,12 @@ PRESCRIPTION RULES (avoid absolutist recommendations):
 - DO NOT recommend doing something "in all headlines", "in every hero section", "across all ads", "in every CTA", "on all landing pages". A real expert recommends a direction to prioritize and test, not blanket overhauls.
 - Frame fixes as priorities, not mandates. Use "Prioritize X in Y" or "Make X the priority message in Y", not "Lead with X in all Y."
 - Pair priorities with scope. Prefer:
-    "Prioritize false positive reduction in headlines and hero copy — start with AUDIT-1 (SAST) and AUDIT-2 (SCA) where the LP already supports it."
+    "Prioritize false positive reduction in headlines and hero copy. Start with AUDIT-1 (SAST) and AUDIT-2 (SCA) where the LP already supports it."
   Over:
     "Lead with false positive reduction in all ad headlines and hero sections."
 - When a pattern shows up in N/M audits, name the N. Don't say "all" if it's actually 3/5.
 - For headline-level fixes, recommend testing 1-2 variants, not rewriting the whole asset stack.
-- Hero section / LP changes need explicit justification per asset ("the LP for AUDIT-X already does this — replicate on the AUDIT-Y LP"). Do not recommend hero rewrites blindly across the brand.
+- Hero section / LP changes need explicit justification per asset ("the LP for AUDIT-X already does this, so replicate it on the AUDIT-Y LP"). Do not recommend hero rewrites blindly across the brand.
 - "Standardize on X" is allowed only for trust lines and similar single-string assets where consistency matters. Name the specific assets.
 - If you catch yourself writing "Lead with", "in all", "in every", "across the board", "everywhere" — rewrite using "Prioritize" + scoped audit IDs.
 

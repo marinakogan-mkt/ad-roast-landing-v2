@@ -221,6 +221,8 @@
         ],
         body: "Lead with the risk your buyer carries, name the outcome (fewer alerts, faster audits), then prove it with one number. Save the product category for later.",
         ctas: ["Show me the 80% (2-min tour)", "See it on my stack", "Get the alert-noise teardown"],
+        button_cta: "Request Demo",
+        button_cta_reason: "For a demo offer to cold CISOs, \"Request Demo\" sets the right expectation, while the default \"Learn More\" invites clicks that never convert.",
         landing_page_headline: "Cut alert noise 80%. Keep the same team.",
         landing_page_subhead: "The context-aware layer that tells your analysts what actually matters, proven across 40+ security teams.",
         rationale: "Every rewrite moves from product-first to buyer-outcome-first, then earns the click with a specific, testable number."
@@ -297,6 +299,184 @@
       }, []);
       return <span ref={ref}>{prefix}{n}{suffix}</span>;
     };
+
+    /* ── Results-page visual primitives (used by the roast report) ─────────── */
+    const hexForScore = (s) => (typeof s !== 'number' || s <= 0) ? '#cbd5e1' : s <= 3 ? '#dc2626' : s <= 6 ? '#f59e0b' : '#16a34a';
+
+    /* Animated circular score gauge. Arc sweeps to the score and the number
+       counts up. Grey "N/A" when no score (e.g. no landing page provided). */
+    const ScoreRing = ({ score, label, grade, big = false }) => {
+      const has = typeof score === 'number' && score > 0;
+      const size = big ? 128 : 104;
+      const stroke = big ? 11 : 9;
+      const r = (size - stroke - 2) / 2;
+      const circ = 2 * Math.PI * r;
+      const [off, setOff] = useState(circ);
+      useEffect(() => {
+        const t = setTimeout(() => setOff(circ - circ * (has ? score / 10 : 0)), 140);
+        return () => clearTimeout(t);
+      }, [circ, score, has]);
+      const col = hexForScore(has ? score : null);
+      return (
+        <div className="flex flex-col items-center">
+          <div style={{ position: 'relative', width: size, height: size }}>
+            <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#eef2f7" strokeWidth={stroke} />
+              <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth={stroke} strokeLinecap="round"
+                strokeDasharray={circ} strokeDashoffset={off}
+                style={{ transition: 'stroke-dashoffset 1.15s cubic-bezier(.22,1,.36,1)' }} />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0 }} className="flex flex-col items-center justify-center">
+              {has
+                ? <span className="font-extrabold leading-none" style={{ fontSize: big ? 40 : 32, color: col }}><CountUp to={score} dur={1150} /></span>
+                : <span className="font-bold text-gray-300" style={{ fontSize: big ? 26 : 22 }}>N/A</span>}
+              {has && <span className="text-[10px] font-medium text-gray-400 mt-0.5">out of 10</span>}
+            </div>
+          </div>
+          <div className="text-sm font-semibold text-gray-700 mt-3 text-center leading-tight">{label}</div>
+          {grade && <div className="text-xs font-bold mt-0.5 text-center" style={{ color: hexForScore(score) }}>{grade}</div>}
+        </div>
+      );
+    };
+
+    /* Thin animated severity bar (fills to score×10% on mount). */
+    const SeverityBar = ({ score, height = 7 }) => {
+      const has = typeof score === 'number' && score > 0;
+      const [w, setW] = useState(0);
+      useEffect(() => { const t = setTimeout(() => setW(has ? score * 10 : 0), 140); return () => clearTimeout(t); }, [score, has]);
+      return (
+        <div className="rounded-full bg-gray-100 overflow-hidden w-full" style={{ height }}>
+          <div style={{ width: w + '%', height: '100%', background: hexForScore(has ? score : null), borderRadius: 999, transition: 'width 1s cubic-bezier(.22,1,.36,1)' }} />
+        </div>
+      );
+    };
+
+    /* Interactive ad-issue row: score chip + severity bar, tap to expand the
+       explanation. First row starts open so the report never looks empty. */
+    const IssueRow = ({ issue, index }) => {
+      const [open, setOpen] = useState(index === 0);
+      const col = hexForScore(issue.score);
+      return (
+        <div className="rounded-xl border border-gray-200 bg-white hover:border-blue-200 transition-colors card-lift">
+          <button onClick={() => setOpen(o => !o)} className="w-full text-left bg-transparent border-none cursor-pointer p-4 flex items-center gap-3">
+            <span className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm font-extrabold" style={{ color: col, background: (issue.score <= 3 ? '#fef2f2' : issue.score <= 6 ? '#fffbeb' : '#f0fdf4') }}>{issue.score}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm text-gray-900 leading-snug">{issue.title}</span>
+              </div>
+              <div className="mt-2"><SeverityBar score={issue.score} /></div>
+            </div>
+            <Icon name="chevronRight" className="w-4 h-4 text-gray-400 flex-shrink-0" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
+          </button>
+          {open && <div className="px-4 pb-4 -mt-1 step-in"><p className="text-sm text-gray-600" style={{ lineHeight: 1.6 }}>{issue.explanation}</p></div>}
+        </div>
+      );
+    };
+
+    /* Word grade for the headline score, shown under the big ring. */
+    const scoreGrade = (s) => (typeof s !== 'number') ? '' : s <= 2 ? 'Rough' : s <= 4 ? 'Needs work' : s <= 6 ? 'Middling' : s <= 8 ? 'Solid' : 'Best-in-class';
+
+    /* Smooth-scroll to a report section by id (instant under reduced-motion so
+       it also works in the preview pane). */
+    const scrollToSection = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    };
+
+    /* One-click copy line for Fix Kit rewrites. Shows a check for ~1.4s. */
+    const CopyLine = ({ text, muted }) => {
+      const [done, setDone] = useState(false);
+      const doCopy = (e) => {
+        e.preventDefault();
+        try { navigator.clipboard && navigator.clipboard.writeText(text); } catch (err) {}
+        setDone(true); setTimeout(() => setDone(false), 1400);
+      };
+      return (
+        <button onClick={doCopy} title="Click to copy"
+          className="group w-full text-left rounded-lg border border-gray-200 bg-gray-50 hover:bg-white hover:border-blue-300 transition-colors cursor-pointer p-2.5 flex items-start gap-2">
+          <span className={"flex-1 text-sm " + (muted ? "text-gray-600" : "text-gray-800")}>{text}</span>
+          <span className="flex-shrink-0 mt-0.5">
+            {done
+              ? <Icon name="check" className="w-4 h-4 text-green-600" />
+              : <Icon name="copy" className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors" />}
+          </span>
+        </button>
+      );
+    };
+
+    /* Interactive action checklist with a live progress bar. */
+    const NextSteps = ({ steps }) => {
+      const [checked, setChecked] = useState([]);
+      const toggle = (i) => setChecked(c => c.includes(i) ? c.filter(x => x !== i) : [...c, i]);
+      const pct = steps.length ? Math.round((checked.length / steps.length) * 100) : 0;
+      const done = pct === 100;
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-500">{checked.length} of {steps.length} done</span>
+            <span className="text-xs font-bold" style={{ color: done ? '#16a34a' : '#0a66c2' }}>{done ? 'All clear 🎉' : pct + '%'}</span>
+          </div>
+          <div className="rounded-full bg-gray-100 h-2 overflow-hidden mb-4">
+            <div style={{ width: pct + '%', height: '100%', background: done ? '#16a34a' : '#0a66c2', borderRadius: 999, transition: 'width .45s cubic-bezier(.22,1,.36,1)' }} />
+          </div>
+          <div className="space-y-2">
+            {steps.map((s, i) => {
+              const on = checked.includes(i);
+              return (
+                <button key={i} onClick={() => toggle(i)}
+                  className="w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer card-lift"
+                  style={{ borderColor: on ? '#bbf7d0' : '#e5e7eb', background: on ? '#f0fdf4' : '#fff' }}>
+                  <span className="flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center mt-0.5" style={{ borderColor: on ? '#16a34a' : '#cbd5e1', background: on ? '#16a34a' : '#fff' }}>
+                    {on && <Icon name="check" className="w-3.5 h-3.5 text-white" />}
+                  </span>
+                  <span className={"text-sm " + (on ? "text-gray-400 line-through" : "text-gray-700")}>{s}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    /* Mock sponsored-ad card that renders the rewritten ad the way it would
+       actually appear in-feed (intro text, creative, headline bar + CTA). */
+    const AdMockup = ({ headline, body, cta, brand = 'Your brand' }) => (
+      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+        <div className="p-3 flex items-center gap-2">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ background: 'linear-gradient(135deg,#0a66c2,#3b82f6)' }}>{(brand || 'Y').charAt(0)}</div>
+          <div className="leading-tight min-w-0">
+            <div className="text-sm font-semibold text-gray-900 truncate">{brand}</div>
+            <div className="text-[11px] text-gray-400">Sponsored</div>
+          </div>
+        </div>
+        {body && <div className="px-3 pb-3 text-sm text-gray-700" style={{ lineHeight: 1.5 }}>{body}</div>}
+        <div className="min-h-[96px] flex items-center justify-center px-5 py-6 text-center" style={{ background: 'linear-gradient(135deg,#eff6ff,#dbeafe)' }}>
+          <span className="text-base font-bold text-gray-800" style={{ lineHeight: 1.35 }}>{headline}</span>
+        </div>
+        <div className="p-3 flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50">
+          <span className="text-xs text-gray-400 truncate">yourcompany.com</span>
+          {cta && <span className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold border-2" style={{ borderColor: '#0a66c2', color: '#0a66c2' }}>{cta}</span>}
+        </div>
+      </div>
+    );
+
+    /* Mock landing-page hero (browser chrome + headline/subhead + CTA). */
+    const LpMockup = ({ headline, subhead }) => (
+      <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="h-7 bg-gray-100 flex items-center gap-1.5 px-3 border-b border-gray-200">
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fca5a5' }}></span>
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fcd34d' }}></span>
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#86efac' }}></span>
+        </div>
+        <div className="p-5 sm:p-6 text-center" style={{ background: 'linear-gradient(180deg,#ffffff,#f8fafc)' }}>
+          <h4 className="text-lg font-extrabold text-gray-900" style={{ lineHeight: 1.3 }}>{headline}</h4>
+          {subhead && <p className="text-sm text-gray-500 mt-2" style={{ lineHeight: 1.5 }}>{subhead}</p>}
+          <span className="inline-block mt-4 px-5 py-2 rounded-full text-sm font-semibold text-white" style={{ background: '#0a66c2' }}>Get started</span>
+        </div>
+      </div>
+    );
 
     const EMAIL_CONFIG = { service_id: 'service_ywioabe', template_id: 'template_gtqow85', public_key: '964Wa83HevoEa5KnS', notify_email: 'marina.kogan@adroast.in' };
     const PAYMENT_URL = 'https://wise.com/pay/r/Xo-phJ5xD_25pN0';
@@ -466,7 +646,10 @@
       }, [paymentVerified, view]);
       const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.adScreenshot;
       const canProceed = platform && offerType && icp.length > 10;
-      const showFull = isPortalView || isUnlocked;
+      /* A saved/shared report (opened via ?id=<reportId>) always shows in full —
+         the report was already generated, so the premium blur must never appear
+         on an opened link. Gating only applies to a freshly-run, out-of-token roast. */
+      const showFull = isPortalView || isUnlocked || isSharedView;
       /* TEMP DEMO — remove before deploy: ?demo=roast renders the results page with sample data */
       React.useEffect(() => {
         if (typeof window !== 'undefined' && window.location.search.includes('demo=roast')) {
@@ -1425,6 +1608,15 @@
             <nav className="hidden sm:flex items-center gap-6">
               {navLink('Roast an ad', goTool, active === 'tool')}
               {navLink('Work with us', goPricing, false)}
+              {roastSession && roastSession.email && (
+                <div className="flex items-center gap-2 pl-4 border-l border-gray-200">
+                  <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" title="Signed in"></span>
+                  <span className="text-xs font-medium text-gray-600 max-w-[150px] truncate">{roastSession.email}</span>
+                  {(roastSession.plan === 'unlimited' || typeof roastSession.tokens === 'number') && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: (roastSession.plan === 'unlimited' || roastSession.tokens > 0) ? '#dcfce7' : '#fef2f2', color: (roastSession.plan === 'unlimited' || roastSession.tokens > 0) ? '#15803d' : '#b91c1c' }}>{roastSession.plan === 'unlimited' ? 'Unlimited' : `${roastSession.tokens} left`}</span>
+                  )}
+                </div>
+              )}
               <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="text-sm font-semibold no-underline rounded-full px-5 py-2 hover:opacity-90 transition-opacity">Book a call</a>
             </nav>
             <button onClick={() => setNavOpen(o => !o)} className="sm:hidden bg-transparent border-none cursor-pointer p-1.5" aria-label="Menu">
@@ -1435,6 +1627,15 @@
           </div>
           {navOpen && (
             <div className="sm:hidden border-t border-gray-100 px-4 py-3 flex flex-col items-start gap-3">
+              {roastSession && roastSession.email && (
+                <div className="flex items-center gap-2 w-full pb-2 border-b border-gray-100">
+                  <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" title="Signed in"></span>
+                  <span className="text-xs font-medium text-gray-600 truncate flex-1">{roastSession.email}</span>
+                  {(roastSession.plan === 'unlimited' || typeof roastSession.tokens === 'number') && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: (roastSession.plan === 'unlimited' || roastSession.tokens > 0) ? '#dcfce7' : '#fef2f2', color: (roastSession.plan === 'unlimited' || roastSession.tokens > 0) ? '#15803d' : '#b91c1c' }}>{roastSession.plan === 'unlimited' ? 'Unlimited' : `${roastSession.tokens} left`}</span>
+                  )}
+                </div>
+              )}
               {navLink('Roast an ad', goTool, active === 'tool')}
               {navLink('Work with us', goPricing, false)}
               <a href={CALENDLY_URL} target="_blank" rel="noopener" style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="text-sm font-semibold no-underline rounded-full px-5 py-2">Book a call</a>
@@ -1649,7 +1850,7 @@
                     onClick={() => { const v = (inputs.copy || '').trim(); if (!v) { setHeroErr('Please paste your Ad Library link first.'); return; } if (!isValidUrl(v)) { setHeroErr("That doesn't look like a valid link. Paste your full ad URL."); return; } setHeroErr(''); setPlatform(platformFromLink(v)); setIcp(''); setSiteUrl(''); setIcpAuto({ loading: false, err: '', done: false }); setGuidedHadCopyAtStart(true); setGuidedStep(0); setView('guided'); detectFromAd(); }}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
                     className="px-6 py-2 border rounded-full font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
-                  >Roast my Ad — free →</button>
+                  >Roast my Ad for free →</button>
                 </div>
                 {heroErr
                   ? <p className="text-center mt-3" style={{ fontSize: '14px', color: '#dc2626' }}>{heroErr}</p>
@@ -1692,7 +1893,7 @@
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Watch it work</div>
                 <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>See your ad get roasted in real time.</h2>
                 <p className="text-gray-400 mb-6 md:max-w-sm" style={{ fontSize: '16px', lineHeight: 1.7 }}>Every ad scored against your ICP, every weak line flagged with the fix. About 2 minutes, no call.</p>
-                <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-7 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity cta-glow">Roast my Ad — free &rarr;</button>
+                <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-7 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity cta-glow">Roast my Ad for free &rarr;</button>
               </div>
               <RoastPreview />
             </div>
@@ -1844,7 +2045,7 @@
             <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
             <p className="text-gray-400 mb-8" style={{ fontSize: 'clamp(14px, 3vw, 16px)', lineHeight: 1.6 }}>Same spend, aligned message, 3x demos.</p>
             <div className="flex items-center justify-center">
-              <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad — free</button>
+              <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad for free</button>
             </div>
             <p className="text-gray-400 mt-3 text-xs">Free &middot; 2 minutes &middot; no call required</p>
           </section>
@@ -2915,7 +3116,7 @@
                 <div onClick={reset} className="flex items-center gap-2 cursor-pointer"><img src="data:image/png;base64,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" alt="AdRoast" className="w-9 h-9 rounded" /><span className="text-gray-300 text-lg font-light">|</span><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div>
                 {!isSharedView && (
                   <div className="flex items-center gap-3">
-                    {roastSession && <span className="text-xs font-medium px-2.5 py-1 rounded-full hidden sm:inline" style={{ background: roastSession.tokens > 0 ? '#dcfce7' : '#fef2f2', color: roastSession.tokens > 0 ? '#15803d' : '#b91c1c' }}>{roastSession.tokens} roast{roastSession.tokens === 1 ? '' : 's'} left</span>}
+                    {roastSession && <span className="text-xs font-medium px-2.5 py-1 rounded-full hidden sm:inline" style={{ background: roastSession.tokens > 0 ? '#dcfce7' : '#fef2f2', color: roastSession.tokens > 0 ? '#15803d' : '#b91c1c' }}>{roastSession.plan === 'unlimited' ? 'Unlimited roasts' : `${roastSession.tokens} roast${roastSession.tokens === 1 ? '' : 's'} left`}</span>}
                     <button onClick={() => { setReroastLink(''); setReroastErr(''); setShowReroast(true); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="rotateCcw" className="w-4 h-4" /> Roast another ad</button>
                   </div>
                 )}
@@ -2923,34 +3124,50 @@
               </div>
             </header>
             <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
-              {/* ICP */}
-              <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="border rounded-lg p-3"><p className="text-sm text-gray-900"><span className="font-semibold">Target Audience:</span> {icp}</p></div>
-              
-              {/* Scores */}
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className={`bg-white rounded-lg border ${getScoreBorder(result.overall_score)} shadow-sm p-4`}>
-                  <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-gray-500">Ad Score</span><span className={`text-2xl font-bold ${getScoreText(result.overall_score)}`}>{result.overall_score}/10</span></div>
-                  <p className="text-sm text-gray-700">{result.icp_mismatch}</p>
+              {/* Scoreboard hero — animated rings + one-line verdict */}
+              <div id="sec-scores" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 reveal scroll-mt-20">
+                <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Your roast
+                  </div>
+                  <div className="text-xs text-gray-500 max-w-full sm:max-w-md truncate"><span className="font-semibold text-gray-700">Target:</span> {icp}</div>
                 </div>
-                <div className={`bg-white rounded-lg border ${getScoreBorder(lp.overall_score || 0)} shadow-sm p-4`}>
-                  <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-gray-500">Landing Page</span><span className={`text-2xl font-bold ${lp.overall_score > 0 ? getScoreText(lp.overall_score) : 'text-gray-400'}`}>{lp.overall_score > 0 ? `${lp.overall_score}/10` : 'N/A'}</span></div>
-                  <p className="text-sm text-gray-700">{lp.headline_feedback || 'No landing page provided'}</p>
+                <div className="grid grid-cols-3 gap-2 sm:gap-6 justify-items-center">
+                  <ScoreRing big score={result.overall_score} label="Ad" grade={scoreGrade(result.overall_score)} />
+                  <ScoreRing score={lp.overall_score} label="Landing page" grade={lp.overall_score > 0 ? scoreGrade(lp.overall_score) : ''} />
+                  <ScoreRing score={mismatch.alignment_score} label="Ad ↔ LP match" grade={mismatch.alignment_score > 0 ? scoreGrade(mismatch.alignment_score) : ''} />
                 </div>
-                <div className={`bg-white rounded-lg border ${getScoreBorder(mismatch.alignment_score || 0)} shadow-sm p-4`}>
-                  <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-gray-500">Ad↔LP Match</span><span className={`text-2xl font-bold ${mismatch.alignment_score > 0 ? getScoreText(mismatch.alignment_score) : 'text-gray-400'}`}>{mismatch.alignment_score > 0 ? `${mismatch.alignment_score}/10` : 'N/A'}</span></div>
-                  <p className="text-sm text-gray-700">{mismatch.verdict || 'N/A'}</p>
+                <div className="mt-7 rounded-xl p-4 border-l-4" style={{ borderColor: hexForScore(result.overall_score), background: result.overall_score <= 3 ? '#fef2f2' : result.overall_score <= 6 ? '#fffbeb' : '#f0fdf4' }}>
+                  <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: hexForScore(result.overall_score) }}>The verdict</p>
+                  <p className="text-sm text-gray-800" style={{ lineHeight: 1.6 }}>{result.icp_mismatch}</p>
                 </div>
               </div>
 
-              {/* Ad Issues */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900">Ad Issues</h2></div>
-                <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* Jump-to-section pill nav */}
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+                {[
+                  { id: 'sec-scores', label: 'Scores' },
+                  { id: 'sec-issues', label: 'Ad issues' },
+                  ...(lp.overall_score != null ? [{ id: 'sec-landing', label: 'Landing page' }] : []),
+                  { id: 'sec-fixes', label: 'Fixes' },
+                  { id: 'sec-next', label: 'Action plan' },
+                ].map(p => (
+                  <button key={p.id} onClick={() => scrollToSection(p.id)}
+                    className="flex-shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap">
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Ad Issues — interactive severity rows */}
+              <div id="sec-issues" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6 scroll-mt-20">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-1">
+                  <h2 className="font-bold text-gray-900 flex items-center gap-2"><Icon name="alertCircle" className="w-5 h-5 text-red-500" /> What's holding the ad back</h2>
+                  <span className="text-xs text-gray-400">{visibleIssues.length} issue{visibleIssues.length === 1 ? '' : 's'} · tap to expand</span>
+                </div>
+                <div className="space-y-2.5">
                   {visibleIssues.map((issue, i) => (
-                    <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex items-start justify-between mb-2"><span className="font-semibold text-sm text-gray-900">{issue.title}</span><span className={`px-2 py-0.5 rounded text-xs font-bold ${getScoreColor(issue.score)}`}>{issue.score}/10</span></div>
-                      <p className="text-sm text-gray-600">{issue.explanation}</p>
-                    </div>
+                    <IssueRow key={i} issue={issue} index={i} />
                   ))}
                 </div>
               </div>
@@ -2987,25 +3204,26 @@
 
               {/* Landing Page Roast - PREMIUM */}
               {lp.overall_score != null && (
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                <div id="sec-landing" className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden scroll-mt-20">
                   <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                     <h2 className="font-semibold text-gray-900">Landing Page Analysis</h2>
                     {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                   </div>
-                  <div className="p-4">
-                    <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                  <div className="p-4 sm:p-5">
+                    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5 mb-5">
                       {[
                         { label: 'Headline', score: lp.headline_score, feedback: lp.headline_feedback },
                         { label: 'Value Prop', score: lp.value_prop_score, feedback: lp.value_prop_feedback },
                         { label: 'CTA', score: lp.cta_score, feedback: lp.cta_feedback },
                         { label: 'Trust', score: lp.trust_score, feedback: lp.trust_feedback },
                       ].map((item, i) => (
-                        <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-semibold text-sm text-gray-900">{item.label}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${getScoreColor(item.score)}`}>{item.score}/10</span>
+                        <div key={i}>
+                          <div className="flex items-baseline justify-between mb-1.5">
+                            <span className="font-semibold text-sm text-gray-800">{item.label}</span>
+                            <span className="text-xs font-bold" style={{ color: hexForScore(item.score) }}>{item.score > 0 ? `${item.score}/10` : 'N/A'}</span>
                           </div>
-                          <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600">{item.feedback}</p></div>
+                          <SeverityBar score={item.score} />
+                          <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-xs text-gray-500 mt-2" style={{ lineHeight: 1.55 }}>{item.feedback}</p></div>
                         </div>
                       ))}
                     </div>
@@ -3031,64 +3249,69 @@
               )}
 
               {/* Fix Kit */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <div id="sec-fixes" className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden scroll-mt-20">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Fix Kit</h2>
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="sparkles" className="w-5 h-5" style={{ color: '#0a66c2' }} /> Fix Kit {showFull && <span className="text-xs font-normal text-gray-400">· tap any line to copy</span>}</h2>
                   {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                 </div>
-                <div className={showFull ? "p-4 grid sm:grid-cols-2 gap-4" : "p-4 grid sm:grid-cols-2 gap-4 blur-sm pointer-events-none select-none"}>
-                  <div className="space-y-4">
+                <div className={showFull ? "p-4 sm:p-5" : "p-4 sm:p-5 blur-sm pointer-events-none select-none"}>
+                  {/* Visual before-vs-after: the rewrite rendered as a real ad + landing hero */}
+                  <div className="grid md:grid-cols-2 gap-5">
                     <div>
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad Headlines</h3>
-                      <div className="space-y-2">
-                        {result.fix_kit.headlines.map((h, i) => (
-                          <div key={i} className="p-2.5 bg-gray-50 rounded border border-gray-200">
-                            <span className="text-sm text-gray-800">{h}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad Body</h3>
-                      <div className="p-2.5 bg-gray-50 rounded border border-gray-200">
-                        <p className="text-sm text-gray-700">{result.fix_kit.body}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">CTAs</h3>
-                      <div className="flex flex-wrap gap-3">
-                        {result.fix_kit.ctas.map((cta, i) => (
-                          <div key={i} style={{ borderColor: '#0a66c2' }} className="px-5 py-2.5 bg-white border-2 rounded-full">
-                            <span style={{ color: '#0a66c2' }} className="text-base font-semibold">{cta}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5"><Icon name="sparkles" className="w-3.5 h-3.5" style={{ color: '#0a66c2' }} /> Your rewritten ad</h3>
+                      <AdMockup headline={result.fix_kit.headlines[0]} body={result.fix_kit.body} cta={result.fix_kit.button_cta || result.fix_kit.ctas[0]} />
                     </div>
                     {result.fix_kit.landing_page_headline && (
-                      <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="p-4 rounded-lg border">
-                        <h3 style={{ color: '#0a66c2' }} className="text-xs font-bold uppercase tracking-wide mb-3">Landing Page Copy</h3>
-                        <div className="space-y-2">
-                          <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border">
-                            <span className="text-xs text-gray-500">Headline</span>
-                            <p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_headline}</p>
-                          </div>
-                          {result.fix_kit.landing_page_subhead && (
-                            <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border">
-                              <span className="text-xs text-gray-500">Subheadline</span>
-                              <p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_subhead}</p>
-                            </div>
-                          )}
-                        </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5"><Icon name="globe" className="w-3.5 h-3.5" style={{ color: '#0a66c2' }} /> Your landing page hero</h3>
+                        <LpMockup headline={result.fix_kit.landing_page_headline} subhead={result.fix_kit.landing_page_subhead} />
                       </div>
                     )}
                   </div>
+
+                  {/* Pre-set CTA button recommendation */}
+                  {result.fix_kit.button_cta && (
+                    <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex-shrink-0">
+                        <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Best pre-set button {platform === 'linkedin' ? '(LinkedIn)' : platform === 'meta' ? '(Meta)' : ''}</div>
+                        <span className="inline-flex items-center gap-2 px-5 py-2 rounded-full" style={{ backgroundColor: '#0a66c2' }}>
+                          <span className="text-sm font-semibold text-white">{result.fix_kit.button_cta}</span>
+                          <span className="text-[10px] font-medium text-white/70 uppercase tracking-wide">best pick</span>
+                        </span>
+                      </div>
+                      {result.fix_kit.button_cta_reason && <p className="text-xs text-gray-500 sm:border-l sm:border-gray-200 sm:pl-4" style={{ lineHeight: 1.5 }}>Chosen from the platform's fixed button list. {result.fix_kit.button_cta_reason}</p>}
+                    </div>
+                  )}
+
+                  {/* Copy-ready rewrites */}
+                  <div className="mt-5 grid sm:grid-cols-2 gap-5">
+                    <div>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Headline options {showFull && <span className="font-normal text-gray-400 normal-case">· tap to copy</span>}</h3>
+                      <div className="space-y-2">
+                        {result.fix_kit.headlines.map((h, i) => (<CopyLine key={i} text={h} />))}
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad body</h3>
+                        <CopyLine text={result.fix_kit.body} muted />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">{result.fix_kit.button_cta ? 'Written CTAs (copy & creative)' : 'CTAs'}</h3>
+                        <div className="space-y-2">
+                          {result.fix_kit.ctas.map((cta, i) => (<CopyLine key={i} text={cta} />))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className={showFull ? "px-4 pb-4" : "px-4 pb-4 blur-sm pointer-events-none select-none"}>
-                  <div className="p-3 bg-gray-50 rounded border border-gray-200">
-                    <span style={{ color: '#0a66c2' }} className="font-semibold text-sm">Why this works:</span>
-                    <span className="text-sm text-gray-600 ml-1">{result.fix_kit.rationale}</span>
+                <div className={showFull ? "px-4 sm:px-5 pb-5" : "px-4 sm:px-5 pb-5 blur-sm pointer-events-none select-none"}>
+                  <div className="rounded-xl p-4 flex gap-3" style={{ background: '#e8f3ff' }}>
+                    <Icon name="zap" className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#0a66c2' }} />
+                    <div>
+                      <span style={{ color: '#0a66c2' }} className="font-bold text-sm block mb-0.5">Why this works</span>
+                      <span className="text-sm text-gray-700" style={{ lineHeight: 1.55 }}>{result.fix_kit.rationale}</span>
+                    </div>
                   </div>
                 </div>
 {!showFull && (                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
@@ -3097,40 +3320,39 @@
               </div>
 
               {/* Experiments */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">3 Experiments to Run</h2>
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="zap" className="w-5 h-5" style={{ color: '#7b5cff' }} /> Experiments to run</h2>
                   {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                 </div>
-                <div className={showFull ? "p-4 grid sm:grid-cols-3 gap-3" : "p-4 grid sm:grid-cols-3 gap-3 blur-sm pointer-events-none select-none"}>
-                  {result.experiments.map((exp, i) => (
-                    <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div style={{ backgroundColor: '#e8f3ff', color: '#0a66c2' }} className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{i + 1}</div>
-                        <h3 className="font-semibold text-gray-900 text-sm">{exp.title}</h3>
+                <div className={showFull ? "p-4 sm:p-5 grid sm:grid-cols-3 gap-3" : "p-4 sm:p-5 grid sm:grid-cols-3 gap-3 blur-sm pointer-events-none select-none"}>
+                  {result.experiments.map((exp, i) => {
+                    const accent = ['#0a66c2', '#14a58b', '#7b5cff'][i % 3];
+                    return (
+                      <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 card-lift" style={{ borderTopWidth: '3px', borderTopColor: accent }}>
+                        <div className="flex items-center justify-between mb-2.5">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold text-white" style={{ background: accent }}>{i + 1}</div>
+                          <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: accent + '18', color: accent }}>Test</span>
+                        </div>
+                        <h3 className="font-semibold text-gray-900 text-sm mb-1" style={{ lineHeight: 1.35 }}>{exp.title}</h3>
+                        <p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{exp.description}</p>
                       </div>
-                      <p className="text-sm text-gray-600">{exp.description}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 {!showFull && (                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
                   <button onClick={() => setShowUnlockModal(true)} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get the Full Diagnosis</button>
                 </div>)}
               </div>
 
-              {/* Next Steps */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              {/* Next Steps — interactive checklist with progress */}
+              <div id="sec-next" className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden scroll-mt-20">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900">Strategic Next Steps</h2>
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="check" className="w-5 h-5" style={{ color: '#16a34a' }} /> Your action plan {showFull && <span className="text-xs font-normal text-gray-400">· check them off</span>}</h2>
                   {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                 </div>
-                <div className={showFull ? "p-4 space-y-2" : "p-4 space-y-2 blur-sm pointer-events-none select-none"}>
-                  {result.next_steps.map((step, i) => (
-                    <label key={i} className="flex items-start gap-3 p-2 rounded">
-                      <input type="checkbox" disabled className="mt-0.5 w-4 h-4 rounded border-gray-400" />
-                      <span className="text-sm text-gray-700">{step}</span>
-                    </label>
-                  ))}
+                <div className={showFull ? "p-4 sm:p-5" : "p-4 sm:p-5 blur-sm pointer-events-none select-none"}>
+                  <NextSteps steps={result.next_steps} />
                 </div>
 {!showFull && (                <div className="px-4 pb-4 pt-2 border-t border-gray-200 text-center">
                   <button onClick={() => setShowUnlockModal(true)} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get the Full Diagnosis</button>
@@ -3216,20 +3438,20 @@
                   <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#14a58b' }}>
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#14a58b' }}>Do it yourself</p>
                     <h4 className="font-bold text-gray-900 mt-1">Keep roasting</h4>
-                    <p className="text-sm text-gray-500 mt-1">Run another ad through AdRoast, free.</p>
+                    <p className="text-sm text-gray-500 mt-1">Run another ad through the roaster and act on the fixes yourself.</p>
                     <button onClick={reset} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>Roast another ad &rarr;</button>
                   </div>
                   <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#b8760a' }}>
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#b8760a' }}>Do it with you</p>
                     <h4 className="font-bold text-gray-900 mt-1">Conversion Roadmap</h4>
-                    <p className="text-sm text-gray-500 mt-1">A $6K positioning roadmap your team can ship in weeks.</p>
-                    <button onClick={() => { window.location.hash = 'services'; setView('services'); }} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>See the roadmap &rarr;</button>
+                    <p className="text-sm text-gray-500 mt-1">A 10-day sprint: we find why your ads pull the wrong buyer, reposition the campaign, and hand you rewritten ad + landing-page messaging ready to ship. $6K.</p>
+                    <button onClick={goPricing} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>See the roadmap &rarr;</button>
                   </div>
                   <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#7b5cff' }}>
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#7b5cff' }}>Done for you</p>
                     <h4 className="font-bold text-gray-900 mt-1">Done-For-You</h4>
                     <p className="text-sm text-gray-500 mt-1">We rebuild and run your ads. $8K/mo, fully managed.</p>
-                    <button onClick={() => { window.location.hash = 'services'; setView('services'); }} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>See the service &rarr;</button>
+                    <button onClick={goPricing} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>See the service &rarr;</button>
                   </div>
                 </div>
               </div>
@@ -5299,7 +5521,7 @@
                 /* Observational ("zero/no logos and badges") in an ad-trust-signals issue */
                 out = out.replace(
                     /\bzero\s+social\s+proof,?\s*no\s+(?:customer\s+)?logos?,?\s*no\s+(?:security\s+|trust\s+|compliance\s+)?badges?\b/gi,
-                    'no text-based trust signals — no named-customer mentions in copy, no callout-extension ratings, no structured snippets'
+                    'no text-based trust signals, such as named-customer mentions in copy, callout-extension ratings, or structured snippets'
                 );
                 out = out.replace(
                     /\bno\s+(?:customer\s+)?logos?,?\s*no\s+(?:security\s+|trust\s+|compliance\s+)?badges?\b/gi,
@@ -5669,7 +5891,7 @@
                 const params = new URLSearchParams(window.location.search);
                 const authParam = params.get('auth');
                 if (authParam === 'denied') {
-                    setAuthMessage('This account is not authorized. The portal is for approved clients and partners only — if you think you should have access, contact Marina.');
+                    setAuthMessage('This account is not authorized. The portal is for approved clients and partners only. If you think you should have access, contact Marina.');
                     try { window.history.replaceState(null, '', window.location.pathname + window.location.hash); } catch (e) {}
                 } else if (authParam === 'cancelled') {
                     setAuthMessage('Google sign-in was cancelled. Tap "Continue with Google" to try again.');

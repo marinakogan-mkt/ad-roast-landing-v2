@@ -64,7 +64,7 @@ function clientIp(req) {
 function htmlRedirect(url, message) {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta http-equiv="refresh" content="0; url=${url}">
-<title>AdRoast — Signing you in</title>
+<title>AdRoast: Signing you in</title>
 <style>body{font-family:-apple-system,system-ui,sans-serif;background:#f5f5f7;color:#1a1a1a;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:32px;text-align:center;max-width:380px}.spinner{width:28px;height:28px;border:3px solid #e5e7eb;border-top-color:#0a66c2;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}@keyframes spin{to{transform:rotate(360deg)}}p{margin:4px 0;font-size:14px;line-height:1.5;color:#6b7280}a{color:#0a66c2;text-decoration:none}</style>
 </head><body><div class="card"><div class="spinner"></div><p><strong style="color:#1a1a1a">${message}</strong></p><p>Redirecting to your portal…</p><p style="margin-top:12px;font-size:12px"><a href="${url}">Continue</a></p></div></body></html>`;
 }
@@ -82,6 +82,13 @@ async function handleMe(req, res) {
     return res.status(500).json({ error: 'Session lookup failed' });
   }
   if (!session) return res.status(401).json({ error: 'Session expired' });
+  /* Sliding renewal: every time the app checks the session, push the expiry back
+     out to the full TTL and refresh the cookie. Active users therefore stay
+     signed in indefinitely; only a 90-day gap of inactivity logs them out. */
+  try {
+    await redis.expire(`auth:session:${sessionToken}`, SESSION_TTL_SECONDS);
+    res.setHeader('Set-Cookie', buildSessionCookie(sessionToken));
+  } catch (e) { /* non-fatal: session still valid, just not re-extended this call */ }
   const out = { success: true, session: publicSession(session) };
   /* For roast-tool accounts, surface the plan + remaining token balance so the
      UI can show "N roasts left" and gate at zero. Read-only (no consume). */
@@ -150,9 +157,9 @@ Click the link below to sign in. The link expires in 15 minutes and can only be 
 
 ${magicLink}
 
-If you didn't request this, you can ignore this email — the link won't grant access without your password too.
+If you didn't request this, you can ignore this email. The link won't grant access without your password too.
 
-— AdRoast`;
+AdRoast`;
     /* EmailJS blocks non-browser (server-side) calls unless the Private Key is
        passed as accessToken. Include it when the env var is set. */
     const emailPayload = {
@@ -234,7 +241,7 @@ async function handleVerify(req, res) {
   res.setHeader('Set-Cookie', buildSessionCookie(sessionToken));
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, must-revalidate');
-  return res.status(200).send(htmlRedirect(isRoast ? '/?signedin=1' : '/#portal', isRoast ? 'Signed in — back to your roast.' : 'Welcome to the portal.'));
+  return res.status(200).send(htmlRedirect(isRoast ? '/?signedin=1' : '/#portal', isRoast ? 'Signed in. Back to your roast.' : 'Welcome to the portal.'));
 }
 
 async function handleGoogleStart(req, res) {
@@ -294,7 +301,7 @@ async function handleRoastLink(req, res) {
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   const magicLink = `${proto}://${host}/api/auth?action=verify&token=${encodeURIComponent(token)}`;
   try {
-    const message = `Click to sign in to AdRoast and get your free roast. This link expires in 15 minutes and can only be used once.\n\n${magicLink}\n\nIf you didn't request this, you can ignore this email.\n\n— AdRoast`;
+    const message = `Click to sign in to AdRoast and get your free roast. This link expires in 15 minutes and can only be used once.\n\n${magicLink}\n\nIf you didn't request this, you can ignore this email.\n\nAdRoast`;
     const emailPayload = {
       service_id: EMAILJS_SERVICE_ID, template_id: EMAILJS_TEMPLATE_ID, user_id: EMAILJS_PUBLIC_KEY,
       template_params: { to_email: email, subject: 'Your AdRoast sign-in link', message }
