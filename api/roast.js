@@ -388,7 +388,10 @@ Return the JSON object defined in the output contract. All fields required.`;
     const data = await response.json();
 
     if (data.error) {
-      return res.status(500).json({ error: data.error.message || 'API error', _meta: meta });
+      /* Never leak the upstream provider error (billing, rate limits, model
+         names) to the end user. Log the real one; show a neutral message. */
+      console.error('[AdRoast] Upstream API error:', data.error.type, '-', data.error.message);
+      return res.status(503).json({ error: "AdRoast is briefly unavailable. Please try again in a few minutes.", _meta: meta });
     }
 
     const modelText = Array.isArray(data.content)
@@ -469,8 +472,9 @@ Return the JSON object defined in the output contract. All fields required.`;
       }
     }
 
-    return res.status(500).json({ error: 'Could not parse response', _meta: meta });
+    return res.status(502).json({ error: "We couldn't generate your roast just now. Please try again in a moment.", _meta: meta });
   } catch (error) {
-    return res.status(500).json({ error: 'Server error: ' + error.message, _meta: meta });
+    console.error('[AdRoast] Server error:', error && error.message);
+    return res.status(500).json({ error: "Something went wrong generating your roast. Please try again in a moment.", _meta: meta });
   }
 }
