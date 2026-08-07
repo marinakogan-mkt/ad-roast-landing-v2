@@ -877,7 +877,7 @@
           .then(r => r.ok ? r.json() : null)
           .then(d => {
             if (d && d.session && d.session.mode === 'roast') {
-              setRoastSession({ email: d.session.email, roastCount: d.roastCount || 0, freeAvailable: !!d.freeAvailable });
+              setRoastSession({ email: d.session.email, plan: d.plan || 'free', tokens: (typeof d.tokens === 'number' ? d.tokens : 0), roastCount: d.roastCount || 0, freeAvailable: !!d.freeAvailable });
             }
           })
           .catch(() => {});
