@@ -638,6 +638,7 @@
       const [showReroast, setShowReroast] = useState(false);
       const [reroastLink, setReroastLink] = useState('');
       const [reroastErr, setReroastErr] = useState('');
+      const [activeTab, setActiveTab] = useState('scores'); // results-page section tabs
 
       // Auto-generate link after verified payment
       React.useEffect(() => {
@@ -3129,6 +3130,30 @@
               </div>
             </header>
             <main className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+              {/* Section tabs — show one section at a time, like the landing-page sections */}
+              <div className="sticky top-14 z-40 -mx-4 px-4 py-2" style={{ background: 'rgba(248,250,252,0.92)', backdropFilter: 'blur(8px)' }}>
+                <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
+                  {[
+                    { id: 'scores', label: 'Scores' },
+                    { id: 'issues', label: 'Ad issues' },
+                    ...((lp.overall_score != null || (mismatch.disconnects && mismatch.disconnects.length > 0)) ? [{ id: 'landing', label: 'Landing page' }] : []),
+                    { id: 'fixes', label: 'Fixes' },
+                    { id: 'plan', label: 'Action plan' },
+                  ].map(t => {
+                    const on = activeTab === t.id;
+                    return (
+                      <button key={t.id} onClick={() => { setActiveTab(t.id); try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) {} }}
+                        className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-colors cursor-pointer whitespace-nowrap"
+                        style={on ? { background: '#0a66c2', color: '#fff', borderColor: '#0a66c2' } : { background: '#fff', color: '#475569', borderColor: '#e5e7eb' }}>
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SCORES */}
+              {activeTab === 'scores' && (<>
               {/* Scoreboard hero — animated rings + one-line verdict */}
               <div id="sec-scores" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 reveal scroll-mt-20">
                 <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
@@ -3145,23 +3170,10 @@
                   <p className="text-sm text-gray-800" style={{ lineHeight: 1.6 }}>{result.icp_mismatch}</p>
                 </div>
               </div>
+              </>)}
 
-              {/* Jump-to-section pill nav */}
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
-                {[
-                  { id: 'sec-scores', label: 'Scores' },
-                  { id: 'sec-issues', label: 'Ad issues' },
-                  ...(lp.overall_score != null ? [{ id: 'sec-landing', label: 'Landing page' }] : []),
-                  { id: 'sec-fixes', label: 'Fixes' },
-                  { id: 'sec-next', label: 'Action plan' },
-                ].map(p => (
-                  <button key={p.id} onClick={() => scrollToSection(p.id)}
-                    className="flex-shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-colors cursor-pointer whitespace-nowrap">
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-
+              {/* AD ISSUES */}
+              {activeTab === 'issues' && (<>
               {/* Ad Issues — interactive severity rows */}
               <div id="sec-issues" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6 scroll-mt-20">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-1">
@@ -3174,7 +3186,10 @@
                   ))}
                 </div>
               </div>
+              </>)}
 
+              {/* LANDING PAGE — mismatch + LP analysis */}
+              {activeTab === 'landing' && (<>
               {/* Message Mismatch - PREMIUM */}
               {mismatch.disconnects && mismatch.disconnects.length > 0 && (
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -3272,7 +3287,10 @@
                   </div>)}
                 </div>
               )}
+              </>)}
 
+              {/* FIXES */}
+              {activeTab === 'fixes' && (<>
               {/* Fix Kit */}
               <div id="sec-fixes" className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden scroll-mt-20">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -3344,7 +3362,10 @@
                   <button onClick={() => setShowUnlockModal(true)} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get the Full Diagnosis</button>
                 </div>)}
               </div>
+              </>)}
 
+              {/* ACTION PLAN — experiments + next steps */}
+              {activeTab === 'plan' && (<>
               {/* Experiments */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
@@ -3384,6 +3405,7 @@
                   <button onClick={() => setShowUnlockModal(true)} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity"><Icon name="sparkles" className="w-4 h-4" /> Get the Full Diagnosis</button>
                 </div>)}
               </div>
+              </>)}
 
               {/* Save & Share Report */}
               {!isSharedView && showFull && (
