@@ -351,6 +351,17 @@
       );
     };
 
+    /* Mini animated bar with an explicit color (for the results overview cards). */
+    const MiniBar = ({ pct, color, height = 5 }) => {
+      const [w, setW] = useState(0);
+      useEffect(() => { const t = setTimeout(() => setW(pct), 160); return () => clearTimeout(t); }, [pct]);
+      return (
+        <div className="rounded-full bg-gray-100 overflow-hidden w-full" style={{ height }}>
+          <div style={{ width: w + '%', height: '100%', background: color, borderRadius: 999, transition: 'width 1s cubic-bezier(.22,1,.36,1)' }} />
+        </div>
+      );
+    };
+
     /* Interactive ad-issue row: score chip + severity bar, tap to expand the
        explanation. First row starts open so the report never looks empty. */
     const IssueRow = ({ issue, index }) => {
@@ -1598,6 +1609,14 @@
         if (document.getElementById('work-with-us')) doScroll();
         else { setView('landing'); setTimeout(doScroll, 80); }
       };
+      /* Scroll to the "Your whole campaign, repositioned" deliverables section (from the
+         results-page "See the roadmap" card). Routes back to the landing page first if needed. */
+      const goDeliverables = () => {
+        setNavOpen(false);
+        const doScroll = () => { const el = document.getElementById('deliverables'); if (el) { const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; el.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' }); } };
+        if (document.getElementById('deliverables')) doScroll();
+        else { setView('landing'); setTimeout(doScroll, 120); }
+      };
       const navLink = (label, on, isActive) => (
         <button onClick={on} className="nav-link bg-transparent border-none cursor-pointer p-0 text-sm" style={isActive ? { color: '#0a66c2', fontWeight: 600, borderBottom: '2px solid #0a66c2', paddingBottom: 2 } : { color: '#475569' }}>{label}</button>
       );
@@ -1694,7 +1713,7 @@
           { icon: 'check', title: 'A ranked action plan', line: 'Every fix ordered by revenue impact, so the biggest win ships first.', more: 'A prioritized rollout: what to change, in what order, and the expected impact of each move, so your team knows exactly what to ship first and what can wait.' }
         ];
         return (
-          <section className="mb-16">
+          <section id="deliverables" className="mb-16 scroll-mt-20">
             <div className="mb-6">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-3" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What you get</div>
               <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Your whole campaign, repositioned.</h2>
@@ -3112,6 +3131,14 @@
       if (view === 'results' && result) {
         const lp = result.landing_page_roast || {};
         const mismatch = result.ad_landing_mismatch || {};
+        const avgIssue = visibleIssues.length ? Math.round(visibleIssues.reduce((s, i) => s + (i.score || 5), 0) / visibleIssues.length) : 5;
+        const overviewCards = [
+          { id: 'scores', label: 'Scores', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score) },
+          { id: 'issues', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: '#dc2626', barPct: avgIssue * 10, barColor: hexForScore(avgIssue) },
+          ...((lp.overall_score != null || (mismatch.disconnects && mismatch.disconnects.length > 0)) ? [{ id: 'landing', label: 'Landing page', value: lp.overall_score > 0 ? lp.overall_score : '—', suffix: lp.overall_score > 0 ? '/10' : '', desc: 'page & ad match', valueColor: hexForScore(lp.overall_score), barPct: (lp.overall_score || 0) * 10, barColor: hexForScore(lp.overall_score) }] : []),
+          { id: 'fixes', label: 'Fixes', value: (result.fix_kit && result.fix_kit.headlines ? result.fix_kit.headlines.length : 0), suffix: '', desc: 'ready-to-ship rewrites', valueColor: '#0a66c2', barPct: 100, barColor: '#0a66c2' },
+          { id: 'plan', label: 'Action plan', value: (result.next_steps ? result.next_steps.length : 0), suffix: '', desc: 'steps to ship', valueColor: '#16a34a', barPct: 100, barColor: '#16a34a' },
+        ];
         return (
           <div className="min-h-screen" style={{ background: '#f8fafc' }}>
             <header className="border-b border-gray-200 sticky top-0 z-50" style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)' }}>
@@ -3130,22 +3157,28 @@
               </div>
             </header>
             <main className="max-w-4xl mx-auto px-4 py-6 space-y-5">
-              {/* Section tabs — show one section at a time, like the landing-page sections */}
-              <div className="sticky top-14 z-40 -mx-4 px-4 py-2" style={{ background: 'rgba(248,250,252,0.92)', backdropFilter: 'blur(8px)' }}>
-                <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
-                  {[
-                    { id: 'scores', label: 'Scores' },
-                    { id: 'issues', label: 'Ad issues' },
-                    ...((lp.overall_score != null || (mismatch.disconnects && mismatch.disconnects.length > 0)) ? [{ id: 'landing', label: 'Landing page' }] : []),
-                    { id: 'fixes', label: 'Fixes' },
-                    { id: 'plan', label: 'Action plan' },
-                  ].map(t => {
-                    const on = activeTab === t.id;
+              {/* Overview — a clickable metric card per section. Each previews its number
+                  + a mini bar, and expands the full section below when tapped. */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2 text-xs text-gray-400 font-medium"><Icon name="chevronRight" className="w-3.5 h-3.5" /> Tap a card to open that section</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {overviewCards.map(c => {
+                    const on = activeTab === c.id;
                     return (
-                      <button key={t.id} onClick={() => { setActiveTab(t.id); try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) {} }}
-                        className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-colors cursor-pointer whitespace-nowrap"
-                        style={on ? { background: '#0a66c2', color: '#fff', borderColor: '#0a66c2' } : { background: '#fff', color: '#475569', borderColor: '#e5e7eb' }}>
-                        {t.label}
+                      <button key={c.id} onClick={() => { setActiveTab(c.id); try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) {} }}
+                        className="text-left rounded-2xl border-2 bg-white p-3.5 transition-all cursor-pointer card-lift"
+                        style={{ borderColor: on ? '#0a66c2' : '#e5e7eb', boxShadow: on ? '0 6px 18px rgba(10,102,194,0.14)' : 'none' }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{c.label}</span>
+                          <Icon name="chevronRight" className="w-4 h-4" style={{ color: on ? '#0a66c2' : '#cbd5e1', transform: on ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
+                        </div>
+                        <div className="flex items-baseline gap-0.5">
+                          <span className="text-3xl font-extrabold leading-none" style={{ color: c.valueColor }}>{c.value}</span>
+                          {c.suffix && <span className="text-sm font-semibold text-gray-400">{c.suffix}</span>}
+                        </div>
+                        <div className="text-[11px] text-gray-500 mt-1 mb-2 leading-tight">{c.desc}</div>
+                        <MiniBar pct={c.barPct} color={c.barColor} />
+                        <div className="text-[10px] font-semibold mt-2" style={{ color: on ? '#0a66c2' : '#94a3b8' }}>{on ? 'Viewing ↓' : 'Tap to open'}</div>
                       </button>
                     );
                   })}
@@ -3493,7 +3526,7 @@
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#b8760a' }}>Do it with you</p>
                     <h4 className="font-bold text-gray-900 mt-1">Conversion Roadmap</h4>
                     <p className="text-sm text-gray-500 mt-1">A full teardown of your campaigns and the exact fixes, ready to ship, so your ads finally sell to the right buyer. $6K, 10 days.</p>
-                    <button onClick={goPricing} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>See the roadmap &rarr;</button>
+                    <button onClick={goDeliverables} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>See the roadmap &rarr;</button>
                   </div>
                   <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#7b5cff' }}>
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#7b5cff' }}>Done for you</p>
