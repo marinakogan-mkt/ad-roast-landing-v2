@@ -602,6 +602,7 @@
       const [linkedin, setLinkedin] = useState('');
       const [linkedinErr, setLinkedinErr] = useState(null);
       const [sending, setSending] = useState(false);
+      const [recReviewOpen, setRecReviewOpen] = useState(false); // results: expand LinkedIn form when "personal review" is a secondary option
       const [inputs, setInputs] = useState({ url: '', copy: '', visual: '', adScreenshot: null, adScreenshotPreview: null });
       const [result, setResult] = useState(null);
       const [copied, setCopied] = useState({});
@@ -3143,9 +3144,9 @@
         const avgIssue = visibleIssues.length ? Math.round(visibleIssues.reduce((s, i) => s + (i.score || 5), 0) / visibleIssues.length) : 5;
         const overviewCards = [
           { id: 'scores', label: 'Scores', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score) },
-          { id: 'issues', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: '#dc2626', barPct: avgIssue * 10, barColor: hexForScore(avgIssue) },
+          { id: 'issues', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue) },
           ...((lp.overall_score != null || (mismatch.disconnects && mismatch.disconnects.length > 0)) ? [{ id: 'landing', label: 'Landing page', value: lp.overall_score > 0 ? lp.overall_score : '—', suffix: lp.overall_score > 0 ? '/10' : '', desc: 'page & ad match', valueColor: hexForScore(lp.overall_score), barPct: (lp.overall_score || 0) * 10, barColor: hexForScore(lp.overall_score) }] : []),
-          { id: 'fixes', label: 'Fixes', value: (result.fix_kit && result.fix_kit.headlines ? result.fix_kit.headlines.length : 0), suffix: '', desc: 'ready-to-ship rewrites', valueColor: '#0a66c2', barPct: 100, barColor: '#0a66c2' },
+          { id: 'fixes', label: 'Fixes', value: (result.fix_kit && result.fix_kit.headlines ? result.fix_kit.headlines.length : 0), suffix: '', desc: 'ready-to-ship rewrites', valueColor: '#16a34a', barPct: 100, barColor: '#16a34a' },
           { id: 'plan', label: 'Action plan', value: (result.next_steps ? result.next_steps.length : 0), suffix: '', desc: 'steps to ship', valueColor: '#16a34a', barPct: 100, barColor: '#16a34a' },
         ];
         return (
@@ -3155,13 +3156,11 @@
                 <div onClick={reset} className="flex items-center gap-2 cursor-pointer"><img src="data:image/png;base64,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" alt="AdRoast" className="w-9 h-9 rounded" /><span className="text-gray-300 text-lg font-light">|</span><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div>
                 {!isSharedView && (
                   <div className="flex items-center gap-2 sm:gap-3">
-                    {roastSession && roastSession.email ? (
+                    {roastSession && roastSession.email && (
                       <>
                         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600" title={"Signed in as " + roastSession.email}><span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span><span className="max-w-[80px] sm:max-w-[150px] truncate">{roastSession.email}</span></span>
                         <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: (roastSession.plan === 'unlimited' || roastSession.tokens > 0) ? '#dcfce7' : '#fef2f2', color: (roastSession.plan === 'unlimited' || roastSession.tokens > 0) ? '#15803d' : '#b91c1c' }} title="Roasts remaining"><Icon name="flame" className="w-3.5 h-3.5" />{roastSession.plan === 'unlimited' ? 'Unlimited' : `${roastSession.tokens} left`}</span>
                       </>
-                    ) : (
-                      <button onClick={() => setShowSignupGate(true)} className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border-none cursor-pointer" style={{ background: '#fff7ed', color: '#c2410c' }} title="Sign in to track your roasts"><span className="w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></span>Guest · Sign in</button>
                     )}
                     <button onClick={() => { setReroastLink(''); setReroastErr(''); setShowReroast(true); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="rotateCcw" className="w-4 h-4" /> <span className="hidden sm:inline">Roast another ad</span></button>
                   </div>
@@ -3230,6 +3229,69 @@
                   </div>
                 </div>
               </div>
+
+              {/* RECOMMENDATION — picks one next step based on how grave the roast is,
+                  with a personalized reason. The other paths sit below as questions. */}
+              {(() => {
+                const sev = result.overall_score;
+                const areas = [{ k: 'ad copy', s: result.overall_score }];
+                if (lp.overall_score > 0) areas.push({ k: 'landing page', s: lp.overall_score });
+                if (mismatch.alignment_score > 0) areas.push({ k: 'ad-to-page match', s: mismatch.alignment_score });
+                const weakest = areas.slice().sort((a, b) => a.s - b.s)[0];
+                const OPTIONS = {
+                  review:     { tag: 'Personal review', color: '#16a34a', title: 'Get my eyes on it',   q: 'Want a human gut-check?',  kind: 'linkedin' },
+                  diy:        { tag: 'Do it yourself',  color: '#16a34a', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', onClick: reset },
+                  withyou:    { tag: 'Do it with you',  color: '#f59e0b', title: 'Conversion Roadmap',    q: 'Want it fixed with you?',  cta: 'See the roadmap', onClick: goDeliverables, meta: '$6K · 10 days' },
+                  doneforyou: { tag: 'Done for you',    color: '#dc2626', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', onClick: goPricing, meta: '$8K/mo, managed' },
+                };
+                let key, reason;
+                if (sev <= 3) { key = 'doneforyou'; reason = `At ${sev}/10 this isn't a copy tweak. Your weakest link is your ${weakest.k} (${weakest.s}/10), and the ad and page pull in different directions. The honest, fastest path is having it rebuilt for you.`; }
+                else if (sev <= 6) { key = 'withyou'; reason = `You scored ${sev}/10. The raw material is there, but your ${weakest.k} (${weakest.s}/10) is missing your ICP. A guided teardown fixes the message in days without you starting over.`; }
+                else if (sev <= 8) { key = 'diy'; reason = `A ${sev}/10 is close. The fixes above are enough to get you there. Ship them, then run your next ad through the roaster to check.`; }
+                else { key = 'review'; reason = `A ${sev}/10 is strong. No rebuild needed, just a second set of eyes. Drop your LinkedIn and I'll personally review this roast.`; }
+                const rec = OPTIONS[key];
+                const others = Object.keys(OPTIONS).filter(k => k !== key).map(k => OPTIONS[k]);
+                const linkedInForm = (
+                  <div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input type="url" placeholder="https://linkedin.com/in/you" value={linkedin} onChange={(e) => { setLinkedin(e.target.value); setLinkedinErr(null); }} className="flex-1 px-3 py-2.5 bg-white border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 text-gray-900" />
+                      <button onClick={submitLinkedIn} disabled={!linkedin || sending} style={linkedin && !sending ? { backgroundColor: '#16a34a', color: 'white' } : {}} className={`px-5 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${linkedin && !sending ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>{sending ? 'Sending…' : 'Send it over'}</button>
+                    </div>
+                    {linkedinErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{linkedinErr}</p>}
+                  </div>
+                );
+                return (
+                  <div className="reveal">
+                    <div className="rounded-2xl border-2 p-5 sm:p-6" style={{ borderColor: rec.color, background: rec.color + '0d' }}>
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: rec.color + '22', color: rec.color }}><Icon name="sparkles" className="w-3.5 h-3.5" /> Recommended for you</span>
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{rec.tag}{rec.meta ? ` · ${rec.meta}` : ''}</span>
+                      </div>
+                      <h3 className="text-gray-900 font-bold mb-1.5" style={{ fontSize: 20 }}>{rec.title}</h3>
+                      <p className="text-gray-600 mb-4" style={{ fontSize: 14, lineHeight: 1.6 }}>{reason}</p>
+                      {rec.kind === 'linkedin'
+                        ? linkedInForm
+                        : <button onClick={rec.onClick} style={{ backgroundColor: rec.color, color: 'white' }} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity">{rec.cta} <Icon name="chevronRight" className="w-4 h-4" /></button>}
+                    </div>
+                    <p className="text-center text-xs text-gray-400 uppercase tracking-wide font-medium mt-5 mb-2.5">Or take it another way</p>
+                    <div className="grid sm:grid-cols-3 gap-2.5">
+                      {others.map((o, i) => (
+                        <button key={i} onClick={() => { if (o.kind === 'linkedin') setRecReviewOpen(v => !v); else o.onClick(); }} className="text-left rounded-xl border border-gray-200 bg-white p-3.5 card-lift cursor-pointer">
+                          <div className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: o.color }}>{o.tag}</div>
+                          <div className="text-sm font-semibold text-gray-800 leading-tight">{o.q}</div>
+                          <div className="text-xs font-semibold mt-1.5 inline-flex items-center gap-1" style={{ color: '#0a66c2' }}>{o.kind === 'linkedin' ? (recReviewOpen ? 'Close' : 'Add your LinkedIn') : o.cta} →</div>
+                        </button>
+                      ))}
+                    </div>
+                    {recReviewOpen && key !== 'review' && (
+                      <div className="mt-2.5 rounded-xl border border-gray-200 bg-white p-3.5 step-in">
+                        <p className="text-xs text-gray-500 mb-2">Drop your LinkedIn and I'll personally review this roast. I read every one. No spam.</p>
+                        {linkedInForm}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               </>)}
 
               {/* AD ISSUES */}
@@ -3513,54 +3575,6 @@
                 </div>
               )}
 
-              {/* CTA */}
-{!showFull && (              <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="rounded-lg border p-8 text-center">
-                <h2 className="text-xl font-bold text-gray-900 mb-2">You just got your roast. Now let's turn it into results.</h2>
-                <p className="text-gray-600 mb-5">Founders who implement this close 47% faster.</p>
-                <a href="https://calendly.com/marina-kogan-adroast/30min" target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-base hover:opacity-90 transition-opacity">
-                  <Icon name="zap" className="w-5 h-5" /> Book a Free Call
-                </a>
-              </div>)}
-
-              {/* ─── AFTER-RESULT: personal-review capture (moved here from the pre-gate) + involvement offers ─── */}
-              <div className="mt-8 fade-in">
-                <div className="rounded-xl border border-gray-200 bg-white p-6 mb-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#e8f3ff' }}><Icon name="linkedin" className="w-5 h-5" /></div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">Want me to review this roast personally?</h3>
-                      <p className="text-gray-500 text-sm">Drop your LinkedIn. I read every one. No spam.</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input type="url" placeholder="https://linkedin.com/in/yourprofile" value={linkedin} onChange={(e) => { setLinkedin(e.target.value); setLinkedinErr(null); }} className="flex-1 px-4 py-2.5 bg-white border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 field-bloom text-gray-900" />
-                    <button onClick={submitLinkedIn} disabled={!linkedin || sending} style={linkedin && !sending ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`px-5 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${linkedin && !sending ? 'hover:opacity-90 cta-glow' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>{sending ? 'Sending…' : 'Send it over'}</button>
-                  </div>
-                  {linkedinErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{linkedinErr}</p>}
-                </div>
-
-                {(result?.overall_score != null && result.overall_score <= 6)
-                  ? <p className="text-center text-sm mb-3"><span className="font-semibold text-gray-900">Your ad scored {result.overall_score}/10.</span> <span className="text-gray-500">Want it fixed, not just scored?</span></p>
-                  : <p className="text-center text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">Where do you want to take it from here?</p>}
-                {/* Compact "what's next" strip — deliberately light so it doesn't outweigh the roast. */}
-                <div className="rounded-xl border border-gray-200 bg-white overflow-hidden reveal">
-                  {[
-                    { tag: 'Do it yourself', color: '#14a58b', title: 'Keep roasting', desc: 'Run another ad and act on the fixes yourself.', cta: 'Roast another', onClick: reset },
-                    { tag: 'Do it with you', color: '#b8760a', title: 'Conversion Roadmap', desc: 'Full teardown + ready-to-ship fixes. $6K, 10 days.', cta: 'See roadmap', onClick: goDeliverables },
-                    { tag: 'Done for you', color: '#7b5cff', title: 'Full Rebuild', desc: 'We rebuild and run your ads. $8K/mo.', cta: 'See service', onClick: goPricing },
-                  ].map((o, i) => (
-                    <div key={i} className={"flex items-center gap-3 p-3.5 sm:px-4" + (i > 0 ? " border-t border-gray-100" : "")}>
-                      <span className="flex-shrink-0 w-1.5 h-9 rounded-full" style={{ background: o.color }} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: o.color }}>{o.tag}</div>
-                        <div className="font-semibold text-gray-900 text-sm leading-tight">{o.title}</div>
-                        <p className="text-xs text-gray-500 mt-0.5 truncate">{o.desc}</p>
-                      </div>
-                      <button onClick={o.onClick} className="flex-shrink-0 text-xs font-semibold bg-transparent border-none p-0 cursor-pointer whitespace-nowrap" style={{ color: '#0a66c2' }}>{o.cta} &rarr;</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </main>
 
             {/* ROAST ANOTHER AD — quick popup to paste a new Ad Library link */}
