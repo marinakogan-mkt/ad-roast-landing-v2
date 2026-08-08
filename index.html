@@ -54,6 +54,11 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .card-lift { transition: transform 0.2s, box-shadow 0.2s; }
     .card-lift:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    /* Results overview metric card — obviously clickable, lifts + turns blue on hover. */
+    .metric-card { transition: transform .18s, box-shadow .18s, border-color .18s, background-color .18s; }
+    .metric-card:hover { transform: translateY(-4px); border-color: #0a66c2 !important; background-color: #f8fbff; box-shadow: 0 12px 30px rgba(10,102,194,0.18); }
+    .metric-card:hover .metric-open { color: #0a66c2 !important; }
+    .metric-card:hover .metric-chev { color: #0a66c2 !important; transform: translateX(2px); }
     @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
     .floaty { animation:floatY 4s ease-in-out infinite; }
     .gauge-bar { height:100%; width:0; border-radius:999px; transition:width 1.1s cubic-bezier(.22,1,.36,1) .15s; }
@@ -307,8 +312,8 @@
        counts up. Grey "N/A" when no score (e.g. no landing page provided). */
     const ScoreRing = ({ score, label, grade, big = false }) => {
       const has = typeof score === 'number' && score > 0;
-      const size = big ? 128 : 104;
-      const stroke = big ? 11 : 9;
+      const size = big ? 132 : 108;
+      const stroke = big ? 13 : 11;
       const r = (size - stroke - 2) / 2;
       const circ = 2 * Math.PI * r;
       const [off, setOff] = useState(circ);
@@ -318,7 +323,7 @@
       }, [circ, score, has]);
       const col = hexForScore(has ? score : null);
       return (
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center w-full min-w-0">
           <div style={{ position: 'relative', width: size, height: size }}>
             <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
               <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#eef2f7" strokeWidth={stroke} />
@@ -328,12 +333,12 @@
             </svg>
             <div style={{ position: 'absolute', inset: 0 }} className="flex flex-col items-center justify-center">
               {has
-                ? <span className="font-extrabold leading-none" style={{ fontSize: big ? 40 : 32, color: col }}><CountUp to={score} dur={1150} /></span>
-                : <span className="font-bold text-gray-300" style={{ fontSize: big ? 26 : 22 }}>N/A</span>}
+                ? <span className="font-extrabold leading-none" style={{ fontSize: big ? 46 : 38, color: col }}><CountUp to={score} dur={1150} /></span>
+                : <span className="font-bold text-gray-300" style={{ fontSize: big ? 28 : 24 }}>N/A</span>}
               {has && <span className="text-[10px] font-medium text-gray-400 mt-0.5">out of 10</span>}
             </div>
           </div>
-          <div className="text-sm font-semibold text-gray-700 mt-3 text-center leading-tight">{label}</div>
+          <div className="text-xs sm:text-sm font-bold text-gray-800 mt-3 text-center leading-tight break-words w-full px-0.5">{label}</div>
           {grade && <div className="text-xs font-bold mt-0.5 text-center" style={{ color: hexForScore(score) }}>{grade}</div>}
         </div>
       );
@@ -3150,10 +3155,14 @@
                 <div onClick={reset} className="flex items-center gap-2 cursor-pointer"><img src="data:image/png;base64,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" alt="AdRoast" className="w-9 h-9 rounded" /><span className="text-gray-300 text-lg font-light">|</span><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div>
                 {!isSharedView && (
                   <div className="flex items-center gap-2 sm:gap-3">
-                    {roastSession && roastSession.email && (
-                      <span className="hidden md:inline-flex items-center gap-1.5 text-xs font-medium text-gray-600" title="Signed in"><span className="w-2 h-2 rounded-full bg-green-500"></span><span className="max-w-[140px] truncate">{roastSession.email}</span></span>
+                    {roastSession && roastSession.email ? (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600" title={"Signed in as " + roastSession.email}><span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span><span className="max-w-[80px] sm:max-w-[150px] truncate">{roastSession.email}</span></span>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: (roastSession.plan === 'unlimited' || roastSession.tokens > 0) ? '#dcfce7' : '#fef2f2', color: (roastSession.plan === 'unlimited' || roastSession.tokens > 0) ? '#15803d' : '#b91c1c' }} title="Roasts remaining"><Icon name="flame" className="w-3.5 h-3.5" />{roastSession.plan === 'unlimited' ? 'Unlimited' : `${roastSession.tokens} left`}</span>
+                      </>
+                    ) : (
+                      <button onClick={() => setShowSignupGate(true)} className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border-none cursor-pointer" style={{ background: '#fff7ed', color: '#c2410c' }} title="Sign in to track your roasts"><span className="w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></span>Guest · Sign in</button>
                     )}
-                    {roastSession && (roastSession.plan === 'unlimited' || typeof roastSession.tokens === 'number') && <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: (roastSession.plan === 'unlimited' || roastSession.tokens > 0) ? '#dcfce7' : '#fef2f2', color: (roastSession.plan === 'unlimited' || roastSession.tokens > 0) ? '#15803d' : '#b91c1c' }}><Icon name="flame" className="w-3.5 h-3.5" />{roastSession.plan === 'unlimited' ? 'Unlimited' : `${roastSession.tokens} left`}</span>}
                     <button onClick={() => { setReroastLink(''); setReroastErr(''); setShowReroast(true); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="rotateCcw" className="w-4 h-4" /> <span className="hidden sm:inline">Roast another ad</span></button>
                   </div>
                 )}
@@ -3178,19 +3187,19 @@
                     const on = activeTab === c.id;
                     return (
                       <button key={c.id} onClick={() => { setActiveTab(c.id); try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) {} }}
-                        className="text-left rounded-2xl border bg-white p-5 transition-all cursor-pointer card-lift"
+                        className="text-left rounded-2xl border bg-white p-5 cursor-pointer metric-card"
                         style={{ borderColor: on ? '#0a66c2' : '#e8ecf1', boxShadow: on ? '0 8px 24px rgba(10,102,194,0.13)' : '0 1px 2px rgba(16,24,40,0.04)' }}>
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{c.label}</span>
-                          <Icon name="chevronRight" className="w-4 h-4" style={{ color: on ? '#0a66c2' : '#cbd5e1', transform: on ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
+                          <Icon name="chevronRight" className="w-4 h-4 metric-chev" style={{ color: on ? '#0a66c2' : '#cbd5e1', transform: on ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
                         </div>
                         <div className="flex items-baseline gap-0.5">
-                          <span className="text-4xl font-extrabold leading-none" style={{ color: c.valueColor }}>{c.value}</span>
-                          {c.suffix && <span className="text-base font-semibold text-gray-400">{c.suffix}</span>}
+                          <span className="font-extrabold leading-none" style={{ fontSize: 'clamp(38px, 6vw, 48px)', color: c.valueColor }}>{c.value}</span>
+                          {c.suffix && <span className="text-lg font-semibold text-gray-400">{c.suffix}</span>}
                         </div>
                         <div className="text-xs text-gray-500 mt-1.5 mb-3 leading-snug">{c.desc}</div>
-                        <MiniBar pct={c.barPct} color={c.barColor} />
-                        <div className="text-[11px] font-semibold mt-2.5" style={{ color: on ? '#0a66c2' : '#94a3b8' }}>{on ? 'Viewing ↓' : 'Tap to open'}</div>
+                        <MiniBar pct={c.barPct} color={c.barColor} height={6} />
+                        <div className="text-[11px] font-semibold mt-2.5 metric-open inline-flex items-center gap-1" style={{ color: on ? '#0a66c2' : '#94a3b8' }}>{on ? 'Viewing ↓' : 'Tap to open →'}</div>
                       </button>
                     );
                   })}
@@ -3208,11 +3217,17 @@
                 <div className="grid grid-cols-3 gap-2 sm:gap-6 justify-items-center">
                   <ScoreRing big score={result.overall_score} label="Ad" grade={scoreGrade(result.overall_score)} />
                   <ScoreRing score={lp.overall_score} label="Landing page" grade={lp.overall_score > 0 ? scoreGrade(lp.overall_score) : ''} />
-                  <ScoreRing score={mismatch.alignment_score} label="Ad ↔ LP match" grade={mismatch.alignment_score > 0 ? scoreGrade(mismatch.alignment_score) : ''} />
+                  <ScoreRing score={mismatch.alignment_score} label="Ad ↔ LP" grade={mismatch.alignment_score > 0 ? scoreGrade(mismatch.alignment_score) : ''} />
                 </div>
-                <div className="mt-7 rounded-xl p-4 border-l-4" style={{ borderColor: hexForScore(result.overall_score), background: result.overall_score <= 3 ? '#fef2f2' : result.overall_score <= 6 ? '#fffbeb' : '#f0fdf4' }}>
-                  <p className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: hexForScore(result.overall_score) }}>The verdict</p>
-                  <p className="text-sm text-gray-800" style={{ lineHeight: 1.6 }}>{result.icp_mismatch}</p>
+                <div className="mt-7 rounded-2xl border overflow-hidden flex" style={{ borderColor: hexForScore(result.overall_score) + '55' }}>
+                  <div className="flex-shrink-0 w-1.5" style={{ background: hexForScore(result.overall_score) }} />
+                  <div className="p-4 sm:p-5 flex-1" style={{ background: result.overall_score <= 3 ? '#fef2f2' : result.overall_score <= 6 ? '#fffbeb' : '#f0fdf4' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full flex-shrink-0" style={{ background: hexForScore(result.overall_score) + '22' }}><Icon name="flame" className="w-4 h-4" style={{ color: hexForScore(result.overall_score) }} /></span>
+                      <span className="text-sm font-extrabold uppercase tracking-wide" style={{ color: hexForScore(result.overall_score) }}>The verdict · {scoreGrade(result.overall_score)}</span>
+                    </div>
+                    <p className="text-gray-800" style={{ fontSize: 15, lineHeight: 1.6 }}>{result.icp_mismatch}</p>
+                  </div>
                 </div>
               </div>
               </>)}
@@ -3525,27 +3540,25 @@
                 </div>
 
                 {(result?.overall_score != null && result.overall_score <= 6)
-                  ? <p className="text-center text-sm mb-3"><span className="font-semibold text-gray-900">Your ad scored {result.overall_score}/10.</span> <span className="text-gray-500">Want it fixed, not just scored? Here's how we can help.</span></p>
+                  ? <p className="text-center text-sm mb-3"><span className="font-semibold text-gray-900">Your ad scored {result.overall_score}/10.</span> <span className="text-gray-500">Want it fixed, not just scored?</span></p>
                   : <p className="text-center text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">Where do you want to take it from here?</p>}
-                <div className="grid sm:grid-cols-3 gap-4 reveal">
-                  <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#14a58b' }}>
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#14a58b' }}>Do it yourself</p>
-                    <h4 className="font-bold text-gray-900 mt-1">Keep roasting</h4>
-                    <p className="text-sm text-gray-500 mt-1">Run another ad through the roaster and act on the fixes yourself.</p>
-                    <button onClick={reset} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>Roast another ad &rarr;</button>
-                  </div>
-                  <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#b8760a' }}>
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#b8760a' }}>Do it with you</p>
-                    <h4 className="font-bold text-gray-900 mt-1">Conversion Roadmap</h4>
-                    <p className="text-sm text-gray-500 mt-1">A full teardown of your campaigns and the exact fixes, ready to ship, so your ads finally sell to the right buyer. $6K, 10 days.</p>
-                    <button onClick={goDeliverables} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>See the roadmap &rarr;</button>
-                  </div>
-                  <div className="card-lift rounded-xl border border-gray-200 bg-white p-5" style={{ borderTopWidth: '3px', borderTopColor: '#7b5cff' }}>
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#7b5cff' }}>Done for you</p>
-                    <h4 className="font-bold text-gray-900 mt-1">Full Rebuild</h4>
-                    <p className="text-sm text-gray-500 mt-1">We rebuild and run your ads. $8K/mo, fully managed.</p>
-                    <button onClick={goPricing} className="mt-4 text-sm font-semibold bg-transparent border-none p-0 cursor-pointer" style={{ color: '#0a66c2' }}>See the service &rarr;</button>
-                  </div>
+                {/* Compact "what's next" strip — deliberately light so it doesn't outweigh the roast. */}
+                <div className="rounded-xl border border-gray-200 bg-white overflow-hidden reveal">
+                  {[
+                    { tag: 'Do it yourself', color: '#14a58b', title: 'Keep roasting', desc: 'Run another ad and act on the fixes yourself.', cta: 'Roast another', onClick: reset },
+                    { tag: 'Do it with you', color: '#b8760a', title: 'Conversion Roadmap', desc: 'Full teardown + ready-to-ship fixes. $6K, 10 days.', cta: 'See roadmap', onClick: goDeliverables },
+                    { tag: 'Done for you', color: '#7b5cff', title: 'Full Rebuild', desc: 'We rebuild and run your ads. $8K/mo.', cta: 'See service', onClick: goPricing },
+                  ].map((o, i) => (
+                    <div key={i} className={"flex items-center gap-3 p-3.5 sm:px-4" + (i > 0 ? " border-t border-gray-100" : "")}>
+                      <span className="flex-shrink-0 w-1.5 h-9 rounded-full" style={{ background: o.color }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: o.color }}>{o.tag}</div>
+                        <div className="font-semibold text-gray-900 text-sm leading-tight">{o.title}</div>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">{o.desc}</p>
+                      </div>
+                      <button onClick={o.onClick} className="flex-shrink-0 text-xs font-semibold bg-transparent border-none p-0 cursor-pointer whitespace-nowrap" style={{ color: '#0a66c2' }}>{o.cta} &rarr;</button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </main>
