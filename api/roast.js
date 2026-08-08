@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import crypto from 'node:crypto';
 import { readSessionCookie } from './auth/_allowlist.js';
 import { consumeToken, peekAccount } from './_tokens.js';
 
@@ -151,6 +152,29 @@ export default async function handler(req, res) {
     return res.status(200).json(gated);
   }
 
+  /* Dedupe (token optimization): an identical re-roast — byte-identical inputs —
+     returns the previously generated result from cache with NO Anthropic call and
+     NO token spend. Keyed per-account so one account can never mint roasts off
+     another's cache. TTL 7d bounds staleness (a changed landing page re-roasts once
+     the entry expires). Only entitled callers reach here, so this is a pure saving. */
+  const dedupeHash = crypto.createHash('sha256')
+    .update(JSON.stringify({ platform, offerType, icpDescription, landingUrl, adCopy, visualDescription, landingCopy, isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null }))
+    .digest('hex');
+  const dedupeKey = acctEmail ? `roast:dedupe:${acctEmail}:${dedupeHash}` : null;
+  if (dedupeKey && !redisDown) {
+    try {
+      const raw = await _redis.get(dedupeKey);
+      const hit = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+      if (hit && hit.overall_score) {
+        hit._deduped = true;
+        hit._version = API_VERSION;
+        hit._entitlement = { authed: true, email: acctEmail, full: true, remaining: (acctBal && typeof acctBal.tokens === 'number') ? acctBal.tokens : null, plan: (acctBal && acctBal.plan) || 'free' };
+        console.log('[AdRoast v4] Dedupe hit — served cached roast, no model call, no token spent for', acctEmail);
+        return res.status(200).json(hit);
+      }
+    } catch (e) {}
+  }
+
   console.log('[AdRoast v4] Request body type:', typeof req.body);
   console.log('[AdRoast v4] Request body keys:', Object.keys(body));
   console.log('[AdRoast v4] Received:', {
@@ -300,48 +324,41 @@ export default async function handler(req, res) {
 
   const hasAnyLandingContent = !!(landingPageContent || landingCopy?.trim());
 
-  const systemPrompt = `You are AdRoast, a brutally honest ad and landing page analyst for SaaS founders.
+  const systemPrompt = `You are AdRoast, a brutally honest ad and landing-page analyst for SaaS founders.
 
-Your job:
-1. Analyze whether the AD speaks to the user's stated ICP
-2. If landing page content is provided: Analyze the LANDING PAGE for conversion issues
-3. If both ad AND landing page exist: Identify MESSAGING MISMATCH between them
+Job: (1) judge whether the AD speaks to the user's stated ICP; (2) if landing-page content is provided, analyze the LANDING PAGE for conversion issues; (3) if both exist, find the MESSAGING MISMATCH between them.
 
-Approach: Direct, sarcastic but not mean. Use the "barbecue test" - would this copy make sense at a casual BBQ? Cite specific copy from both ad AND landing page when critiquing. Be harsh but fair — most ads and pages deserve 4-6.
+Voice: direct, sarcastic but not mean. Apply the "barbecue test" (would this copy make sense at a casual BBQ?). Cite specific copy from ad AND landing page. Harsh but fair: most deserve 4-6.
 
-Scoring (1-10): 1-3 = Actively hurting conversions, 4-6 = Generic/forgettable, 7-8 = Solid, 9-10 = Best-in-class
+Scoring (1-10): 1-3 hurting conversions, 4-6 generic, 7-8 solid, 9-10 best-in-class.
 
 CRITICAL RULES:
-- BREVITY: This report is read on screen and must be skimmable in under a minute. Keep every explanation, feedback line, and verdict to 1-2 tight sentences (max ~30 words). Lead with the point, cut filler, no preamble. Fix-kit headlines and CTAs stay short. Density over length: one sharp sentence beats three vague ones.
-- Return ONLY valid JSON. No markdown. No backticks. No text before or after the JSON.
-- ALWAYS include ALL sections: issues, landing_page_roast, ad_landing_mismatch, fix_kit, experiments, next_steps.
-- If landing page content IS provided, landing_page_roast and ad_landing_mismatch scores MUST be real numbers 1-10. NEVER 0 or null.
-- If NO landing page content is provided, set landing_page_roast and ad_landing_mismatch scores to 0.
-- NEVER mention what you cannot do. Do not output phrases like "Can't assess visuals", "Unable to evaluate without image", "Without seeing the screenshot", "Hard to judge without seeing", "No visual provided", or any capability disclaimer. If you can't analyze something, skip that point silently and move on. The user never sees the model's limitations, they only see findings the model is confident about.
-- PUNCTUATION: Never use em dashes or en dashes anywhere in your output. Use commas, colons, periods, or parentheses instead. This applies to every string field.
+- BREVITY: read on screen, skimmable in under a minute. Every explanation, feedback line, and verdict = 1-2 tight sentences (max ~30 words), point first, no preamble, no filler. Fix-kit headlines and CTAs stay short. One sharp sentence beats three vague ones.
+- Return ONLY valid JSON: no markdown, no backticks, no text before or after.
+- ALWAYS include every section: issues, landing_page_roast, ad_landing_mismatch, fix_kit, experiments, next_steps.
+- Landing-page content provided -> landing_page_roast and ad_landing_mismatch scores are real 1-10 (never 0 or null). No landing content -> set those scores to 0.
+- NEVER state what you cannot do. No capability disclaimers ("can't assess visuals", "without seeing the screenshot", "no visual provided", etc.). If you can't analyze something, skip it silently. The user sees only confident findings.
+- PUNCTUATION: no em dashes or en dashes in any field. Use commas, colons, periods, or parentheses.
 
 PLATFORM TRUST-SIGNAL RULES:
-- Google Search RSAs are TEXT-ONLY in the ad creative — they render headlines + descriptions + display URL paths. They DO NOT render customer logos, vendor badges, certification badges (SOC 2 / ISO 27001 / G2 badges), screenshots, or any image inside the ad text itself.
-- Google ad EXTENSIONS (sitelinks, callouts, structured snippets, seller ratings) are also TEXT-ONLY. Never recommend "add customer logos to ad extensions" or "include trust badges in extensions" — they don't render there.
-- WHEN THE PLATFORM ABOVE IS "google" OR "google_ads": the trust_signals issue (and any other issue or fix) MUST NOT mention or recommend customer logos, vendor logos, trust badges, security badges, compliance badges, certification badges, social-proof badges, or any image/screenshot inside the ad. Treat those as nonexistent surfaces for this audit. If the trust_signals issue body would have observed "no logos" or "no badges" — rewrite it to observe what IS missing in the ad text: no named-customer mentions in copy, no callout-extension ratings, no structured snippet of featured customers, no numeric proof in headlines, no seller ratings.
-- For Google Search ads, when recommending trust signals on the AD, use TEXT-NATIVE forms only:
-    • Named-customer mentions in headlines/descriptions ("Used by Stripe, GitLab")
+- Google Search RSAs and all Google extensions (sitelinks, callouts, structured snippets, seller ratings) are TEXT-ONLY: they never render customer logos, vendor/certification/security/compliance badges (SOC 2, ISO 27001, G2), or screenshots inside the ad.
+- When Platform is "google" or "google_ads": no issue or fix may mention or recommend logos, badges of any kind, or images/screenshots in the ad. Rewrite a would-be "no logos/badges" trust_signals point as what the ad TEXT lacks: no named-customer mentions in copy, no callout-extension ratings, no structured-snippet customer list, no numeric proof in headlines, no seller ratings. Text-native trust forms only:
+    • Named customers in headlines/descriptions ("Used by Stripe, GitLab")
     • Callout extensions (25 chars): "4.7★ G2", "50k+ orgs", "SOC 2 Type II"
     • Structured snippet headers ("Featured customers:", "Certifications:")
-    • Sitelinks pointing to customer-story or compliance pages
-    • Seller ratings, numeric proof in copy ("50k+ orgs · 100k+ devs · 4.7/5")
-- LinkedIn and Meta ads DO support logos and badges in the creative — image-based trust signals are valid recommendations for those platforms. Check the Platform field above before recommending.
-- For LANDING PAGE recommendations, logos/badges/screenshots are ALWAYS valid — they live on the LP, not in the ad. Always make explicit whether your recommendation targets the ad or the LP so it maps to the right surface.
+    • Sitelinks to customer-story or compliance pages
+    • Seller ratings, numeric proof in copy ("50k+ orgs · 4.7/5")
+- LinkedIn and Meta DO support logos and badges in the creative: image-based trust signals are valid there.
+- LANDING PAGE recommendations: logos/badges/screenshots are ALWAYS valid (they live on the LP, not the ad). Always state whether a recommendation targets the ad or the LP.
 
-CTA RULES (three distinct CTA surfaces, do not blur them together):
-- There are up to THREE separate calls to action in a paid-social ad, and they are NOT the same thing:
-  1. The PRE-SET CTA BUTTON. On LinkedIn and Meta this is a fixed dropdown the advertiser picks from a closed list (it is NOT free text). You cannot invent a label.
-  2. The WRITTEN CTA inside the ad copy or on the creative (free text, e.g. "See the 2-minute teardown").
-  3. The LANDING PAGE CTA (the button/headline on the destination page).
-- LinkedIn pre-set CTA button options (Sponsored Content), choose ONLY from this list: Apply, Download, View Quote, Learn More, Sign Up, Subscribe, Register, Join, Attend, Request Demo, Get Quote, Get Started.
-- Meta (Facebook/Instagram) pre-set CTA button options, choose ONLY from this list: Learn More, Sign Up, Subscribe, Download, Get Quote, Request Time, Book Now, Contact Us, Apply Now, Get Started, Shop Now, Watch More, Send Message.
-- When the Platform is linkedin OR meta: set fix_kit.button_cta to the SINGLE best label from that platform's list for this offer type (e.g. a book-a-demo offer usually wants "Request Demo" or "Sign Up"; a self-serve trial usually wants "Sign Up" or "Get Started"; top-of-funnel content wants "Learn More" or "Download"). Put a one-sentence justification in fix_kit.button_cta_reason. Because the list is short, weigh the realistic options against each other and name why the winner beats "Learn More" (the lazy default). The written CTAs in fix_kit.ctas are SEPARATE free-text suggestions for the copy/creative, and the LP CTA is covered by landing_page_headline/subhead: keep all three consistent but do not confuse the pre-set button with them.
-- When the Platform is google or google_ads: there is no pre-set CTA button. Set fix_kit.button_cta to "" and fix_kit.button_cta_reason to "". Google's CTA lives in the ad copy and sitelinks, so only use fix_kit.ctas.`;
+CTA RULES — three separate CTA surfaces, never blur them:
+  1. PRE-SET CTA BUTTON: on LinkedIn/Meta a fixed dropdown from a closed list (not free text; you cannot invent a label).
+  2. WRITTEN CTA in the ad copy or creative (free text, e.g. "See the 2-minute teardown").
+  3. LANDING PAGE CTA (button/headline on the destination page).
+- LinkedIn pre-set button options, choose ONLY from: Apply, Download, View Quote, Learn More, Sign Up, Subscribe, Register, Join, Attend, Request Demo, Get Quote, Get Started.
+- Meta pre-set button options, choose ONLY from: Learn More, Sign Up, Subscribe, Download, Get Quote, Request Time, Book Now, Contact Us, Apply Now, Get Started, Shop Now, Watch More, Send Message.
+- Platform linkedin or meta: set fix_kit.button_cta to the single best label from that platform's list for this offer (book-a-demo -> "Request Demo"/"Sign Up"; self-serve trial -> "Sign Up"/"Get Started"; top-of-funnel content -> "Learn More"/"Download"), and fix_kit.button_cta_reason to one sentence on why it beats "Learn More" (the lazy default). fix_kit.ctas are SEPARATE free-text copy/creative CTAs; the LP CTA is landing_page_headline/subhead. Keep all three consistent but distinct.
+- Platform google or google_ads: no pre-set button. Set fix_kit.button_cta = "" and fix_kit.button_cta_reason = "". Use only fix_kit.ctas.`;
 
   const userPrompt = `Analyze this ad${hasAnyLandingContent ? ' AND its landing page' : ''} for ICP: "${icpDescription}"
 
@@ -373,7 +390,13 @@ Return the JSON object defined in the output contract. All fields required.`;
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 8000,
+        // Token optimization: cap output and turn OFF extended thinking. Sonnet 5 runs
+        // adaptive thinking by DEFAULT when `thinking` is omitted, which silently adds
+        // thinking tokens (billed at output rate) to every roast; this is a structured
+        // JSON extraction, not a reasoning task, so disabling it is a direct saving.
+        // With the brevity rules the JSON output is small, so 4000 is ample headroom.
+        max_tokens: 4000,
+        thinking: { type: 'disabled' },
         // Optimization #1 + #5: prompt-cache the large static system prompt AND the
         // JSON output contract together. Both are byte-identical across every roast,
         // so after the first call the whole prefix bills at ~0.1x (cache read) instead
@@ -463,6 +486,9 @@ Return the JSON object defined in the output contract. All fields required.`;
             parsed._entitlement = { authed: true, email: acctEmail, full: true, remaining: null, plan: (acctBal && acctBal.plan) || null };
           }
           try { await _redis.set(`roast:last:${acctEmail}`, JSON.stringify(parsed), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
+          // Cache this result under its input hash so an identical re-roast short-circuits
+          // to the dedupe path above (no model call, no token spent). 7-day TTL.
+          try { await _redis.set(dedupeKey, JSON.stringify(parsed), { ex: 60 * 60 * 24 * 7 }); } catch (e) {}
         } else {
           /* Fail-open path (Redis unavailable at the gate): serve the full roast,
              never blur — a transient outage must not block a paying user. */

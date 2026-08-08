@@ -14,6 +14,21 @@
 // Its own env var (not the shared ANTHROPIC_MODEL) so it doesn't inherit Sonnet.
 const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
 
+/* ICP cache (token optimization): a company's ICP is derived purely from its public
+   website, so it's the same no matter who asks or how often. We cache the inferred
+   ICP by domain and reuse it, so the Haiku call runs ONCE per company instead of on
+   every roast. This also covers the multi-company case (each domain caches on its own
+   key). Pass { refresh: true } to force a fresh inference when the user wants to change
+   it. Redis is optional here: if it's unavailable we just skip the cache and infer. */
+import { Redis } from '@upstash/redis';
+let _redis = null;
+try {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    _redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
+  }
+} catch (e) { _redis = null; }
+const ICP_CACHE_TTL = 60 * 60 * 24 * 60; // 60 days
+
 function normalizeUrl(input) {
   let raw = (input || '').trim();
   if (!raw) throw new Error('No URL provided.');
@@ -70,6 +85,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: e.message });
   }
 
+  // Reuse a previously inferred ICP for this domain (skip the Haiku call entirely)
+  // unless the caller explicitly asked to refresh it.
+  const icpCacheKey = `icp:domain:${domain}`;
+  if (_redis && !body.refresh) {
+    try {
+      const raw = await _redis.get(icpCacheKey);
+      const cached = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+      if (cached && cached.icp_text) return res.status(200).json({ ...cached, _cached: true });
+    } catch (e) { /* cache miss / outage -> infer below */ }
+  }
+
   // Fetch the site (best-effort — if it fails we infer from the domain alone).
   let site = { title: brand, desc: '', body: '' };
   try { site = await fetchSite(url); } catch (e) { /* keep fallback */ }
@@ -122,7 +148,10 @@ ${site.body || '(the site could not be fetched — infer conservatively from the
       return res.status(500).json({ error: 'Could not parse ICP response' });
     }
     const icp = JSON.parse(jsonMatch[0]);
-    return res.status(200).json({ brand, domain, url, ...icp });
+    const result = { brand, domain, url, ...icp };
+    // Cache so the next roast for this company reuses the ICP instead of re-running Haiku.
+    if (_redis) { try { await _redis.set(icpCacheKey, JSON.stringify(result), { ex: ICP_CACHE_TTL }); } catch (e) {} }
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({ error: 'Server error: ' + error.message });
   }
