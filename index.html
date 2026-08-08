@@ -432,10 +432,10 @@
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-gray-500">{checked.length} of {steps.length} done</span>
-            <span className="text-xs font-bold" style={{ color: done ? '#16a34a' : '#0a66c2' }}>{done ? 'All clear 🎉' : pct + '%'}</span>
+            <span className="text-xs font-bold" style={{ color: '#0a66c2' }}>{done ? 'All clear 🎉' : pct + '%'}</span>
           </div>
           <div className="rounded-full bg-gray-100 h-2 overflow-hidden mb-4">
-            <div style={{ width: pct + '%', height: '100%', background: done ? '#16a34a' : '#0a66c2', borderRadius: 999, transition: 'width .45s cubic-bezier(.22,1,.36,1)' }} />
+            <div style={{ width: pct + '%', height: '100%', background: '#0a66c2', borderRadius: 999, transition: 'width .45s cubic-bezier(.22,1,.36,1)' }} />
           </div>
           <div className="space-y-2">
             {steps.map((s, i) => {
@@ -443,8 +443,8 @@
               return (
                 <button key={i} onClick={() => toggle(i)}
                   className="w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer card-lift"
-                  style={{ borderColor: on ? '#bbf7d0' : '#e5e7eb', background: on ? '#f0fdf4' : '#fff' }}>
-                  <span className="flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center mt-0.5" style={{ borderColor: on ? '#16a34a' : '#cbd5e1', background: on ? '#16a34a' : '#fff' }}>
+                  style={{ borderColor: on ? '#bfdbfe' : '#e5e7eb', background: on ? '#eff6ff' : '#fff' }}>
+                  <span className="flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center mt-0.5" style={{ borderColor: on ? '#0a66c2' : '#cbd5e1', background: on ? '#0a66c2' : '#fff' }}>
                     {on && <Icon name="check" className="w-3.5 h-3.5 text-white" />}
                   </span>
                   <span className={"text-sm " + (on ? "text-gray-400 line-through" : "text-gray-700")}>{s}</span>
@@ -3146,8 +3146,8 @@
           { id: 'scores', label: 'Scores', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score) },
           { id: 'issues', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue) },
           ...((lp.overall_score != null || (mismatch.disconnects && mismatch.disconnects.length > 0)) ? [{ id: 'landing', label: 'Landing page', value: lp.overall_score > 0 ? lp.overall_score : '—', suffix: lp.overall_score > 0 ? '/10' : '', desc: 'page & ad match', valueColor: hexForScore(lp.overall_score), barPct: (lp.overall_score || 0) * 10, barColor: hexForScore(lp.overall_score) }] : []),
-          { id: 'fixes', label: 'Fixes', value: (result.fix_kit && result.fix_kit.headlines ? result.fix_kit.headlines.length : 0), suffix: '', desc: 'ready-to-ship rewrites', valueColor: '#16a34a', barPct: 100, barColor: '#16a34a' },
-          { id: 'plan', label: 'Action plan', value: (result.next_steps ? result.next_steps.length : 0), suffix: '', desc: 'steps to ship', valueColor: '#16a34a', barPct: 100, barColor: '#16a34a' },
+          { id: 'fixes', label: 'Fixes', value: (result.fix_kit && result.fix_kit.headlines ? result.fix_kit.headlines.length : 0), suffix: '', desc: 'ready-to-ship rewrites', valueColor: '#0a66c2', barPct: 100, barColor: '#0a66c2' },
+          { id: 'plan', label: 'Action plan', value: (result.next_steps ? result.next_steps.length : 0), suffix: '', desc: 'steps to ship', valueColor: '#0a66c2', barPct: 100, barColor: '#0a66c2' },
         ];
         return (
           <div className="min-h-screen bg-white">
@@ -3239,10 +3239,10 @@
                 if (mismatch.alignment_score > 0) areas.push({ k: 'ad-to-page match', s: mismatch.alignment_score });
                 const weakest = areas.slice().sort((a, b) => a.s - b.s)[0];
                 const OPTIONS = {
-                  review:     { tag: 'Personal review', color: '#16a34a', title: 'Get my eyes on it',   q: 'Want a human gut-check?',  kind: 'linkedin' },
-                  diy:        { tag: 'Do it yourself',  color: '#16a34a', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', onClick: reset },
-                  withyou:    { tag: 'Do it with you',  color: '#f59e0b', title: 'Conversion Roadmap',    q: 'Want it fixed with you?',  cta: 'See the roadmap', onClick: goDeliverables, meta: '$6K · 10 days' },
-                  doneforyou: { tag: 'Done for you',    color: '#dc2626', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', onClick: goPricing, meta: '$8K/mo, managed' },
+                  review:     { tag: 'Personal review', color: '#0a66c2', title: 'Get my eyes on it',   q: 'Want a human gut-check?',  kind: 'linkedin' },
+                  diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', onClick: reset },
+                  withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Conversion Roadmap',    q: 'Want it fixed with you?',  cta: 'See the roadmap', onClick: goDeliverables, meta: '$6K · 10 days' },
+                  doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', onClick: goPricing, meta: '$8K/mo, managed' },
                 };
                 let key, reason;
                 if (sev <= 3) { key = 'doneforyou'; reason = `At ${sev}/10 this isn't a copy tweak. Your weakest link is your ${weakest.k} (${weakest.s}/10), and the ad and page pull in different directions. The honest, fastest path is having it rebuilt for you.`; }
@@ -3255,7 +3255,7 @@
                   <div>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input type="url" placeholder="https://linkedin.com/in/you" value={linkedin} onChange={(e) => { setLinkedin(e.target.value); setLinkedinErr(null); }} className="flex-1 px-3 py-2.5 bg-white border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 text-gray-900" />
-                      <button onClick={submitLinkedIn} disabled={!linkedin || sending} style={linkedin && !sending ? { backgroundColor: '#16a34a', color: 'white' } : {}} className={`px-5 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${linkedin && !sending ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>{sending ? 'Sending…' : 'Send it over'}</button>
+                      <button onClick={submitLinkedIn} disabled={!linkedin || sending} style={linkedin && !sending ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`px-5 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${linkedin && !sending ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>{sending ? 'Sending…' : 'Send it over'}</button>
                     </div>
                     {linkedinErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{linkedinErr}</p>}
                   </div>
@@ -3327,7 +3327,7 @@
                         <Icon name="linkBreak" className="w-5 h-5" style={{ color: hexForScore(mismatch.alignment_score) }} />
                         <span className="text-[10px] font-bold uppercase tracking-wide mt-0.5" style={{ color: hexForScore(mismatch.alignment_score) }}>{mismatch.alignment_score > 0 ? mismatch.alignment_score + '/10 match' : 'mismatch'}</span>
                       </div>
-                      <span className="px-3 py-1.5 rounded-lg text-sm font-semibold border" style={{ background: '#faf5ff', color: '#7b5cff', borderColor: '#ede9fe' }}>Landing page</span>
+                      <span className="px-3 py-1.5 rounded-lg text-sm font-semibold border" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }}>Landing page</span>
                     </div>
                     <div className="max-w-xs mx-auto mb-4"><SeverityBar score={mismatch.alignment_score} /></div>
                     {/* Verdict */}
@@ -3346,10 +3346,10 @@
                             </div>
                           </div>
                           {showFull && (
-                            <div className="p-3 flex gap-2.5 border-t-2 border-white" style={{ background: '#f0fdf4' }}>
-                              <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: '#dcfce7' }}><Icon name="check" className="w-3.5 h-3.5 text-green-600" /></span>
+                            <div className="p-3 flex gap-2.5 border-t-2 border-white" style={{ background: '#eff6ff' }}>
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: '#dbeafe' }}><Icon name="check" className="w-3.5 h-3.5" style={{ color: '#0a66c2' }} /></span>
                               <div className="min-w-0">
-                                <div className="text-[11px] font-bold uppercase tracking-wide text-green-700 mb-0.5">The fix</div>
+                                <div className="text-[11px] font-bold uppercase tracking-wide mb-0.5" style={{ color: '#0a66c2' }}>The fix</div>
                                 <p className="text-sm text-gray-700" style={{ lineHeight: 1.5 }}>{d.fix}</p>
                               </div>
                             </div>
@@ -3396,9 +3396,9 @@
                           <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><ul className="space-y-1">{lp.top_issues.map((issue, i) => <li key={i} className="text-sm text-red-600">• {issue}</li>)}</ul></div>
                         </div>
 {showFull && (
-                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                          <h4 className="font-semibold text-green-700 text-sm mb-2">⚡ Quick Wins</h4>
-                          <ul className="space-y-1">{(lp.quick_wins || []).map((win, i) => <li key={i} className="text-sm text-green-600">• {win}</li>)}</ul>
+                        <div className="p-3 rounded-lg border" style={{ background: '#eff6ff', borderColor: '#bfdbfe' }}>
+                          <h4 className="font-semibold text-sm mb-2" style={{ color: '#0a66c2' }}>⚡ Quick Wins</h4>
+                          <ul className="space-y-1">{(lp.quick_wins || []).map((win, i) => <li key={i} className="text-sm" style={{ color: '#0a66c2' }}>• {win}</li>)}</ul>
                         </div>
 )}
                       </div>
@@ -3491,12 +3491,12 @@
               {/* Experiments */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="zap" className="w-5 h-5" style={{ color: '#7b5cff' }} /> Experiments to run</h2>
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="zap" className="w-5 h-5" style={{ color: '#0a66c2' }} /> Experiments to run</h2>
                   {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                 </div>
                 <div className={showFull ? "p-4 sm:p-5 grid sm:grid-cols-3 gap-3" : "p-4 sm:p-5 grid sm:grid-cols-3 gap-3 blur-sm pointer-events-none select-none"}>
                   {result.experiments.map((exp, i) => {
-                    const accent = ['#0a66c2', '#14a58b', '#7b5cff'][i % 3];
+                    const accent = '#0a66c2';
                     return (
                       <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 card-lift" style={{ borderTopWidth: '3px', borderTopColor: accent }}>
                         <div className="flex items-center justify-between mb-2.5">
@@ -3517,7 +3517,7 @@
               {/* Next Steps — interactive checklist with progress */}
               <div id="sec-next" className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden scroll-mt-20">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="check" className="w-5 h-5" style={{ color: '#16a34a' }} /> Your action plan {showFull && <span className="text-xs font-normal text-gray-400">· check them off</span>}</h2>
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="check" className="w-5 h-5" style={{ color: '#0a66c2' }} /> Your action plan {showFull && <span className="text-xs font-normal text-gray-400">· check them off</span>}</h2>
                   {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                 </div>
                 <div className={showFull ? "p-4 sm:p-5" : "p-4 sm:p-5 blur-sm pointer-events-none select-none"}>
