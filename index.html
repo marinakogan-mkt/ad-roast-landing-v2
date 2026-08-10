@@ -3265,7 +3265,7 @@
                 if (mismatch.alignment_score > 0) areas.push({ k: 'ad-to-page match', s: mismatch.alignment_score });
                 const weakest = areas.slice().sort((a, b) => a.s - b.s)[0];
                 const OPTIONS = {
-                  review:     { tag: 'Personal review', color: '#0a66c2', title: 'Get my eyes on it',   q: 'Want a human gut-check?',  kind: 'linkedin' },
+                  review:     { tag: 'Team review', color: '#0a66c2', title: 'Get the team on your roast',   q: 'Want the team to weigh in?',  kind: 'linkedin' },
                   diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', onClick: reset },
                   withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Conversion Roadmap',    q: 'Want it fixed with you?',  cta: 'See the roadmap', onClick: goDeliverables, meta: '$6K · 10 days' },
                   doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', onClick: goPricing, meta: '$8K/mo, managed' },
@@ -3274,7 +3274,7 @@
                 if (sev <= 3) { key = 'doneforyou'; reason = `At ${sev}/10 this isn't a copy tweak. Your weakest link is your ${weakest.k} (${weakest.s}/10), and the ad and page pull in different directions. The honest, fastest path is having it rebuilt for you.`; }
                 else if (sev <= 6) { key = 'withyou'; reason = `You scored ${sev}/10. The raw material is there, but your ${weakest.k} (${weakest.s}/10) is missing your ICP. A guided teardown fixes the message in days without you starting over.`; }
                 else if (sev <= 8) { key = 'diy'; reason = `A ${sev}/10 is close. The fixes above are enough to get you there. Ship them, then run your next ad through the roaster to check.`; }
-                else { key = 'review'; reason = `A ${sev}/10 is strong. No rebuild needed, just a second set of eyes. Drop your LinkedIn and I'll personally review this roast.`; }
+                else { key = 'review'; reason = `A ${sev}/10 is strong. No rebuild needed, just a second set of eyes. Drop your LinkedIn and the team will review it personally.`; }
                 const rec = OPTIONS[key];
                 const others = Object.keys(OPTIONS).filter(k => k !== key).map(k => OPTIONS[k]);
                 const linkedInForm = (
@@ -3311,7 +3311,7 @@
                     </div>
                     {recReviewOpen && key !== 'review' && (
                       <div className="mt-2.5 rounded-xl border border-gray-200 bg-white p-3.5 step-in">
-                        <p className="text-xs text-gray-500 mb-2">Drop your LinkedIn and I'll personally review this roast. I read every one. No spam.</p>
+                        <p className="text-xs text-gray-500 mb-2">Drop your LinkedIn and the team will review your roast personally. We read every one. No spam.</p>
                         {linkedInForm}
                       </div>
                     )}
