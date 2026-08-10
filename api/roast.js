@@ -103,7 +103,9 @@ const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all f
     {"title": "string", "description": "string"}
   ],
   "next_steps": ["string", "string", "string", "string"]
-}`;
+}
+
+BREVITY (hard word caps — stay under, never restate the field name or add filler): icp_mismatch <=30. issues[].explanation <=25. landing_page_roast *_feedback <=20. top_issues/quick_wins item <=12. ad_landing_mismatch.verdict <=30, disconnects[].problem/fix <=18, message_match_issues <=20. fix_kit.body <=30, rationale <=25. experiments[].description <=20. next_steps item <=16.`;
 
 export default async function handler(req, res) {
   const API_VERSION = 'v4';
@@ -157,8 +159,17 @@ export default async function handler(req, res) {
      NO token spend. Keyed per-account so one account can never mint roasts off
      another's cache. TTL 7d bounds staleness (a changed landing page re-roasts once
      the entry expires). Only entitled callers reach here, so this is a pure saving. */
+  // Normalize inputs before hashing so trivial, roast-irrelevant differences (letter
+  // case, extra whitespace, www./trailing slash, tracking query params) still hit the
+  // free cache instead of paying for a fresh, effectively-identical roast.
+  const _norm = (s) => (typeof s === 'string' ? s.trim().replace(/\s+/g, ' ').toLowerCase() : s);
+  const _normUrl = (u) => {
+    if (typeof u !== 'string' || !u.trim()) return u;
+    try { const x = new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u); return (x.hostname.replace(/^www\./, '') + x.pathname.replace(/\/+$/, '')).toLowerCase(); }
+    catch (e) { return _norm(u); }
+  };
   const dedupeHash = crypto.createHash('sha256')
-    .update(JSON.stringify({ platform, offerType, icpDescription, landingUrl, adCopy, visualDescription, landingCopy, isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null }))
+    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null }))
     .digest('hex');
   const dedupeKey = acctEmail ? `roast:dedupe:${acctEmail}:${dedupeHash}` : null;
   if (dedupeKey && !redisDown) {
