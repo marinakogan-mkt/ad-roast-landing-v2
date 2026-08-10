@@ -603,6 +603,7 @@
       const [linkedinErr, setLinkedinErr] = useState(null);
       const [sending, setSending] = useState(false);
       const [recReviewOpen, setRecReviewOpen] = useState(false); // results: expand LinkedIn form when "personal review" is a secondary option
+      const [cameFromResults, setCameFromResults] = useState(false); // true after leaving the roast for the roadmap/service sections, so we can navigate back to it
       const [inputs, setInputs] = useState({ url: '', copy: '', visual: '', adScreenshot: null, adScreenshotPreview: null });
       const [result, setResult] = useState(null);
       const [copied, setCopied] = useState({});
@@ -940,6 +941,7 @@
          of leaving the site. Refs avoid stale-closure reads inside the listener. */
       const viewRef = React.useRef(view); viewRef.current = view;
       const stepRef = React.useRef(guidedStep); stepRef.current = guidedStep;
+      const cameFromResultsRef = React.useRef(false); cameFromResultsRef.current = cameFromResults;
       const prevViewRef = React.useRef(null);
       React.useEffect(() => {
         if (view === 'guided' && prevViewRef.current !== 'guided') {
@@ -952,6 +954,13 @@
           if (viewRef.current === 'guided') {
             if (stepRef.current > 0) setGuidedStep(s => Math.max(0, s - 1));
             else setView('landing');
+            return;
+          }
+          /* Back after jumping from the roast to the roadmap/service section returns to the roast. */
+          if (cameFromResultsRef.current) {
+            setCameFromResults(false);
+            setView('results');
+            try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) {}
             return;
           }
           /* Keep the tool/service pages in sync with the URL on back/forward. */
@@ -974,7 +983,7 @@
         setReportEmail(''); setReportEmailErr(null); setPdfStatus(null);
         setNeedsPayment(false); setPaymentVerified(false); setIsUnlocked(false); setShowUnlockModal(false);
         setUnlockEmail(''); setUnlockLoading(false); setUnlockError(null);
-        setCurrentReportId(null); setPrivateAuditGate(null);
+        setCurrentReportId(null); setPrivateAuditGate(null); setCameFromResults(false);
       };
 
       /* "Roast another ad" from the results header: clear the previous roast (but
@@ -1613,11 +1622,20 @@
          primary Book-a-call CTA, shared by the tool and service pages. Mobile collapses
          to a menu (navOpen). Called as a plain function to avoid remount on re-render. */
       const goTool = () => { setNavOpen(false); try { window.history.pushState({}, '', '/'); } catch (e) {} reset(); };
+      /* Leaving the roast for a landing-page section: remember where we came from and push a
+         history entry so the browser Back button (and the on-screen bar) return to the roast. */
+      const leaveRoastFor = () => {
+        if (viewRef.current === 'results') {
+          try { window.history.pushState({ fromResults: true }, ''); } catch (e) {}
+          setCameFromResults(true);
+        }
+      };
+      const backToRoast = () => { try { window.history.back(); } catch (e) { setCameFromResults(false); setView('results'); } };
       const goPricing = () => {
         setNavOpen(false);
         const doScroll = () => { const el = document.getElementById('work-with-us'); if (el) { const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; el.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' }); } };
         if (document.getElementById('work-with-us')) doScroll();
-        else { setView('landing'); setTimeout(doScroll, 80); }
+        else { leaveRoastFor(); setView('landing'); setTimeout(doScroll, 80); }
       };
       /* Scroll to the "Your whole campaign, repositioned" deliverables section (from the
          results-page "See the roadmap" card). Routes back to the landing page first if needed. */
@@ -1625,7 +1643,7 @@
         setNavOpen(false);
         const doScroll = () => { const el = document.getElementById('deliverables'); if (el) { const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; el.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' }); } };
         if (document.getElementById('deliverables')) doScroll();
-        else { setView('landing'); setTimeout(doScroll, 120); }
+        else { leaveRoastFor(); setView('landing'); setTimeout(doScroll, 120); }
       };
       const navLink = (label, on, isActive) => (
         <button onClick={on} className="nav-link bg-transparent border-none cursor-pointer p-0 text-sm" style={isActive ? { color: '#0a66c2', fontWeight: 600, borderBottom: '2px solid #0a66c2', paddingBottom: 2 } : { color: '#475569' }}>{label}</button>
@@ -1828,6 +1846,14 @@
 
       if (view === 'landing') return (
         <div className="min-h-screen flex flex-col bg-white" >
+
+          {/* Safety net: after jumping from the roast to the roadmap/service section, keep a
+              one-tap way back to the report so it's never stranded (browser Back also works). */}
+          {cameFromResults && result && (
+            <div style={{ position: 'fixed', left: 0, right: 0, bottom: 20, zIndex: 60, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+              <button onClick={backToRoast} style={{ pointerEvents: 'auto', backgroundColor: '#0a66c2', color: '#fff' }} className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full font-semibold text-sm shadow-lg hover:opacity-90 transition-opacity">&larr; Back to your roast</button>
+            </div>
+          )}
 
           {signinMsg && (
             <div className="w-full px-4 py-2.5 text-sm text-center flex items-center justify-center gap-3" style={{ background: '#fef3c7', color: '#92400e' }}>
