@@ -970,6 +970,43 @@
         return () => window.removeEventListener('popstate', onPop);
       }, []);
 
+      /* Auto-tour: on a results page (incl. a shared ?id= report), briefly cycle the
+         section tabs once so the viewer immediately sees there's far more than the
+         first "Scores" screen. Cancels the instant they click / scroll / key, then
+         settles back on Scores. Skipped under reduced-motion. */
+      React.useEffect(() => {
+        if (view !== 'results' || !result) return;
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce) return;
+        const lp0 = result.landing_page_roast || {};
+        const mm0 = result.ad_landing_mismatch || {};
+        const hasLanding = lp0.overall_score != null || (mm0.disconnects && mm0.disconnects.length > 0);
+        const order = ['scores', 'issues', ...(hasLanding ? ['landing'] : []), 'fixes', 'plan'];
+        if (order.length < 2) return;
+        let i = 0, timer = null, done = false;
+        const stop = () => {
+          if (done) return; done = true;
+          if (timer) clearTimeout(timer);
+          window.removeEventListener('pointerdown', stop);
+          window.removeEventListener('wheel', stop);
+          window.removeEventListener('keydown', stop);
+          window.removeEventListener('touchstart', stop);
+        };
+        const step = () => {
+          if (done) return;
+          i++;
+          if (i >= order.length) { setActiveTab(order[0]); stop(); return; }
+          setActiveTab(order[i]);
+          timer = setTimeout(step, 1400);
+        };
+        timer = setTimeout(step, 1900);
+        window.addEventListener('pointerdown', stop);
+        window.addEventListener('wheel', stop, { passive: true });
+        window.addEventListener('keydown', stop);
+        window.addEventListener('touchstart', stop, { passive: true });
+        return stop;
+      }, [view, result]);
+
       const copy = async (text, key) => {
         await navigator.clipboard.writeText(text);
         setCopied(p => ({ ...p, [key]: true }));
