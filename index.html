@@ -435,23 +435,29 @@
             <span className="text-xs font-semibold text-gray-500">{checked.length} of {steps.length} done</span>
             <span className="text-xs font-bold" style={{ color: '#0a66c2' }}>{done ? 'All clear 🎉' : pct + '%'}</span>
           </div>
-          <div className="rounded-full bg-gray-100 h-2 overflow-hidden mb-4">
+          <div className="rounded-full bg-gray-100 h-2 overflow-hidden mb-5">
             <div style={{ width: pct + '%', height: '100%', background: '#0a66c2', borderRadius: 999, transition: 'width .45s cubic-bezier(.22,1,.36,1)' }} />
           </div>
-          <div className="space-y-2">
-            {steps.map((s, i) => {
-              const on = checked.includes(i);
-              return (
-                <button key={i} onClick={() => toggle(i)}
-                  className="w-full text-left flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer card-lift"
-                  style={{ borderColor: on ? '#bfdbfe' : '#e5e7eb', background: on ? '#eff6ff' : '#fff' }}>
-                  <span className="flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center mt-0.5" style={{ borderColor: on ? '#0a66c2' : '#cbd5e1', background: on ? '#0a66c2' : '#fff' }}>
-                    {on && <Icon name="check" className="w-3.5 h-3.5 text-white" />}
-                  </span>
-                  <span className={"text-sm " + (on ? "text-gray-400 line-through" : "text-gray-700")}>{s}</span>
-                </button>
-              );
-            })}
+          {/* Vertical timeline: numbered step dots joined by a rail, each row a tappable card */}
+          <div className="relative">
+            <div className="absolute w-0.5" style={{ left: '19px', top: '20px', bottom: '20px', background: '#e5e7eb' }} />
+            <div className="space-y-2.5">
+              {steps.map((s, i) => {
+                const on = checked.includes(i);
+                return (
+                  <button key={i} onClick={() => toggle(i)}
+                    className="relative w-full text-left flex items-start gap-3 cursor-pointer">
+                    <span className="relative z-10 flex-shrink-0 w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-extrabold transition-all"
+                      style={{ borderColor: on ? '#0a66c2' : '#cbd5e1', background: on ? '#0a66c2' : '#fff', color: on ? '#fff' : '#94a3b8' }}>
+                      {on ? <Icon name="check" className="w-4 h-4 text-white" /> : (i + 1)}
+                    </span>
+                    <span className="flex-1 rounded-xl border p-3 transition-all card-lift" style={{ borderColor: on ? '#bfdbfe' : '#e5e7eb', background: on ? '#eff6ff' : '#fff' }}>
+                      <span className={"text-sm " + (on ? "text-gray-400 line-through" : "text-gray-700")}>{s}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       );
@@ -3384,16 +3390,22 @@
                     {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                   </div>
                   <div className="p-4 sm:p-5">
-                    {/* Broken-connection banner */}
-                    <div className="flex items-center justify-center gap-3 mb-3">
-                      <span className="px-3 py-1.5 rounded-lg text-sm font-semibold border" style={{ background: '#eff6ff', color: '#0a66c2', borderColor: '#dbeafe' }}>Your ad</span>
-                      <div className="flex flex-col items-center">
-                        <Icon name="linkBreak" className="w-5 h-5" style={{ color: hexForScore(mismatch.alignment_score) }} />
-                        <span className="text-[10px] font-bold uppercase tracking-wide mt-0.5" style={{ color: hexForScore(mismatch.alignment_score) }}>{mismatch.alignment_score > 0 ? mismatch.alignment_score + '/10 match' : 'mismatch'}</span>
+                    {/* Alignment meter: ad ↔ landing page, marker sits at the match score */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2.5">
+                        <span className="px-3 py-1.5 rounded-lg text-sm font-semibold border" style={{ background: '#eff6ff', color: '#0a66c2', borderColor: '#dbeafe' }}>Your ad</span>
+                        <div className="flex flex-col items-center px-2">
+                          <Icon name={mismatch.alignment_score > 6 ? 'link' : 'linkBreak'} className="w-5 h-5" style={{ color: hexForScore(mismatch.alignment_score) }} />
+                          <span className="text-[10px] font-bold uppercase tracking-wide mt-0.5" style={{ color: hexForScore(mismatch.alignment_score) }}>{mismatch.alignment_score > 0 ? mismatch.alignment_score + '/10 aligned' : 'mismatch'}</span>
+                        </div>
+                        <span className="px-3 py-1.5 rounded-lg text-sm font-semibold border" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }}>Landing page</span>
                       </div>
-                      <span className="px-3 py-1.5 rounded-lg text-sm font-semibold border" style={{ background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' }}>Landing page</span>
+                      <div className="relative h-2.5 rounded-full bg-gray-100">
+                        <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: ((mismatch.alignment_score || 0) * 10) + '%', background: hexForScore(mismatch.alignment_score), transition: 'width 1s cubic-bezier(.22,1,.36,1)' }} />
+                        {mismatch.alignment_score > 0 && <span className="absolute w-4 h-4 rounded-full border-2 border-white shadow" style={{ top: '-3px', left: 'calc(' + (mismatch.alignment_score * 10) + '% - 8px)', background: hexForScore(mismatch.alignment_score) }} />}
+                      </div>
+                      <div className="flex justify-between mt-1.5 text-[10px] font-semibold text-gray-400"><span>Disconnected</span><span>Perfectly aligned</span></div>
                     </div>
-                    <div className="max-w-xs mx-auto mb-4"><SeverityBar score={mismatch.alignment_score} /></div>
                     {/* Verdict */}
                     <div className={"rounded-xl p-3.5 mb-4 border " + (showFull ? "" : "blur-sm pointer-events-none select-none")} style={{ background: '#fffbeb', borderColor: '#fde68a' }}>
                       <p className="text-sm text-gray-800" style={{ lineHeight: 1.55 }}>{mismatch.verdict}</p>
@@ -3436,22 +3448,27 @@
                     {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                   </div>
                   <div className="p-4 sm:p-5">
-                    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-5 mb-5">
+                    <div className="grid sm:grid-cols-2 gap-3 mb-5">
                       {[
-                        { label: 'Headline', score: lp.headline_score, feedback: lp.headline_feedback },
-                        { label: 'Value Prop', score: lp.value_prop_score, feedback: lp.value_prop_feedback },
-                        { label: 'CTA', score: lp.cta_score, feedback: lp.cta_feedback },
-                        { label: 'Trust', score: lp.trust_score, feedback: lp.trust_feedback },
-                      ].map((item, i) => (
-                        <div key={i}>
-                          <div className="flex items-baseline justify-between mb-1.5">
-                            <span className="font-semibold text-sm text-gray-800">{item.label}</span>
-                            <span className="text-xs font-bold" style={{ color: hexForScore(item.score) }}>{item.score > 0 ? `${item.score}/10` : 'N/A'}</span>
+                        { label: 'Headline', icon: 'fileText', score: lp.headline_score, feedback: lp.headline_feedback },
+                        { label: 'Value Prop', icon: 'target', score: lp.value_prop_score, feedback: lp.value_prop_feedback },
+                        { label: 'CTA', icon: 'zap', score: lp.cta_score, feedback: lp.cta_feedback },
+                        { label: 'Trust', icon: 'shield', score: lp.trust_score, feedback: lp.trust_feedback },
+                      ].map((item, i) => {
+                        const col = hexForScore(item.score);
+                        const tint = item.score <= 0 ? '#f8fafc' : item.score <= 3 ? '#fef2f2' : item.score <= 6 ? '#fffbeb' : '#f0fdf4';
+                        return (
+                          <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 card-lift" style={{ borderTopWidth: '3px', borderTopColor: col }}>
+                            <div className="flex items-center gap-3 mb-2.5">
+                              <span className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: tint }}><Icon name={item.icon} className="w-4 h-4" style={{ color: col }} /></span>
+                              <span className="flex-1 min-w-0 font-semibold text-sm text-gray-900 leading-tight">{item.label}</span>
+                              <span className="text-2xl font-extrabold leading-none flex-shrink-0" style={{ color: col }}>{item.score > 0 ? item.score : '—'}</span>
+                            </div>
+                            <div className="mb-2.5"><SeverityBar score={item.score} height={5} /></div>
+                            <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{item.feedback}</p></div>
                           </div>
-                          <SeverityBar score={item.score} />
-                          <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-xs text-gray-500 mt-2" style={{ lineHeight: 1.55 }}>{item.feedback}</p></div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     {lp.top_issues && lp.top_issues.length > 0 && (
                       <div className="grid sm:grid-cols-2 gap-3">
@@ -3555,7 +3572,7 @@
               {/* Experiments */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="zap" className="w-5 h-5" style={{ color: '#0a66c2' }} /> Experiments to run</h2>
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="zap" className="w-5 h-5" style={{ color: '#0a66c2' }} /> Experiments to run {showFull && <span className="text-xs font-normal text-gray-400">· ordered by impact</span>}</h2>
                   {!showFull && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">PREMIUM</span>}
                 </div>
                 <div className={showFull ? "p-4 sm:p-5 grid sm:grid-cols-3 gap-3" : "p-4 sm:p-5 grid sm:grid-cols-3 gap-3 blur-sm pointer-events-none select-none"}>
@@ -3565,7 +3582,12 @@
                       <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 card-lift" style={{ borderTopWidth: '3px', borderTopColor: accent }}>
                         <div className="flex items-center justify-between mb-2.5">
                           <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold text-white" style={{ background: accent }}>{i + 1}</div>
-                          <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: accent + '18', color: accent }}>Test</span>
+                          <div className="flex items-center gap-1.5" title="Relative impact">
+                            <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: accent }}>Impact</span>
+                            <div className="flex items-center gap-0.5">
+                              {[0, 1, 2].map(d => <span key={d} className="w-1.5 h-1.5 rounded-full" style={{ background: d < Math.max(1, 3 - i) ? accent : accent + '30' }} />)}
+                            </div>
+                          </div>
                         </div>
                         <h3 className="font-semibold text-gray-900 text-sm mb-1" style={{ lineHeight: 1.35 }}>{exp.title}</h3>
                         <p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{exp.description}</p>
