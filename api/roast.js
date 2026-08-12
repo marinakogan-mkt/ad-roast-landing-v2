@@ -105,7 +105,7 @@ const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all f
   "next_steps": ["string", "string", "string", "string"]
 }
 
-BREVITY (hard word caps — stay under, never restate the field name or add filler): icp_mismatch <=30. issues[].explanation <=25. landing_page_roast *_feedback <=20. top_issues/quick_wins item <=12. ad_landing_mismatch.verdict <=30, disconnects[].problem/fix <=18, message_match_issues <=20. fix_kit.body <=30, rationale <=25. experiments[].description <=20. next_steps item <=16.`;
+BREVITY — write every string as a punchy, skimmable fragment: no filler, no restating the field name, lead with the problem or the noun, cut articles where natural. A busy operator should grasp each in one glance. Hard word caps: icp_mismatch <=22. issues[].explanation <=14. landing_page_roast *_feedback <=12. top_issues/quick_wins item <=9. ad_landing_mismatch.verdict <=18, disconnects[].problem/fix <=12, message_match_issues <=14. fix_kit.body <=26 (usable ad body copy), rationale <=16. experiments[].description <=13. next_steps item <=11.`;
 
 export default async function handler(req, res) {
   const API_VERSION = 'v4';
