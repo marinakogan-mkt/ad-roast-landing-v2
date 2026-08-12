@@ -52,6 +52,8 @@
     .portal-mode { background: var(--mist); color: var(--ink); }
     .fade-in { animation: fadeIn 0.35s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     .card-lift { transition: transform 0.2s, box-shadow 0.2s; }
     .card-lift:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
     /* Results overview metric card — obviously clickable, lifts + turns blue on hover. */
@@ -347,6 +349,40 @@
       );
     };
 
+    /* Semicircular "conversion health" gauge for the overall score — red/amber/green
+       zones (severity only) with a needle at the score and a digital readout beneath. */
+    const HealthGauge = ({ score }) => {
+      const has = typeof score === 'number' && score > 0;
+      const R = 88, cx = 110, cy = 110, sw = 15;
+      const pt = (fr) => { const t = Math.PI - fr * Math.PI; return [cx + R * Math.cos(t), cy - R * Math.sin(t)]; };
+      const arc = (a, b) => { const [x0, y0] = pt(a), [x1, y1] = pt(b); return `M${x0.toFixed(1)},${y0.toFixed(1)} A${R},${R} 0 0 1 ${x1.toFixed(1)},${y1.toFixed(1)}`; };
+      const f = has ? Math.min(1, score / 10) : 0;
+      const [nf, setNf] = useState(0);
+      useEffect(() => { const t = setTimeout(() => setNf(f), 160); return () => clearTimeout(t); }, [f]);
+      const col = hexForScore(has ? score : null);
+      const nt = Math.PI - nf * Math.PI;
+      const nx = cx + (R - 10) * Math.cos(nt), ny = cy - (R - 10) * Math.sin(nt);
+      return (
+        <div className="flex flex-col items-center">
+          <svg width="210" height="116" viewBox="0 0 220 118" style={{ maxWidth: '100%' }}>
+            <path d={arc(0, 0.29)} fill="none" stroke="#dc2626" strokeWidth={sw} strokeLinecap="round" />
+            <path d={arc(0.31, 0.59)} fill="none" stroke="#f59e0b" strokeWidth={sw} />
+            <path d={arc(0.61, 1)} fill="none" stroke="#16a34a" strokeWidth={sw} strokeLinecap="round" />
+            <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={col} strokeWidth="4" strokeLinecap="round" style={{ transition: 'all 1.1s cubic-bezier(.22,1,.36,1)' }} />
+            <circle cx={cx} cy={cy} r="8" fill={col} />
+            <circle cx={cx} cy={cy} r="3.5" fill="#fff" />
+          </svg>
+          <div className="flex items-baseline gap-1 -mt-1">
+            {has
+              ? <><span className="font-extrabold leading-none" style={{ fontSize: 42, color: col }}><CountUp to={score} dur={1150} /></span><span className="text-base font-bold text-gray-400">/10</span></>
+              : <span className="font-bold text-gray-300 text-2xl">N/A</span>}
+          </div>
+          <div className="text-sm font-bold mt-0.5" style={{ color: col }}>{has ? scoreGrade(score) : ''}</div>
+          <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mt-0.5">Conversion health</div>
+        </div>
+      );
+    };
+
     /* Thin animated severity bar (fills to score×10% on mount). */
     const SeverityBar = ({ score, height = 7 }) => {
       const has = typeof score === 'number' && score > 0;
@@ -385,7 +421,7 @@
             <span className="text-2xl font-extrabold leading-none flex-shrink-0" style={{ color: col }}>{issue.score}</span>
           </div>
           <div className="mb-2.5"><SeverityBar score={issue.score} height={5} /></div>
-          <p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{issue.explanation}</p>
+          <p className="text-sm text-gray-600 clamp-2" style={{ lineHeight: 1.5 }}>{issue.explanation}</p>
         </div>
       );
     };
@@ -3283,11 +3319,13 @@
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast</div>
                   <div className="text-xs text-gray-500 max-w-full sm:max-w-md truncate"><span className="font-semibold text-gray-700">Target:</span> {icp}</div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 sm:gap-6 justify-items-center">
-                  <ScoreRing big score={result.overall_score} label="Ad" grade={scoreGrade(result.overall_score)} />
-                  <ScoreRing score={lp.overall_score} label="Landing page" grade={lp.overall_score > 0 ? scoreGrade(lp.overall_score) : ''} />
-                  <ScoreRing score={mismatch.alignment_score} label="Ad ↔ LP" grade={mismatch.alignment_score > 0 ? scoreGrade(mismatch.alignment_score) : ''} />
-                </div>
+                <HealthGauge score={result.overall_score} />
+                {(lp.overall_score > 0 || mismatch.alignment_score > 0) && (
+                  <div className="grid grid-cols-2 gap-4 justify-items-center mt-5 pt-5 border-t border-gray-100 max-w-xs mx-auto">
+                    <ScoreRing score={lp.overall_score} label="Landing page" grade={lp.overall_score > 0 ? scoreGrade(lp.overall_score) : ''} />
+                    <ScoreRing score={mismatch.alignment_score} label="Ad ↔ LP" grade={mismatch.alignment_score > 0 ? scoreGrade(mismatch.alignment_score) : ''} />
+                  </div>
+                )}
                 <div className="mt-7 rounded-2xl border overflow-hidden flex" style={{ borderColor: hexForScore(result.overall_score) + '55' }}>
                   <div className="flex-shrink-0 w-1.5" style={{ background: hexForScore(result.overall_score) }} />
                   <div className="p-4 sm:p-5 flex-1" style={{ background: result.overall_score <= 3 ? '#fef2f2' : result.overall_score <= 6 ? '#fffbeb' : '#f0fdf4' }}>
@@ -3465,7 +3503,7 @@
                               <span className="text-2xl font-extrabold leading-none flex-shrink-0" style={{ color: col }}>{item.score > 0 ? item.score : '—'}</span>
                             </div>
                             <div className="mb-2.5"><SeverityBar score={item.score} height={5} /></div>
-                            <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{item.feedback}</p></div>
+                            <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600 clamp-2" style={{ lineHeight: 1.5 }}>{item.feedback}</p></div>
                           </div>
                         );
                       })}
@@ -3589,8 +3627,8 @@
                             </div>
                           </div>
                         </div>
-                        <h3 className="font-semibold text-gray-900 text-sm mb-1" style={{ lineHeight: 1.35 }}>{exp.title}</h3>
-                        <p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{exp.description}</p>
+                        <h3 className="font-semibold text-gray-900 text-sm mb-1 clamp-2" style={{ lineHeight: 1.35 }}>{exp.title}</h3>
+                        <p className="text-sm text-gray-600 clamp-3" style={{ lineHeight: 1.5 }}>{exp.description}</p>
                       </div>
                     );
                   })}
