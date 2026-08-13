@@ -580,8 +580,10 @@
 
     const validateLinkedIn = (url) => {
       if (!url) return { valid: false, error: 'LinkedIn URL is required' };
-      if (!/^(https?:\/\/)?(www\.)?linkedin\.com\/in\/[\w-]{3,100}\/?$/i.test(url.trim())) {
-        return { valid: false, error: url.includes('linkedin.com') ? 'Use your profile URL (linkedin.com/in/yourname)' : 'Enter a valid LinkedIn URL' };
+      // Must be an actual linkedin.com/in/<profile> URL. Allows optional locale
+      // subdomain (de., www.), trailing slash, and tracking query (?originalSubdomain=…).
+      if (!/^(https?:\/\/)?([\w-]+\.)?linkedin\.com\/in\/[\w%À-￿-]{2,150}\/?(\?[^\s]*)?$/i.test(url.trim())) {
+        return { valid: false, error: /linkedin\.com/i.test(url) ? 'Use your profile URL — linkedin.com/in/yourname' : 'Enter a valid LinkedIn URL (linkedin.com/in/…)' };
       }
       return { valid: true };
     };
@@ -3359,13 +3361,20 @@
                 else { key = 'review'; reason = `A ${sev}/10 is strong. No rebuild needed, just a second set of eyes. Drop your LinkedIn and the team will review it personally.`; }
                 const rec = OPTIONS[key];
                 const others = Object.keys(OPTIONS).filter(k => k !== key).map(k => OPTIONS[k]);
+                const liValid = validateLinkedIn(linkedin);
                 const linkedInForm = (
                   <div>
                     <div className="flex flex-col sm:flex-row gap-2">
-                      <input type="url" placeholder="https://linkedin.com/in/you" value={linkedin} onChange={(e) => { setLinkedin(e.target.value); setLinkedinErr(null); }} className="flex-1 px-3 py-2.5 bg-white border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 text-gray-900" />
-                      <button onClick={submitLinkedIn} disabled={!linkedin || sending} style={linkedin && !sending ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`px-5 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${linkedin && !sending ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>{sending ? 'Sending…' : 'Send it over'}</button>
+                      <input type="url" inputMode="url" autoComplete="url" placeholder="https://linkedin.com/in/yourprofile" value={linkedin} onChange={(e) => { setLinkedin(e.target.value); setLinkedinErr(null); }} className={`flex-1 px-3 py-2.5 bg-white border-2 rounded-lg text-sm focus:outline-none text-gray-900 ${linkedinErr ? 'border-red-400' : (linkedin && liValid.valid) ? 'border-green-400' : 'border-gray-200 focus:border-blue-500'}`} />
+                      <button onClick={submitLinkedIn} disabled={!liValid.valid || sending} style={liValid.valid && !sending ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`px-5 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all ${liValid.valid && !sending ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>{sending ? 'Sending…' : 'Send it over'}</button>
                     </div>
-                    {linkedinErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{linkedinErr}</p>}
+                    {linkedinErr
+                      ? <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{linkedinErr}</p>
+                      : (linkedin && liValid.valid)
+                        ? <p className="text-green-600 text-xs mt-2 flex items-center gap-1"><Icon name="check" className="w-3 h-3" />Looks like a real LinkedIn profile</p>
+                        : linkedin
+                          ? <p className="text-gray-400 text-xs mt-2">Paste your full profile URL — linkedin.com/in/yourname</p>
+                          : null}
                   </div>
                 );
                 return (
@@ -3557,7 +3566,7 @@
                   {result.fix_kit.button_cta && (
                     <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex-shrink-0">
-                        <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Best pre-set button {platform === 'linkedin' ? '(LinkedIn)' : platform === 'meta' ? '(Meta)' : ''}</div>
+                        <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">Best pre-set button {platform === 'linkedin' ? '(LinkedIn)' : platform === 'meta' ? '(Meta)' : platform === 'google' ? '(Google)' : ''}</div>
                         <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed" style={{ borderColor: '#0a66c2', background: '#eff6ff', cursor: 'default' }}>
                           <Icon name="check" className="w-4 h-4" style={{ color: '#0a66c2' }} />
                           <span className="text-sm font-bold" style={{ color: '#0a66c2' }}>{result.fix_kit.button_cta}</span>

@@ -52,6 +52,47 @@ const LOCKED_SAMPLE = {
   next_steps: ['Unlock to reveal.', 'Unlock to reveal.', 'Unlock to reveal.', 'Unlock to reveal.']
 };
 
+/* Platform pre-set CTA buttons — the ONLY labels each ad platform actually offers.
+   button_cta from the model is snapped to one of these so an invented label
+   (e.g. "Book a Demo") can never reach the user. */
+const CTA_PRESETS = {
+  linkedin: ['Sign Up', 'Join', 'Apply', 'Download', 'View Quote', 'Learn More', 'Subscribe', 'Register', 'Attend', 'Request Demo', 'Apply Now', 'Get Quote'],
+  meta: ['Book Now', 'Contact Us', 'Download', 'Get Offer', 'Get Quote', 'Learn More', 'Request Time', 'See Menu', 'Send Message', 'Shop Now', 'Sign Up', 'Subscribe', 'Watch More', 'Apply Now', 'Order Now'],
+  google: ['Apply Now', 'Book Now', 'Buy Now', 'Contact Us', 'Download', 'Get Quote', 'Install', 'Learn More', 'Order Now', 'Shop Now', 'Sign Up', 'Subscribe', 'Visit Site', 'See More', 'Start Now', 'Watch Now', 'Get the App', 'Donate Now'],
+};
+/* Common off-list phrasings the model reaches for -> ordered candidate presets.
+   First candidate that exists in the current platform's list wins, so the same
+   intent maps to the right label per platform (book-a-demo -> "Request Demo" on
+   LinkedIn, "Book Now" on Meta/Google). */
+const CTA_SYNONYMS = {
+  'book a demo': ['Request Demo', 'Book Now'], 'book demo': ['Request Demo', 'Book Now'], 'get a demo': ['Request Demo', 'Book Now'], 'get demo': ['Request Demo', 'Book Now'], 'schedule a demo': ['Request Demo', 'Book Now'], 'see a demo': ['Request Demo', 'Book Now'], 'request a demo': ['Request Demo', 'Book Now'],
+  'book a call': ['Request Demo', 'Book Now', 'Contact Us'], 'book a meeting': ['Request Demo', 'Book Now', 'Contact Us'], 'schedule a call': ['Request Demo', 'Book Now', 'Contact Us'],
+  'talk to sales': ['Contact Us', 'Request Demo'], 'contact sales': ['Contact Us', 'Request Demo'], 'talk to us': ['Contact Us'], 'get in touch': ['Contact Us'],
+  'start free trial': ['Sign Up', 'Start Now'], 'start your free trial': ['Sign Up', 'Start Now'], 'free trial': ['Sign Up', 'Start Now'], 'try free': ['Sign Up', 'Start Now'], 'try it free': ['Sign Up', 'Start Now'], 'try now': ['Sign Up', 'Start Now'], 'try for free': ['Sign Up', 'Start Now'],
+  'get started': ['Sign Up', 'Start Now'], 'start now': ['Start Now', 'Sign Up'], 'sign up now': ['Sign Up'], 'join now': ['Join', 'Sign Up'], 'register now': ['Register', 'Sign Up'], 'enroll now': ['Register', 'Sign Up'],
+  'buy': ['Buy Now', 'Shop Now'], 'buy now': ['Buy Now', 'Shop Now'], 'shop': ['Shop Now'], 'order': ['Order Now', 'Shop Now'],
+  'get the app': ['Get the App', 'Install', 'Download'], 'download app': ['Get the App', 'Install', 'Download'], 'install now': ['Install', 'Download'],
+  'read more': ['Learn More'], 'find out more': ['Learn More'], 'discover more': ['Learn More'], 'see more': ['See More', 'Learn More'], 'view more': ['See More', 'Learn More'],
+  'watch': ['Watch Now', 'Watch More'], 'watch now': ['Watch Now', 'Watch More'], 'watch video': ['Watch Now', 'Watch More'],
+  'donate': ['Donate Now'], 'visit website': ['Visit Site', 'Learn More'], 'visit site': ['Visit Site', 'Learn More'],
+};
+/* Snap a model-suggested button label to the platform's real preset list. */
+function snapButtonCta(label, platform) {
+  const key = (platform || '').toLowerCase().includes('meta') || /facebook|instagram/i.test(platform || '') ? 'meta'
+    : /google|youtube/i.test(platform || '') ? 'google' : 'linkedin';
+  const list = CTA_PRESETS[key];
+  const raw = (label || '').trim();
+  if (!raw) return { cta: 'Learn More', changed: true };
+  const lc = raw.toLowerCase().replace(/\s+/g, ' ');
+  const exact = list.find(o => o.toLowerCase() === lc);
+  if (exact) return { cta: exact, changed: exact !== raw };
+  const cands = CTA_SYNONYMS[lc];
+  if (cands) { for (const c of cands) { const m = list.find(o => o.toLowerCase() === c.toLowerCase()); if (m) return { cta: m, changed: true }; } }
+  const partial = list.find(o => lc.includes(o.toLowerCase()) || o.toLowerCase().includes(lc));
+  if (partial) return { cta: partial, changed: partial !== raw };
+  return { cta: 'Learn More', changed: true };
+}
+
 /* Static output schema (optimization #5). Lives in the cached system prefix so the
    ~500-token JSON contract is billed once (cache read ~0.1x) instead of at full
    input price on every roast. Score fields are described statically; whether to use
@@ -91,8 +132,8 @@ const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all f
     "headlines": ["string", "string", "string"],
     "body": "string",
     "ctas": ["string", "string"],
-    "button_cta": "string (ONLY for LinkedIn/Meta: the single best pre-set CTA button label chosen from that platform's fixed list below. Empty string \"\" for Google or when no button applies)",
-    "button_cta_reason": "string (one short sentence on why that button beats the alternatives for this offer. Empty string \"\" when button_cta is empty)",
+    "button_cta": "string (the single best pre-set CTA button label for the current platform, copied VERBATIM from that platform's fixed list below — LinkedIn, Meta, and Google each have their own list. Never invent a label)",
+    "button_cta_reason": "string (one short sentence on why that button beats the alternatives for this offer)",
     "landing_page_headline": "string",
     "landing_page_subhead": "string",
     "rationale": "string"
@@ -105,7 +146,9 @@ const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all f
   "next_steps": ["string", "string", "string", "string"]
 }
 
-BREVITY — write every string as a punchy, skimmable fragment: no filler, no restating the field name, lead with the problem or the noun, cut articles where natural. A busy operator should grasp each in one glance. Hard word caps: icp_mismatch <=22. issues[].explanation <=14. landing_page_roast *_feedback <=12. top_issues/quick_wins item <=9. ad_landing_mismatch.verdict <=18, disconnects[].problem/fix <=12, message_match_issues <=14. fix_kit.body <=26 (usable ad body copy), rationale <=16. experiments[].description <=13. next_steps item <=11.`;
+BREVITY — punchy and skimmable; lead with the point, cut filler, don't restate the field name.
+SHORT — one glance each (hard word caps): icp_mismatch <=22; issues[].explanation <=15; landing_page_roast *_feedback <=13; top_issues/quick_wins item <=9; ad_landing_mismatch.verdict <=18, disconnects[].problem/fix <=13, message_match_issues <=14; experiments[].title <=8, experiments[].description <=14.
+FULLER — give these real substance; write complete, specific guidance, do NOT truncate: fix_kit.body = usable ad body copy, 2-3 sentences (~35-60 words); fix_kit.rationale = why the rewrite works, 1-2 sentences (~30-45 words); next_steps[] = each a concrete, do-able action written as a full sentence (~15-28 words).`;
 
 export default async function handler(req, res) {
   const API_VERSION = 'v4';
@@ -366,10 +409,11 @@ CTA RULES — three separate CTA surfaces, never blur them:
   1. PRE-SET CTA BUTTON: on LinkedIn/Meta a fixed dropdown from a closed list (not free text; you cannot invent a label).
   2. WRITTEN CTA in the ad copy or creative (free text, e.g. "See the 2-minute teardown").
   3. LANDING PAGE CTA (button/headline on the destination page).
-- LinkedIn pre-set button options, choose ONLY from: Apply, Download, View Quote, Learn More, Sign Up, Subscribe, Register, Join, Attend, Request Demo, Get Quote, Get Started.
-- Meta pre-set button options, choose ONLY from: Learn More, Sign Up, Subscribe, Download, Get Quote, Request Time, Book Now, Contact Us, Apply Now, Get Started, Shop Now, Watch More, Send Message.
-- Platform linkedin or meta: set fix_kit.button_cta to the single best label from that platform's list for this offer (book-a-demo -> "Request Demo"/"Sign Up"; self-serve trial -> "Sign Up"/"Get Started"; top-of-funnel content -> "Learn More"/"Download"), and fix_kit.button_cta_reason to one sentence on why it beats "Learn More" (the lazy default). fix_kit.ctas are SEPARATE free-text copy/creative CTAs; the LP CTA is landing_page_headline/subhead. Keep all three consistent but distinct.
-- Platform google or google_ads: no pre-set button. Set fix_kit.button_cta = "" and fix_kit.button_cta_reason = "". Use only fix_kit.ctas.`;
+- LinkedIn pre-set button options, choose ONLY from: Sign Up, Join, Apply, Download, View Quote, Learn More, Subscribe, Register, Attend, Request Demo, Apply Now, Get Quote.
+- Meta (Facebook/Instagram) pre-set button options, choose ONLY from: Book Now, Contact Us, Download, Get Offer, Get Quote, Learn More, Request Time, See Menu, Send Message, Shop Now, Sign Up, Subscribe, Watch More, Apply Now, Order Now.
+- Google (Display/Demand Gen/YouTube) pre-set button options, choose ONLY from: Apply Now, Book Now, Buy Now, Contact Us, Download, Get Quote, Install, Learn More, Order Now, Shop Now, Sign Up, Subscribe, Visit Site, See More, Start Now, Watch Now, Get the App, Donate Now.
+- button_cta MUST be copied verbatim from the option list for the current platform — same spelling and capitalization. NEVER invent a label. "Book a Demo", "Book a Call", "Get Demo", "Try Now", "Start Free Trial" are NOT valid buttons — map the intent to the nearest allowed option (book-a-demo -> "Request Demo" on LinkedIn, "Book Now" on Meta/Google; self-serve trial -> "Sign Up"/"Start Now"; top-of-funnel content -> "Learn More"/"Download").
+- Platform linkedin, meta, or google: set fix_kit.button_cta to the single best label from THAT platform's list above, and fix_kit.button_cta_reason to one sentence on why it beats "Learn More" (the lazy default). fix_kit.ctas are SEPARATE free-text copy/creative CTAs; the LP CTA is landing_page_headline/subhead. Keep all three consistent but distinct.`;
 
   const userPrompt = `Analyze this ad${hasAnyLandingContent ? ' AND its landing page' : ''} for ICP: "${icpDescription}"
 
@@ -476,6 +520,18 @@ Return the JSON object defined in the output contract. All fields required.`;
           if (!mm.alignment_score || mm.alignment_score < 1) mm.alignment_score = 5;
         }
         
+        // Snap the pre-set CTA button to the platform's real option list (no invented labels)
+        if (parsed.fix_kit) {
+          const snapped = snapButtonCta(parsed.fix_kit.button_cta, platform);
+          if (snapped.changed) {
+            console.log('[AdRoast] button_cta snapped:', JSON.stringify(parsed.fix_kit.button_cta), '->', snapped.cta, '(' + platform + ')');
+            parsed.fix_kit.button_cta = snapped.cta;
+            if (!parsed.fix_kit.button_cta_reason) parsed.fix_kit.button_cta_reason = `"${snapped.cta}" is the closest match on ${platform}'s pre-set button list.`;
+          } else {
+            parsed.fix_kit.button_cta = snapped.cta;
+          }
+        }
+
         console.log('[AdRoast] LP score:', parsed.landing_page_roast.overall_score);
         console.log('[AdRoast] Match score:', parsed.ad_landing_mismatch.alignment_score);
         
