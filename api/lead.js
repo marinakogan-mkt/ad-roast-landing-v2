@@ -1,5 +1,40 @@
+import { Redis } from '@upstash/redis';
+
 // Notion database: AdRoast V2 Internal
 const NOTION_DATABASE_ID = 'ca2dbc99d48c4ca8ab59375cf76d62cb';
+
+// Upstash Redis backs the booking-flow lead capture (null if not configured).
+const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+  ? new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN })
+  : null;
+
+// Booking-flow constants + EmailJS (mirrors the client config).
+const BI_PREFIX = 'bi:';
+const BI_PENDING = 'bi:pending';
+const FOLLOWUP_DELAY_MS = 1000 * 60 * 60 * 20; // nudge non-bookers ~20h after they filled the form
+const RECORD_TTL = 60 * 60 * 24 * 30;          // keep lead records 30 days
+const CALENDLY_URL = 'https://calendly.com/marina-kogan-adroast/30min';
+const EMAILJS = {
+  service_id: 'service_ywioabe',
+  notify_template: 'template_gtqow85',                              // internal -> Marina
+  followup_template: process.env.EMAILJS_FOLLOWUP_TEMPLATE_ID || null, // lead-facing (set to auto-email non-bookers)
+  public_key: '964Wa83HevoEa5KnS',
+  private_key: process.env.EMAILJS_PRIVATE_KEY || null,             // required for server-side sends
+  notify_email: 'marina.kogan@adroast.in'
+};
+
+async function sendEmailJS(template_id, template_params) {
+  if (!template_id) return false;
+  const body = { service_id: EMAILJS.service_id, template_id, user_id: EMAILJS.public_key, template_params };
+  if (EMAILJS.private_key) body.accessToken = EMAILJS.private_key;
+  try {
+    const r = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    if (!r.ok) console.error('[Lead API] EmailJS send failed:', r.status, await r.text().catch(() => ''));
+    return r.ok;
+  } catch (e) { console.error('[Lead API] EmailJS error:', e.message); return false; }
+}
 
 // Generate short ID (8 chars)
 const generateId = () => {
@@ -10,6 +45,65 @@ const generateId = () => {
 };
 
 export default async function handler(req, res) {
+  // ---- Booking-flow lead capture (Redis) — handled before the Notion report path ----
+  const action = req.method === 'GET' ? (req.query && req.query.action) : (req.body && req.body.action);
+
+  if (action === 'book-intent' || action === 'book-mark') {
+    if (!redis) return res.status(200).json({ ok: true, stored: false });
+    const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const key = BI_PREFIX + email;
+    try {
+      if (action === 'book-intent') {
+        const rec = { email, website: (req.body.website || '').trim(), spend: req.body.spend || '', ts: Date.now(), booked: false, followedUp: false };
+        await redis.set(key, rec, { ex: RECORD_TTL });
+        await redis.sadd(BI_PENDING, email);
+      } else {
+        const rec = (await redis.get(key)) || { email, website: '', spend: '', ts: Date.now(), followedUp: false };
+        rec.booked = true;
+        await redis.set(key, rec, { ex: RECORD_TTL });
+        await redis.srem(BI_PENDING, email);
+      }
+      return res.status(200).json({ ok: true });
+    } catch (e) {
+      console.error('[Lead API] booking store error:', e.message);
+      return res.status(200).json({ ok: false });
+    }
+  }
+
+  if (action === 'followup-sweep') {
+    if (!redis) return res.status(200).json({ ok: true, swept: 0 });
+    try {
+      const emails = (await redis.smembers(BI_PENDING)) || [];
+      let emailed = 0, cleared = 0;
+      for (const email of emails) {
+        const rec = await redis.get(BI_PREFIX + email);
+        if (!rec || rec.booked || rec.followedUp) { await redis.srem(BI_PENDING, email); cleared++; continue; }
+        if (Date.now() - (rec.ts || 0) < FOLLOWUP_DELAY_MS) continue; // still in the grace window
+        const hrs = Math.round((Date.now() - (rec.ts || 0)) / 3600000);
+        let sent = await sendEmailJS(EMAILJS.followup_template, {
+          to_email: email, website: rec.website || '', spend: rec.spend || '', booking_url: CALENDLY_URL
+        });
+        if (!sent) {
+          // Fallback until a lead-facing template is configured: tell Marina to follow up.
+          await sendEmailJS(EMAILJS.notify_template, {
+            to_email: EMAILJS.notify_email,
+            subject: `⏰ AdRoast: ${email} filled the form but didn't book`,
+            message: `${email} filled the booking form ~${hrs}h ago and hasn't booked.\n\n🌐 Website: ${rec.website || '—'}\n💸 Spend: ${rec.spend || '—'}\n\nFollow up directly, or set EMAILJS_FOLLOWUP_TEMPLATE_ID to auto-email leads.`
+          });
+        }
+        rec.followedUp = true;
+        await redis.set(BI_PREFIX + email, rec, { ex: RECORD_TTL });
+        await redis.srem(BI_PENDING, email);
+        emailed++;
+      }
+      return res.status(200).json({ ok: true, emailed, cleared, pending: emails.length });
+    } catch (e) {
+      console.error('[Lead API] sweep error:', e.message);
+      return res.status(200).json({ ok: false, error: e.message });
+    }
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

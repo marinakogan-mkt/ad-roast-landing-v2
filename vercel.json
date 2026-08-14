@@ -3,6 +3,7 @@
     { "source": "/services", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/verify-payment?cron=refills", "schedule": "0 8 * * *" }
+    { "path": "/api/verify-payment?cron=refills", "schedule": "0 8 * * *" },
+    { "path": "/api/lead?action=followup-sweep", "schedule": "0 15 * * *" }
   ]
 }
