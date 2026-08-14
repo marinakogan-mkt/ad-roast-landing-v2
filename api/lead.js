@@ -14,6 +14,13 @@ const BI_PENDING = 'bi:pending';
 const FOLLOWUP_DELAY_MS = 1000 * 60 * 60 * 20; // nudge non-bookers ~20h after they filled the form
 const RECORD_TTL = 60 * 60 * 24 * 30;          // keep lead records 30 days
 const CALENDLY_URL = 'https://calendly.com/marina-kogan-adroast/30min';
+
+// Stable key for a LinkedIn profile: lowercase, strip protocol/host-prefix/query/trailing slash.
+function normalizeLinkedIn(url) {
+  return String(url || '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/^www\./, '')
+    .split('?')[0].replace(/\/$/, '');
+}
 const EMAILJS = {
   service_id: 'service_ywioabe',
   notify_template: 'template_gtqow85',                  // generic {{to_email}}/{{subject}}/{{message}} template
@@ -49,19 +56,21 @@ export default async function handler(req, res) {
 
   if (action === 'book-intent' || action === 'book-mark') {
     if (!redis) return res.status(200).json({ ok: true, stored: false });
-    const email = String((req.body && req.body.email) || '').trim().toLowerCase();
-    if (!email) return res.status(400).json({ error: 'email required' });
-    const key = BI_PREFIX + email;
+    // Leads are identified by their LinkedIn URL (they enter email inside Calendly).
+    const linkedin = String((req.body && req.body.linkedin) || '').trim();
+    if (!linkedin) return res.status(400).json({ error: 'linkedin required' });
+    const id = normalizeLinkedIn(linkedin);
+    const key = BI_PREFIX + id;
     try {
       if (action === 'book-intent') {
-        const rec = { email, website: (req.body.website || '').trim(), spend: req.body.spend || '', ts: Date.now(), booked: false, followedUp: false };
+        const rec = { linkedin, ts: Date.now(), booked: false, followedUp: false };
         await redis.set(key, rec, { ex: RECORD_TTL });
-        await redis.sadd(BI_PENDING, email);
+        await redis.sadd(BI_PENDING, id);
       } else {
-        const rec = (await redis.get(key)) || { email, website: '', spend: '', ts: Date.now(), followedUp: false };
+        const rec = (await redis.get(key)) || { linkedin, ts: Date.now(), followedUp: false };
         rec.booked = true;
         await redis.set(key, rec, { ex: RECORD_TTL });
-        await redis.srem(BI_PENDING, email);
+        await redis.srem(BI_PENDING, id);
       }
       return res.status(200).json({ ok: true });
     } catch (e) {
@@ -73,32 +82,26 @@ export default async function handler(req, res) {
   if (action === 'followup-sweep') {
     if (!redis) return res.status(200).json({ ok: true, swept: 0 });
     try {
-      const emails = (await redis.smembers(BI_PENDING)) || [];
-      let emailed = 0, cleared = 0;
-      for (const email of emails) {
-        const rec = await redis.get(BI_PREFIX + email);
-        if (!rec || rec.booked || rec.followedUp) { await redis.srem(BI_PENDING, email); cleared++; continue; }
+      const ids = (await redis.smembers(BI_PENDING)) || [];
+      let reminded = 0, cleared = 0;
+      for (const id of ids) {
+        const rec = await redis.get(BI_PREFIX + id);
+        if (!rec || rec.booked || rec.followedUp) { await redis.srem(BI_PENDING, id); cleared++; continue; }
         if (Date.now() - (rec.ts || 0) < FOLLOWUP_DELAY_MS) continue; // still in the grace window
         const hrs = Math.round((Date.now() - (rec.ts || 0)) / 3600000);
-        // Auto-nudge the lead — same server-side EmailJS path magic-link/welcome emails use.
-        const leadMsg = `Hey,\n\nYou started booking a call with us but didn't finish — no stress, life happens.\n\nIf you're putting real budget into ads and aren't sure they're converting the right buyer, that call is where we tell you straight what's working and what's leaking. About 20 minutes, no pitch.\n\nGrab a time whenever it suits: ${CALENDLY_URL}\n\nOr just reply to this email with your ad + landing page and I'll take a look.\n\n— Marina\nAdRoast`;
-        const sent = await sendEmailJS(EMAILJS.notify_template, {
-          to_email: email,
-          subject: 'You checked out the roast — want the fix?',
-          message: leadMsg
-        });
-        // Heads-up to Marina either way.
+        const handle = (rec.linkedin || '').split('/in/')[1]?.replace(/\/$/, '').split('?')[0] || rec.linkedin || 'someone';
+        // No email to auto-nudge the lead (it lives in Calendly). Remind Marina to reach out on LinkedIn.
         await sendEmailJS(EMAILJS.notify_template, {
           to_email: EMAILJS.notify_email,
-          subject: `⏰ AdRoast: ${sent ? 'nudged' : 'COULD NOT nudge'} ${email} (form ${hrs}h ago, no booking)`,
-          message: `${email} filled the booking form ~${hrs}h ago and hadn't booked, so we ${sent ? 'sent them a follow-up email' : 'FAILED to email them — follow up manually'}.\n\n🌐 Website: ${rec.website || '—'}\n💸 Spend: ${rec.spend || '—'}`
+          subject: `⏰ AdRoast: ${handle} opened the calendar ${hrs}h ago, no booking`,
+          message: `${handle} gave their LinkedIn and reached Calendly ~${hrs}h ago but still hasn't booked.\n\n🔗 LinkedIn: ${rec.linkedin || '—'}\n\nReach out on LinkedIn while it's warm.`
         });
         rec.followedUp = true;
-        await redis.set(BI_PREFIX + email, rec, { ex: RECORD_TTL });
-        await redis.srem(BI_PENDING, email);
-        emailed++;
+        await redis.set(BI_PREFIX + id, rec, { ex: RECORD_TTL });
+        await redis.srem(BI_PENDING, id);
+        reminded++;
       }
-      return res.status(200).json({ ok: true, emailed, cleared, pending: emails.length });
+      return res.status(200).json({ ok: true, reminded, cleared, pending: ids.length });
     } catch (e) {
       console.error('[Lead API] sweep error:', e.message);
       return res.status(200).json({ ok: false, error: e.message });
