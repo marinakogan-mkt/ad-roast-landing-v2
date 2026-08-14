@@ -16,10 +16,9 @@ const RECORD_TTL = 60 * 60 * 24 * 30;          // keep lead records 30 days
 const CALENDLY_URL = 'https://calendly.com/marina-kogan-adroast/30min';
 const EMAILJS = {
   service_id: 'service_ywioabe',
-  notify_template: 'template_gtqow85',                              // internal -> Marina
-  followup_template: process.env.EMAILJS_FOLLOWUP_TEMPLATE_ID || null, // lead-facing (set to auto-email non-bookers)
+  notify_template: 'template_gtqow85',                  // generic {{to_email}}/{{subject}}/{{message}} template
   public_key: '964Wa83HevoEa5KnS',
-  private_key: process.env.EMAILJS_PRIVATE_KEY || null,             // required for server-side sends
+  private_key: process.env.EMAILJS_PRIVATE_KEY || null, // already set in Vercel (magic-link/welcome emails use it)
   notify_email: 'marina.kogan@adroast.in'
 };
 
@@ -81,17 +80,19 @@ export default async function handler(req, res) {
         if (!rec || rec.booked || rec.followedUp) { await redis.srem(BI_PENDING, email); cleared++; continue; }
         if (Date.now() - (rec.ts || 0) < FOLLOWUP_DELAY_MS) continue; // still in the grace window
         const hrs = Math.round((Date.now() - (rec.ts || 0)) / 3600000);
-        let sent = await sendEmailJS(EMAILJS.followup_template, {
-          to_email: email, website: rec.website || '', spend: rec.spend || '', booking_url: CALENDLY_URL
+        // Auto-nudge the lead — same server-side EmailJS path magic-link/welcome emails use.
+        const leadMsg = `Hey,\n\nYou started booking a call with us but didn't finish — no stress, life happens.\n\nIf you're putting real budget into ads and aren't sure they're converting the right buyer, that call is where we tell you straight what's working and what's leaking. About 20 minutes, no pitch.\n\nGrab a time whenever it suits: ${CALENDLY_URL}\n\nOr just reply to this email with your ad + landing page and I'll take a look.\n\n— Marina\nAdRoast`;
+        const sent = await sendEmailJS(EMAILJS.notify_template, {
+          to_email: email,
+          subject: 'You checked out the roast — want the fix?',
+          message: leadMsg
         });
-        if (!sent) {
-          // Fallback until a lead-facing template is configured: tell Marina to follow up.
-          await sendEmailJS(EMAILJS.notify_template, {
-            to_email: EMAILJS.notify_email,
-            subject: `⏰ AdRoast: ${email} filled the form but didn't book`,
-            message: `${email} filled the booking form ~${hrs}h ago and hasn't booked.\n\n🌐 Website: ${rec.website || '—'}\n💸 Spend: ${rec.spend || '—'}\n\nFollow up directly, or set EMAILJS_FOLLOWUP_TEMPLATE_ID to auto-email leads.`
-          });
-        }
+        // Heads-up to Marina either way.
+        await sendEmailJS(EMAILJS.notify_template, {
+          to_email: EMAILJS.notify_email,
+          subject: `⏰ AdRoast: ${sent ? 'nudged' : 'COULD NOT nudge'} ${email} (form ${hrs}h ago, no booking)`,
+          message: `${email} filled the booking form ~${hrs}h ago and hadn't booked, so we ${sent ? 'sent them a follow-up email' : 'FAILED to email them — follow up manually'}.\n\n🌐 Website: ${rec.website || '—'}\n💸 Spend: ${rec.spend || '—'}`
+        });
         rec.followedUp = true;
         await redis.set(BI_PREFIX + email, rec, { ex: RECORD_TTL });
         await redis.srem(BI_PENDING, email);
