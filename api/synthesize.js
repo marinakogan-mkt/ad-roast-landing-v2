@@ -196,7 +196,7 @@ Fix Kit:
 Experiments:
 ${(result.experiments || []).map(e => `  • ${e.title}: ${e.description}`).join('\n')}
 
-Next steps: ${(result.next_steps || []).join(' | ')}`;
+Next steps: ${(result.next_steps || []).map(s => typeof s === 'string' ? s : [s.step, s.detail].filter(Boolean).join(' — ')).join(' | ')}`;
   }).join('\n\n\n');
 
   const systemPrompt = `You are a senior B2B SaaS positioning consultant. The user provides you with multiple individual ad-audit reports (each one a single ad + landing page roast). Your job is to synthesize them into a strategic positioning report.

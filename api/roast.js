@@ -49,7 +49,12 @@ const LOCKED_SAMPLE = {
     { title: 'Unlock to reveal', description: 'Unlock to reveal.' },
     { title: 'Unlock to reveal', description: 'Unlock to reveal.' }
   ],
-  next_steps: ['Unlock to reveal.', 'Unlock to reveal.', 'Unlock to reveal.', 'Unlock to reveal.']
+  next_steps: [
+    { step: 'Unlock to reveal', detail: 'Unlock to reveal the full step.' },
+    { step: 'Unlock to reveal', detail: 'Unlock to reveal the full step.' },
+    { step: 'Unlock to reveal', detail: 'Unlock to reveal the full step.' },
+    { step: 'Unlock to reveal', detail: 'Unlock to reveal the full step.' }
+  ]
 };
 
 /* Platform pre-set CTA buttons — the ONLY labels each ad platform actually offers.
@@ -143,12 +148,22 @@ const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all f
     {"title": "string", "description": "string"},
     {"title": "string", "description": "string"}
   ],
-  "next_steps": ["string", "string", "string", "string"]
+  "next_steps": [
+    {"step": "string (imperative action title, <=8 words)", "detail": "string (how to do it + why it moves the number, 1-2 full sentences)"},
+    {"step": "string", "detail": "string"},
+    {"step": "string", "detail": "string"},
+    {"step": "string", "detail": "string"}
+  ]
 }
 
 BREVITY — punchy and skimmable; lead with the point, cut filler, don't restate the field name.
-SHORT — one glance each (hard word caps): icp_mismatch <=22; issues[].explanation <=15; landing_page_roast *_feedback <=13; top_issues/quick_wins item <=9; ad_landing_mismatch.verdict <=18, disconnects[].problem/fix <=13, message_match_issues <=14; experiments[].title <=8, experiments[].description <=14.
-FULLER — give these real substance; write complete, specific guidance, do NOT truncate: fix_kit.body = usable ad body copy, 2-3 sentences (~35-60 words); fix_kit.rationale = why the rewrite works, 1-2 sentences (~30-45 words); next_steps[] = each a concrete, do-able action written as a full sentence (~15-28 words).`;
+SHORT — one glance each (hard word caps): icp_mismatch <=22; issues[].explanation <=15; landing_page_roast *_feedback <=13; top_issues/quick_wins item <=9; ad_landing_mismatch.verdict <=18, disconnects[].problem <=13, message_match_issues <=14; experiments[].title <=8.
+FULLER — give these real substance; write complete, specific guidance, do NOT truncate:
+  • fix_kit.body = usable ad body copy, 2-3 sentences (~35-60 words).
+  • fix_kit.rationale = why the rewrite works, 1-2 sentences (~30-45 words).
+  • ad_landing_mismatch.disconnects[].fix = the actual change to make and where, a full instruction (1-2 sentences, ~18-30 words) — not a fragment.
+  • experiments[].description = what to test, against what, and what to watch, written in full (1-2 sentences, ~22-36 words).
+  • next_steps[] = each an object: "step" is a short imperative title (<=8 words); "detail" explains exactly what to do and why it moves the metric, in 1-2 complete sentences (~22-38 words). Make the four steps a real, sequenced plan, not restatements of the issues.`;
 
 export default async function handler(req, res) {
   const API_VERSION = 'v4';

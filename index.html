@@ -219,8 +219,8 @@
         verdict: "The ad promises 'cut alert noise 80%'; the landing page never mentions alerts. The scent breaks on arrival.",
         message_match_issues: ["Ad claim absent from the LP", "Different primary CTA than the ad implied"],
         disconnects: [
-          { problem: "Ad says 'free trial', landing page only offers 'book a demo'", fix: "Match the offer: add the free-trial CTA to the LP hero." },
-          { problem: "The ad's '80% less noise' hook is nowhere on the page", fix: "Make that stat the LP headline and carry the promise through." }
+          { problem: "Ad says 'free trial', landing page only offers 'book a demo'", fix: "Add the free-trial CTA to the LP hero as the primary button so the offer the ad promised is the first action visitors can take. Keep 'book a demo' as the secondary path." },
+          { problem: "The ad's '80% less noise' hook is nowhere on the page", fix: "Make '80% less alert noise' the LP headline and repeat it in the first subhead, so the promise that earned the click is the first thing that confirms it on arrival." }
         ]
       },
       fix_kit: {
@@ -238,15 +238,15 @@
         rationale: "Every rewrite moves from product-first to buyer-outcome-first, then earns the click with a specific, testable number."
       },
       experiments: [
-        { title: "Swap the hook to the board-risk angle", description: "Test “walk into the board meeting calm” against your current product-led hook. Same audience, same budget." },
-        { title: "Add the 80% stat above the fold", description: "Carry the ad's promise onto the LP hero and measure demo-request lift." },
-        { title: "Offer a lower-commitment CTA", description: "Test “2-min tour” vs “book a demo” for cold CISO traffic." }
+        { title: "Swap the hook to the board-risk angle", description: "Run “walk into the board meeting calm” against your current product-led hook to the same audience at the same budget. Watch click-through and, more importantly, demo-request rate — the risk angle should pull a more qualified click." },
+        { title: "Add the 80% stat above the fold", description: "Carry the ad's alert-noise promise onto the LP hero as the first thing visitors see. Measure the lift in demo requests versus the current headline over two weeks of equal traffic." },
+        { title: "Offer a lower-commitment CTA", description: "Test a “2-minute tour” against “book a demo” for cold CISO traffic. The softer ask should lift total conversions even if raw demo bookings dip — track downstream, not just the click." }
       ],
       next_steps: [
-        "Rewrite the ad hook to lead with the buyer's risk, not the product category",
-        "Match the landing page headline to the ad's 80% promise",
-        "Add one quantified proof point above the fold",
-        "Replace the triple CTA with a single primary action"
+        { step: "Rewrite the ad hook around buyer risk", detail: "Swap the product-category opener for the stake your CISO actually carries into the boardroom. Lead with the outcome — fewer alerts, cleaner audits — so the first line earns the scroll-stop instead of describing your tool." },
+        { step: "Match the landing page to the ad's promise", detail: "Carry the '80% less alert noise' hook straight onto the LP hero headline. When the ad's promise is the first thing they read on arrival, the scent holds and bounce drops." },
+        { step: "Put one quantified proof above the fold", detail: "Move a single hard number or named-customer outcome into the hero. Security buyers discount unquantified claims by default, so one specific stat does more than three adjectives." },
+        { step: "Collapse the three CTAs into one", detail: "Pick the single lowest-friction action for a cold CISO — a 2-minute tour beats 'book a demo' — and remove the competing buttons so the path forward is unmistakable." }
       ]
     };
 
@@ -487,8 +487,13 @@
                       style={{ borderColor: on ? '#0a66c2' : '#cbd5e1', background: on ? '#0a66c2' : '#fff', color: on ? '#fff' : '#94a3b8' }}>
                       {on ? <Icon name="check" className="w-4 h-4 text-white" /> : (i + 1)}
                     </span>
-                    <span className="flex-1 rounded-xl border p-3 transition-all card-lift" style={{ borderColor: on ? '#bfdbfe' : '#e5e7eb', background: on ? '#eff6ff' : '#fff' }}>
-                      <span className={"text-sm " + (on ? "text-gray-400 line-through" : "text-gray-700")}>{s}</span>
+                    <span className="flex-1 rounded-xl border p-3.5 transition-all card-lift" style={{ borderColor: on ? '#bfdbfe' : '#e5e7eb', background: on ? '#eff6ff' : '#fff' }}>
+                      {typeof s === 'string' ? (
+                        <span className={"text-sm " + (on ? "text-gray-400 line-through" : "text-gray-700")}>{s}</span>
+                      ) : (<>
+                        <span className={"block text-sm font-semibold mb-1 " + (on ? "text-gray-400 line-through" : "text-gray-900")}>{s.step}</span>
+                        {s.detail && <span className={"block text-sm " + (on ? "text-gray-400" : "text-gray-600")} style={{ lineHeight: 1.55 }}>{s.detail}</span>}
+                      </>)}
                     </span>
                   </button>
                 );
@@ -3834,7 +3839,7 @@
                           </div>
                         </div>
                         <h3 className="font-semibold text-gray-900 text-sm mb-1 clamp-2" style={{ lineHeight: 1.35 }}>{exp.title}</h3>
-                        <p className="text-sm text-gray-600 clamp-3" style={{ lineHeight: 1.5 }}>{exp.description}</p>
+                        <p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{exp.description}</p>
                       </div>
                     );
                   })}
