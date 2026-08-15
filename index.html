@@ -571,22 +571,22 @@
       window.open(PAYMENT_URL, '_blank');
     };
 
-    /* ---- Booking flow: a 1-step LinkedIn capture that runs BEFORE Calendly ----
+    /* ---- Booking flow: an email + LinkedIn capture that runs BEFORE Calendly ----
        Every "Book a call" / main CTA opens this instead of jumping straight to
-       Calendly. We ask only for their LinkedIn (they'll enter their email inside
-       Calendly). If they already gave their LinkedIn earlier (results-page team
-       review), openBooking() is called WITH it and the form step is skipped —
-       straight to Calendly. On drop-in we (a) record the lead server-side so the
-       daily sweep can remind Marina about no-shows, (b) notify Marina immediately
-       with the LinkedIn (even if they never book), then (c) show Calendly inline
-       and watch for the booking event. */
+       Calendly. We ask for their work email (always — it powers the auto-nudge to
+       no-shows, since a non-booker never reaches Calendly's email step) plus their
+       LinkedIn. If they already gave their LinkedIn earlier (results-page team
+       review), openBooking() is called WITH it and we only ask for email. On
+       drop-in we (a) record the lead server-side for the no-show follow-up sweep,
+       (b) notify Marina immediately (even if they never book), then (c) show
+       Calendly inline (pre-filled with their email) and watch for the booking. */
     const bookingBus = { open: () => {} };
     const openBooking = (prefillLinkedin) => bookingBus.open(prefillLinkedin);
 
     // Shared LinkedIn URL check (module scope so BookingFlow can use it too).
     const isValidLinkedIn = (url) => /^(https?:\/\/)?([\w-]+\.)?linkedin\.com\/in\/[\w%À-￿-]{2,150}\/?(\?[^\s]*)?$/i.test((url || '').trim());
 
-    // Persist the lead so the daily sweep can remind Marina about anyone who opened Calendly but never booked.
+    // Persist the lead so the daily sweep can auto-email anyone who filled the form but never booked.
     const recordBookingIntent = async (payload) => {
       try {
         await fetch('/api/lead', {
@@ -595,28 +595,27 @@
         });
       } catch (e) { console.error('book-intent error:', e); }
     };
-    const markBooked = async (linkedin) => {
+    const markBooked = async (email) => {
       try {
         await fetch('/api/lead', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'book-mark', linkedin })
+          body: JSON.stringify({ action: 'book-mark', email })
         });
       } catch (e) { console.error('book-mark error:', e); }
     };
     // Instant heads-up to Marina — fires when they reach Calendly, and again if they book.
-    const notifyBookingLead = async ({ linkedin, booked }) => {
+    const notifyBookingLead = async ({ email, linkedin, booked }) => {
       try {
-        const handle = (linkedin || '').split('/in/')[1]?.replace(/\/$/, '').split('?')[0] || linkedin || 'someone';
         await fetch('https://api.emailjs.com/api/v1.0/email/send', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             service_id: EMAIL_CONFIG.service_id, template_id: EMAIL_CONFIG.template_id, user_id: EMAIL_CONFIG.public_key,
             template_params: {
               to_email: EMAIL_CONFIG.notify_email,
-              subject: booked ? `✅ AdRoast: ${handle} BOOKED a call` : `📥 AdRoast: ${handle} opened the calendar`,
+              subject: booked ? `✅ AdRoast: ${email} BOOKED a call` : `📥 AdRoast: ${email} opened the calendar`,
               message: booked
-                ? `${handle} booked a call.\n\n🔗 LinkedIn: ${linkedin || '—'}`
-                : `${handle} gave their LinkedIn and was sent to Calendly.\n\n🔗 LinkedIn: ${linkedin || '—'}\n\nIf they don't book, you'll get a reminder so you can reach out on LinkedIn directly.`
+                ? `${email} completed the form AND booked a call.\n\n🔗 LinkedIn: ${linkedin || '—'}`
+                : `${email} gave their details and was sent to Calendly.\n\n🔗 LinkedIn: ${linkedin || '—'}\n\nIf they don't book, they'll get an automatic follow-up email (and you a reminder).`
             }
           })
         });
@@ -625,19 +624,22 @@
 
     function BookingFlow({ calendlyUrl }) {
       const [open, setOpen] = useState(false);
+      const [email, setEmail] = useState('');
       const [linkedin, setLinkedin] = useState('');
+      const [liLocked, setLiLocked] = useState(false); // true when LinkedIn came prefilled (results-page team review)
       const [phase, setPhase] = useState('form'); // 'form' | 'calendly'
       const [booked, setBooked] = useState(false);
-      const liRef = React.useRef(null);
+      const emailRef = React.useRef(null);
 
-      const loadCalendly = () => {
+      const loadCalendly = (em) => {
         const mount = () => {
           const el = document.getElementById('cal-embed');
           if (window.Calendly && el) {
             el.innerHTML = '';
             window.Calendly.initInlineWidget({
               url: calendlyUrl + '?hide_gdpr_banner=1&primary_color=0a66c2',
-              parentElement: el
+              parentElement: el,
+              prefill: { email: (em || '').trim() }
             });
           }
         };
@@ -650,31 +652,32 @@
         } else { setTimeout(mount, 400); }
       };
 
-      // Record the lead, notify Marina, and show Calendly. `li` is passed explicitly
-      // (state may not have flushed yet when we skip the form on a prefill).
-      const goCalendly = (li) => {
-        const v = (li || '').trim();
-        recordBookingIntent({ linkedin: v });
-        notifyBookingLead({ linkedin: v, booked: false });
+      // Record the lead, notify Marina, and show Calendly. Values are passed
+      // explicitly (state may not have flushed yet).
+      const goCalendly = (em, li) => {
+        const e = (em || '').trim(), l = (li || '').trim();
+        recordBookingIntent({ email: e, linkedin: l });
+        notifyBookingLead({ email: e, linkedin: l, booked: false });
         setPhase('calendly');
-        loadCalendly();
+        loadCalendly(e);
       };
 
       useEffect(() => {
-        // openBooking(prefill): if we already know a valid LinkedIn, skip the form.
+        // openBooking(prefill): reuse a known LinkedIn so we only ask for email.
         bookingBus.open = (prefill) => {
           const li = (prefill || '').trim();
           setBooked(false);
-          setOpen(true);
+          setEmail('');
           setLinkedin(li);
-          if (isValidLinkedIn(li)) { goCalendly(li); }
-          else { setPhase('form'); }
+          setLiLocked(isValidLinkedIn(li));
+          setPhase('form');
+          setOpen(true);
         };
         return () => { bookingBus.open = () => {}; };
       }, []);
 
       useEffect(() => { if (open) document.body.style.overflow = 'hidden'; else document.body.style.overflow = ''; return () => { document.body.style.overflow = ''; }; }, [open]);
-      useEffect(() => { if (open && phase === 'form') setTimeout(() => liRef.current && liRef.current.focus(), 80); }, [open, phase]);
+      useEffect(() => { if (open && phase === 'form') setTimeout(() => emailRef.current && emailRef.current.focus(), 80); }, [open, phase]);
 
       // Watch for the Calendly booking confirmation (inline embed postMessage).
       useEffect(() => {
@@ -683,17 +686,19 @@
           if (typeof e.origin === 'string' && e.origin.indexOf('calendly.com') === -1) return;
           if (e.data && e.data.event === 'calendly.event_scheduled') {
             setBooked(true);
-            markBooked(linkedin.trim());
-            notifyBookingLead({ linkedin: linkedin.trim(), booked: true });
+            markBooked(email.trim());
+            notifyBookingLead({ email: email.trim(), linkedin: linkedin.trim(), booked: true });
           }
         };
         window.addEventListener('message', onMsg);
         return () => window.removeEventListener('message', onMsg);
-      }, [open, phase, linkedin]);
+      }, [open, phase, email, linkedin]);
 
+      const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
       const liValid = isValidLinkedIn(linkedin);
+      const canSubmit = emailValid && (liLocked || liValid);
       const close = () => setOpen(false);
-      const submit = () => { if (liValid) goCalendly(linkedin.trim()); };
+      const submit = () => { if (canSubmit) goCalendly(email.trim(), linkedin.trim()); };
 
       if (!open) return null;
 
@@ -707,15 +712,24 @@
                   <button onClick={close} className="text-gray-300 hover:text-gray-500 bg-transparent border-none cursor-pointer text-2xl leading-none" aria-label="Close">×</button>
                 </div>
                 <div className="step-in">
-                  <h3 className="text-gray-900 text-lg font-semibold mb-1">What's your LinkedIn?</h3>
-                  <p className="text-gray-400 text-sm mb-4">So we can look at who you serve before the call. You'll pick a time and add your email on the next screen.</p>
-                  <input ref={liRef} type="url" inputMode="url" autoComplete="url" placeholder="https://linkedin.com/in/yourprofile" value={linkedin}
-                    onChange={e => setLinkedin(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }}
-                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none text-gray-900 ${linkedin && !liValid ? 'border-red-300' : linkedin && liValid ? 'border-green-400' : 'border-gray-200 focus:border-blue-500'}`} />
-                  {linkedin && !liValid && <p className="text-red-400 text-xs mt-2">Use your profile URL — linkedin.com/in/yourname</p>}
-                  {linkedin && liValid && <p className="text-green-600 text-xs mt-2 flex items-center gap-1"><Icon name="check" className="w-3 h-3" /> Looks good</p>}
-                  <button onClick={submit} disabled={!liValid} className="w-full mt-4 py-3 rounded-xl font-semibold text-sm transition-all border-none cursor-pointer"
-                    style={liValid ? { background: '#0a66c2', color: '#fff' } : { background: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed' }}>Pick a time →</button>
+                  <h3 className="text-gray-900 text-lg font-semibold mb-1">How can we reach you?</h3>
+                  <p className="text-gray-400 text-sm mb-4">So we can send your recap, confirm the call, and follow up if you don't book. You'll pick a time next.</p>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Work email</label>
+                  <input ref={emailRef} type="email" inputMode="email" autoComplete="email" placeholder="you@company.com" value={email}
+                    onChange={e => setEmail(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none text-gray-900 ${email && !emailValid ? 'border-red-300' : email && emailValid ? 'border-green-400' : 'border-gray-200 focus:border-blue-500'}`} />
+                  {email && !emailValid && <p className="text-red-400 text-xs mt-1.5">Enter a valid email so we can reach you.</p>}
+                  {!liLocked && (<>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 mt-4">LinkedIn profile</label>
+                    <input type="url" inputMode="url" autoComplete="url" placeholder="https://linkedin.com/in/yourprofile" value={linkedin}
+                      onChange={e => setLinkedin(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+                      className={`w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none text-gray-900 ${linkedin && !liValid ? 'border-red-300' : linkedin && liValid ? 'border-green-400' : 'border-gray-200 focus:border-blue-500'}`} />
+                    {linkedin && !liValid && <p className="text-red-400 text-xs mt-1.5">Use your profile URL — linkedin.com/in/yourname</p>}
+                    <p className="text-gray-400 text-xs mt-1.5">So we can see who you serve before the call.</p>
+                  </>)}
+                  {liLocked && <p className="text-green-600 text-xs mt-2 flex items-center gap-1"><Icon name="check" className="w-3 h-3" /> LinkedIn already on file</p>}
+                  <button onClick={submit} disabled={!canSubmit} className="w-full mt-5 py-3 rounded-xl font-semibold text-sm transition-all border-none cursor-pointer"
+                    style={canSubmit ? { background: '#0a66c2', color: '#fff' } : { background: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed' }}>Pick a time →</button>
                 </div>
               </div>
             ) : (
