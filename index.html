@@ -1423,11 +1423,36 @@
         } catch (e) { keepOriginal(); }
       });
 
+      /* Fire-and-forget heads-up to Marina on EVERY completed roast (not just the
+         team-review LinkedIn submits). Runs client-side via the same EmailJS path
+         the user's report link + LinkedIn notify already use. Skips admin/internal
+         runs. No LinkedIn/report link yet — those come later if the user opts in. */
+      const notifyRoastToMarina = async (data) => {
+        if (adminMode || !data) return;
+        const adScore = (data.overall_score != null ? data.overall_score : 'N/A');
+        const lpScore = data.landing_page_roast?.overall_score || 'N/A';
+        const matchScore = data.ad_landing_mismatch?.alignment_score || 'N/A';
+        try {
+          await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              service_id: EMAIL_CONFIG.service_id, template_id: EMAIL_CONFIG.template_id, user_id: EMAIL_CONFIG.public_key,
+              template_params: {
+                to_email: EMAIL_CONFIG.notify_email,
+                subject: `🔥 New roast | Ad:${adScore}/10 | LP:${lpScore}/10 | ${platform || '—'}`,
+                message: `Someone just ran a roast.\n\n📱 PLATFORM: ${platform || '—'}\n🎯 OFFER: ${offerType || '—'}\n🌐 LANDING URL: ${(inputs && inputs.url) || '—'}\n\n📊 SCORES\n• Ad: ${adScore}/10\n• LP: ${lpScore}/10\n• Match: ${matchScore}/10\n\n👥 ICP\n${icp || '—'}\n\n🎯 AD VERDICT\n${data.icp_mismatch || '—'}\n\n🔗 AD-LANDING MISMATCH\n${data.ad_landing_mismatch?.verdict || 'N/A'}\n${data.ad_landing_mismatch?.disconnects?.map(d => '• ' + d.problem).join('\n') || ''}\n\n🌐 LANDING PAGE ISSUES\n${data.landing_page_roast?.top_issues?.join('\n') || 'N/A'}\n\n✏️ FIX KIT\nHeadlines:\n${(data.fix_kit?.headlines || []).join('\n')}\n\nBody: ${data.fix_kit?.body || '—'}\nCTAs: ${(data.fix_kit?.ctas || []).join(', ')}`
+              }
+            })
+          });
+        } catch (e) { console.error('roast notify error:', e); }
+      };
+
       /* Apply a fresh roast result + its token entitlement (monetization #3).
          full=true means a token was spent and the roast is shown in full; full=false
          means the account is out of tokens, so we blur it and sell a plan. */
       const applyRoastResult = (data) => {
         setResult(data);
+        notifyRoastToMarina(data); // email Marina every roast, regardless of LinkedIn opt-in
         const ent = data && data._entitlement;
         if (ent && ent.authed) {
           if (ent.full) { setIsUnlocked(true); setNeedsPayment(false); }
