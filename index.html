@@ -1366,21 +1366,24 @@
           ? `${window.location.origin}${window.location.pathname}?id=${reportId}${isPortalView ? '&portal=1' : ''}`
           : window.location.href;
         
-        // ONE email to Marina with LinkedIn + roast info + short link
+        // Marina already got the full roast at roast time (notifyRoastToMarina).
+        // This is a short, high-intent addendum — the lead just requested a team
+        // review and handed over their LinkedIn — so we don't repeat the roast.
+        const handle = linkedin.split('/in/')[1]?.replace(/\/$/, '').split('?')[0] || 'New';
         try {
           await fetch('https://api.emailjs.com/api/v1.0/email/send', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               service_id: EMAIL_CONFIG.service_id, template_id: EMAIL_CONFIG.template_id, user_id: EMAIL_CONFIG.public_key,
-              template_params: { 
-                to_email: EMAIL_CONFIG.notify_email, 
-                subject: `🔥 AdRoast: ${linkedin.split('/in/')[1]?.replace(/\/$/, '') || 'New'} | Ad:${adScore}/10 | LP:${lpScore}/10`, 
-                message: `🔗 LINKEDIN: ${linkedin}\n📱 PLATFORM: ${platform}\n🎯 OFFER: ${offerType}\n🌐 LANDING URL: ${inputs.url}\n\n📊 SCORES\n• Ad: ${adScore}/10\n• LP: ${lpScore}/10\n• Match: ${matchScore}/10\n\n👥 ICP\n${icp}\n\n🎯 AD VERDICT\n${result.icp_mismatch}\n\n🔗 AD-LANDING MISMATCH\n${result.ad_landing_mismatch?.verdict || 'N/A'}\n${result.ad_landing_mismatch?.disconnects?.map(d => '• ' + d.problem).join('\n') || ''}\n\n🌐 LANDING PAGE ISSUES\n${result.landing_page_roast?.top_issues?.join('\n') || 'N/A'}\n\n✏️ FIX KIT\nHeadlines:\n${result.fix_kit.headlines.join('\n')}\n\nBody: ${result.fix_kit.body}\nCTAs: ${result.fix_kit.ctas.join(', ')}\n\nLP Headline: ${result.fix_kit.landing_page_headline || 'N/A'}\nLP Subhead: ${result.fix_kit.landing_page_subhead || 'N/A'}\n\n🔗 REPORT LINK\n${shareLink}`
+              template_params: {
+                to_email: EMAIL_CONFIG.notify_email,
+                subject: `🔗 AdRoast: ${handle} wants a team review | Ad:${adScore}/10 | LP:${lpScore}/10`,
+                message: `${handle} asked for a team review on the roast you already received.\n\n🔗 LINKEDIN: ${linkedin}\n📱 PLATFORM: ${platform}\n🌐 LANDING URL: ${(inputs && inputs.url) || '—'}\n\n📊 Ad:${adScore}/10 · LP:${lpScore}/10 · Match:${matchScore}/10\n\n🔗 FULL REPORT\n${shareLink}`
               }
             })
           });
         } catch (e) { console.error('LinkedIn notify error:', e); }
-        
+
         setSending(false); setView('results');
       };
 
