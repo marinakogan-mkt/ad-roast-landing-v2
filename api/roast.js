@@ -157,7 +157,8 @@ const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all f
 }
 
 BREVITY — punchy and skimmable; lead with the point, cut filler, don't restate the field name.
-SHORT — one glance each (hard word caps): icp_mismatch <=22; issues[].explanation <=15; landing_page_roast *_feedback <=13; top_issues/quick_wins item <=9; ad_landing_mismatch.verdict <=18, disconnects[].problem <=13, message_match_issues <=14; experiments[].title <=8.
+SHORT — punchy list items, one glance each (hard word caps): top_issues/quick_wins item <=9; ad_landing_mismatch.disconnects[].problem <=13; experiments[].title <=8; icp_mismatch <=22.
+MID — one sharp, complete point each; enough to be useful, NOT a paragraph or a crammed list (soft caps): issues[].explanation ~22-30 words; landing_page_roast *_feedback ~18-25; ad_landing_mismatch.verdict ~22-28; ad_landing_mismatch.message_match_issues ~18-24. State the single most important thing about that item in full — no preamble, no second topic; it renders on ~3 lines max.
 FULLER — give these real substance; write complete, specific guidance, do NOT truncate:
   • fix_kit.body = usable ad body copy, 2-3 sentences (~35-60 words).
   • fix_kit.rationale = why the rewrite works, 1-2 sentences (~30-45 words).

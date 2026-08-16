@@ -201,16 +201,16 @@
       icp_mismatch: "Your ad talks to 'security teams' broadly, but your ICP is CISOs who answer to a board. The hook never names their actual stakes.",
       issues: [
         { title: "Hook is about you, not them", score: 3, explanation: "“The #1 platform for cloud security” leads with your product, not the buyer's pain. A CISO scrolls past." },
-        { title: "No proof for a skeptical buyer", score: 4, explanation: "Zero numbers, logos, or specifics. Security buyers discount unquantified claims by default." },
-        { title: "CTA asks for too much, too soon", score: 5, explanation: "“Book a demo” is a big ask for a cold CISO with no lower-commitment step offered." },
-        { title: "Jargon without payoff", score: 5, explanation: "“AI-powered CNAPP” describes the tool, not the outcome the buyer actually wants." },
+        { title: "No proof for a skeptical buyer", score: 4, explanation: "Not a single number, customer logo, or specific claim. Security buyers discount anything unquantified by default, so a proof-free ad reads as noise." },
+        { title: "CTA asks for too much, too soon", score: 5, explanation: "“Book a demo” is a heavy ask for a cold CISO. With no lower-commitment step offered, everyone not ready to buy today simply leaves." },
+        { title: "Jargon without payoff", score: 5, explanation: "“AI-powered CNAPP” names the product category, not the outcome the buyer wants. The reader has to translate the jargon into value, and most won't bother." },
         { title: "Visual competes with the message", score: 6, explanation: "Dense dashboard screenshot, nothing guides the eye to the one thing that matters." }
       ],
       landing_page_roast: {
-        overall_score: 5, headline_feedback: "Restates the ad instead of advancing the promise, the visitor learns nothing new.",
-        headline_score: 4, value_prop_feedback: "Buried below the fold.", value_prop_score: 5,
-        cta_feedback: "Three competing CTAs dilute the action.", cta_score: 5,
-        trust_feedback: "Logos present but no outcomes attached.", trust_score: 6,
+        overall_score: 5, headline_feedback: "Restates the ad almost word-for-word instead of advancing the promise. The visitor learns nothing new and starts to wonder if they're in the right place.",
+        headline_score: 4, value_prop_feedback: "Your actual value proposition sits below the fold. Visitors decide within the first screen, and most never scroll far enough to find the reason to stay.", value_prop_score: 5,
+        cta_feedback: "Three CTAs compete in the hero — demo, trial, and contact — so the visitor hesitates instead of taking the one action that actually matters.", cta_score: 5,
+        trust_feedback: "Customer logos are present, but none carry a result or a number. A skeptical security buyer reads bare logos as decoration, not as proof.", trust_score: 6,
         top_issues: ["Headline duplicates the ad", "Value prop below the fold", "Three competing CTAs"],
         quick_wins: ["Lead with the buyer's risk, not the product category", "Move one proof stat above the fold"]
       },
@@ -421,7 +421,7 @@
             <span className="text-2xl font-extrabold leading-none flex-shrink-0" style={{ color: col }}>{issue.score}</span>
           </div>
           <div className="mb-2.5"><SeverityBar score={issue.score} height={5} /></div>
-          <p className="text-sm text-gray-600 clamp-2" style={{ lineHeight: 1.5 }}>{issue.explanation}</p>
+          <p className="text-sm text-gray-600 clamp-3" style={{ lineHeight: 1.5 }}>{issue.explanation}</p>
         </div>
       );
     };
@@ -3735,7 +3735,7 @@
                               <span className="text-2xl font-extrabold leading-none flex-shrink-0" style={{ color: col }}>{item.score > 0 ? item.score : '—'}</span>
                             </div>
                             <div className="mb-2.5"><SeverityBar score={item.score} height={5} /></div>
-                            <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600 clamp-2" style={{ lineHeight: 1.5 }}>{item.feedback}</p></div>
+                            <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600 clamp-3" style={{ lineHeight: 1.5 }}>{item.feedback}</p></div>
                           </div>
                         );
                       })}
