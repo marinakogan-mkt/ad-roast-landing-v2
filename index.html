@@ -209,7 +209,7 @@
       landing_page_roast: {
         overall_score: 5, headline_feedback: "Restates the ad almost word-for-word instead of advancing the promise. The visitor learns nothing new and starts to wonder if they're in the right place.",
         headline_score: 4, value_prop_feedback: "Your actual value proposition sits below the fold. Visitors decide within the first screen, and most never scroll far enough to find the reason to stay.", value_prop_score: 5,
-        cta_feedback: "Three CTAs compete in the hero — demo, trial, and contact — so the visitor hesitates instead of taking the one action that actually matters.", cta_score: 5,
+        cta_feedback: "Three CTAs compete in the hero (demo, trial, and contact), so the visitor hesitates instead of taking the one action that actually matters.", cta_score: 5,
         trust_feedback: "Customer logos are present, but none carry a result or a number. A skeptical security buyer reads bare logos as decoration, not as proof.", trust_score: 6,
         top_issues: ["Headline duplicates the ad", "Value prop below the fold", "Three competing CTAs"],
         quick_wins: ["Lead with the buyer's risk, not the product category", "Move one proof stat above the fold"]
@@ -238,15 +238,15 @@
         rationale: "Every rewrite moves from product-first to buyer-outcome-first, then earns the click with a specific, testable number."
       },
       experiments: [
-        { title: "Swap the hook to the board-risk angle", description: "Run “walk into the board meeting calm” against your current product-led hook to the same audience at the same budget. Watch click-through and, more importantly, demo-request rate — the risk angle should pull a more qualified click." },
+        { title: "Swap the hook to the board-risk angle", description: "Run “walk into the board meeting calm” against your current product-led hook to the same audience at the same budget. Watch click-through and, more importantly, demo-request rate. The risk angle should pull a more qualified click." },
         { title: "Add the 80% stat above the fold", description: "Carry the ad's alert-noise promise onto the LP hero as the first thing visitors see. Measure the lift in demo requests versus the current headline over two weeks of equal traffic." },
-        { title: "Offer a lower-commitment CTA", description: "Test a “2-minute tour” against “book a demo” for cold CISO traffic. The softer ask should lift total conversions even if raw demo bookings dip — track downstream, not just the click." }
+        { title: "Offer a lower-commitment CTA", description: "Test a “2-minute tour” against “book a demo” for cold CISO traffic. The softer ask should lift total conversions even if raw demo bookings dip; track downstream, not just the click." }
       ],
       next_steps: [
-        { step: "Rewrite the ad hook around buyer risk", detail: "Swap the product-category opener for the stake your CISO actually carries into the boardroom. Lead with the outcome — fewer alerts, cleaner audits — so the first line earns the scroll-stop instead of describing your tool." },
+        { step: "Rewrite the ad hook around buyer risk", detail: "Swap the product-category opener for the stake your CISO actually carries into the boardroom. Lead with the outcome (fewer alerts, cleaner audits) so the first line earns the scroll-stop instead of describing your tool." },
         { step: "Match the landing page to the ad's promise", detail: "Carry the '80% less alert noise' hook straight onto the LP hero headline. When the ad's promise is the first thing they read on arrival, the scent holds and bounce drops." },
         { step: "Put one quantified proof above the fold", detail: "Move a single hard number or named-customer outcome into the hero. Security buyers discount unquantified claims by default, so one specific stat does more than three adjectives." },
-        { step: "Collapse the three CTAs into one", detail: "Pick the single lowest-friction action for a cold CISO — a 2-minute tour beats 'book a demo' — and remove the competing buttons so the path forward is unmistakable." }
+        { step: "Collapse the three CTAs into one", detail: "Pick the single lowest-friction action for a cold CISO: a 2-minute tour beats 'book a demo'. Remove the competing buttons so the path forward is unmistakable." }
       ]
     };
 
@@ -614,8 +614,8 @@
               to_email: EMAIL_CONFIG.notify_email,
               subject: booked ? `✅ AdRoast: ${email} BOOKED a call` : `📥 AdRoast: ${email} opened the calendar`,
               message: booked
-                ? `${email} completed the form AND booked a call.\n\n🔗 LinkedIn: ${linkedin || '—'}`
-                : `${email} gave their details and was sent to Calendly.\n\n🔗 LinkedIn: ${linkedin || '—'}\n\nIf they don't book, they'll get an automatic follow-up email (and you a reminder).`
+                ? `${email} completed the form AND booked a call.\n\n🔗 LinkedIn: ${linkedin || '-'}`
+                : `${email} gave their details and was sent to Calendly.\n\n🔗 LinkedIn: ${linkedin || '-'}\n\nIf they don't book, they'll get an automatic follow-up email (and you a reminder).`
             }
           })
         });
@@ -724,7 +724,7 @@
                     <input type="url" inputMode="url" autoComplete="url" placeholder="https://linkedin.com/in/yourprofile" value={linkedin}
                       onChange={e => setLinkedin(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }}
                       className={`w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none text-gray-900 ${linkedin && !liValid ? 'border-red-300' : linkedin && liValid ? 'border-green-400' : 'border-gray-200 focus:border-blue-500'}`} />
-                    {linkedin && !liValid && <p className="text-red-400 text-xs mt-1.5">Use your profile URL — linkedin.com/in/yourname</p>}
+                    {linkedin && !liValid && <p className="text-red-400 text-xs mt-1.5">Use your profile URL: linkedin.com/in/yourname</p>}
                     <p className="text-gray-400 text-xs mt-1.5">So we can see who you serve before the call.</p>
                   </>)}
                   {liLocked && <p className="text-green-600 text-xs mt-2 flex items-center gap-1"><Icon name="check" className="w-3 h-3" /> LinkedIn already on file</p>}
@@ -742,7 +742,7 @@
                   <div className="p-8 text-center">
                     <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: '#dcfce7' }}><Icon name="check" className="w-7 h-7" style={{ color: '#16a34a' }} /></div>
                     <h3 className="text-gray-900 text-lg font-semibold mb-1">See you soon.</h3>
-                    <p className="text-gray-500 text-sm">Check your inbox for the calendar invite — talk then.</p>
+                    <p className="text-gray-500 text-sm">Check your inbox for the calendar invite, talk then.</p>
                     <button onClick={close} className="mt-5 px-6 py-2.5 rounded-full font-semibold text-sm border-none cursor-pointer" style={{ background: '#0a66c2', color: '#fff' }}>Done</button>
                   </div>
                 ) : (
@@ -772,7 +772,7 @@
       // Must be an actual linkedin.com/in/<profile> URL. Allows optional locale
       // subdomain (de., www.), trailing slash, and tracking query (?originalSubdomain=…).
       if (!/^(https?:\/\/)?([\w-]+\.)?linkedin\.com\/in\/[\w%À-￿-]{2,150}\/?(\?[^\s]*)?$/i.test(url.trim())) {
-        return { valid: false, error: /linkedin\.com/i.test(url) ? 'Use your profile URL — linkedin.com/in/yourname' : 'Enter a valid LinkedIn URL (linkedin.com/in/…)' };
+        return { valid: false, error: /linkedin\.com/i.test(url) ? 'Use your profile URL: linkedin.com/in/yourname' : 'Enter a valid LinkedIn URL (linkedin.com/in/…)' };
       }
       return { valid: true };
     };
@@ -1378,7 +1378,7 @@
               template_params: {
                 to_email: EMAIL_CONFIG.notify_email,
                 subject: `🔗 AdRoast: ${handle} wants a team review | Ad:${adScore}/10 | LP:${lpScore}/10`,
-                message: `${handle} asked for a team review on the roast you already received.\n\n🔗 LINKEDIN: ${linkedin}\n📱 PLATFORM: ${platform}\n🌐 LANDING URL: ${(inputs && inputs.url) || '—'}\n\n📊 Ad:${adScore}/10 · LP:${lpScore}/10 · Match:${matchScore}/10\n\n🔗 FULL REPORT\n${shareLink}`
+                message: `${handle} asked for a team review on the roast you already received.\n\n🔗 LINKEDIN: ${linkedin}\n📱 PLATFORM: ${platform}\n🌐 LANDING URL: ${(inputs && inputs.url) || '-'}\n\n📊 Ad:${adScore}/10 · LP:${lpScore}/10 · Match:${matchScore}/10\n\n🔗 FULL REPORT\n${shareLink}`
               }
             })
           });
@@ -1442,8 +1442,8 @@
               service_id: EMAIL_CONFIG.service_id, template_id: EMAIL_CONFIG.template_id, user_id: EMAIL_CONFIG.public_key,
               template_params: {
                 to_email: EMAIL_CONFIG.notify_email,
-                subject: `🔥 New roast | Ad:${adScore}/10 | LP:${lpScore}/10 | ${platform || '—'}`,
-                message: `Someone just ran a roast.\n\n📱 PLATFORM: ${platform || '—'}\n🎯 OFFER: ${offerType || '—'}\n🌐 LANDING URL: ${(inputs && inputs.url) || '—'}\n\n📊 SCORES\n• Ad: ${adScore}/10\n• LP: ${lpScore}/10\n• Match: ${matchScore}/10\n\n👥 ICP\n${icp || '—'}\n\n🎯 AD VERDICT\n${data.icp_mismatch || '—'}\n\n🔗 AD-LANDING MISMATCH\n${data.ad_landing_mismatch?.verdict || 'N/A'}\n${data.ad_landing_mismatch?.disconnects?.map(d => '• ' + d.problem).join('\n') || ''}\n\n🌐 LANDING PAGE ISSUES\n${data.landing_page_roast?.top_issues?.join('\n') || 'N/A'}\n\n✏️ FIX KIT\nHeadlines:\n${(data.fix_kit?.headlines || []).join('\n')}\n\nBody: ${data.fix_kit?.body || '—'}\nCTAs: ${(data.fix_kit?.ctas || []).join(', ')}`
+                subject: `🔥 New roast | Ad:${adScore}/10 | LP:${lpScore}/10 | ${platform || '-'}`,
+                message: `Someone just ran a roast.\n\n📱 PLATFORM: ${platform || '-'}\n🎯 OFFER: ${offerType || '-'}\n🌐 LANDING URL: ${(inputs && inputs.url) || '-'}\n\n📊 SCORES\n• Ad: ${adScore}/10\n• LP: ${lpScore}/10\n• Match: ${matchScore}/10\n\n👥 ICP\n${icp || '-'}\n\n🎯 AD VERDICT\n${data.icp_mismatch || '-'}\n\n🔗 AD-LANDING MISMATCH\n${data.ad_landing_mismatch?.verdict || 'N/A'}\n${data.ad_landing_mismatch?.disconnects?.map(d => '• ' + d.problem).join('\n') || ''}\n\n🌐 LANDING PAGE ISSUES\n${data.landing_page_roast?.top_issues?.join('\n') || 'N/A'}\n\n✏️ FIX KIT\nHeadlines:\n${(data.fix_kit?.headlines || []).join('\n')}\n\nBody: ${data.fix_kit?.body || '-'}\nCTAs: ${(data.fix_kit?.ctas || []).join(', ')}`
               }
             })
           });
@@ -2993,7 +2993,7 @@
                           <select value={v.headlinePins?.[hi] || ''} onChange={(e) => updateHeadlinePin(vi, hi, e.target.value)}
                             className="px-1 py-1.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:border-blue-500 text-gray-700"
                             title="Pin position">
-                            <option value="">—</option>
+                            <option value="">-</option>
                             <option value="1">Pin 1</option>
                             <option value="2">Pin 2</option>
                             <option value="3">Pin 3</option>
@@ -3026,7 +3026,7 @@
                           <select value={v.descriptionPins?.[di] || ''} onChange={(e) => updateDescriptionPin(vi, di, e.target.value)}
                             className="px-1 py-1.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:border-blue-500 text-gray-700 mt-1"
                             title="Pin position">
-                            <option value="">—</option>
+                            <option value="">-</option>
                             <option value="1">Pin 1</option>
                             <option value="2">Pin 2</option>
                           </select>
@@ -3064,7 +3064,7 @@
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Ad Strength</label>
                       <select value={v.adStrength} onChange={(e) => updateVariant(vi, { adStrength: e.target.value })}
                         className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 text-gray-900">
-                        <option value="">—</option>
+                        <option value="">-</option>
                         <option value="Excellent">Excellent</option>
                         <option value="Good">Good</option>
                         <option value="Average">Average</option>

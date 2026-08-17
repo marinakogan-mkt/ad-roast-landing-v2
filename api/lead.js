@@ -82,17 +82,17 @@ export default async function handler(req, res) {
         if (Date.now() - (rec.ts || 0) < FOLLOWUP_DELAY_MS) continue; // still in the grace window
         const hrs = Math.round((Date.now() - (rec.ts || 0)) / 3600000);
         // Auto-nudge the lead — same server-side EmailJS path magic-link/welcome emails use.
-        const leadMsg = `Hey,\n\nYou started booking a call with us but didn't finish — no stress, life happens.\n\nIf you're putting real budget into ads and aren't sure they're converting the right buyer, that call is where we tell you straight what's working and what's leaking. About 20 minutes, no pitch.\n\nGrab a time whenever it suits: ${CALENDLY_URL}\n\nOr just reply to this email with your ad + landing page and I'll take a look.\n\n— Marina\nAdRoast`;
+        const leadMsg = `Hey,\n\nYou started booking a call with us but didn't finish, no stress, life happens.\n\nIf you're putting real budget into ads and aren't sure they're converting the right buyer, that call is where we tell you straight what's working and what's leaking. About 20 minutes, no pitch.\n\nGrab a time whenever it suits: ${CALENDLY_URL}\n\nOr just reply to this email with your ad + landing page and I'll take a look.\n\nMarina\nAdRoast`;
         const sent = await sendEmailJS(EMAILJS.notify_template, {
           to_email: email,
-          subject: 'You checked out the roast — want the fix?',
+          subject: 'You checked out the roast. Want the fix?',
           message: leadMsg
         });
         // Heads-up to Marina either way, with the LinkedIn for a direct reach-out.
         await sendEmailJS(EMAILJS.notify_template, {
           to_email: EMAILJS.notify_email,
           subject: `⏰ AdRoast: ${sent ? 'nudged' : 'COULD NOT nudge'} ${email} (form ${hrs}h ago, no booking)`,
-          message: `${email} opened the calendar ~${hrs}h ago and hadn't booked, so we ${sent ? 'sent them a follow-up email' : 'FAILED to email them — follow up manually'}.\n\n🔗 LinkedIn: ${rec.linkedin || '—'}\n\nReach out on LinkedIn while it's warm.`
+          message: `${email} opened the calendar ~${hrs}h ago and hadn't booked, so we ${sent ? 'sent them a follow-up email' : 'FAILED to email them, follow up manually'}.\n\n🔗 LinkedIn: ${rec.linkedin || '-'}\n\nReach out on LinkedIn while it's warm.`
         });
         rec.followedUp = true;
         await redis.set(BI_PREFIX + email, rec, { ex: RECORD_TTL });
