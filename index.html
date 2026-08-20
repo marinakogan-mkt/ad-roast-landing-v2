@@ -1477,12 +1477,33 @@
       /* Fire-and-forget heads-up to Marina on EVERY completed roast (not just the
          team-review LinkedIn submits). Runs client-side via the same EmailJS path
          the user's report link + LinkedIn notify already use. Skips admin/internal
-         runs. No LinkedIn/report link yet — those come later if the user opts in. */
+         runs and gated paywall re-shows (not a fresh roast). Persists the roast to
+         Notion first so the heads-up carries a clickable link to the rendered report
+         — Marina no longer has to wait for the viewer to fill "Save Your Report". */
       const notifyRoastToMarina = async (data) => {
-        if (adminMode || !data) return;
+        if (adminMode || !data || data._gated) return;
         const adScore = (data.overall_score != null ? data.overall_score : 'N/A');
         const lpScore = data.landing_page_roast?.overall_score || 'N/A';
         const matchScore = data.ad_landing_mismatch?.alignment_score || 'N/A';
+
+        // Auto-save to Notion so every roast has a persistent, viewable report link,
+        // regardless of whether the viewer later opts in. saveToNotion ignores the
+        // email/linkedin fields for the record itself; it only stores scores + roast.
+        let shareLink = '';
+        try {
+          const reportId = await saveToNotion({
+            email: 'auto-capture@adroast.in',
+            linkedin: linkedin || 'auto-roast',
+            platform: platform,
+            adScore: adScore,
+            lpScore: lpScore,
+            matchScore: matchScore,
+            roastData: data,
+            icp: icp
+          });
+          if (reportId) shareLink = `${window.location.origin}${window.location.pathname}?id=${reportId}`;
+        } catch (e) { console.error('roast auto-save error:', e); }
+
         try {
           await fetch('https://api.emailjs.com/api/v1.0/email/send', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1491,7 +1512,7 @@
               template_params: {
                 to_email: EMAIL_CONFIG.notify_email,
                 subject: `🔥 New roast | Ad:${adScore}/10 | LP:${lpScore}/10 | ${platform || '-'}`,
-                message: `Someone just ran a roast.\n\n📱 PLATFORM: ${platform || '-'}\n🎯 OFFER: ${offerType || '-'}\n🌐 LANDING URL: ${(inputs && inputs.url) || '-'}\n\n📊 SCORES\n• Ad: ${adScore}/10\n• LP: ${lpScore}/10\n• Match: ${matchScore}/10\n\n👥 ICP\n${icp || '-'}\n\n🎯 AD VERDICT\n${data.icp_mismatch || '-'}\n\n🔗 AD-LANDING MISMATCH\n${data.ad_landing_mismatch?.verdict || 'N/A'}\n${data.ad_landing_mismatch?.disconnects?.map(d => '• ' + d.problem).join('\n') || ''}\n\n🌐 LANDING PAGE ISSUES\n${data.landing_page_roast?.top_issues?.join('\n') || 'N/A'}\n\n✏️ FIX KIT\nHeadlines:\n${(data.fix_kit?.headlines || []).join('\n')}\n\nBody: ${data.fix_kit?.body || '-'}\nCTAs: ${(data.fix_kit?.ctas || []).join(', ')}`
+                message: `Someone just ran a roast.\n\n${shareLink ? `🔗 VIEW FULL REPORT\n${shareLink}\n\n` : ''}📱 PLATFORM: ${platform || '-'}\n🎯 OFFER: ${offerType || '-'}\n🌐 LANDING URL: ${(inputs && inputs.url) || '-'}\n\n📊 SCORES\n• Ad: ${adScore}/10\n• LP: ${lpScore}/10\n• Match: ${matchScore}/10\n\n👥 ICP\n${icp || '-'}\n\n🎯 AD VERDICT\n${data.icp_mismatch || '-'}\n\n🔗 AD-LANDING MISMATCH\n${data.ad_landing_mismatch?.verdict || 'N/A'}\n${data.ad_landing_mismatch?.disconnects?.map(d => '• ' + d.problem).join('\n') || ''}\n\n🌐 LANDING PAGE ISSUES\n${data.landing_page_roast?.top_issues?.join('\n') || 'N/A'}\n\n✏️ FIX KIT\nHeadlines:\n${(data.fix_kit?.headlines || []).join('\n')}\n\nBody: ${data.fix_kit?.body || '-'}\nCTAs: ${(data.fix_kit?.ctas || []).join(', ')}`
               }
             })
           });
