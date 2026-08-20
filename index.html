@@ -56,15 +56,10 @@
     .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     .card-lift { transition: transform 0.2s, box-shadow 0.2s; }
     .card-lift:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-    /* Interactive reveal card: grows a touch on hover so it reads as "openable". */
+    /* Result card: grows a touch on hover so the section feels alive and tactile. */
     .card-pop { transition: transform .22s cubic-bezier(.22,1,.36,1), box-shadow .22s; }
     .card-pop:hover { transform: translateY(-4px) scale(1.025); box-shadow: 0 12px 30px rgba(0,0,0,0.10); }
-    /* Full-read reveal + gamified loading dots for progressive disclosure. */
-    @keyframes popReveal { 0%{opacity:.4;transform:scale(.985)} 60%{transform:scale(1.006)} 100%{opacity:1;transform:scale(1)} }
-    .pop-reveal { animation: popReveal .42s cubic-bezier(.22,1,.36,1); }
-    @keyframes dotBounce { 0%,80%,100%{transform:scale(.5);opacity:.35} 40%{transform:scale(1);opacity:1} }
-    .dot-bounce { animation: dotBounce 1s infinite ease-in-out; }
-    @media (prefers-reduced-motion: reduce){ .card-pop:hover{transform:none} .pop-reveal,.dot-bounce{animation:none !important} }
+    @media (prefers-reduced-motion: reduce){ .card-pop:hover{transform:none} }
     /* Results overview metric card — obviously clickable, lifts + turns blue on hover. */
     .metric-card { transition: transform .18s, box-shadow .18s, border-color .18s, background-color .18s; }
     .metric-card:hover { transform: translateY(-4px); border-color: #0a66c2 !important; background-color: #f8fbff; box-shadow: 0 12px 30px rgba(10,102,194,0.18); }
@@ -419,41 +414,6 @@
     const CATEGORY_ICON = { headline_clarity: 'fileText', cta_friction: 'zap', visual_copy_match: 'eye', benefit_specificity: 'target', trust_signals: 'shield' };
     /* Compact ad-issue card: category icon + big severity score + one-line reason + bar.
        No expand — the reason is a short fragment that reads at a glance. */
-    /* Progressive-disclosure text: shows a 2-line teaser, then a gamified
-       "Go deeper" button plays a short shimmer and reveals the full read the
-       model already wrote. No extra API cost: the depth is opt-in per card.
-       The button only appears when the text is actually longer than the teaser. */
-    const ExpandableText = ({ text, accent = '#0a66c2', tint = '#eff6ff', label = 'Go deeper' }) => {
-      const [phase, setPhase] = useState('teaser'); // 'teaser' | 'loading' | 'open'
-      const [canExpand, setCanExpand] = useState(false);
-      const ref = React.useRef(null);
-      useEffect(() => {
-        const el = ref.current;
-        if (el) setCanExpand(el.scrollHeight - el.clientHeight > 4);
-      }, [text]);
-      const go = () => { setPhase('loading'); setTimeout(() => setPhase('open'), 460); };
-      const open = phase === 'open';
-      return (
-        <div>
-          <p ref={ref} className={"text-sm text-gray-600 " + (open ? "pop-reveal" : "clamp-2")} style={{ lineHeight: 1.5 }}>{text}</p>
-          {phase === 'loading' && (
-            <div className="flex items-center gap-1.5 mt-2.5">
-              {[0, 1, 2].map(d => <span key={d} className="w-1.5 h-1.5 rounded-full dot-bounce" style={{ background: accent, animationDelay: (d * 0.14) + 's' }} />)}
-              <span className="text-[11px] font-semibold" style={{ color: accent }}>Loading the full read</span>
-            </div>
-          )}
-          {phase === 'teaser' && canExpand && (
-            <button onClick={go} className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full transition-transform hover:scale-105 cursor-pointer" style={{ color: accent, background: tint }}>
-              <Icon name="sparkles" className="w-3 h-3" /> {label}
-            </button>
-          )}
-          {open && (
-            <button onClick={() => setPhase('teaser')} className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-gray-600 cursor-pointer">Show less</button>
-          )}
-        </div>
-      );
-    };
-
     const IssueRow = ({ issue }) => {
       const col = hexForScore(issue.score);
       const tint = issue.score <= 3 ? '#fef2f2' : issue.score <= 6 ? '#fffbeb' : '#f0fdf4';
@@ -465,7 +425,7 @@
             <span className="text-2xl font-extrabold leading-none flex-shrink-0" style={{ color: col }}>{issue.score}</span>
           </div>
           <div className="mb-2.5"><SeverityBar score={issue.score} height={5} /></div>
-          <ExpandableText text={issue.explanation} accent={col} tint={tint} />
+          <p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{issue.explanation}</p>
         </div>
       );
     };
@@ -3779,7 +3739,7 @@
                               <span className="text-2xl font-extrabold leading-none flex-shrink-0" style={{ color: col }}>{item.score > 0 ? item.score : '-'}</span>
                             </div>
                             <div className="mb-2.5"><SeverityBar score={item.score} height={5} /></div>
-                            <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><ExpandableText text={item.feedback} accent={col} tint={tint} /></div>
+                            <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{item.feedback}</p></div>
                           </div>
                         );
                       })}
@@ -3904,7 +3864,7 @@
                           </div>
                         </div>
                         <h3 className="font-semibold text-gray-900 text-sm mb-1 clamp-2" style={{ lineHeight: 1.35 }}>{exp.title}</h3>
-                        <ExpandableText text={exp.description} accent={accent} tint="#eff6ff" />
+                        <p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{exp.description}</p>
                       </div>
                     );
                   })}
