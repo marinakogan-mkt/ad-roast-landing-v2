@@ -825,6 +825,17 @@
       return { valid: true };
     };
 
+    /* Offer types drive how the roast calibrates CTA/funnel expectations (server maps each
+       id to a descriptive line in roast.js). 'content' covers top-of-funnel trust plays
+       (download a report/guide/whitepaper) where a demo/trial CTA would be the wrong ask;
+       'other' reveals a free-text field whose value (offerDetail) is passed verbatim. */
+    const OFFER_OPTIONS = [
+      { id: 'demo', label: 'Book a Demo', desc: 'Sales-led' },
+      { id: 'trial', label: 'Free Trial', desc: 'Self-serve' },
+      { id: 'content', label: 'Content / Lead Magnet', desc: 'Report, guide, trust' },
+      { id: 'other', label: 'Other', desc: 'Describe it' }
+    ];
+
     const getScoreColor = (s) => s <= 3 ? 'text-red-600 bg-red-50' : s <= 6 ? 'text-amber-600 bg-amber-50' : 'text-green-600 bg-green-50';
     const getScoreBorder = (s) => s <= 3 ? 'border-red-200' : s <= 6 ? 'border-amber-200' : 'border-green-200';
     const getScoreText = (s) => s <= 3 ? 'text-red-600' : s <= 6 ? 'text-amber-600' : 'text-green-600';
@@ -858,6 +869,7 @@
       const [adVariants, setAdVariants] = useState([newBlankVariant(1)]);
       const [platform, setPlatform] = useState(null);
       const [offerType, setOfferType] = useState(null);
+      const [offerDetail, setOfferDetail] = useState(''); // free text when offerType === 'other'
       const [icp, setIcp] = useState('');
       const [heroErr, setHeroErr] = useState('');
       const [icpAuto, setIcpAuto] = useState({ loading: false, err: '', done: false });
@@ -948,7 +960,7 @@
         }
       }, [paymentVerified, view]);
       const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.adScreenshot;
-      const canProceed = platform && offerType && icp.length > 10;
+      const canProceed = platform && offerType && (offerType !== 'other' || offerDetail.trim().length > 2) && icp.length > 10;
       /* A saved/shared report (opened via ?id=<reportId>) always shows in full —
          the report was already generated, so the premium blur must never appear
          on an opened link. Gating only applies to a freshly-run, out-of-token roast. */
@@ -1042,6 +1054,7 @@
             setIcp(pending.payload.icpDescription || '');
             setPlatform(pending.payload.platform || null);
             setOfferType(pending.payload.offerType || null);
+            setOfferDetail(pending.payload.offerDetail || '');
             setInputs(pending.inputs || { url: '', copy: '', visual: '', adScreenshot: null, adScreenshotPreview: null });
             setView('processing');
             fetch('/api/roast', {
@@ -1541,7 +1554,7 @@
       };
 
       const generate = async () => {
-        const payload = { platform, offerType, icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null };
+        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null };
 
         /* Monetization 2b: require a roast-tool account before running the roast.
            Stash the pending roast so we can resume it after sign-in (?signedin=1). */
@@ -1604,6 +1617,7 @@
         const payload = {
           platform,
           offerType,
+          offerDetail: offerType === 'other' ? offerDetail.trim() : '',
           icpDescription: icp,
           landingUrl: inputs.url,
           adCopy: variantsText,
@@ -3001,7 +3015,7 @@
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">Offer type</label>
                     <div className="grid grid-cols-2 gap-2">
-                      {[{ id: 'demo', label: 'Demo' }, { id: 'trial', label: 'Trial' }].map((o) => (
+                      {[{ id: 'demo', label: 'Demo' }, { id: 'trial', label: 'Trial' }, { id: 'content', label: 'Content' }].map((o) => (
                         <button key={o.id} onClick={() => setOfferType(o.id)}
                           style={offerType === o.id ? { borderColor: '#0a66c2', backgroundColor: '#e8f3ff', color: '#0a66c2' } : {}}
                           className={`p-2 rounded border-2 text-sm font-medium transition-all ${offerType === o.id ? '' : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'}`}>{o.label}</button>
@@ -3190,7 +3204,7 @@
           steps.push({ id: 'adCopy', q: 'Paste your ad copy', valid: () => (inputs.copy?.trim().length > 0) || inputs.adScreenshot });
         }
         steps.push({ id: 'review', q: "Here's what we found", hint: "Pulled from your Ad Library link. Edit anything that's off.", valid: () => icp?.trim().length > 0 });
-        steps.push({ id: 'offer', q: 'What type of offer is this?', valid: () => !!offerType });
+        steps.push({ id: 'offer', q: 'What type of offer is this?', valid: () => !!offerType && (offerType !== 'other' || offerDetail.trim().length > 2) });
         steps.push({ id: 'lpUrl', q: "What's the landing page this ad points to?", hint: "The exact page your pasted ad sends clicks to. We'll pull all the copy from it.", valid: () => !inputs.url?.trim() || isValidUrl(inputs.url) });
         const stepIdx = Math.min(guidedStep, steps.length - 1);
         const step = steps[stepIdx];
@@ -3305,17 +3319,26 @@
                     </div>
                   )}
                   {step.id === 'offer' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      {[{ id: 'demo', label: 'Book a Demo', desc: 'Sales-led' }, { id: 'trial', label: 'Free Trial', desc: 'Self-serve' }].map((o) => {
-                        const on = offerType === o.id;
-                        return (
-                          <button key={o.id} onClick={() => setOfferType(o.id)} className="relative p-4 rounded-xl border-2 text-left transition-all card-lift" style={on ? { borderColor: '#0a66c2', background: '#eef2ff' } : { borderColor: '#e8e8f0', background: '#fff' }}>
-                            {on && <span className="absolute top-2 right-2.5 text-sm font-bold" style={{ color: '#0a66c2' }}>✓</span>}
-                            <div className="font-semibold text-sm text-gray-900">{o.label}</div>
-                            <div className="text-xs text-gray-400 mt-0.5">{o.desc}</div>
-                          </button>
-                        );
-                      })}
+                    <div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {OFFER_OPTIONS.map((o) => {
+                          const on = offerType === o.id;
+                          return (
+                            <button key={o.id} onClick={() => setOfferType(o.id)} className="relative p-4 rounded-xl border-2 text-left transition-all card-lift" style={on ? { borderColor: '#0a66c2', background: '#eef2ff' } : { borderColor: '#e8e8f0', background: '#fff' }}>
+                              {on && <span className="absolute top-2 right-2.5 text-sm font-bold" style={{ color: '#0a66c2' }}>✓</span>}
+                              <div className="font-semibold text-sm text-gray-900">{o.label}</div>
+                              <div className="text-xs text-gray-400 mt-0.5">{o.desc}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {offerType === 'other' && (
+                        <div className="mt-3 pop-reveal">
+                          <label className="block text-xs font-semibold text-gray-500 mb-1.5">What is the offer / CTA? So we grade the ask against the right funnel stage.</label>
+                          <input type="text" autoFocus value={offerDetail} onChange={(e) => setOfferDetail(e.target.value)} placeholder="e.g. Download the 2026 threat report, Watch a webinar, Join the waitlist"
+                            className={`w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none text-gray-900 ${offerDetail.trim().length > 2 ? 'border-green-400' : 'border-gray-200 focus:border-blue-500'}`} />
+                        </div>
+                      )}
                     </div>
                   )}
                   {step.id === 'lpUrl' && (
@@ -3413,7 +3436,7 @@
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2">Offer Type</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {[{ id: 'demo', label: 'Book a Demo' }, { id: 'trial', label: 'Free Trial' }].map((o) => (
+                    {[{ id: 'demo', label: 'Book a Demo' }, { id: 'trial', label: 'Free Trial' }, { id: 'content', label: 'Content' }].map((o) => (
                       <button key={o.id} onClick={() => setOfferType(o.id)} style={offerType === o.id ? { borderColor: '#0a66c2', backgroundColor: '#e8f3ff', color: '#0a66c2' } : {}} className={`p-2.5 rounded border-2 text-sm font-medium transition-all ${offerType === o.id ? '' : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'}`}>{o.label}</button>
                     ))}
                   </div>

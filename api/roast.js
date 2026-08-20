@@ -182,7 +182,7 @@ export default async function handler(req, res) {
     body = {};
   }
 
-  const { platform, offerType, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType } = body;
+  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType } = body;
 
   /* Pre-LLM token gate (optimization #2): a roast only warrants an Anthropic call
      when the caller is a signed-in account WITH tokens. Out-of-token or anonymous
@@ -228,7 +228,7 @@ export default async function handler(req, res) {
     catch (e) { return _norm(u); }
   };
   const dedupeHash = crypto.createHash('sha256')
-    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null }))
+    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null }))
     .digest('hex');
   const dedupeKey = acctEmail ? `roast:dedupe:${acctEmail}:${dedupeHash}` : null;
   if (dedupeKey && !redisDown) {
@@ -431,10 +431,25 @@ CTA RULES — three separate CTA surfaces, never blur them:
 - button_cta MUST be copied verbatim from the option list for the current platform — same spelling and capitalization. NEVER invent a label. "Book a Demo", "Book a Call", "Get Demo", "Try Now", "Start Free Trial" are NOT valid buttons — map the intent to the nearest allowed option (book-a-demo -> "Request Demo" on LinkedIn, "Book Now" on Meta/Google; self-serve trial -> "Sign Up"/"Start Now"; top-of-funnel content -> "Learn More"/"Download").
 - Platform linkedin, meta, or google: set fix_kit.button_cta to the single best label from THAT platform's list above, and fix_kit.button_cta_reason to one sentence on why it beats "Learn More" (the lazy default). fix_kit.ctas are SEPARATE free-text copy/creative CTAs; the LP CTA is landing_page_headline/subhead. Keep all three consistent but distinct.`;
 
+  /* Expand the terse offer id into a descriptive line so the model calibrates the WHOLE
+     roast — CTA-friction scoring, the recommended pre-set button, and the ad↔landing match
+     — to the real funnel stage. Without this a content/lead-magnet ad gets judged as if it
+     should push a demo, unfairly dinging its (correct) low-commitment CTA. 'other' passes
+     the user's own words through verbatim. */
+  const OFFER_LABELS = {
+    demo: 'Book a demo (sales-led). The conversion action is a booked sales call, a high-commitment ask.',
+    trial: 'Free trial / self-serve signup. The conversion action is starting a product trial or signing up.',
+    content: 'Content / lead magnet (top-of-funnel). The conversion action is downloading a resource (report, guide, whitepaper, article, checklist) to build trust and capture a lead, NOT booking a demo or starting a trial. A low-commitment content CTA (e.g. Download, Learn More, Subscribe) is the RIGHT call here; grading it as if it should push a demo or trial is a funnel-stage mismatch. Recommend a content-style pre-set button, not Request Demo / Sign Up.'
+  };
+  const offerLine = OFFER_LABELS[offerType]
+    || (offerType === 'other' && (offerDetail || '').trim()
+        ? `Custom offer described by the advertiser: "${offerDetail.trim()}". Calibrate the CTA-friction scoring, the funnel stage, and the recommended pre-set button to THIS offer, not to a demo or trial by default.`
+        : (offerType || 'Not specified'));
+
   const userPrompt = `Analyze this ad${hasAnyLandingContent ? ' AND its landing page' : ''} for ICP: "${icpDescription}"
 
 Platform: ${platform}
-Offer: ${offerType}
+Offer: ${offerLine}
 Landing Page URL: ${landingUrl || 'Not provided'}
 Landing page content available: ${hasAnyLandingContent ? 'YES — SCORE IT 1-10' : 'NO — SCORE IT 0'}
 
