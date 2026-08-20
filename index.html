@@ -59,7 +59,12 @@
     /* Result card: grows a touch on hover so the section feels alive and tactile. */
     .card-pop { transition: transform .22s cubic-bezier(.22,1,.36,1), box-shadow .22s; }
     .card-pop:hover { transform: translateY(-4px) scale(1.025); box-shadow: 0 12px 30px rgba(0,0,0,0.10); }
-    @media (prefers-reduced-motion: reduce){ .card-pop:hover{transform:none} }
+    /* Per-rank "Go deeper" reveal: dots while it loads, pop when the deeper read lands. */
+    @keyframes popReveal { 0%{opacity:.3;transform:translateY(4px) scale(.99)} 60%{transform:translateY(0) scale(1.004)} 100%{opacity:1;transform:none} }
+    .pop-reveal { animation: popReveal .4s cubic-bezier(.22,1,.36,1); }
+    @keyframes dotBounce { 0%,80%,100%{transform:scale(.5);opacity:.35} 40%{transform:scale(1);opacity:1} }
+    .dot-bounce { animation: dotBounce 1s infinite ease-in-out; }
+    @media (prefers-reduced-motion: reduce){ .card-pop:hover{transform:none} .pop-reveal,.dot-bounce{animation:none !important} }
     /* Results overview metric card — obviously clickable, lifts + turns blue on hover. */
     .metric-card { transition: transform .18s, box-shadow .18s, border-color .18s, background-color .18s; }
     .metric-card:hover { transform: translateY(-4px); border-color: #0a66c2 !important; background-color: #f8fbff; box-shadow: 0 12px 30px rgba(10,102,194,0.18); }
@@ -414,6 +419,45 @@
     const CATEGORY_ICON = { headline_clarity: 'fileText', cta_friction: 'zap', visual_copy_match: 'eye', benefit_specificity: 'target', trust_signals: 'shield' };
     /* Compact ad-issue card: category icon + big severity score + one-line reason + bar.
        No expand — the reason is a short fragment that reads at a glance. */
+    /* Per-rank progressive disclosure engineered from the model's OWN words:
+       the roast line is split on its first sentence boundary. The lead sentence
+       is the card's verdict (always shown); "Go deeper" unlocks the rest of the
+       SAME output as the deeper read. Nothing is fabricated — the deeper text is
+       the tail of the original explanation. Single-sentence lines show no button. */
+    const RankReveal = ({ text, accent = '#0a66c2', tint = '#eff6ff' }) => {
+      const parts = React.useMemo(() => {
+        const clean = (text || '').trim();
+        const m = clean.match(/^(.*?[.!?…])\s+(.+)$/); // first sentence, then the rest (no lookbehind, all browsers)
+        return m ? { lead: m[1], rest: m[2] } : { lead: clean, rest: '' };
+      }, [text]);
+      const [phase, setPhase] = useState('lead'); // 'lead' | 'loading' | 'open'
+      const go = () => { setPhase('loading'); setTimeout(() => setPhase('open'), 360); };
+      const open = phase === 'open';
+      return (
+        <div>
+          <p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{parts.lead}</p>
+          {parts.rest && phase === 'loading' && (
+            <div className="flex items-center gap-1.5 mt-2.5">
+              {[0, 1, 2].map(d => <span key={d} className="w-1.5 h-1.5 rounded-full dot-bounce" style={{ background: accent, animationDelay: (d * 0.14) + 's' }} />)}
+              <span className="text-[11px] font-semibold" style={{ color: accent }}>Going deeper</span>
+            </div>
+          )}
+          {parts.rest && open && (
+            <div className="mt-2.5 rounded-lg p-2.5 pop-reveal" style={{ background: tint }}>
+              <div className="text-[10px] font-bold uppercase tracking-wide mb-1 flex items-center gap-1" style={{ color: accent }}><Icon name="sparkles" className="w-3 h-3" /> The deeper read</div>
+              <p className="text-sm text-gray-700" style={{ lineHeight: 1.5 }}>{parts.rest}</p>
+              <button onClick={() => setPhase('lead')} className="mt-1.5 text-[11px] font-semibold text-gray-400 hover:text-gray-600 cursor-pointer">Show less</button>
+            </div>
+          )}
+          {parts.rest && phase === 'lead' && (
+            <button onClick={go} className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full transition-transform hover:scale-105 cursor-pointer" style={{ color: accent, background: tint }}>
+              <Icon name="sparkles" className="w-3 h-3" /> Go deeper
+            </button>
+          )}
+        </div>
+      );
+    };
+
     const IssueRow = ({ issue }) => {
       const col = hexForScore(issue.score);
       const tint = issue.score <= 3 ? '#fef2f2' : issue.score <= 6 ? '#fffbeb' : '#f0fdf4';
@@ -425,7 +469,7 @@
             <span className="text-2xl font-extrabold leading-none flex-shrink-0" style={{ color: col }}>{issue.score}</span>
           </div>
           <div className="mb-2.5"><SeverityBar score={issue.score} height={5} /></div>
-          <p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{issue.explanation}</p>
+          <RankReveal text={issue.explanation} accent={col} tint={tint} />
         </div>
       );
     };
@@ -3739,7 +3783,7 @@
                               <span className="text-2xl font-extrabold leading-none flex-shrink-0" style={{ color: col }}>{item.score > 0 ? item.score : '-'}</span>
                             </div>
                             <div className="mb-2.5"><SeverityBar score={item.score} height={5} /></div>
-                            <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{item.feedback}</p></div>
+                            <div className={showFull ? "" : "blur-sm pointer-events-none select-none"}><RankReveal text={item.feedback} accent={col} tint={tint} /></div>
                           </div>
                         );
                       })}
@@ -3864,7 +3908,7 @@
                           </div>
                         </div>
                         <h3 className="font-semibold text-gray-900 text-sm mb-1 clamp-2" style={{ lineHeight: 1.35 }}>{exp.title}</h3>
-                        <p className="text-sm text-gray-600" style={{ lineHeight: 1.5 }}>{exp.description}</p>
+                        <RankReveal text={exp.description} accent={accent} tint="#eff6ff" />
                       </div>
                     );
                   })}
