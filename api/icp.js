@@ -14,13 +14,17 @@
 // Its own env var (not the shared ANTHROPIC_MODEL) so it doesn't inherit Sonnet.
 const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
 
-/* ICP cache (token optimization): a company's ICP is derived purely from its public
-   website, so it's the same no matter who asks or how often. We cache the inferred
-   ICP by domain and reuse it, so the Haiku call runs ONCE per company instead of on
-   every roast. This also covers the multi-company case (each domain caches on its own
-   key). Pass { refresh: true } to force a fresh inference when the user wants to change
-   it. Redis is optional here: if it's unavailable we just skip the cache and infer. */
+/* ICP cache (token optimization): the ICP inferred from a given page is stable, so we
+   cache it and reuse it instead of re-running Haiku every roast. IMPORTANT: the page the
+   user submits is almost always an AD-LIBRARY link (Meta / LinkedIn / Google), whose HOST
+   is the shared ad platform — NOT the advertiser. Keying the cache by host therefore made
+   every advertiser on the same platform collide (paste a Drop Zone ad, get back the Ionix
+   ICP that was cached first under `facebook.com`). So we key by the FULL normalized URL
+   (hashed): each distinct ad link gets its own entry, and re-detecting the exact same link
+   still hits cache. Pass { refresh: true } to force a fresh inference. Redis is optional:
+   if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
+import crypto from 'crypto';
 let _redis = null;
 try {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
@@ -85,9 +89,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: e.message });
   }
 
-  // Reuse a previously inferred ICP for this domain (skip the Haiku call entirely)
-  // unless the caller explicitly asked to refresh it.
-  const icpCacheKey = `icp:domain:${domain}`;
+  // Reuse a previously inferred ICP for this exact page (skip the Haiku call entirely)
+  // unless the caller explicitly asked to refresh it. Keyed by the FULL url, not the
+  // host, so different ad-library links on the same platform never collide.
+  const urlHash = crypto.createHash('sha256').update(url).digest('hex').slice(0, 32);
+  const icpCacheKey = `icp:url:${urlHash}`;
   if (_redis && !body.refresh) {
     try {
       const raw = await _redis.get(icpCacheKey);
