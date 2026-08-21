@@ -958,6 +958,7 @@
       const [icpAuto, setIcpAuto] = useState({ loading: false, err: '', done: false });
       const [siteUrl, setSiteUrl] = useState('');
       const [companyName, setCompanyName] = useState(''); // advertiser name from ICP auto-detect, shown atop the roast
+      const [adLink, setAdLink] = useState(''); // the ad-library URL being roasted, shown in the "what's being roasted" showcase
       const [icpTags, setIcpTags] = useState([]);
       const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
       const platformFromLink = (link) => { const l = (link || '').toLowerCase(); return /linkedin/.test(l) ? 'linkedin' : /facebook|instagram|fb\.|meta/.test(l) ? 'meta' : /google|goog|youtube|doubleclick/.test(l) ? 'google' : 'linkedin'; };
@@ -1253,7 +1254,12 @@
                 if (data.website) setSiteUrl(data.website);
                 if (data.offerType) setOfferType(data.offerType);
                 if (data.offerDetail) setOfferDetail(data.offerDetail);
-                if (data.landingUrl) setInputs(p => ({ ...p, url: data.landingUrl }));
+                if (data.adUrl) setAdLink(data.adUrl);
+                setInputs(p => ({
+                  ...p,
+                  url: data.landingUrl || p.url,
+                  adScreenshotPreview: data.adScreenshot ? `data:${data.adScreenshotType || 'image/jpeg'};base64,${data.adScreenshot}` : p.adScreenshotPreview
+                }));
                 setIsSharedView(true);
                 setView('results');
                 return;
@@ -1423,7 +1429,7 @@
         setResult(null); setError(null);
         setIsUnlocked(false); setNeedsPayment(false); setPaymentVerified(false); setShowUnlockModal(false);
         setReportEmail(''); setReportEmailErr(null); setPdfStatus(null); setShareableLink(''); setCurrentReportId(null); setIsSharedView(false);
-        setIcp(''); setSiteUrl(''); setCompanyName(''); setIcpTags([]); setIcpAuto({ loading: false, err: '', done: false });
+        setIcp(''); setSiteUrl(''); setCompanyName(''); setAdLink(''); setIcpTags([]); setIcpAuto({ loading: false, err: '', done: false });
         setInputs({ url: '', copy: v, visual: '', adScreenshot: null, adScreenshotPreview: null });
         setPlatform(platformFromLink(v));
         setGuidedHadCopyAtStart(true); setGuidedStep(0);
@@ -1645,7 +1651,8 @@
       };
 
       const generate = async () => {
-        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '' };
+        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '', adUrl: (isValidUrl(inputs.copy) ? inputs.copy.trim() : '') };
+        setAdLink(payload.adUrl || '');
 
         /* Monetization 2b: require a roast-tool account before running the roast.
            Stash the pending roast so we can resume it after sign-in (?signedin=1). */
@@ -3672,9 +3679,11 @@
         const roastMetaRows = [
           companyName && companyName.trim() ? { label: 'Company', value: companyName.trim() } : null,
           (icp || '').trim() ? { label: 'Target / ICP', value: icp.trim() } : null,
-          (siteUrl || '').trim() ? { label: 'Website', value: siteUrl.trim(), href: _href(siteUrl.trim()) } : null,
-          (inputs.url || '').trim() ? { label: 'Landing page', value: inputs.url.trim(), href: _href(inputs.url.trim()) } : null
+          (siteUrl || '').trim() ? { label: 'Website', value: siteUrl.trim(), href: _href(siteUrl.trim()) } : null
         ].filter(Boolean);
+        const adImg = inputs.adScreenshotPreview || '';
+        const landingLink = (inputs.url || '').trim();
+        const showcaseVisible = !!(adImg || adLink || landingLink || roastMetaRows.length > 0);
         const overviewCards = [
           { id: 'scores', label: 'Scores', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score) },
           { id: 'issues', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue) },
@@ -3707,41 +3716,64 @@
             <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-10 pb-16 space-y-8" style={{ position: 'relative' }}>
               <div className="hero-wash" style={{ inset: '-30px 0 auto 0', height: '540px' }} />
               <div style={{ position: 'relative', zIndex: 1 }} className="space-y-8">
-                {/* Results hero — mirrors the landing page: red-dot eyebrow + large light heading */}
+                {/* Results hero — cold-resource framing: names the advertiser + says what
+                    the reader is about to see, with an AdRoast attribution eyebrow, so a
+                    first-time recipient (this link gets shared cold) understands it instantly. */}
                 <div className="reveal">
                   <p className="mb-4" style={{ color: '#0a66c2' }}>
-                    <span className="inline-flex items-center gap-2 px-4 py-1.5 border border-gray-200 rounded-full" style={{ background: 'rgba(255,255,255,0.7)' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span><span style={{ fontSize: '14px' }}>Your ad, brutally reviewed</span></span>
+                    <span className="inline-flex items-center gap-2 px-4 py-1.5 border border-gray-200 rounded-full" style={{ background: 'rgba(255,255,255,0.7)' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span><span style={{ fontSize: '14px' }}>AdRoast · independent ad teardown</span></span>
                   </p>
                   <h1 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(28px, 5vw, 46px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>
-                    {roastedName ? <>Here's the roast for <span style={{ fontWeight: 500, color: '#0a66c2' }}>{roastedName}</span>.</> : "Here's your roast."}
+                    {roastedName ? <>Where <span style={{ fontWeight: 500, color: '#0a66c2' }}>{roastedName}'s</span> ads lose the right buyer.</> : "Where your ad loses the right buyer."}
                   </h1>
-                  <p className="text-gray-400 max-w-lg" style={{ fontSize: 'clamp(15px, 2.5vw, 18px)', lineHeight: 1.7 }}>Every score, issue, and ready-to-ship fix. Tap a card below to open that section.</p>
-                  {/* What we roasted — collapsed by default; expands to the full ICP + the
-                      site/landing/platform/offer the roaster entered, so the report is clearly
-                      theirs and the target is fully readable (no more truncated "Target …"). */}
-                  {roastMetaRows.length > 0 && (
-                    <details className="group mt-5 rounded-xl border border-gray-200 bg-white/70 max-w-2xl">
-                      <summary className="flex items-center justify-between gap-2 px-4 py-3 cursor-pointer select-none" style={{ listStyle: 'none' }}>
-                        <span className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} /> What we roasted{roastedName ? ' · ' + roastedName : ''}</span>
-                        <Icon name="chevronRight" className="w-4 h-4 text-gray-400 rr-chev" />
-                      </summary>
-                      <div className="px-4 pb-4 pt-1 space-y-3 border-t border-gray-100">
-                        {roastMetaRows.map((row, i) => (
-                          <div key={i} className="grid gap-2 items-start" style={{ gridTemplateColumns: '108px 1fr' }}>
-                            <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400 pt-0.5">{row.label}</span>
-                            {row.href
-                              ? <a href={row.href} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline" style={{ wordBreak: 'break-word' }}>{row.value}</a>
-                              : <span className="text-sm text-gray-800" style={{ lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{row.value}</span>}
-                          </div>
-                        ))}
-                        {(platform || offerLabelText) && (
-                          <div className="flex gap-2 flex-wrap pt-1">
-                            {platform && <span className="px-2.5 py-1 rounded-full text-xs font-medium capitalize" style={{ background: '#eef2ff', color: '#0a66c2' }}>{platform}</span>}
-                            {offerLabelText && <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: '#f1f5f9', color: '#475569' }}>{offerLabelText}</span>}
+                  <p className="text-gray-400 max-w-xl" style={{ fontSize: 'clamp(15px, 2.5vw, 18px)', lineHeight: 1.7 }}>An independent, scored teardown of {roastedName ? roastedName + "'s" : 'this'} ad and its landing page, and every place the message leaks the wrong prospects in and the right ones out.</p>
+
+                  {/* What's being roasted — the actual ad creative + the ad/landing links,
+                      shown up front so a cold viewer sees exactly which ad and page this is
+                      about. The deeper context (ICP, site, offer) stays in the expandable. */}
+                  {showcaseVisible && (
+                    <div className="mt-6 rounded-2xl border border-gray-200 bg-white overflow-hidden max-w-2xl">
+                      <div className="flex flex-col sm:flex-row">
+                        {adImg && (
+                          <div className="sm:w-44 flex-shrink-0 bg-gray-50 border-b sm:border-b-0 sm:border-r border-gray-100 flex items-center justify-center p-3">
+                            <img src={adImg} alt="The ad being roasted" className="rounded-lg object-contain" style={{ maxHeight: '11rem', maxWidth: '100%' }} />
                           </div>
                         )}
+                        <div className="p-4 flex-1 min-w-0">
+                          <div className="text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1.5">The ad we roasted</div>
+                          <div className="font-semibold text-gray-900 mb-2">{roastedName || 'This ad'}{platform ? <span className="text-gray-400 font-normal capitalize"> · {platform}</span> : null}</div>
+                          <div className="space-y-1.5">
+                            {adLink && <a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline"><Icon name="link" className="w-3.5 h-3.5 flex-shrink-0" /><span className="min-w-0" style={{ wordBreak: 'break-all' }}>{adLink}</span></a>}
+                            {landingLink && <a href={_href(landingLink)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline"><Icon name="globe" className="w-3.5 h-3.5 flex-shrink-0" /><span className="min-w-0" style={{ wordBreak: 'break-all' }}>{landingLink}</span></a>}
+                            {!adLink && !landingLink && <span className="text-sm text-gray-400">Ad copy pasted directly</span>}
+                          </div>
+                        </div>
                       </div>
-                    </details>
+                      {roastMetaRows.length > 0 && (
+                        <details className="group border-t border-gray-100">
+                          <summary className="flex items-center justify-between gap-2 px-4 py-3 cursor-pointer select-none" style={{ listStyle: 'none' }}>
+                            <span className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} /> Who it's for, and the full brief</span>
+                            <Icon name="chevronRight" className="w-4 h-4 text-gray-400 rr-chev" />
+                          </summary>
+                          <div className="px-4 pb-4 pt-1 space-y-3 border-t border-gray-100">
+                            {roastMetaRows.map((row, i) => (
+                              <div key={i} className="grid gap-2 items-start" style={{ gridTemplateColumns: '108px 1fr' }}>
+                                <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400 pt-0.5">{row.label}</span>
+                                {row.href
+                                  ? <a href={row.href} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline" style={{ wordBreak: 'break-word' }}>{row.value}</a>
+                                  : <span className="text-sm text-gray-800" style={{ lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{row.value}</span>}
+                              </div>
+                            ))}
+                            {(platform || offerLabelText) && (
+                              <div className="flex gap-2 flex-wrap pt-1">
+                                {platform && <span className="px-2.5 py-1 rounded-full text-xs font-medium capitalize" style={{ background: '#eef2ff', color: '#0a66c2' }}>{platform}</span>}
+                                {offerLabelText && <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: '#f1f5f9', color: '#475569' }}>{offerLabelText}</span>}
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      )}
+                    </div>
                   )}
                 </div>
                 {/* Overview — a clickable metric card per section. Each previews its number

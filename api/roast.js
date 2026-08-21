@@ -182,7 +182,7 @@ export default async function handler(req, res) {
     body = {};
   }
 
-  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, company, website } = body;
+  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, company, website, adUrl } = body;
 
   /* Pre-LLM token gate (optimization #2): a roast only warrants an Anthropic call
      when the caller is a signed-in account WITH tokens. Out-of-token or anonymous
@@ -594,7 +594,14 @@ Return the JSON object defined in the output contract. All fields required.`;
             parsed._reportId = reportId;
             const { _entitlement, _meta, ...cleanResult } = parsed; // don't persist per-request entitlement/debug
             const ts = Date.now();
-            const record = { result: cleanResult, icp: icpDescription || '', platform: platform || '', offerType: offerType || '', offerDetail: offerDetail || '', company: company || '', website: website || '', landingUrl: landingUrl || '', email: acctEmail, ts };
+            const record = { result: cleanResult, icp: icpDescription || '', platform: platform || '', offerType: offerType || '', offerDetail: offerDetail || '', company: company || '', website: website || '', landingUrl: landingUrl || '', adUrl: adUrl || '', email: acctEmail, ts };
+            /* Persist the ad creative so a shared/cold report shows the actual ad being
+               roasted. Downscaled JPEG (~800px) is small; cap defensively so an oversized
+               image never blows the Redis value limit (the roast still saves without it). */
+            if (adScreenshot && typeof adScreenshot === 'string' && adScreenshot.length < 700000) {
+              record.adScreenshot = adScreenshot;
+              record.adScreenshotType = adScreenshotType || 'image/jpeg';
+            }
             await _redis.set(`roast:report:${reportId}`, JSON.stringify(record), { ex: 60 * 60 * 24 * 90 });
             const summary = { reportId, ts, email: acctEmail, platform: platform || '', company: company || '', icp: (icpDescription || '').slice(0, 160), adScore: parsed.overall_score ?? null, lpScore: parsed.landing_page_roast?.overall_score ?? null, matchScore: parsed.ad_landing_mismatch?.alignment_score ?? null };
             await _redis.lpush('roast:index', JSON.stringify(summary));

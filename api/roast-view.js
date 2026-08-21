@@ -87,8 +87,11 @@ export default async function handler(req, res) {
         company: rec.company || '',
         website: rec.website || '',
         landingUrl: rec.landingUrl || '',
+        adUrl: rec.adUrl || '',
         offerType: rec.offerType || '',
-        offerDetail: rec.offerDetail || ''
+        offerDetail: rec.offerDetail || '',
+        adScreenshot: rec.adScreenshot || '',
+        adScreenshotType: rec.adScreenshotType || ''
       });
     }
   } catch (e) {
