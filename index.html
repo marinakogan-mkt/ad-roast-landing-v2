@@ -54,6 +54,11 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    /* "What we roasted" collapsible: hide the native marker, rotate our chevron when open. */
+    summary { list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    .rr-chev { transition: transform .2s ease; }
+    details[open] .rr-chev { transform: rotate(90deg); }
     .card-lift { transition: transform 0.2s, box-shadow 0.2s; }
     .card-lift:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
     /* Result card: grows a touch on hover so the section feels alive and tactile. */
@@ -874,6 +879,7 @@
       const [heroErr, setHeroErr] = useState('');
       const [icpAuto, setIcpAuto] = useState({ loading: false, err: '', done: false });
       const [siteUrl, setSiteUrl] = useState('');
+      const [companyName, setCompanyName] = useState(''); // advertiser name from ICP auto-detect, shown atop the roast
       const [icpTags, setIcpTags] = useState([]);
       const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
       const platformFromLink = (link) => { const l = (link || '').toLowerCase(); return /linkedin/.test(l) ? 'linkedin' : /facebook|instagram|fb\.|meta/.test(l) ? 'meta' : /google|goog|youtube|doubleclick/.test(l) ? 'google' : 'linkedin'; };
@@ -887,6 +893,7 @@
           if (!r.ok || data.error) throw new Error(data.error || 'no result');
           if (data.icp_text) setIcp(data.icp_text);
           if (data.website) setSiteUrl(data.website);
+          if (data.company) setCompanyName(data.company);
           if (Array.isArray(data.tags)) setIcpTags(data.tags);
           setIcpAuto({ loading: false, err: '', done: true });
         } catch (e) {
@@ -1329,7 +1336,7 @@
         setResult(null); setError(null);
         setIsUnlocked(false); setNeedsPayment(false); setPaymentVerified(false); setShowUnlockModal(false);
         setReportEmail(''); setReportEmailErr(null); setPdfStatus(null); setShareableLink(''); setCurrentReportId(null); setIsSharedView(false);
-        setIcp(''); setSiteUrl(''); setIcpTags([]); setIcpAuto({ loading: false, err: '', done: false });
+        setIcp(''); setSiteUrl(''); setCompanyName(''); setIcpTags([]); setIcpAuto({ loading: false, err: '', done: false });
         setInputs({ url: '', copy: v, visual: '', adScreenshot: null, adScreenshotPreview: null });
         setPlatform(platformFromLink(v));
         setGuidedHadCopyAtStart(true); setGuidedStep(0);
@@ -2293,7 +2300,7 @@
                     style={{ borderColor: heroErr ? '#dc2626' : '#e8e8f0' }}
                   />
                   <button
-                    onClick={() => { const v = (inputs.copy || '').trim(); if (!v) { setHeroErr('Please paste your Ad Library link first.'); return; } if (!isValidUrl(v)) { setHeroErr("That doesn't look like a valid link. Paste your full ad URL."); return; } setHeroErr(''); setPlatform(platformFromLink(v)); setIcp(''); setSiteUrl(''); setIcpAuto({ loading: false, err: '', done: false }); setGuidedHadCopyAtStart(true); setGuidedStep(0); setView('guided'); detectFromAd(); }}
+                    onClick={() => { const v = (inputs.copy || '').trim(); if (!v) { setHeroErr('Please paste your Ad Library link first.'); return; } if (!isValidUrl(v)) { setHeroErr("That doesn't look like a valid link. Paste your full ad URL."); return; } setHeroErr(''); setPlatform(platformFromLink(v)); setIcp(''); setSiteUrl(''); setCompanyName(''); setIcpAuto({ loading: false, err: '', done: false }); setGuidedHadCopyAtStart(true); setGuidedStep(0); setView('guided'); detectFromAd(); }}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
                     className="px-6 py-2 border rounded-full font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
                   >Roast my Ad for free →</button>
@@ -3565,6 +3572,20 @@
         const lp = result.landing_page_roast || {};
         const mismatch = result.ad_landing_mismatch || {};
         const avgIssue = visibleIssues.length ? Math.round(visibleIssues.reduce((s, i) => s + (i.score || 5), 0) / visibleIssues.length) : 5;
+        /* Who this roast is for. Prefer the detected company name; fall back to the
+           website/landing hostname so the report still reads as theirs. */
+        const _host = (u) => { try { return new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
+        const _href = (u) => /^https?:\/\//i.test(u) ? u : 'https://' + u;
+        const roastedName = (companyName || '').trim() || _host(siteUrl) || _host(inputs.url) || '';
+        const offerLabelText = offerType === 'other'
+          ? ((offerDetail || '').trim() || 'Other')
+          : ((OFFER_OPTIONS.find(o => o.id === offerType) || {}).label || offerType || '');
+        const roastMetaRows = [
+          companyName && companyName.trim() ? { label: 'Company', value: companyName.trim() } : null,
+          (icp || '').trim() ? { label: 'Target / ICP', value: icp.trim() } : null,
+          (siteUrl || '').trim() ? { label: 'Website', value: siteUrl.trim(), href: _href(siteUrl.trim()) } : null,
+          (inputs.url || '').trim() ? { label: 'Landing page', value: inputs.url.trim(), href: _href(inputs.url.trim()) } : null
+        ].filter(Boolean);
         const overviewCards = [
           { id: 'scores', label: 'Scores', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score) },
           { id: 'issues', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue) },
@@ -3602,8 +3623,37 @@
                   <p className="mb-4" style={{ color: '#0a66c2' }}>
                     <span className="inline-flex items-center gap-2 px-4 py-1.5 border border-gray-200 rounded-full" style={{ background: 'rgba(255,255,255,0.7)' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span><span style={{ fontSize: '14px' }}>Your ad, brutally reviewed</span></span>
                   </p>
-                  <h1 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(28px, 5vw, 46px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>Here's your roast.</h1>
+                  <h1 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(28px, 5vw, 46px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>
+                    {roastedName ? <>Here's the roast for <span style={{ fontWeight: 500, color: '#0a66c2' }}>{roastedName}</span>.</> : "Here's your roast."}
+                  </h1>
                   <p className="text-gray-400 max-w-lg" style={{ fontSize: 'clamp(15px, 2.5vw, 18px)', lineHeight: 1.7 }}>Every score, issue, and ready-to-ship fix. Tap a card below to open that section.</p>
+                  {/* What we roasted — collapsed by default; expands to the full ICP + the
+                      site/landing/platform/offer the roaster entered, so the report is clearly
+                      theirs and the target is fully readable (no more truncated "Target …"). */}
+                  {roastMetaRows.length > 0 && (
+                    <details className="group mt-5 rounded-xl border border-gray-200 bg-white/70 max-w-2xl">
+                      <summary className="flex items-center justify-between gap-2 px-4 py-3 cursor-pointer select-none" style={{ listStyle: 'none' }}>
+                        <span className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} /> What we roasted{roastedName ? ' · ' + roastedName : ''}</span>
+                        <Icon name="chevronRight" className="w-4 h-4 text-gray-400 rr-chev" />
+                      </summary>
+                      <div className="px-4 pb-4 pt-1 space-y-3 border-t border-gray-100">
+                        {roastMetaRows.map((row, i) => (
+                          <div key={i} className="grid gap-2 items-start" style={{ gridTemplateColumns: '108px 1fr' }}>
+                            <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400 pt-0.5">{row.label}</span>
+                            {row.href
+                              ? <a href={row.href} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline" style={{ wordBreak: 'break-word' }}>{row.value}</a>
+                              : <span className="text-sm text-gray-800" style={{ lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{row.value}</span>}
+                          </div>
+                        ))}
+                        {(platform || offerLabelText) && (
+                          <div className="flex gap-2 flex-wrap pt-1">
+                            {platform && <span className="px-2.5 py-1 rounded-full text-xs font-medium capitalize" style={{ background: '#eef2ff', color: '#0a66c2' }}>{platform}</span>}
+                            {offerLabelText && <span className="px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: '#f1f5f9', color: '#475569' }}>{offerLabelText}</span>}
+                          </div>
+                        )}
+                      </div>
+                    </details>
+                  )}
                 </div>
                 {/* Overview — a clickable metric card per section. Each previews its number
                     + a mini bar, and expands the full section below when tapped. */}
@@ -3637,7 +3687,7 @@
               <div id="sec-scores" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 reveal scroll-mt-20">
                 <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast</div>
-                  <div className="text-xs text-gray-500 max-w-full sm:max-w-md truncate"><span className="font-semibold text-gray-700">Target:</span> {icp}</div>
+                  {roastedName && <div className="text-xs text-gray-500 truncate max-w-[60%]"><span className="font-semibold text-gray-700">{roastedName}</span></div>}
                 </div>
                 <HealthGauge score={result.overall_score} />
                 {(lp.overall_score > 0 || mismatch.alignment_score > 0) && (
