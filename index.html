@@ -886,6 +886,23 @@
       );
     }
 
+    /* Per-ad prefill memory (localStorage, keyed by the ad link). When someone roasts
+       the SAME ad again, we re-apply what they added by hand last time (the creative
+       image, the landing-page URL, the visual note, the offer) so they don't re-enter
+       it. ICP/website come back from auto-detect, so we keep them only as a fallback.
+       We store the image as its data URL and rebuild the base64/type from it on load. */
+    const _prefillKey = (link) => 'adroast_ad:' + String(link || '').trim().toLowerCase().replace(/[#?].*$/, '').replace(/\/+$/, '');
+    const saveAdPrefill = (link, data) => {
+      try {
+        if (!link) return;
+        localStorage.setItem(_prefillKey(link), JSON.stringify(data));
+      } catch (e) { /* quota / disabled — prefill is best-effort */ }
+    };
+    const loadAdPrefill = (link) => {
+      try { const r = localStorage.getItem(_prefillKey(link)); return r ? JSON.parse(r) : null; }
+      catch (e) { return null; }
+    };
+
     const saveToNotion = async (data) => {
       try {
         const res = await fetch('/api/lead', {
@@ -965,6 +982,26 @@
       const detectFromAd = async (overrideLink) => {
         const link = ((typeof overrideLink === 'string' ? overrideLink : inputs.copy) || '').trim();
         if (!link) { setIcpAuto({ loading: false, err: '', done: true }); return; }
+
+        /* Re-apply what the user added by hand the last time they roasted THIS ad
+           (creative image, landing URL, visual note, offer). Only fills gaps — never
+           overwrites something they just typed in this session. */
+        const saved = loadAdPrefill(link);
+        if (saved) {
+          setInputs(p => {
+            const next = { ...p };
+            if (!p.url && saved.url) next.url = saved.url;
+            if (!p.visual && saved.visual) next.visual = saved.visual;
+            if (!p.adScreenshotPreview && saved.adScreenshotPreview) {
+              next.adScreenshotPreview = saved.adScreenshotPreview;
+              next.adScreenshot = (saved.adScreenshotPreview.split(',')[1]) || null;
+              next.adScreenshotType = (saved.adScreenshotPreview.match(/^data:([^;]+);/) || [])[1] || 'image/jpeg';
+            }
+            return next;
+          });
+          if (saved.offerType && !offerType) { setOfferType(saved.offerType); if (saved.offerDetail) setOfferDetail(saved.offerDetail); }
+        }
+
         setIcpAuto({ loading: true, err: '', done: false }); setIcpTags([]);
         try {
           const r = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: link }) });
@@ -976,7 +1013,14 @@
           if (Array.isArray(data.tags)) setIcpTags(data.tags);
           setIcpAuto({ loading: false, err: '', done: true });
         } catch (e) {
-          setIcpAuto({ loading: false, err: "We couldn't auto-detect from your ad. Fill these in below.", done: true });
+          if (saved && (saved.icp || saved.siteUrl || saved.company)) {
+            if (saved.icp) setIcp(saved.icp);
+            if (saved.siteUrl) setSiteUrl(saved.siteUrl);
+            if (saved.company) setCompanyName(saved.company);
+            setIcpAuto({ loading: false, err: '', done: true });
+          } else {
+            setIcpAuto({ loading: false, err: "We couldn't auto-detect from your ad. Fill these in below.", done: true });
+          }
         }
       };
       const [linkedin, setLinkedin] = useState('');
@@ -1330,6 +1374,22 @@
         return () => window.removeEventListener('hashchange', onHash);
       }, []);
 
+      /* Fresh-load deep links to landing sections (the results-page cards open
+         /#deliverables and /#work-with-us in a NEW tab so the roast stays put).
+         React renders after the browser's native hash scroll, so scroll manually
+         once the section is in the DOM. */
+      React.useEffect(() => {
+        const id = (window.location.hash || '').replace('#', '');
+        if (id !== 'deliverables' && id !== 'work-with-us') return;
+        let tries = 0;
+        const tick = () => {
+          const el = document.getElementById(id);
+          if (el) { const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); return; }
+          if (tries++ < 20) setTimeout(tick, 150);
+        };
+        setTimeout(tick, 150);
+      }, []);
+
       /* Browser back-button support inside the guided wizard. We push a history
          entry when entering the wizard and on each step forward, so the browser's
          Back arrow walks back a step (and out to the landing from step 0) instead
@@ -1675,6 +1735,12 @@
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'API error');
           applyRoastResult(data);
+          /* Remember everything entered for this ad so a second roast of the same
+             link re-applies the image / LP / offer automatically. Keyed by the ad link. */
+          saveAdPrefill(payload.adUrl || inputs.copy, {
+            url: inputs.url || '', visual: inputs.visual || '', adScreenshotPreview: inputs.adScreenshotPreview || '',
+            icp, siteUrl, company: companyName, offerType, offerDetail
+          });
         } catch (err) { setError(err.message); setView('guided'); setLoading(false); }
       };
 
@@ -3848,9 +3914,9 @@
                 const weakest = areas.slice().sort((a, b) => a.s - b.s)[0];
                 const OPTIONS = {
                   review:     { tag: 'Team review', color: '#0a66c2', title: 'Get the team on your roast',   q: 'Want the team to weigh in?',  kind: 'linkedin' },
-                  diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', onClick: reset },
-                  withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Conversion Roadmap',    q: 'Want it fixed with you?',  cta: 'See the roadmap', onClick: goDeliverables, meta: '$6K · 10 days' },
-                  doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', onClick: goPricing, meta: '$8K/mo, managed' },
+                  diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', href: '/' },
+                  withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Conversion Roadmap',    q: 'Want it fixed with you?',  cta: 'See the roadmap', href: '/#deliverables', meta: '$6K · 10 days' },
+                  doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', href: '/#work-with-us', meta: '$8K/mo, managed' },
                 };
                 let key, reason;
                 if (sev <= 3) { key = 'doneforyou'; reason = `At ${sev}/10 this isn't a copy tweak. Your weakest link is your ${weakest.k} (${weakest.s}/10), and the ad and page pull in different directions. The honest, fastest path is having it rebuilt for you.`; }
@@ -3886,16 +3952,22 @@
                       <p className="text-gray-600 mb-4" style={{ fontSize: 14, lineHeight: 1.6 }}>{reason}</p>
                       {rec.kind === 'linkedin'
                         ? linkedInForm
-                        : <button onClick={rec.onClick} style={{ backgroundColor: rec.color, color: 'white' }} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity">{rec.cta} <Icon name="chevronRight" className="w-4 h-4" /></button>}
+                        : <a href={rec.href} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: rec.color, color: 'white' }} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline">{rec.cta} <Icon name="chevronRight" className="w-4 h-4" /></a>}
                     </div>
                     <p className="text-center text-xs text-gray-400 uppercase tracking-wide font-medium mt-5 mb-2.5">Or take it another way</p>
                     <div className="grid sm:grid-cols-3 gap-2.5">
                       {others.map((o, i) => (
-                        <button key={i} onClick={() => { if (o.kind === 'linkedin') setRecReviewOpen(v => !v); else o.onClick(); }} className="text-left rounded-xl border border-gray-200 bg-white p-3.5 card-lift cursor-pointer">
-                          <div className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: o.color }}>{o.tag}</div>
-                          <div className="text-sm font-semibold text-gray-800 leading-tight">{o.q}</div>
-                          <div className="text-xs font-semibold mt-1.5 inline-flex items-center gap-1" style={{ color: '#0a66c2' }}>{o.kind === 'linkedin' ? (recReviewOpen ? 'Close' : 'Add your LinkedIn') : o.cta} →</div>
-                        </button>
+                        o.kind === 'linkedin'
+                          ? <button key={i} onClick={() => setRecReviewOpen(v => !v)} className="text-left rounded-xl border border-gray-200 bg-white p-3.5 card-lift cursor-pointer">
+                              <div className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: o.color }}>{o.tag}</div>
+                              <div className="text-sm font-semibold text-gray-800 leading-tight">{o.q}</div>
+                              <div className="text-xs font-semibold mt-1.5 inline-flex items-center gap-1" style={{ color: '#0a66c2' }}>{recReviewOpen ? 'Close' : 'Add your LinkedIn'} →</div>
+                            </button>
+                          : <a key={i} href={o.href} target="_blank" rel="noopener noreferrer" className="block text-left rounded-xl border border-gray-200 bg-white p-3.5 card-lift cursor-pointer no-underline">
+                              <div className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: o.color }}>{o.tag}</div>
+                              <div className="text-sm font-semibold text-gray-800 leading-tight">{o.q}</div>
+                              <div className="text-xs font-semibold mt-1.5 inline-flex items-center gap-1" style={{ color: '#0a66c2' }}>{o.cta} →</div>
+                            </a>
                       ))}
                     </div>
                     {recReviewOpen && key !== 'review' && (
