@@ -46,6 +46,49 @@ async function isAdmin(req) {
   return !!(s && s.email && ADMIN_EMAILS.has(String(s.email).toLowerCase()));
 }
 
+/* Backfill older roasts that live only in Notion (saved via the pre-Redis
+   "Save Your Report" / LinkedIn flow) so they show in the internal list too.
+   Reads only page PROPERTIES (Report ID, Platform, scores, Date) — no per-page
+   block fetch — so it's a couple of queries, not one-per-roast. */
+async function fetchNotionRoastSummaries(maxPages = 3) {
+  const key = process.env.NOTION_API_KEY;
+  if (!key) return [];
+  const out = [];
+  let cursor = undefined;
+  for (let page = 0; page < maxPages; page++) {
+    const body = { sorts: [{ property: 'Date', direction: 'descending' }], page_size: 100 };
+    if (cursor) body.start_cursor = cursor;
+    const r = await fetch(`https://api.notion.com/v1/databases/${NOTION_DATABASE_ID}/query`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'Notion-Version': '2022-06-28' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) break;
+    const data = await r.json();
+    for (const pg of (data.results || [])) {
+      const p = pg.properties || {};
+      const reportId = p['Report ID']?.rich_text?.[0]?.plain_text || '';
+      if (!reportId) continue;
+      const dateStr = p['Date']?.date?.start || '';
+      out.push({
+        reportId,
+        ts: dateStr ? (Date.parse(dateStr) || 0) : 0,
+        email: '',
+        platform: (p['Platform']?.select?.name || '').toLowerCase(),
+        company: '',
+        icp: '',
+        adScore: (typeof p['Ad Score']?.number === 'number') ? p['Ad Score'].number : null,
+        lpScore: (typeof p['LP Score']?.number === 'number') ? p['LP Score'].number : null,
+        matchScore: (typeof p['Match Score']?.number === 'number') ? p['Match Score'].number : null,
+        source: 'notion'
+      });
+    }
+    if (!data.has_more) break;
+    cursor = data.next_cursor;
+  }
+  return out;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -58,10 +101,25 @@ export default async function handler(req, res) {
     }
     try {
       const limit = Math.min(parseInt(req.query.limit || '200', 10) || 200, 500);
-      const raw = await redis.lrange('roast:index', 0, limit - 1);
-      const items = (raw || [])
+      const raw = await redis.lrange('roast:index', 0, 999);
+      const redisItems = (raw || [])
         .map(r => { try { return typeof r === 'string' ? JSON.parse(r) : r; } catch (e) { return null; } })
-        .filter(Boolean);
+        .filter(Boolean)
+        .map(x => ({ ...x, source: x.source || 'redis' }));
+      // Merge in older Notion-only roasts (best-effort — a Notion outage still returns Redis).
+      let notionItems = [];
+      try { notionItems = await fetchNotionRoastSummaries(); }
+      catch (e) { console.error('[Roast View] notion backfill error:', e.message); }
+      // Dedupe by reportId, preferring the richer Redis record.
+      const seen = new Set();
+      const merged = [];
+      for (const it of [...redisItems, ...notionItems]) {
+        if (!it || !it.reportId || seen.has(it.reportId)) continue;
+        seen.add(it.reportId);
+        merged.push(it);
+      }
+      merged.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      const items = merged.slice(0, limit);
       return res.status(200).json({ items, count: items.length });
     } catch (e) {
       console.error('[Roast View] list error:', e.message);

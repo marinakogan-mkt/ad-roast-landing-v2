@@ -827,7 +827,7 @@
         return () => { alive = false; };
       }, []);
 
-      const fmtDate = (ts) => { try { return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+      const fmtDate = (ts) => { if (!ts) return ''; try { return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
       const scoreColor = (s) => s == null ? '#94a3b8' : s <= 3 ? '#dc2626' : s <= 6 ? '#d97706' : '#16a34a';
       const Pill = ({ v, label }) => (<span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: scoreColor(v) }}>{label} {v == null ? '-' : v}</span>);
 
@@ -864,8 +864,8 @@
                         <a key={it.reportId} href={`/?id=${it.reportId}`} className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors no-underline">
                           <div className="flex items-center justify-between gap-3 flex-wrap">
                             <div className="min-w-0">
-                              <div className="font-semibold text-gray-900 truncate">{it.company || (it.icp ? it.icp.slice(0, 60) : '') || 'Untitled roast'}</div>
-                              <div className="text-xs text-gray-400 truncate">{it.icp || '-'}</div>
+                              <div className="font-semibold text-gray-900 truncate">{it.company || (it.icp ? it.icp.slice(0, 60) : '') || ('Roast ' + (it.reportId || ''))}</div>
+                              <div className="text-xs text-gray-400 truncate">{it.icp || (it.source === 'notion' ? 'Earlier roast' : '-')}</div>
                             </div>
                             <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
                               <Pill v={it.adScore} label="Ad" />
