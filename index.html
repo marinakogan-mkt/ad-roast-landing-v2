@@ -1376,18 +1376,25 @@
 
       /* Fresh-load deep links to landing sections (the results-page cards open
          /#deliverables and /#work-with-us in a NEW tab so the roast stays put).
-         React renders after the browser's native hash scroll, so scroll manually
-         once the section is in the DOM. */
+         React renders after the browser's native hash scroll, AND the landing's
+         images keep loading and shifting layout after the section first appears —
+         so a single scroll lands short. We re-align to the section repeatedly for a
+         couple of seconds (instant, respecting scroll-mt) and again once images
+         finish, but stop the moment the user scrolls or interacts. */
       React.useEffect(() => {
         const id = (window.location.hash || '').replace('#', '');
         if (id !== 'deliverables' && id !== 'work-with-us') return;
+        let stopped = false;
+        const stop = () => { stopped = true; };
+        const evs = ['wheel', 'touchstart', 'keydown', 'pointerdown'];
+        evs.forEach(ev => window.addEventListener(ev, stop, { passive: true }));
+        const jump = () => { if (stopped) return; const el = document.getElementById(id); if (el) el.scrollIntoView({ block: 'start' }); };
         let tries = 0;
-        const tick = () => {
-          const el = document.getElementById(id);
-          if (el) { const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); return; }
-          if (tries++ < 20) setTimeout(tick, 150);
-        };
-        setTimeout(tick, 150);
+        const tick = () => { if (stopped) return; jump(); if (tries++ < 16) setTimeout(tick, 150); };
+        setTimeout(tick, 60);
+        const onLoad = () => jump();
+        window.addEventListener('load', onLoad);
+        return () => { stopped = true; window.removeEventListener('load', onLoad); evs.forEach(ev => window.removeEventListener(ev, stop)); };
       }, []);
 
       /* Browser back-button support inside the guided wizard. We push a history
