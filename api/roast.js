@@ -182,7 +182,7 @@ export default async function handler(req, res) {
     body = {};
   }
 
-  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType } = body;
+  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, company, website } = body;
 
   /* Pre-LLM token gate (optimization #2): a roast only warrants an Anthropic call
      when the caller is a signed-in account WITH tokens. Out-of-token or anonymous
@@ -583,6 +583,24 @@ Return the JSON object defined in the output contract. All fields required.`;
             console.error('[AdRoast] consume error:', e.message);
             parsed._entitlement = { authed: true, email: acctEmail, full: true, remaining: null, plan: (acctBal && acctBal.plan) || null };
           }
+
+          /* Internal roasts list (Redis, no Notion): give every roast a stable id,
+             store the full report under it, and push a compact summary onto a capped
+             index the admin list view reads. Set _reportId on `parsed` BEFORE the
+             dedupe cache write below so an identical re-roast re-serves the SAME id
+             (points at the same stored report, no duplicate index row). */
+          try {
+            const reportId = crypto.randomBytes(4).toString('hex'); // 8 hex chars
+            parsed._reportId = reportId;
+            const { _entitlement, _meta, ...cleanResult } = parsed; // don't persist per-request entitlement/debug
+            const ts = Date.now();
+            const record = { result: cleanResult, icp: icpDescription || '', platform: platform || '', offerType: offerType || '', offerDetail: offerDetail || '', company: company || '', website: website || '', landingUrl: landingUrl || '', email: acctEmail, ts };
+            await _redis.set(`roast:report:${reportId}`, JSON.stringify(record), { ex: 60 * 60 * 24 * 90 });
+            const summary = { reportId, ts, email: acctEmail, platform: platform || '', company: company || '', icp: (icpDescription || '').slice(0, 160), adScore: parsed.overall_score ?? null, lpScore: parsed.landing_page_roast?.overall_score ?? null, matchScore: parsed.ad_landing_mismatch?.alignment_score ?? null };
+            await _redis.lpush('roast:index', JSON.stringify(summary));
+            await _redis.ltrim('roast:index', 0, 999); // keep the most recent 1000
+          } catch (e) { console.error('[AdRoast] roast index error:', e.message); }
+
           try { await _redis.set(`roast:last:${acctEmail}`, JSON.stringify(parsed), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
           // Cache this result under its input hash so an identical re-roast short-circuits
           // to the dedupe path above (no model call, no token spent). 7-day TTL.

@@ -808,6 +808,84 @@
       );
     }
 
+    /* Internal admin view (/?roasts=1): the roasts list, read straight from the
+       Redis-backed index via /api/roast-view?action=list. No Notion. Standalone so
+       it doesn't depend on AdRoastApp state; the endpoint gates to admin emails. */
+    function RoastsListView() {
+      const [state, setState] = useState({ loading: true, err: '', items: [] });
+      useEffect(() => {
+        let alive = true;
+        fetch('/api/roast-view?action=list&limit=300', { credentials: 'same-origin' })
+          .then(async r => ({ ok: r.ok, status: r.status, data: await r.json().catch(() => ({})) }))
+          .then(({ ok, status, data }) => {
+            if (!alive) return;
+            if (ok && Array.isArray(data.items)) setState({ loading: false, err: '', items: data.items });
+            else if (status === 401) setState({ loading: false, err: 'admin', items: [] });
+            else setState({ loading: false, err: (data && data.error) || 'Could not load roasts', items: [] });
+          })
+          .catch(() => { if (alive) setState({ loading: false, err: 'Could not load roasts', items: [] }); });
+        return () => { alive = false; };
+      }, []);
+
+      const fmtDate = (ts) => { try { return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+      const scoreColor = (s) => s == null ? '#94a3b8' : s <= 3 ? '#dc2626' : s <= 6 ? '#d97706' : '#16a34a';
+      const Pill = ({ v, label }) => (<span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: scoreColor(v) }}>{label} {v == null ? '-' : v}</span>);
+
+      return (
+        <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
+          <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon name="flame" className="w-5 h-5" style={{ color: '#0a66c2' }} />
+                <span className="font-bold text-gray-900">AdRoast</span>
+                <span className="text-gray-300">/</span>
+                <span className="text-sm font-semibold text-gray-600">Roasts</span>
+              </div>
+              <a href="/" className="text-sm font-semibold text-gray-500 hover:text-gray-800 no-underline">← Home</a>
+            </div>
+          </header>
+          <main className="max-w-5xl mx-auto px-4 py-8">
+            {state.loading && <div className="text-gray-400 text-sm">Loading roasts…</div>}
+            {state.err === 'admin' && (
+              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center max-w-md mx-auto">
+                <h2 className="text-lg font-semibold text-gray-900 mb-1">Admin only</h2>
+                <p className="text-gray-500 text-sm mb-4">Sign in with your AdRoast admin account to see every roast.</p>
+                <a href="/api/auth?action=google-start&mode=roast" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm no-underline" style={{ background: '#0a66c2', color: '#fff' }}>Sign in</a>
+              </div>
+            )}
+            {state.err && state.err !== 'admin' && <div className="text-red-600 text-sm">{state.err}</div>}
+            {!state.loading && !state.err && (
+              <>
+                <h1 className="text-2xl font-light text-gray-900 mb-4">All roasts <span className="text-gray-400 text-lg">({state.items.length})</span></h1>
+                {state.items.length === 0
+                  ? <div className="text-gray-400 text-sm">No roasts yet.</div>
+                  : <div className="space-y-2">
+                      {state.items.map((it) => (
+                        <a key={it.reportId} href={`/?id=${it.reportId}`} className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors no-underline">
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-gray-900 truncate">{it.company || (it.icp ? it.icp.slice(0, 60) : '') || 'Untitled roast'}</div>
+                              <div className="text-xs text-gray-400 truncate">{it.icp || '-'}</div>
+                            </div>
+                            <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
+                              <Pill v={it.adScore} label="Ad" />
+                              <Pill v={it.lpScore} label="LP" />
+                              <Pill v={it.matchScore} label="Match" />
+                              <span className="text-xs text-gray-400 capitalize hidden sm:inline">{it.platform || '-'}</span>
+                              <span className="text-xs text-gray-400 whitespace-nowrap">{fmtDate(it.ts)}</span>
+                              <Icon name="chevronRight" className="w-4 h-4 text-gray-300" />
+                            </div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>}
+              </>
+            )}
+          </main>
+        </div>
+      );
+    }
+
     const saveToNotion = async (data) => {
       try {
         const res = await fetch('/api/lead', {
@@ -986,6 +1064,8 @@
         const params = new URLSearchParams(window.location.search);
         const reportId = params.get('id');
         const synthId = params.get('synth');
+        // Internal roasts list (admin): /?roasts=1
+        if (params.get('roasts') === '1') { setView('roasts-list'); return; }
         const portalParam = params.get('portal');
         const paymentStatus = params.get('payment');
         const stripeSessionId = params.get('session_id');
@@ -1167,6 +1247,13 @@
                 setResult(data.result);
                 setIcp(data.icp || '');
                 setPlatform(data.platform || 'meta');
+                // Restore the inputs so the shared view names the company + shows the
+                // full "What we roasted" panel, same as the roaster saw.
+                if (data.company) setCompanyName(data.company);
+                if (data.website) setSiteUrl(data.website);
+                if (data.offerType) setOfferType(data.offerType);
+                if (data.offerDetail) setOfferDetail(data.offerDetail);
+                if (data.landingUrl) setInputs(p => ({ ...p, url: data.landingUrl }));
                 setIsSharedView(true);
                 setView('results');
                 return;
@@ -1374,7 +1461,7 @@
         const matchScore = result.ad_landing_mismatch?.alignment_score || 'N/A';
         
         // Save to Notion and get report ID
-        const reportId = await saveToNotion({
+        const reportId = (result && result._reportId) || await saveToNotion({
           email: adminMode ? 'internal@koganmarina.com' : reportEmail,
           linkedin: linkedin || 'internal-audit',
           platform: platform,
@@ -1384,8 +1471,8 @@
           roastData: result,
           icp: icp
         });
-        
-        const shareLink = reportId 
+
+        const shareLink = reportId
           ? `${window.location.origin}${window.location.pathname}?id=${reportId}${isPortalView ? '&portal=1' : ''}`
           : window.location.href;
         
@@ -1420,7 +1507,7 @@
         const matchScore = result.ad_landing_mismatch?.alignment_score || 'N/A';
         
         // Save to Notion first and get report ID
-        const reportId = await saveToNotion({
+        const reportId = (result && result._reportId) || await saveToNotion({
           linkedin: linkedin,
           platform: platform,
           adScore: adScore,
@@ -1429,8 +1516,8 @@
           roastData: result,
           icp: icp
         });
-        
-        const shareLink = reportId 
+
+        const shareLink = reportId
           ? `${window.location.origin}${window.location.pathname}?id=${reportId}${isPortalView ? '&portal=1' : ''}`
           : window.location.href;
         
@@ -1506,23 +1593,20 @@
         const lpScore = data.landing_page_roast?.overall_score || 'N/A';
         const matchScore = data.ad_landing_mismatch?.alignment_score || 'N/A';
 
-        // Auto-save to Notion so every roast has a persistent, viewable report link,
-        // regardless of whether the viewer later opts in. saveToNotion ignores the
-        // email/linkedin fields for the record itself; it only stores scores + roast.
+        // Every roast is persisted server-side (Redis) with a stable _reportId, so the
+        // heads-up carries a viewable link with no Notion round-trip. Fall back to the
+        // Notion save only if the server didn't return an id (older API / Redis down).
         let shareLink = '';
         try {
-          const reportId = await saveToNotion({
-            email: 'auto-capture@adroast.in',
-            linkedin: linkedin || 'auto-roast',
-            platform: platform,
-            adScore: adScore,
-            lpScore: lpScore,
-            matchScore: matchScore,
-            roastData: data,
-            icp: icp
-          });
+          let reportId = data._reportId || '';
+          if (!reportId) {
+            reportId = await saveToNotion({
+              email: 'auto-capture@adroast.in', linkedin: linkedin || 'auto-roast',
+              platform, adScore, lpScore, matchScore, roastData: data, icp
+            });
+          }
           if (reportId) shareLink = `${window.location.origin}${window.location.pathname}?id=${reportId}`;
-        } catch (e) { console.error('roast auto-save error:', e); }
+        } catch (e) { console.error('roast link build error:', e); }
 
         try {
           await fetch('https://api.emailjs.com/api/v1.0/email/send', {
@@ -1561,7 +1645,7 @@
       };
 
       const generate = async () => {
-        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null };
+        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '' };
 
         /* Monetization 2b: require a roast-tool account before running the roast.
            Stash the pending roast so we can resume it after sign-in (?signedin=1). */
@@ -1629,7 +1713,9 @@
           landingUrl: inputs.url,
           adCopy: variantsText,
           variants: adVariants,
-          isAdvancedAudit: true
+          isAdvancedAudit: true,
+          company: companyName || '',
+          website: siteUrl || ''
         };
         try {
           const res = await fetch('/api/roast', {
@@ -2202,6 +2288,9 @@
           </section>
         );
       };
+
+      /* Internal admin roasts list (/?roasts=1). */
+      if (view === 'roasts-list') return <RoastsListView />;
 
       /* Private-audit sign-in gate: takes over the page when a non-signed-in
          viewer follows a portal-private audit link (e.g. an Aikido ?id=…). */
