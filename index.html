@@ -976,6 +976,7 @@
       const [siteUrl, setSiteUrl] = useState('');
       const [companyName, setCompanyName] = useState(''); // advertiser name from ICP auto-detect, shown atop the roast
       const [adLink, setAdLink] = useState(''); // the ad-library URL being roasted, shown in the "what's being roasted" showcase
+      const [lpCopyInput, setLpCopyInput] = useState(''); // manual landing-page copy when the auto-scrape couldn't read the page
       const [icpTags, setIcpTags] = useState([]);
       const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
       const platformFromLink = (link) => { const l = (link || '').toLowerCase(); return /linkedin/.test(l) ? 'linkedin' : /facebook|instagram|fb\.|meta/.test(l) ? 'meta' : /google|goog|youtube|doubleclick/.test(l) ? 'google' : 'linkedin'; };
@@ -1717,8 +1718,8 @@
         setLoading(false);
       };
 
-      const generate = async () => {
-        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '', adUrl: (isValidUrl(inputs.copy) ? inputs.copy.trim() : '') };
+      const generate = async (extraLandingCopy) => {
+        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: (typeof extraLandingCopy === 'string' ? extraLandingCopy : ''), adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '', adUrl: (isValidUrl(inputs.copy) ? inputs.copy.trim() : '') };
         setAdLink(payload.adUrl || '');
 
         /* Monetization 2b: require a roast-tool account before running the roast.
@@ -3757,6 +3758,10 @@
         const adImg = inputs.adScreenshotPreview || '';
         const landingLink = (inputs.url || '').trim();
         const showcaseVisible = !!(adImg || adLink || landingLink || roastMetaRows.length > 0);
+        /* Landing auto-scrape failed (URL given, JS-rendered / bot-blocked, no manual
+           copy) => LP scored 0. Offer a paste-the-copy fallback to the live roaster. */
+        const _rmeta = result._meta || {};
+        const lpScrapeFailed = !isSharedView && !!(_rmeta.landingUrlProvided && !_rmeta.landingScraped && !_rmeta.landingCopyProvided && (lp.overall_score || 0) === 0);
         const overviewCards = [
           { id: 'scores', label: 'Scores', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score) },
           { id: 'issues', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue) },
@@ -4006,6 +4011,25 @@
 
               {/* LANDING PAGE — mismatch + LP analysis */}
               {activeTab === 'landing' && (<>
+              {/* Auto-scrape failed on a JS-rendered / bot-blocked landing (e.g. Orca, Wiz).
+                  Explain why the LP scored blank and let the roaster paste the copy to
+                  re-score. Re-runs the roast with landingCopy included. */}
+              {lpScrapeFailed && (
+                <div className="bg-white rounded-2xl border-2 shadow-sm p-5 sm:p-6" style={{ borderColor: '#fde68a' }}>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#fffbeb' }}><Icon name="alertCircle" className="w-5 h-5" style={{ color: '#d97706' }} /></span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 mb-1">We couldn't read {(_host(inputs.url) || 'your landing page')} automatically</h3>
+                      <p className="text-sm text-gray-600 mb-3" style={{ lineHeight: 1.55 }}>The page loads its content with JavaScript or blocks bots, so we couldn't score it, that's why the landing scores are blank. Paste your landing page copy below and we'll score it and check the ad ↔ page match.</p>
+                      <textarea value={lpCopyInput} onChange={e => setLpCopyInput(e.target.value)} placeholder="Paste your landing page headline, subhead, and main body copy…" className="w-full h-28 px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 text-gray-900 resize-none" />
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <button onClick={() => { const v = lpCopyInput.trim(); if (v.length > 20) generate(v); }} disabled={lpCopyInput.trim().length <= 20} style={lpCopyInput.trim().length > 20 ? { backgroundColor: '#0a66c2', color: '#fff' } : {}} className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm border-none ${lpCopyInput.trim().length > 20 ? 'hover:opacity-90 cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}><Icon name="sparkles" className="w-4 h-4" /> Score my landing page</button>
+                        <span className="text-xs text-gray-400">Re-runs the roast with your landing copy.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Message Mismatch - PREMIUM */}
               {mismatch.disconnects && mismatch.disconnects.length > 0 && (
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">

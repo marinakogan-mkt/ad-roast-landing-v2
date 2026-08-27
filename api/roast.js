@@ -393,6 +393,10 @@ export default async function handler(req, res) {
   }
 
   const hasAnyLandingContent = !!(landingPageContent || landingCopy?.trim());
+  // Flags the client uses to explain a 0 LP score: URL given but unreadable
+  // (JS-rendered / bot-blocked) vs no URL at all vs copy pasted manually.
+  meta.landingUrlProvided = !!(landingUrl && landingUrl.trim());
+  meta.landingCopyProvided = !!(landingCopy && landingCopy.trim());
 
   const systemPrompt = `You are AdRoast, a brutally honest ad and landing-page analyst for SaaS founders.
 
