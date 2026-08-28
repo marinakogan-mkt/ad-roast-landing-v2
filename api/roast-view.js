@@ -146,6 +146,8 @@ export default async function handler(req, res) {
         website: rec.website || '',
         landingUrl: rec.landingUrl || '',
         adUrl: rec.adUrl || '',
+        adCopy: rec.adCopy || '',
+        visualDescription: rec.visualDescription || '',
         offerType: rec.offerType || '',
         offerDetail: rec.offerDetail || '',
         adScreenshot: rec.adScreenshot || '',

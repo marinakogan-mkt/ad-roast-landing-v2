@@ -600,7 +600,7 @@ Return the JSON object defined in the output contract. All fields required.`;
             parsed._reportId = reportId;
             const { _entitlement, _meta, ...cleanResult } = parsed; // don't persist per-request entitlement/debug
             const ts = Date.now();
-            const record = { result: cleanResult, icp: icpDescription || '', platform: platform || '', offerType: offerType || '', offerDetail: offerDetail || '', company: company || '', website: website || '', landingUrl: landingUrl || '', adUrl: adUrl || '', email: acctEmail, ts };
+            const record = { result: cleanResult, icp: icpDescription || '', platform: platform || '', offerType: offerType || '', offerDetail: offerDetail || '', company: company || '', website: website || '', landingUrl: landingUrl || '', adUrl: adUrl || '', adCopy: adCopy || '', visualDescription: visualDescription || '', email: acctEmail, ts };
             /* Persist the ad creative so a shared/cold report shows the actual ad being
                roasted. Downscaled JPEG (~800px) is small; cap defensively so an oversized
                image never blows the Redis value limit (the roast still saves without it). */

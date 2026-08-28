@@ -1300,9 +1300,15 @@
                 if (data.offerType) setOfferType(data.offerType);
                 if (data.offerDetail) setOfferDetail(data.offerDetail);
                 if (data.adUrl) setAdLink(data.adUrl);
+                // Restore the FULL inputs (ad copy, visual, creative) too, so a signed-in
+                // owner opening their own report link can re-roast / paste LP copy from here.
                 setInputs(p => ({
                   ...p,
                   url: data.landingUrl || p.url,
+                  copy: data.adCopy || p.copy,
+                  visual: data.visualDescription || p.visual,
+                  adScreenshot: data.adScreenshot ? ((data.adScreenshot.split(',').pop()) || data.adScreenshot) : p.adScreenshot,
+                  adScreenshotType: data.adScreenshot ? (data.adScreenshotType || 'image/jpeg') : p.adScreenshotType,
                   adScreenshotPreview: data.adScreenshot ? `data:${data.adScreenshotType || 'image/jpeg'};base64,${data.adScreenshot}` : p.adScreenshotPreview
                 }));
                 setIsSharedView(true);
@@ -1702,6 +1708,7 @@
          means the account is out of tokens, so we blur it and sell a plan. */
       const applyRoastResult = (data) => {
         setResult(data);
+        setIsSharedView(false); // a freshly generated roast is the viewer's own, not a shared link
         notifyRoastToMarina(data); // email Marina every roast, regardless of LinkedIn opt-in
         const ent = data && data._entitlement;
         if (ent && ent.authed) {
@@ -3758,11 +3765,14 @@
         const adImg = inputs.adScreenshotPreview || '';
         const landingLink = (inputs.url || '').trim();
         const showcaseVisible = !!(adImg || adLink || landingLink || roastMetaRows.length > 0);
-        /* LP scored 0 despite the roaster giving a landing URL => the auto-scrape
-           couldn't read it (JS-rendered / bot-blocked). Keyed off inputs.url (client
-           state) rather than server _meta, so it also shows on a cached/deduped roast.
-           Live roaster only; offers the paste-the-copy fallback. */
-        const lpScrapeFailed = !isSharedView && (lp.overall_score || 0) === 0 && !!(inputs.url || '').trim();
+        /* Can we re-run the roast from here? Always on the live roaster's own view; on
+           an opened report link, only when a signed-in owner has the inputs restored
+           (ad copy or creative present) so a re-roast isn't empty. */
+        const canReroast = !isSharedView || !!(roastSession && roastSession.email && ((inputs.copy || '').trim() || inputs.adScreenshot));
+        /* LP scored 0 despite a landing URL => the auto-scrape couldn't read it
+           (JS-rendered / bot-blocked). Keyed off inputs.url (client state), so it also
+           shows on a cached/deduped roast and on an opened report link (for the owner). */
+        const lpScrapeFailed = canReroast && (lp.overall_score || 0) === 0 && !!(inputs.url || '').trim();
         const overviewCards = [
           { id: 'scores', label: 'Scores', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score) },
           { id: 'issues', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue) },
@@ -3852,7 +3862,7 @@
                           </div>
                         </details>
                       )}
-                      {!isSharedView && (
+                      {canReroast && (
                         <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
                           <span className="text-xs text-gray-400">Getting the same output? Identical roasts are cached.</span>
                           <button onClick={() => generate(undefined, true)} className="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer bg-transparent border-none" style={{ color: '#0a66c2' }}><Icon name="rotateCcw" className="w-3.5 h-3.5" /> Re-roast fresh</button>
