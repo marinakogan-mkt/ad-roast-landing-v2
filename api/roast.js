@@ -182,7 +182,7 @@ export default async function handler(req, res) {
     body = {};
   }
 
-  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, company, website, adUrl } = body;
+  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, company, website, adUrl, forceFresh } = body;
 
   /* Pre-LLM token gate (optimization #2): a roast only warrants an Anthropic call
      when the caller is a signed-in account WITH tokens. Out-of-token or anonymous
@@ -231,7 +231,7 @@ export default async function handler(req, res) {
     .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null }))
     .digest('hex');
   const dedupeKey = acctEmail ? `roast:dedupe:${acctEmail}:${dedupeHash}` : null;
-  if (dedupeKey && !redisDown) {
+  if (dedupeKey && !redisDown && !forceFresh) {
     try {
       const raw = await _redis.get(dedupeKey);
       const hit = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;

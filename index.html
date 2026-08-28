@@ -1718,8 +1718,8 @@
         setLoading(false);
       };
 
-      const generate = async (extraLandingCopy) => {
-        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: (typeof extraLandingCopy === 'string' ? extraLandingCopy : ''), adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '', adUrl: (isValidUrl(inputs.copy) ? inputs.copy.trim() : '') };
+      const generate = async (extraLandingCopy, forceFresh) => {
+        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: (typeof extraLandingCopy === 'string' ? extraLandingCopy : ''), adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '', adUrl: (isValidUrl(inputs.copy) ? inputs.copy.trim() : ''), forceFresh: !!forceFresh };
         setAdLink(payload.adUrl || '');
 
         /* Monetization 2b: require a roast-tool account before running the roast.
@@ -3758,10 +3758,11 @@
         const adImg = inputs.adScreenshotPreview || '';
         const landingLink = (inputs.url || '').trim();
         const showcaseVisible = !!(adImg || adLink || landingLink || roastMetaRows.length > 0);
-        /* Landing auto-scrape failed (URL given, JS-rendered / bot-blocked, no manual
-           copy) => LP scored 0. Offer a paste-the-copy fallback to the live roaster. */
-        const _rmeta = result._meta || {};
-        const lpScrapeFailed = !isSharedView && !!(_rmeta.landingUrlProvided && !_rmeta.landingScraped && !_rmeta.landingCopyProvided && (lp.overall_score || 0) === 0);
+        /* LP scored 0 despite the roaster giving a landing URL => the auto-scrape
+           couldn't read it (JS-rendered / bot-blocked). Keyed off inputs.url (client
+           state) rather than server _meta, so it also shows on a cached/deduped roast.
+           Live roaster only; offers the paste-the-copy fallback. */
+        const lpScrapeFailed = !isSharedView && (lp.overall_score || 0) === 0 && !!(inputs.url || '').trim();
         const overviewCards = [
           { id: 'scores', label: 'Scores', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score) },
           { id: 'issues', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue) },
@@ -3850,6 +3851,12 @@
                             )}
                           </div>
                         </details>
+                      )}
+                      {!isSharedView && (
+                        <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-xs text-gray-400">Getting the same output? Identical roasts are cached.</span>
+                          <button onClick={() => generate(undefined, true)} className="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer bg-transparent border-none" style={{ color: '#0a66c2' }}><Icon name="rotateCcw" className="w-3.5 h-3.5" /> Re-roast fresh</button>
+                        </div>
                       )}
                     </div>
                   )}
