@@ -2464,8 +2464,8 @@
                 </span>
                 <span className="sm:hidden inline-flex items-center gap-2 text-sm" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>Your live ads, brutally reviewed</span>
               </p>
-              <h1 className="text-left sm:text-center text-gray-900 mb-5" style={{ fontSize: 'clamp(30px, 5.5vw, 62px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>Find out why your ads<br />are not converting.</h1>
-              <p className="text-left sm:text-center text-gray-400 max-w-lg sm:mx-auto mb-8" style={{ fontSize: 'clamp(15px, 2.5vw, 18px)', lineHeight: 1.7 }}>A clear, scored breakdown of your ad, and what to fix first, in 2&prime;.</p>
+              <h1 className="text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontSize: 'clamp(40px, 9vw, 62px)', fontWeight: 300, lineHeight: 1.08, letterSpacing: '-0.5px' }}>Find out why your ads<br />are not converting.</h1>
+              <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-lg sm:mx-auto mb-9 sm:mb-8" style={{ fontSize: 'clamp(18px, 4.5vw, 19px)', lineHeight: 1.6 }}>A clear, scored breakdown of your ad, and what to fix first, in 2&prime;.</p>
               {/* Inline ad-link input + CTA — pill-shape matching the nav button, same height across both */}
               <div className="max-w-2xl mx-auto">
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch">
@@ -2474,13 +2474,13 @@
                     placeholder="Paste your Ad Library link (Meta, Google, LinkedIn)..."
                     value={inputs.copy}
                     onChange={(e) => { setInputs(p => ({...p, copy: e.target.value})); if (heroErr) setHeroErr(''); }}
-                    className="flex-1 px-5 py-2 bg-white border rounded-full text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm field-bloom"
+                    className="flex-1 px-5 py-4 sm:py-2 bg-white border rounded-full text-base sm:text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm field-bloom"
                     style={{ borderColor: heroErr ? '#dc2626' : '#e8e8f0' }}
                   />
                   <button
                     onClick={() => { const v = (inputs.copy || '').trim(); if (!v) { setHeroErr('Please paste your Ad Library link first.'); return; } if (!isValidUrl(v)) { setHeroErr("That doesn't look like a valid link. Paste your full ad URL."); return; } setHeroErr(''); setPlatform(platformFromLink(v)); setIcp(''); setSiteUrl(''); setCompanyName(''); setIcpAuto({ loading: false, err: '', done: false }); setGuidedHadCopyAtStart(true); setGuidedStep(0); setView('guided'); detectFromAd(); }}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
-                    className="px-6 py-2 border rounded-full font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
+                    className="px-6 py-4 sm:py-2 border rounded-full font-semibold sm:font-medium text-base sm:text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
                   >Roast my Ad for free →</button>
                 </div>
                 {heroErr
