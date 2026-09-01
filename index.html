@@ -2338,8 +2338,8 @@
           <section id="deliverables" className="mb-16 scroll-mt-20">
             <div className="mb-6">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-3" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What you get</div>
-              <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(28px, 6.5vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Your whole campaign, repositioned.</h2>
-              <p className="text-gray-400 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>The whole funnel repositioned, not just reworded, delivered in 10 days. Tap any piece to see what's inside.</p>
+              <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(32px, 8vw, 36px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Your whole campaign, repositioned.</h2>
+              <p className="text-gray-400 max-w-lg" style={{ fontSize: '17px', lineHeight: 1.7 }}>The whole funnel repositioned, not just reworded, delivered in 10 days. Tap any piece to see what's inside.</p>
             </div>
             <div className="space-y-3">
               {items.map((it, i) => {
@@ -2349,7 +2349,7 @@
                     <button onClick={() => toggle(i)} className="w-full flex items-center gap-4 p-5 text-left bg-transparent border-none cursor-pointer">
                       <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#eff5fc' }}><Icon name={it.icon} className="w-5 h-5" style={{ color: '#0a66c2' }} /></div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-gray-900 font-semibold" style={{ fontSize: 'clamp(18px, 4.5vw, 19px)', letterSpacing: '-0.2px' }}>{it.title}</h3>
+                        <h3 className="text-gray-900 font-semibold" style={{ fontSize: 'clamp(20px, 5.5vw, 21px)', letterSpacing: '-0.2px' }}>{it.title}</h3>
                         <p className="text-sm text-gray-500 mt-0.5" style={{ lineHeight: 1.5 }}>{it.line}</p>
                       </div>
                       <Icon name="chevronRight" className="w-4 h-4 flex-shrink-0 transition-transform" style={{ color: '#0a66c2', transform: open ? 'rotate(270deg)' : 'rotate(90deg)' }} />
@@ -2375,8 +2375,8 @@
         return (
           <section className="mb-16">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>The sprint</div>
-            <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(28px, 6.5vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Ten days, start to shipped.</h2>
-            <p className="text-gray-400 mb-8 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>Your time: about 3 hours total, a working session and a review call. We handle the rest. Tap any day to see what happens.</p>
+            <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(32px, 8vw, 36px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Ten days, start to shipped.</h2>
+            <p className="text-gray-400 mb-8 max-w-lg" style={{ fontSize: '17px', lineHeight: 1.7 }}>Your time: about 3 hours total, a working session and a review call. We handle the rest. Tap any day to see what happens.</p>
             <div className="relative">
               <div className="hidden md:block absolute left-[8%] right-[8%] top-6 h-0.5" style={{ background: '#dbeafe' }} />
               <div className="grid grid-cols-3 md:grid-cols-6 gap-y-6 gap-x-2 reveal">
@@ -2486,12 +2486,12 @@
               <p className="text-left sm:text-center mb-5 sm:mb-6" style={{ color: '#0a66c2' }}>
                 <span className="hidden sm:inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-full">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>
-                  <span style={{ fontSize: '15px' }}>Your live ads, brutally reviewed</span>
+                  <span style={{ fontSize: '17px' }}>Your live ads, brutally reviewed</span>
                 </span>
                 <span className="sm:hidden inline-flex items-center gap-2 text-sm" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>Your live ads, brutally reviewed</span>
               </p>
-              <h1 className="text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontSize: 'clamp(40px, 9vw, 62px)', fontWeight: 300, lineHeight: 1.08, letterSpacing: '-0.5px' }}>Find out why your ads<br />are not converting.</h1>
-              <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-2xl sm:mx-auto mb-9 sm:mb-8" style={{ fontSize: 'clamp(16px, 4vw, 19px)', lineHeight: 1.5 }}>A scored breakdown of your ad, and what to fix, in 2 min.</p>
+              <h1 className="text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontSize: 'clamp(46px, 11vw, 64px)', fontWeight: 300, lineHeight: 1.08, letterSpacing: '-0.5px' }}>Find out why your ads<br />are not converting.</h1>
+              <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-2xl sm:mx-auto mb-9 sm:mb-8" style={{ fontSize: 'clamp(18px, 5vw, 20px)', lineHeight: 1.5 }}>A scored breakdown of your ad, and what to fix, in 2 min.</p>
               {/* Inline ad-link input + CTA — pill-shape matching the nav button, same height across both */}
               <div className="max-w-2xl mx-auto">
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch">
@@ -2510,8 +2510,8 @@
                   >Roast my Ad for free →</button>
                 </div>
                 {heroErr
-                  ? <p className="text-center mt-3" style={{ fontSize: '14px', color: '#dc2626' }}>{heroErr}</p>
-                  : <p className="text-center text-gray-400 mt-3" style={{ fontSize: '14px' }}>🎁 Test AdRoast on your ad, first roast's on us &middot; no credit card required</p>}
+                  ? <p className="text-center mt-3" style={{ fontSize: '15px', color: '#dc2626' }}>{heroErr}</p>
+                  : <p className="text-center text-gray-400 mt-3" style={{ fontSize: '15px' }}>🎁 Test AdRoast on your ad, first roast's on us &middot; no credit card required</p>}
               </div>
             </div>
           </section>
@@ -2528,17 +2528,17 @@
             <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-center gap-3 sm:gap-4">
               <div className="flex items-center gap-2">
                 <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: '#0a66c2' }}>1</span>
-                <span style={{ fontSize: '15px' }} className="text-gray-600">Paste your Ad Library link</span>
+                <span style={{ fontSize: '17px' }} className="text-gray-600">Paste your Ad Library link</span>
               </div>
               <Icon name="chevronRight" className="w-4 h-4 text-gray-300 hidden sm:block flex-shrink-0" />
               <div className="flex items-center gap-2">
                 <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: '#0a66c2' }}>2</span>
-                <span style={{ fontSize: '15px' }} className="text-gray-600">Get your ad scored against your ICP</span>
+                <span style={{ fontSize: '17px' }} className="text-gray-600">Get your ad scored against your ICP</span>
               </div>
               <Icon name="chevronRight" className="w-4 h-4 text-gray-300 hidden sm:block flex-shrink-0" />
               <div className="flex items-center gap-2">
                 <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: '#0a66c2' }}>3</span>
-                <span style={{ fontSize: '15px' }} className="text-gray-600">Know exactly what to fix first</span>
+                <span style={{ fontSize: '17px' }} className="text-gray-600">Know exactly what to fix first</span>
               </div>
             </div>
           </div>
@@ -2548,7 +2548,7 @@
             <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
               <div className="text-center md:text-left">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Watch it work</div>
-                <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(30px, 6.5vw, 40px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>See your ad get roasted in real time.</h2>
+                <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(34px, 8vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>See your ad get roasted in real time.</h2>
                 <p className="text-gray-400 mb-6 md:max-w-sm" style={{ fontSize: '16px', lineHeight: 1.7 }}>Every ad scored against your ICP, every weak line flagged with the fix. About 2&prime;, no call.</p>
                 <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-7 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity cta-glow">Roast my Ad for free &rarr;</button>
               </div>
@@ -2560,7 +2560,7 @@
           <section className="max-w-2xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 w-full">
             <div className="text-center mb-6">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast includes</div>
-              <h2 className="text-gray-900 mt-3" style={{ fontSize: 'clamp(28px, 6.5vw, 32px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Four answers, in 2&prime;.</h2>
+              <h2 className="text-gray-900 mt-3" style={{ fontSize: 'clamp(32px, 8vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Four answers, in 2&prime;.</h2>
             </div>
             <div className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
               {[
@@ -2586,8 +2586,8 @@
               upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
           <section id="work-with-us" className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full scroll-mt-20">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Work with us</div>
-            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(30px, 6.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Want it fixed, not just scored?</h2>
-            <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>The free roast is an instant, automated score of one ad and its page. This is the human next step: a positioning expert reworks the messaging across your live campaigns, not just one ad, and hands it back ready to ship, the way we have for 50+ B2B software teams.</p>
+            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Want it fixed, not just scored?</h2>
+            <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '17px', lineHeight: 1.7 }}>The free roast is an instant, automated score of one ad and its page. This is the human next step: a positioning expert reworks the messaging across your live campaigns, not just one ad, and hands it back ready to ship, the way we have for 50+ B2B software teams.</p>
 
             {ServiceOffers()}
 
@@ -2596,8 +2596,8 @@
           {/* RESULTS */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Client Results</div>
-            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(30px, 6.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>60% of your demos leak between Ad and landing page.</h2>
-            <p className="text-gray-400 mb-6 sm:mb-10 max-w-lg" style={{ fontSize: '15px', lineHeight: 1.7 }}>It's called Message Drift, and we've diagnosed it in 50+ cybersecurity funnels. Your Ad says one thing, your page says another, and demos disappear in between. It's the #1 reason demos leak, and it's invisible until someone scores it.</p>
+            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>60% of your demos leak between Ad and landing page.</h2>
+            <p className="text-gray-400 mb-6 sm:mb-10 max-w-lg" style={{ fontSize: '17px', lineHeight: 1.7 }}>It's called Message Drift, and we've diagnosed it in 50+ cybersecurity funnels. Your Ad says one thing, your page says another, and demos disappear in between. It's the #1 reason demos leak, and it's invisible until someone scores it.</p>
             <div className="grid grid-cols-2 gap-4">
               {[
                 { to: 50, suffix: "+", label: "cybersecurity teams repositioned" },
@@ -2606,7 +2606,7 @@
                 { to: 31, suffix: "%", label: <span>CAC drop <em className="font-normal">(same Ad spend)</em></span> }
               ].map((r, i) => (
                 <div key={i} className="p-5 sm:p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all card-lift">
-                  <div style={{ fontSize: 'clamp(32px, 8vw, 42px)', fontWeight: 300, color: '#0a66c2', letterSpacing: '-1px', lineHeight: 1 }} className="mb-3"><CountUp to={r.to} suffix={r.suffix} /></div>
+                  <div style={{ fontSize: 'clamp(36px, 9vw, 44px)', fontWeight: 300, color: '#0a66c2', letterSpacing: '-1px', lineHeight: 1 }} className="mb-3"><CountUp to={r.to} suffix={r.suffix} /></div>
                   <div className="text-gray-600 text-sm sm:text-base font-medium">{r.label}</div>
                 </div>
               ))}
@@ -2621,7 +2621,7 @@
 
           {/* POSITIONING-PROBLEM CHECKLIST (one column, condensed from the old services page) */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
-            <h2 className="text-gray-900 mb-1" style={{ fontSize: 'clamp(30px, 6.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Do you have a positioning problem?</h2>
+            <h2 className="text-gray-900 mb-1" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Do you have a positioning problem?</h2>
             <p className="text-gray-400 text-sm mb-6">(Check all that apply)</p>
             <div className="grid grid-cols-1 gap-3 max-w-2xl">
               {[
@@ -2660,7 +2660,7 @@
           {/* TESTIMONIALS */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What Founders Say</div>
-            <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(32px, 6.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Words from clients.</h2>
+            <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(36px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Words from clients.</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {CLIENT_QUOTES.map((t, i) => (
                 <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col justify-between">
@@ -2674,7 +2674,7 @@
           {/* FAQ (Q&A, condensed from the old services page) */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>FAQs</div>
-            <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(30px, 6.5vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Questions, answered.</h2>
+            <h2 className="text-gray-900 mb-6" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Questions, answered.</h2>
             <div className="max-w-3xl border-t border-gray-200">
               {[
                 ["How much time should I budget?", "About 3 hours total, a working session and a review call. We do the heavy lifting."],
@@ -2699,8 +2699,8 @@
 
           {/* BOTTOM CTA */}
           <section className="text-center px-4 pb-10 sm:pb-20 max-w-5xl mx-auto">
-            <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(30px, 7vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
-            <p className="text-gray-400 mb-8" style={{ fontSize: 'clamp(16px, 4vw, 16px)', lineHeight: 1.6 }}>Same spend, aligned message, 3x demos.</p>
+            <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(34px, 8vw, 46px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
+            <p className="text-gray-400 mb-8" style={{ fontSize: 'clamp(18px, 4.5vw, 18px)', lineHeight: 1.6 }}>Same spend, aligned message, 3x demos.</p>
             <div className="flex items-center justify-center">
               <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad for free</button>
             </div>
@@ -3837,12 +3837,12 @@
                     first-time recipient (this link gets shared cold) understands it instantly. */}
                 <div className="reveal">
                   <p className="mb-4" style={{ color: '#0a66c2' }}>
-                    <span className="inline-flex items-center gap-2 px-4 py-1.5 border border-gray-200 rounded-full" style={{ background: 'rgba(255,255,255,0.7)' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span><span style={{ fontSize: '14px' }}>Your ad, brutally reviewed</span></span>
+                    <span className="inline-flex items-center gap-2 px-4 py-1.5 border border-gray-200 rounded-full" style={{ background: 'rgba(255,255,255,0.7)' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span><span style={{ fontSize: '15px' }}>Your ad, brutally reviewed</span></span>
                   </p>
-                  <h1 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(34px, 8vw, 46px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>
+                  <h1 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(40px, 10vw, 48px)', fontWeight: 300, lineHeight: 1.1, letterSpacing: '-0.5px' }}>
                     {roastedName ? <>Find out why <span style={{ fontWeight: 500, color: '#0a66c2' }}>{roastedName}'s</span> ad isn't converting.</> : "Find out why your ad isn't converting."}
                   </h1>
-                  <p className="text-gray-400 max-w-xl" style={{ fontSize: 'clamp(17px, 4vw, 18px)', lineHeight: 1.7 }}>A clear, scored breakdown of {roastedName ? roastedName + "'s" : 'your'} ad and landing page, and what to fix first.</p>
+                  <p className="text-gray-400 max-w-xl" style={{ fontSize: 'clamp(19px, 5vw, 20px)', lineHeight: 1.7 }}>A clear, scored breakdown of {roastedName ? roastedName + "'s" : 'your'} ad and landing page, and what to fix first.</p>
 
                   {/* What's being roasted — the actual ad creative + the ad/landing links,
                       shown up front so a cold viewer sees exactly which ad and page this is
