@@ -999,7 +999,7 @@
       const [icpTags, setIcpTags] = useState([]);
       const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
       const platformFromLink = (link) => { const l = (link || '').toLowerCase(); return /linkedin/.test(l) ? 'linkedin' : /facebook|instagram|fb\.|meta/.test(l) ? 'meta' : /google|goog|youtube|doubleclick/.test(l) ? 'google' : 'linkedin'; };
-      const detectFromAd = async (overrideLink) => {
+      const detectFromAd = async (overrideLink, forceRefresh) => {
         const link = ((typeof overrideLink === 'string' ? overrideLink : inputs.copy) || '').trim();
         if (!link) { setIcpAuto({ loading: false, err: '', done: true }); return; }
 
@@ -1024,7 +1024,7 @@
 
         setIcpAuto({ loading: true, err: '', done: false }); setIcpTags([]);
         try {
-          const r = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: link }) });
+          const r = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: link, refresh: !!forceRefresh }) });
           const data = await r.json();
           if (!r.ok || data.error) throw new Error(data.error || 'no result');
           if (data.icp_text) setIcp(data.icp_text);
@@ -3491,7 +3491,7 @@
                         <textarea value={icp} onChange={(e) => setIcp(e.target.value)} placeholder="Who your ads should target: role, company profile, pain points&hellip;"
                           className="w-full h-24 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
                         {icpTags.length > 0 && <div className="flex flex-wrap gap-1.5 mt-2.5">{icpTags.map((t, i) => <span key={i} className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: '#eef2ff', color: '#0a66c2' }}>{t}</span>)}</div>}
-                        <button type="button" onClick={detectFromAd} disabled={icpAuto.loading} className="mt-2 text-xs font-semibold disabled:opacity-60 hover:underline" style={{ color: '#0a66c2' }}>&#8635; Re-detect website &amp; ICP from my ad link</button>
+                        <button type="button" onClick={() => detectFromAd(undefined, true)} disabled={icpAuto.loading} className="mt-2 text-xs font-semibold disabled:opacity-60 hover:underline" style={{ color: '#0a66c2' }}>&#8635; Re-detect website &amp; ICP from my ad link</button>
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-gray-900 mb-1.5">Ad creative <span className="text-gray-400 font-normal">(optional, improves the roast)</span></label>
