@@ -1033,15 +1033,23 @@
           const r = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: link, refresh: !!forceRefresh }) });
           const data = await r.json();
           if (!r.ok || data.error) throw new Error(data.error || 'no result');
-          if (data.icp_text) setIcp(data.icp_text);
-          if (data.website) setSiteUrl(data.website);
-          if (data.company) setCompanyName(data.company);
-          if (Array.isArray(data.tags)) setIcpTags(data.tags);
-          // When the ad page was unreadable the advertiser comes back blank. Nudge the user
-          // to type the company's website and re-detect (which reads the real site).
+          // When the ad page was unreadable the advertiser comes back blank.
           const couldntId = !data.company && !data.website;
-          setIcpAuto({ loading: false, err: couldntId ? "LinkedIn and Meta block us from reading who's behind an ad link. Type the advertiser's website below and press Enter, we'll detect the ICP from it." : '', done: true });
-          if (couldntId) setTimeout(() => { try { siteUrlRef.current && siteUrlRef.current.focus(); } catch (e) {} }, 60);
+          if (couldntId) {
+            /* Blocked ad link: show NOTHING pre-filled. A generic filler ICP reads as
+               "detected" and makes the tool look broken (or worse, roasts against an
+               invented ICP). Clear every field and gate on the user typing the
+               advertiser's real website, which scrapes cleanly. */
+            setIcp(''); setIcpTags([]); setCompanyName('');
+            setIcpAuto({ loading: false, err: "Type the advertiser's website below and press Enter, we'll detect everything from it.", done: true });
+            setTimeout(() => { try { siteUrlRef.current && siteUrlRef.current.focus(); } catch (e) {} }, 60);
+          } else {
+            if (data.icp_text) setIcp(data.icp_text);
+            if (data.website) setSiteUrl(data.website);
+            if (data.company) setCompanyName(data.company);
+            if (Array.isArray(data.tags)) setIcpTags(data.tags);
+            setIcpAuto({ loading: false, err: '', done: true });
+          }
         } catch (e) {
           if (saved && (saved.icp || saved.siteUrl || saved.company)) {
             if (saved.icp) setIcp(saved.icp);
@@ -3416,7 +3424,7 @@
         if (!guidedHadCopyAtStart) {
           steps.push({ id: 'adCopy', q: 'Paste your ad copy', valid: () => (inputs.copy?.trim().length > 0) || inputs.adScreenshot });
         }
-        steps.push({ id: 'review', q: "Here's what we found", hint: "Pulled from your Ad Library link. Edit anything that's off.", valid: () => icp?.trim().length > 0 });
+        steps.push({ id: 'review', q: icpAuto.err ? "We couldn't read this ad link" : "Here's what we found", hint: icpAuto.err ? "LinkedIn and Meta block automated reads. Add the advertiser's website below and we'll detect everything from it." : "Pulled from your Ad Library link. Edit anything that's off.", valid: () => icp?.trim().length > 0 });
         steps.push({ id: 'offer', q: 'What type of offer is this?', valid: () => !!offerType && (offerType !== 'other' || offerDetail.trim().length > 2) });
         steps.push({ id: 'lpUrl', q: "What's the landing page this ad points to?", hint: "The exact page your pasted ad sends clicks to. We'll pull all the copy from it.", valid: () => !inputs.url?.trim() || isValidUrl(inputs.url) });
         const stepIdx = Math.min(guidedStep, steps.length - 1);
