@@ -993,6 +993,7 @@
       const [heroErr, setHeroErr] = useState('');
       const [icpAuto, setIcpAuto] = useState({ loading: false, err: '', done: false });
       const [siteUrl, setSiteUrl] = useState('');
+      const siteUrlRef = React.useRef(null); // focus this when the ad page can't be read, so the user types the advertiser's site
       const [companyName, setCompanyName] = useState(''); // advertiser name from ICP auto-detect, shown atop the roast
       const [adLink, setAdLink] = useState(''); // the ad-library URL being roasted, shown in the "what's being roasted" showcase
       const [lpCopyInput, setLpCopyInput] = useState(''); // manual landing-page copy when the auto-scrape couldn't read the page
@@ -1039,7 +1040,8 @@
           // When the ad page was unreadable the advertiser comes back blank. Nudge the user
           // to type the company's website and re-detect (which reads the real site).
           const couldntId = !data.company && !data.website;
-          setIcpAuto({ loading: false, err: couldntId ? "We couldn't read who's behind this ad (the page blocks bots). Add their website above and tap Re-detect." : '', done: true });
+          setIcpAuto({ loading: false, err: couldntId ? "LinkedIn and Meta block us from reading who's behind an ad link. Type the advertiser's website below and press Enter, we'll detect the ICP from it." : '', done: true });
+          if (couldntId) setTimeout(() => { try { siteUrlRef.current && siteUrlRef.current.focus(); } catch (e) {} }, 60);
         } catch (e) {
           if (saved && (saved.icp || saved.siteUrl || saved.company)) {
             if (saved.icp) setIcp(saved.icp);
@@ -3489,12 +3491,12 @@
                           ? <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">{icpAuto.err}</div>
                           : (siteUrl || icp) ? <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: '#dcfce7', color: '#15803d' }}>✓ Detected from your ad</div> : null}
                       <div>
-                        <label className="block text-sm font-semibold text-gray-900 mb-1.5">Is this your website?</label>
-                        <div className="px-3 py-2.5 bg-white border border-gray-300 rounded-lg">
-                          <input type="url" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)}
+                        <label className="block text-sm font-semibold text-gray-900 mb-1.5">{icpAuto.err ? "The advertiser's website" : 'Is this your website?'}</label>
+                        <div className="px-3 py-2.5 bg-white border rounded-lg" style={{ borderColor: icpAuto.err ? '#f59e0b' : '#d1d5db', boxShadow: icpAuto.err ? '0 0 0 3px rgba(245,158,11,0.15)' : 'none' }}>
+                          <input ref={siteUrlRef} type="url" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter' && isValidUrl(siteUrl)) { e.preventDefault(); detectFromAd(undefined, true); } }}
                             onBlur={() => { if (!companyName && isValidUrl(siteUrl) && !icpAuto.loading) detectFromAd(undefined, true); }}
-                            placeholder="https://yourcompany.com" className="w-full bg-transparent text-sm focus:outline-none text-gray-900" />
+                            placeholder="e.g. semgrep.dev, then press Enter" className="w-full bg-transparent text-sm focus:outline-none text-gray-900" />
                         </div>
                       </div>
                       <div>
