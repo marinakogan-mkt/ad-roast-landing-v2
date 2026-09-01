@@ -83,21 +83,6 @@ async function fetchSite(url) {
 }
 
 export default async function handler(req, res) {
-  // TEMP one-time maintenance: wipe every cached ICP inference (clears poisoned entries
-  // like the Semgrep -> Cloudflare one). Guarded by a non-guessable token; removed after use.
-  if (req.query && req.query.flush === 'ICP_SWEEP_2026_CF') {
-    if (!_redis) return res.status(200).json({ ok: false, reason: 'no redis' });
-    try {
-      let cursor = 0, deleted = 0;
-      do {
-        const [next, keys] = await _redis.scan(cursor, { match: 'icp:url:*', count: 300 });
-        cursor = next;
-        if (keys && keys.length) { await _redis.del(...keys); deleted += keys.length; }
-      } while (String(cursor) !== '0');
-      return res.status(200).json({ ok: true, deleted });
-    } catch (e) { return res.status(200).json({ ok: false, error: e.message }); }
-  }
-
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
