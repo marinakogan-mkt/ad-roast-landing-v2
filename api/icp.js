@@ -165,9 +165,27 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
       return res.status(500).json({ error: 'Could not parse ICP response' });
     }
     const icp = JSON.parse(jsonMatch[0]);
+
+    /* Deterministic safety net (belt to the prompt's suspenders): if the model named a
+       CDN / host / security / anti-bot vendor as the advertiser, and the page we fetched
+       ISN'T that vendor's own site, it latched onto infrastructure (the Semgrep -> Cloudflare
+       bug). Blank the company/website so the user fills them in, and never fabricate a brand. */
+    const INFRA_VENDORS = ['cloudflare', 'akamai', 'fastly', 'imperva', 'incapsula', 'perimeterx', 'datadome', 'sucuri', 'distil', 'vercel', 'netlify', 'heroku', 'cloudfront', 'amazon web services', 'google cloud', 'microsoft azure'];
+    const compLc = (icp.company || '').toLowerCase();
+    const siteLc = (icp.website || '').toLowerCase();
+    const inputIsVendor = INFRA_VENDORS.some(v => domain.includes(v.replace(/\s+/g, '')));
+    const namedVendor = INFRA_VENDORS.some(v => compLc.includes(v) || siteLc.includes(v.replace(/\s+/g, '')));
+    const poisoned = namedVendor && !inputIsVendor;
+    if (poisoned) { icp.company = ''; icp.website = ''; }
+
     const result = { brand, domain, url, ...icp };
-    // Cache so the next roast for this company reuses the ICP instead of re-running Haiku.
-    if (_redis) { try { await _redis.set(icpCacheKey, JSON.stringify(result), { ex: ICP_CACHE_TTL }); } catch (e) {} }
+    /* Cache a confident, clean inference. Also cache on an explicit refresh so the
+       "Re-detect" button OVERWRITES a previously poisoned entry (e.g. the cached
+       Cloudflare result) with the cleaned one, clearing it for good. Never cache the
+       raw poisoned inference itself. */
+    if (_redis && !poisoned && (body.refresh || icp.company)) {
+      try { await _redis.set(icpCacheKey, JSON.stringify(result), { ex: ICP_CACHE_TTL }); } catch (e) {}
+    }
     return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({ error: 'Server error: ' + error.message });
