@@ -1000,7 +1000,12 @@
       const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
       const platformFromLink = (link) => { const l = (link || '').toLowerCase(); return /linkedin/.test(l) ? 'linkedin' : /facebook|instagram|fb\.|meta/.test(l) ? 'meta' : /google|goog|youtube|doubleclick/.test(l) ? 'google' : 'linkedin'; };
       const detectFromAd = async (overrideLink, forceRefresh) => {
-        const link = ((typeof overrideLink === 'string' ? overrideLink : inputs.copy) || '').trim();
+        /* Prefer the website the user typed in "Is this your website?" — ad-library pages
+           are often bot-blocked so we can't read the advertiser from them, but the company's
+           own site scrapes cleanly. Fall back to the ad link when no site is given. */
+        const typedSite = (siteUrl || '').trim();
+        const adLinkVal = ((typeof overrideLink === 'string' ? overrideLink : inputs.copy) || '').trim();
+        const link = (forceRefresh && isValidUrl(typedSite)) ? (/^https?:\/\//i.test(typedSite) ? typedSite : 'https://' + typedSite) : adLinkVal;
         if (!link) { setIcpAuto({ loading: false, err: '', done: true }); return; }
 
         /* Re-apply what the user added by hand the last time they roasted THIS ad
@@ -1031,7 +1036,10 @@
           if (data.website) setSiteUrl(data.website);
           if (data.company) setCompanyName(data.company);
           if (Array.isArray(data.tags)) setIcpTags(data.tags);
-          setIcpAuto({ loading: false, err: '', done: true });
+          // When the ad page was unreadable the advertiser comes back blank. Nudge the user
+          // to type the company's website and re-detect (which reads the real site).
+          const couldntId = !data.company && !data.website;
+          setIcpAuto({ loading: false, err: couldntId ? "We couldn't read who's behind this ad (the page blocks bots). Add their website above and tap Re-detect." : '', done: true });
         } catch (e) {
           if (saved && (saved.icp || saved.siteUrl || saved.company)) {
             if (saved.icp) setIcp(saved.icp);
@@ -2483,7 +2491,7 @@
                 <span className="sm:hidden inline-flex items-center gap-2 text-sm" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>Your live ads, brutally reviewed</span>
               </p>
               <h1 className="text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontSize: 'clamp(40px, 9vw, 62px)', fontWeight: 300, lineHeight: 1.08, letterSpacing: '-0.5px' }}>Find out why your ads<br />are not converting.</h1>
-              <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-lg sm:mx-auto mb-9 sm:mb-8" style={{ fontSize: 'clamp(18px, 4.5vw, 19px)', lineHeight: 1.6 }}>A clear, scored breakdown of your ad, and what to fix first, in 2&prime;.</p>
+              <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-2xl sm:mx-auto mb-9 sm:mb-8" style={{ fontSize: 'clamp(16px, 4vw, 19px)', lineHeight: 1.5 }}>A scored breakdown of your ad, and what to fix, in 2 min.</p>
               {/* Inline ad-link input + CTA — pill-shape matching the nav button, same height across both */}
               <div className="max-w-2xl mx-auto">
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch">
