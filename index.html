@@ -927,13 +927,19 @@
       Google: { c: '#ea4335', g: 'G' }
     };
     const YOUR_ADS = [
-      { plat: 'Meta', head: 'Your SAST tool is lying to you.', dom: 'semgrep.dev', bg: 'linear-gradient(135deg,#7b3fe4,#4a2589)', score: 4, verdict: 'Bold hook, wasted. The landing page opens on a generic product tour and the promise evaporates.', fix: 'Match the landing headline to the ad and put proof in the first scroll. The hook is good, the follow-through is not.' },
-      { plat: 'Google', head: 'Semgrep, SAST for AppSec teams.', dom: 'semgrep.dev', bg: 'linear-gradient(135deg,#111418,#2a2f38)', score: 5, verdict: 'Reads like a category label, not a reason to click. No pain, no proof.' },
-      { plat: 'LinkedIn', head: 'Ship secure code without slowing devs down.', dom: 'semgrep.dev', bg: 'linear-gradient(135deg,#0a66c2,#063f78)', score: 5, verdict: 'CTA is fine, but a broad audience and zero proof dilute it.' },
-      { plat: 'Meta', head: 'Trusted by 1M+ developers.', dom: 'semgrep.dev', bg: 'linear-gradient(135deg,#5b3bb0,#39236e)', score: 6, verdict: 'Social proof leads, but a buyer is given no clear next step.' },
-      { plat: 'Google', head: 'Find and fix vulns in your CI.', dom: 'semgrep.dev', bg: 'linear-gradient(135deg,#2a5e2f,#173d1a)', score: 7, verdict: 'Specific pain, clear CTA. Minor landing-page mismatch to tidy.' },
-      { plat: 'LinkedIn', head: 'Find bugs before they ship.', dom: 'semgrep.dev', bg: 'linear-gradient(135deg,#0e6b4e,#0a4a37)', score: 8, verdict: 'Your best ad. Strong hook and CTA, keep the spend here.' }
+      { plat: 'Meta', head: 'Your SAST tool is lying to you.', dom: 'semgrep.dev', cta: 'Learn more', bg: 'linear-gradient(135deg,#7b3fe4,#4a2589)', score: 4, verdict: 'Bold hook, wasted. The landing page opens on a generic product tour and the promise evaporates.', fix: 'Match the landing headline to the ad and put proof in the first scroll. The hook is good, the follow-through is not.' },
+      { plat: 'Google', head: 'Semgrep, SAST for AppSec teams.', dom: 'semgrep.dev', cta: 'Visit site', bg: 'linear-gradient(135deg,#111418,#2a2f38)', score: 5, verdict: 'Reads like a category label, not a reason to click. No pain, no proof.' },
+      { plat: 'LinkedIn', head: 'Ship secure code without slowing devs down.', dom: 'semgrep.dev', cta: 'Learn more', bg: 'linear-gradient(135deg,#0a66c2,#063f78)', score: 5, verdict: 'CTA is fine, but a broad audience and zero proof dilute it.' },
+      { plat: 'Meta', head: 'Trusted by 1M+ developers.', dom: 'semgrep.dev', cta: 'Sign up', bg: 'linear-gradient(135deg,#5b3bb0,#39236e)', score: 6, verdict: 'Social proof leads, but a buyer is given no clear next step.' },
+      { plat: 'Google', head: 'Find and fix vulns in your CI.', dom: 'semgrep.dev', cta: 'Get started', bg: 'linear-gradient(135deg,#2a5e2f,#173d1a)', score: 7, verdict: 'Specific pain, clear CTA. Minor landing-page mismatch to tidy.' },
+      { plat: 'LinkedIn', head: 'Find bugs before they ship.', dom: 'semgrep.dev', cta: 'Try free', bg: 'linear-gradient(135deg,#0e6b4e,#0a4a37)', score: 8, verdict: 'Your best ad. Strong hook and CTA, keep the spend here.' }
     ];
+    /* Severity label from the roast score, so each ad shows a gravity level (not just a
+       number): 1-4 critical mismatch, 5-6 weak, 7-8 solid, 9-10 strong. */
+    const SEV = (s) => s <= 4 ? { label: 'Critical', c: '#dc2626', bg: '#fef2f2', bd: '#fecaca' }
+      : s <= 6 ? { label: 'Weak', c: '#d97706', bg: '#fffbeb', bd: '#fde68a' }
+      : s <= 8 ? { label: 'Solid', c: '#16a34a', bg: '#f0fdf4', bd: '#bbf7d0' }
+      : { label: 'Strong', c: '#15803d', bg: '#f0fdf4', bd: '#bbf7d0' };
 
     function AdLibraryView() {
       const [modalHead, setModalHead] = useState(null);
@@ -967,6 +973,24 @@
           </header>
 
           <main className="max-w-6xl mx-auto px-4 py-8">
+            {/* Intermediate step: this sits between the landing form (enter website) and
+                the roast. The stepper makes that placement obvious. */}
+            <div className="flex items-center gap-2 mb-6" style={{ maxWidth: 560 }}>
+              {[
+                { n: '✓', label: 'Your website', done: true },
+                { n: '2', label: 'Your live ads', active: true },
+                { n: '3', label: 'Roast' },
+              ].map((s, i, arr) => (
+                <React.Fragment key={i}>
+                  <div className="flex items-center gap-2">
+                    <div className="grid place-items-center rounded-full font-bold flex-none" style={{ width: 24, height: 24, fontSize: 12, background: s.done ? '#16a34a' : s.active ? '#0a66c2' : '#e5e7eb', color: s.done || s.active ? '#fff' : '#9ca3af' }}>{s.n}</div>
+                    <span className="font-semibold" style={{ fontSize: 12.5, color: s.done ? '#16a34a' : s.active ? '#0a66c2' : '#9ca3af' }}>{s.label}</span>
+                  </div>
+                  {i < arr.length - 1 && <div className="flex-1 rounded-full" style={{ height: 2, background: s.done ? '#16a34a' : '#e5e7eb' }} />}
+                </React.Fragment>
+              ))}
+            </div>
+
             {/* Company + detected ICP */}
             <div className="flex items-center gap-3 flex-wrap mb-4">
               <div className="flex-none rounded-xl grid place-items-center font-bold text-white" style={{ width: 44, height: 44, background: YOUR_CO.color, fontSize: 19 }}>{YOUR_CO.initial}</div>
@@ -1006,20 +1030,24 @@
               {shown.map((a, i) => {
                 const free = isFree(a);
                 const pm = PLATMETA[a.plat];
+                const sev = SEV(a.score);
                 return (
                   <div key={i} className="bg-white rounded-2xl border overflow-hidden flex flex-col" style={{ borderColor: free ? '#bbe6cf' : '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
                     <div className="flex items-center gap-2 px-4 pt-4 pb-2.5">
                       <span className="inline-flex items-center gap-1.5 font-semibold rounded-md text-white" style={{ fontSize: 11.5, padding: '4px 9px', background: pm.c }}><span className="inline-grid place-items-center font-bold" style={{ width: 13, height: 13, borderRadius: 3, background: 'rgba(255,255,255,.25)', fontSize: 8 }}>{pm.g}</span>{a.plat}</span>
                       {free && <span className="font-semibold uppercase tracking-wider" style={{ fontSize: 9.5, letterSpacing: '0.06em', color: '#16a34a', background: '#f0fdf4', padding: '4px 8px', borderRadius: 6 }}>Free roast</span>}
-                      <span className="ml-auto flex-none grid place-items-center rounded-full font-bold text-white" style={{ width: 38, height: 38, background: scoreCol(a.score), fontSize: 16 }}>{a.score}</span>
+                      {/* Gravity level, not just a number */}
+                      <span className="ml-auto inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 10.5, padding: '3px 9px', color: sev.c, background: sev.bg, border: '1px solid ' + sev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: sev.c }} />{sev.label}</span>
+                      <span className="flex-none grid place-items-center rounded-full font-bold text-white" style={{ width: 34, height: 34, background: scoreCol(a.score), fontSize: 15 }}>{a.score}</span>
                     </div>
+                    {/* Real creative (live: the actual pulled creative image) */}
                     <div className="mx-4 rounded-xl border border-gray-200 overflow-hidden">
                       <div className="flex items-end p-4" style={{ height: 100, background: a.bg }}>
                         <div className="font-bold text-white" style={{ fontSize: 16, lineHeight: 1.15, textShadow: '0 1px 12px rgba(0,0,0,.28)' }}>{a.head}</div>
                       </div>
-                      <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white">
-                        <span className="text-gray-400" style={{ fontSize: 11.5, fontFamily: 'monospace' }}>{a.dom}</span>
-                        <span className="text-gray-400" style={{ fontSize: 11 }}>Sponsored</span>
+                      <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white border-t border-gray-100">
+                        <span className="text-gray-400 truncate" style={{ fontSize: 11.5, fontFamily: 'monospace' }}>{a.dom}</span>
+                        <span className="font-semibold rounded flex-none" style={{ fontSize: 11, padding: '4px 10px', color: '#374151', background: '#eef1f5', border: '1px solid #e2e6ec' }}>{a.cta}</span>
                       </div>
                     </div>
                     <div className="px-4 pt-3 pb-4 mt-auto">
