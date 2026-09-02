@@ -983,22 +983,13 @@
           const co = { name: coName, domain: icpRes.domain || hostOf(siteRaw), initial: (coName || '?').charAt(0).toUpperCase(), color: '#334155' };
           const icpText = icpRes.icp_text || '';
           setStatusMsg('Pulling your live ads from the LinkedIn Ad Library…');
-          const start = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-start', company: coName }) }).then(r => r.json()).catch(() => ({}));
-          if (!start || !start.ok) {
+          const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, icp: icpText }) }).then(r => r.json()).catch(() => ({}));
+          if (!res || !res.ok) {
             setPhase('error');
-            setStatusMsg(start && start.reason === 'no_token' ? "Ad fetching isn't switched on yet (the server is missing its Apify token)." : 'Could not start the ad search. ' + ((start && start.reason) || ''));
+            setStatusMsg('Could not fetch your ads (' + ((res && res.reason) || 'error') + '). Try again.');
             return;
           }
-          const t0 = Date.now(); let ads = null;
-          while (Date.now() - t0 < 95000) {
-            await sleep(2600);
-            const pr = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-poll', runId: start.runId, icp: icpText }) }).then(r => r.json()).catch(() => ({}));
-            if (pr && pr.ok && Array.isArray(pr.ads)) { ads = pr.ads; break; }
-            if (pr && pr.ok === false && pr.status) { setPhase('error'); setStatusMsg('The ad search did not complete (' + pr.status + '). Try again.'); return; }
-            setStatusMsg('Scanning the LinkedIn Ad Library…');
-          }
-          if (!ads) { setPhase('error'); setStatusMsg('Timed out fetching your ads. Try again.'); return; }
-          setReal({ co, icp: icpText, ads });
+          setReal({ co, icp: icpText, ads: res.ads || [] });
           setPhase('idle');
         } catch (e) { setPhase('error'); setStatusMsg(String(e && e.message || e)); }
       };

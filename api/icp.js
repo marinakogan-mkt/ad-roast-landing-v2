@@ -25,9 +25,9 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { apifyStart, apifyPoll } from './_adlibrary.js';
+import { fetchAdsViaJina } from './_adlibrary.js';
 
-// The Ad Library poll fetches a dataset and runs a quick Haiku score, so allow headroom.
+// The Ad Library fetch renders a page via Jina and runs a quick Haiku score, so allow headroom.
 export const config = { maxDuration: 60 };
 let _redis = null;
 try {
@@ -108,14 +108,11 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   if (!body || typeof body !== 'object') body = {};
 
-  // Ad Library dashboard actions (real ad creatives via Apify) are served from this same
-  // function to stay under the Hobby 12-function cap. They carry no url, so handle them
-  // before normalizeUrl (which requires one).
-  if (body.action === 'ads-start') {
-    return res.status(200).json(await apifyStart({ company: body.company, advertiserUrl: body.advertiserUrl, country: body.country, maxAds: body.maxAds }));
-  }
-  if (body.action === 'ads-poll') {
-    return res.status(200).json(await apifyPoll({ runId: body.runId, icp: body.icp }));
+  // Ad Library dashboard (real ad creatives via Jina Reader, free) is served from this same
+  // function to stay under the Hobby 12-function cap. It carries no url, so handle it before
+  // normalizeUrl (which requires one). Synchronous: one fetch + parse + score.
+  if (body.action === 'ads-fetch') {
+    return res.status(200).json(await fetchAdsViaJina({ company: body.company, icp: body.icp }));
   }
 
   let brand, domain, url;
