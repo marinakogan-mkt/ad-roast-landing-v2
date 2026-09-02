@@ -25,6 +25,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
+import { fetchLinkedInAds } from './_adlibrary.js';
 let _redis = null;
 try {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
@@ -116,7 +117,9 @@ export default async function handler(req, res) {
   // host, so different ad-library links on the same platform never collide.
   const urlHash = crypto.createHash('sha256').update(url).digest('hex').slice(0, 32);
   const icpCacheKey = `icp:url:${urlHash}`;
-  if (_redis && !body.refresh) {
+  // Skip the cache when the caller wants the live ad list too, so we always run the
+  // ad-library fetch (the ads aren't part of the cached ICP payload).
+  if (_redis && !body.refresh && !body.include_ads) {
     try {
       const raw = await _redis.get(icpCacheKey);
       const cached = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
@@ -192,12 +195,30 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
     if (poisoned) { icp.company = ''; icp.website = ''; }
 
     const result = { brand, domain, url, ...icp };
+
+    /* Ad-library dashboard: when asked, attach the advertiser's live ads (LinkedIn official
+       for now). Non-blocking and defensive: any failure just yields an empty list plus a
+       reason, so the ICP flow and the roast never break. Meta/Google get added here later. */
+    if (body.include_ads) {
+      try {
+        const term = icp.company || brand || domain;
+        const li = await fetchLinkedInAds({ company: term, countries: body.countries || ['US', 'GB'] });
+        result.ads = li.ads || [];
+        result.ads_meta = { linkedin: { ok: li.ok, reason: li.reason || null, count: li.count || 0, detail: li.detail || null } };
+      } catch (e) {
+        result.ads = [];
+        result.ads_meta = { linkedin: { ok: false, reason: 'exception', detail: String(e && e.message || e) } };
+      }
+    }
+
     /* Cache a confident, clean inference. Also cache on an explicit refresh so the
        "Re-detect" button OVERWRITES a previously poisoned entry (e.g. the cached
        Cloudflare result) with the cleaned one, clearing it for good. Never cache the
        raw poisoned inference itself. */
     if (_redis && !poisoned && (body.refresh || icp.company)) {
-      try { await _redis.set(icpCacheKey, JSON.stringify(result), { ex: ICP_CACHE_TTL }); } catch (e) {}
+      // Cache the ICP only, never the volatile ad list.
+      const { ads, ads_meta, ...icpOnly } = result;
+      try { await _redis.set(icpCacheKey, JSON.stringify(icpOnly), { ex: ICP_CACHE_TTL }); } catch (e) {}
     }
     return res.status(200).json(result);
   } catch (error) {
