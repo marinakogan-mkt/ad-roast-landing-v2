@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AdRoast - Brutally Honest Ad Feedback for AI Founders</title>
+  <meta name="description" content="Get a brutally honest AI roast of your ads and landing pages — analyzed against YOUR specific ICP.">
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEMElEQVR4nO2XTYiVVRjHf89zzn3fOzofzjCFilKohPaB0Cwi6AOsRYuIWgUtaijaBrUqN7ltEQkuEtvVphYSYRHMKLbQxKAgTNRGS4dEy/nQUWfm3nnf87Q4975zv/IDb7npgcN7Oc+5z/M/z/mf/zlHANNHnoFn38T6h/kvTOamYP8nhGMHEH14m/HyDgyDrArIv5zewCcIAl/sQPTtz82G1kC1AqoRoYCTCMQMcrPuYggBkhSZuYC3/uE484bkITdCJYtonaKpx7oJQhWyKtY/jI89spw8CwyUPaOPr2dNX8r4mWkOnJpGU0d3C1HP+f5+qycnGAOJ4+AbI2xd3V8MfeubE+w6NInvKZGH7i6H1n84EcJixmsja9m6up9KFqjmhgE7tm1koC8lzwLSZY5qa8d9A2WyYIgIJScEM/oSz8AKjwXr+h4pAJgBTvl2YhqvQuIEs1iZny7McX56AS0pXV6BZQC5GS71jJ2aYvv4BDMLVfIQOPrHZUb3Hic34t69WUARnMamt7BeBQmLDiBUMu4ZLLOqXGJieh5yQ0vuhltRRTCMUA2Qh9jpFCkpKnEpO5lv7TBAU8+luSqXrlTAK+q1KXkrEK9KVs1B4ME1vWwa6gHg99kFjv15jTwzXNkTOqxfAUAF8iywfrDMvle24jWutwqMnZnhna9PAfDExkF2P7+ZzCyqqgqjXx5n7voSH7+4hafvH8JpXUWNH85f4b2x0xycmMH1tINoroBB6rVJA+JMFqmr0EDqeeje3ib/S1uGef3RdazuTZukW0V4bN0qxkZHeO7THznw6wy+7Ju0pG0bmkE1zwlmVPNAMGMxC4U/MyOYsRSiLw/G9qc2FMlFIo9UImWXguFV2P3CFsqJI7Rs5TYAdeSNrZHM0uJ3KtRDZiFwtZIVyQFKKuRmbBpayZMbBgmVDNXlgB0B3I4Fi6A+OHSWzTsP88DOw7y69xeuV3NqNCm+I2v74FYqcKuWB0MF9p38i3e/OsFvlxe5OJ/x2aFz7Do6iQjFegswvCJpi3FHAOpU2nviEuqUNPEkTnA9JcbPzMQEDdPtJExtOnA7Vg83u7hEoMZ+gxy4tpTXxkgD1Ha7Yw7ADePf1LoD4A7sfwB3HUDH0zALBljt23wtN4v+OuPrQvNPcRrPhk5HchsAJ0LZu+isbeKBdHlY4gWvgm/Qs9RL204oqRT/L9XG9ia+bVwR2QBUmF1Y4sPvzxWXCCfCzxevgotBTk8vsPPIZDErJ8LJqXko6XIlnHB+rsJHRyZrMhzjfHd2FlqudbUbkVGXFTODxaylLIoksSqWG1Rb/IlHWqpgwaDSMs7X4lh9yoKXuSkan2YqglvZrNlNZ7wXXKnZn5u18UC1PU6wGg8anmbK+J4ol0lKLFYkT2PrRMLGdiMSNrZIQovJEdi/Jwr13Xye/w03QRo87IlzkAAAAABJRU5ErkJggg==">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+    const Icon = ({ name, className = "w-5 h-5", style = {} }) => {
+      const icons = {
+        flame: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" /></svg>,
+        upload: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>,
+        link: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>,
+        fileText: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+        chevronRight: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>,
+        copy: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>,
+        check: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
+        alertCircle: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+        sparkles: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>,
+        zap: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+        arrowRight: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>,
+        x: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+        rotateCcw: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
+        users: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+        globe: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>,
+        linkBreak: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1M6 18L18 6" /></svg>,
+        linkedin: <svg className={className} style={style} fill="#0a66c2" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
+        download: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>,
+        mail: <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
+      };
+      return icons[name] || null;
+    };
+
+    const EMAIL_CONFIG = { service_id: 'service_ywioabe', template_id: 'template_gtqow85', public_key: '964Wa83HevoEa5KnS', notify_email: 'marina.kogan@brandswithpurpose.us' };
+
+    const saveToNotion = async (data) => {
+      try {
+        const res = await fetch('/api/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        return json.reportId || null;
+      } catch (e) { console.error('Notion error:', e); return null; }
+    };
+
+    const validateLinkedIn = (url) => {
+      if (!url) return { valid: false, error: 'LinkedIn URL is required' };
+      if (!/^(https?:\/\/)?(www\.)?linkedin\.com\/in\/[\w-]{3,100}\/?$/i.test(url.trim())) {
+        return { valid: false, error: url.includes('linkedin.com') ? 'Use your profile URL (linkedin.com/in/yourname)' : 'Enter a valid LinkedIn URL' };
+      }
+      return { valid: true };
+    };
+
+    const getScoreColor = (s) => s <= 3 ? 'text-red-600 bg-red-50' : s <= 6 ? 'text-amber-600 bg-amber-50' : 'text-green-600 bg-green-50';
+    const getScoreBorder = (s) => s <= 3 ? 'border-red-200' : s <= 6 ? 'border-amber-200' : 'border-green-200';
+    const getScoreText = (s) => s <= 3 ? 'text-red-600' : s <= 6 ? 'text-amber-600' : 'text-green-600';
+
+    function App() {
+      const [view, setView] = useState('landing');
+      const [platform, setPlatform] = useState(null);
+      const [offerType, setOfferType] = useState(null);
+      const [icp, setIcp] = useState('');
+      const [linkedin, setLinkedin] = useState('');
+      const [linkedinErr, setLinkedinErr] = useState(null);
+      const [sending, setSending] = useState(false);
+      const [inputs, setInputs] = useState({ url: '', copy: '', visual: '', landingCopy: '' });
+      const [result, setResult] = useState(null);
+      const [copied, setCopied] = useState({});
+      const [error, setError] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [reportEmail, setReportEmail] = useState('');
+      const [reportEmailErr, setReportEmailErr] = useState(null);
+      const [pdfStatus, setPdfStatus] = useState(null);
+      const [shareableLink, setShareableLink] = useState('');
+      const [isSharedView, setIsSharedView] = useState(false);
+      const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.landingCopy.trim();
+      const canProceed = platform && offerType && icp.length > 10;
+
+      // Check for shared report in URL on load
+      React.useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const reportId = params.get('id');
+        if (reportId) {
+          setView('loading-report');
+          fetch(`/api/roast-view?id=${reportId}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.result) {
+                setResult(data.result);
+                setIcp(data.icp || '');
+                setPlatform(data.platform || 'meta');
+                setIsSharedView(true);
+                setView('results');
+              } else {
+                setError('Report not found');
+                setView('landing');
+              }
+            })
+            .catch(e => {
+              console.error('Failed to load report:', e);
+              setError('Failed to load report');
+              setView('landing');
+            });
+        }
+      }, []);
+
+      const copy = async (text, key) => {
+        await navigator.clipboard.writeText(text);
+        setCopied(p => ({ ...p, [key]: true }));
+        setTimeout(() => setCopied(p => ({ ...p, [key]: false })), 2000);
+      };
+
+      const reset = () => {
+        setView('landing'); setPlatform(null); setOfferType(null); setIcp('');
+        setLinkedin(''); setLinkedinErr(null); setResult(null); setError(null);
+        setInputs({ url: '', copy: '', visual: '', landingCopy: '' });
+        setReportEmail(''); setReportEmailErr(null); setPdfStatus(null);
+      };
+
+      const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+      const sendReportLink = async () => {
+        if (!validateEmail(reportEmail)) { setReportEmailErr('Please enter a valid email address'); return; }
+        setReportEmailErr(null); setPdfStatus('sending');
+        
+        const adScore = result.overall_score;
+        const lpScore = result.landing_page_roast?.overall_score || 'N/A';
+        const matchScore = result.ad_landing_mismatch?.alignment_score || 'N/A';
+        
+        // Save to Notion and get report ID
+        const reportId = await saveToNotion({
+          email: reportEmail,
+          linkedin: linkedin,
+          platform: platform,
+          adScore: adScore,
+          lpScore: lpScore,
+          matchScore: matchScore,
+          roastData: result,
+          icp: icp
+        });
+        
+        const shareLink = reportId 
+          ? `${window.location.origin}${window.location.pathname}?id=${reportId}`
+          : window.location.href;
+        
+        // Send link to user
+        try {
+          await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              service_id: EMAIL_CONFIG.service_id, template_id: EMAIL_CONFIG.template_id, user_id: EMAIL_CONFIG.public_key,
+              template_params: { 
+                to_email: reportEmail, 
+                subject: '🔥 Your AdRoast Report is Ready!', 
+                message: `Here's your personalized ad roast report:\n\n${shareLink}\n\nYour Scores:\n• Ad Score: ${adScore}/10\n• Landing Page: ${lpScore}/10\n• Ad-LP Match: ${matchScore}/10\n\nBookmark this link to access your report anytime.\n\nWant help fixing your ads? Connect with me on LinkedIn:\nhttps://www.linkedin.com/in/koganmarinamkt`
+              }
+            })
+          });
+        } catch (e) { console.error('Email to user error:', e); }
+        
+        setShareableLink(shareLink);
+        setPdfStatus('sent');
+      };
+
+      const submitLinkedIn = async () => {
+        const v = validateLinkedIn(linkedin);
+        if (!v.valid) { setLinkedinErr(v.error); return; }
+        setLinkedinErr(null); setSending(true);
+        
+        const adScore = result.overall_score;
+        const lpScore = result.landing_page_roast?.overall_score || 'N/A';
+        const matchScore = result.ad_landing_mismatch?.alignment_score || 'N/A';
+        
+        // Save to Notion first and get report ID
+        const reportId = await saveToNotion({
+          linkedin: linkedin,
+          platform: platform,
+          adScore: adScore,
+          lpScore: lpScore,
+          matchScore: matchScore,
+          roastData: result,
+          icp: icp
+        });
+        
+        const shareLink = reportId 
+          ? `${window.location.origin}${window.location.pathname}?id=${reportId}`
+          : window.location.href;
+        
+        // ONE email to Marina with LinkedIn + roast info + short link
+        try {
+          await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              service_id: EMAIL_CONFIG.service_id, template_id: EMAIL_CONFIG.template_id, user_id: EMAIL_CONFIG.public_key,
+              template_params: { 
+                to_email: EMAIL_CONFIG.notify_email, 
+                subject: `🔥 AdRoast: ${linkedin.split('/in/')[1]?.replace(/\/$/, '') || 'New'} | Ad:${adScore}/10 | LP:${lpScore}/10`, 
+                message: `🔗 LINKEDIN: ${linkedin}\n📱 PLATFORM: ${platform}\n🎯 OFFER: ${offerType}\n🌐 LANDING URL: ${inputs.url}\n\n📊 SCORES\n• Ad: ${adScore}/10\n• LP: ${lpScore}/10\n• Match: ${matchScore}/10\n\n👥 ICP\n${icp}\n\n🎯 AD VERDICT\n${result.icp_mismatch}\n\n🔗 AD-LANDING MISMATCH\n${result.ad_landing_mismatch?.verdict || 'N/A'}\n${result.ad_landing_mismatch?.disconnects?.map(d => '• ' + d.problem).join('\n') || ''}\n\n🌐 LANDING PAGE ISSUES\n${result.landing_page_roast?.top_issues?.join('\n') || 'N/A'}\n\n✏️ FIX KIT\nHeadlines:\n${result.fix_kit.headlines.join('\n')}\n\nBody: ${result.fix_kit.body}\nCTAs: ${result.fix_kit.ctas.join(', ')}\n\nLP Headline: ${result.fix_kit.landing_page_headline || 'N/A'}\nLP Subhead: ${result.fix_kit.landing_page_subhead || 'N/A'}\n\n🔗 REPORT LINK\n${shareLink}`
+              }
+            })
+          });
+        } catch (e) { console.error('LinkedIn notify error:', e); }
+        
+        setSending(false); setView('results');
+      };
+
+      const generate = async () => {
+        setError(null); setLoading(true); setView('processing');
+        const payload = { platform, offerType, icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: inputs.landingCopy };
+        try {
+          const res = await fetch('/api/roast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'API error');
+          setResult(data); setView('linkedin');
+        } catch (err) { setError(err.message); setView('input'); }
+        setLoading(false);
+      };
+
+      /* ─── LANDING ─── */
+      if (view === 'landing') return (
+        <div className="h-screen flex flex-col bg-white overflow-hidden">
+          <header className="bg-white border-b border-gray-200 flex-shrink-0">
+            <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon name="linkedin" className="w-8 h-8" />
+                <span className="text-gray-300 text-lg font-light">|</span>
+                <span className="text-lg text-gray-800 font-semibold">AdRoast</span>
+              </div>
+              <button onClick={() => setView('onboarding')} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="px-4 py-1 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors">Roast my Ad</button>
+            </div>
+          </header>
+          <main className="flex-1 flex flex-col justify-center items-center px-4 pb-8">
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-full mb-5">
+                <Icon name="sparkles" className="w-4 h-4" style={{ color: '#0a66c2' }} />
+                <span style={{ color: '#0a66c2' }} className="text-sm font-medium">For AI product founders running Ads</span>
+              </div>
+              <h1 className="text-6xl md:text-7xl font-light text-gray-900 mb-5" style={{ lineHeight: '1.1' }}>Your ads aren't converting.<br />Let's find out why.</h1>
+              <p className="text-lg text-gray-500 max-w-md mx-auto mb-8">Get a brutally honest AI roast of your ads.<br />Analyzed against YOUR specific ICP.</p>
+              <button onClick={() => setView('onboarding')} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="px-8 py-3 bg-white border-2 rounded-full font-semibold text-lg hover:bg-blue-50 transition-colors">Roast my Ad</button>
+              <p className="text-gray-400 mt-3 text-sm">Free • No signup required</p>
+            </div>
+            <div className="grid grid-cols-4 gap-4 mt-10 w-full max-w-3xl">
+              {[
+                { icon: 'users', title: "ICP-Specific", desc: "Roast based on YOUR customer" },
+                { icon: 'alertCircle', title: "5 Issues", desc: "Scored 1-10 with quotes" },
+                { icon: 'zap', title: "Fix Kit", desc: "Ready-to-paste copy" },
+                { icon: 'sparkles', title: "Experiments", desc: "3 testable ideas" }
+              ].map((f, i) => (
+                <div key={i} className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md hover:border-gray-300 transition-all">
+                  <Icon name={f.icon} className="w-6 h-6 mb-2" style={{ color: '#0a66c2' }} />
+                  <h3 className="font-semibold text-gray-900 text-sm">{f.title}</h3>
+                  <p className="text-gray-500 text-xs mt-1">{f.desc}</p>
+                </div>
+              ))}
+            </div>
+          </main>
+        </div>
+      );
+
+      /* ─── ONBOARDING ─── */
+      if (view === 'onboarding') return (
+        <div className="min-h-screen bg-gray-100">
+          <header className="bg-white border-b border-gray-200"><div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-2"><Icon name="linkedin" className="w-9 h-9" /><span className="text-gray-300 text-lg font-light">|</span><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div></header>
+          <main className="max-w-md mx-auto px-4 py-10">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h1 className="text-2xl font-normal text-gray-900 mb-1">Tell us about your ad</h1>
+              <p className="text-gray-500 text-sm mb-6">We'll analyze it against your specific target audience.</p>
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Who is your ad targeting?</label>
+                  <textarea placeholder="e.g., Engineering managers at Series B+ startups frustrated with slow CI/CD..." value={icp} onChange={(e) => setIcp(e.target.value)} className="w-full h-24 px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
+                  <p className="text-xs text-gray-500 mt-1">Be specific: job title, company size, pain points</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Platform</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['Meta', 'Google', 'LinkedIn'].map((p) => (
+                      <button key={p} onClick={() => setPlatform(p.toLowerCase())} style={platform === p.toLowerCase() ? { borderColor: '#0a66c2', backgroundColor: '#e8f3ff', color: '#0a66c2' } : {}} className={`p-2.5 rounded border-2 text-sm font-medium transition-all ${platform === p.toLowerCase() ? '' : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'}`}>{p}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Offer Type</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[{ id: 'demo', label: 'Book a Demo' }, { id: 'trial', label: 'Free Trial' }].map((o) => (
+                      <button key={o.id} onClick={() => setOfferType(o.id)} style={offerType === o.id ? { borderColor: '#0a66c2', backgroundColor: '#e8f3ff', color: '#0a66c2' } : {}} className={`p-2.5 rounded border-2 text-sm font-medium transition-all ${offerType === o.id ? '' : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white'}`}>{o.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <button onClick={() => setView('input')} disabled={!canProceed} style={canProceed ? { borderColor: '#0a66c2', color: '#0a66c2' } : {}} className={`w-full py-2.5 rounded-full font-semibold flex items-center justify-center gap-2 transition-all border-2 ${canProceed ? 'bg-white hover:bg-blue-50' : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'}`}>Continue <Icon name="chevronRight" className="w-4 h-4" /></button>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+
+      /* ─── INPUT ─── */
+      if (view === 'input') return (
+        <div className="min-h-screen bg-gray-100">
+          <header className="bg-white border-b border-gray-200">
+            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2"><Icon name="linkedin" className="w-9 h-9" /><span className="text-gray-300 text-lg font-light">|</span><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div>
+              <div className="flex gap-2"><span className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-full text-xs font-medium text-gray-600 capitalize">{platform}</span><span className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-full text-xs font-medium text-gray-600 capitalize">{offerType}</span></div>
+            </div>
+          </header>
+          <main className="max-w-2xl mx-auto px-4 py-6">
+            <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="border rounded-lg p-3 mb-4 flex items-start gap-3">
+              <Icon name="users" className="w-5 h-5 mt-0.5" style={{ color: '#0a66c2' }} />
+              <div><p className="text-sm text-gray-900 font-medium">Target Audience</p><p className="text-sm text-gray-700">{icp}</p><button onClick={() => setView('onboarding')} style={{ color: '#0a66c2' }} className="text-xs hover:underline mt-1">Edit</button></div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h1 className="text-xl font-normal text-gray-900 mb-1">Add your content</h1>
+              <p className="text-gray-500 text-sm mb-5">Paste your ad copy and landing page content to compare messaging</p>
+              {error && <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded text-red-700 flex items-center gap-2 text-sm"><Icon name="alertCircle" className="w-4 h-4" />{error}</div>}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Landing Page URL <span className="text-gray-500 font-normal">(optional)</span></label>
+                  <input type="url" placeholder="https://your-landing-page.com" value={inputs.url} onChange={(e) => setInputs(p => ({ ...p, url: e.target.value }))} className="w-full px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Landing Page Copy <span style={{ color: '#0a66c2' }}>(paste to compare with ad)</span></label>
+                  <textarea placeholder="Paste: headline, subheadline, key benefits, CTA text, testimonials..." value={inputs.landingCopy} onChange={(e) => setInputs(p => ({ ...p, landingCopy: e.target.value }))} className="w-full h-28 px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Ad Copy</label>
+                  <textarea placeholder="Paste your ad headline and body copy..." value={inputs.copy} onChange={(e) => setInputs(p => ({ ...p, copy: e.target.value }))} className="w-full h-20 px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Ad Visual Description</label>
+                  <input type="text" placeholder="Describe your ad image/video..." value={inputs.visual} onChange={(e) => setInputs(p => ({ ...p, visual: e.target.value }))} className="w-full px-3 py-2 bg-white border border-gray-400 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900" />
+                </div>
+              </div>
+              <button onClick={generate} disabled={!hasInput} style={hasInput ? { borderColor: '#0a66c2', color: '#0a66c2' } : {}} className={`w-full mt-5 py-2.5 rounded-full font-semibold flex items-center justify-center gap-2 transition-all border-2 ${hasInput ? 'bg-white hover:bg-blue-50' : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'}`}>Roast my Ad</button>
+            </div>
+          </main>
+        </div>
+      );
+
+      /* ─── PROCESSING ─── */
+      if (view === 'loading-report') return (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="relative w-16 h-16 mx-auto mb-6"><div className="absolute inset-0 rounded-full border-4 border-gray-200" /><div style={{ borderColor: '#0a66c2', borderTopColor: 'transparent' }} className="absolute inset-0 rounded-full border-4 animate-spin" /></div>
+            <h2 className="text-xl text-gray-900 mb-2">Loading your report...</h2>
+            <p className="text-gray-500 text-sm">Just a moment</p>
+          </div>
+        </div>
+      );
+
+      if (view === 'processing') return (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="relative w-16 h-16 mx-auto mb-6"><div className="absolute inset-0 rounded-full border-4 border-gray-200" /><div style={{ borderColor: '#0a66c2', borderTopColor: 'transparent' }} className="absolute inset-0 rounded-full border-4 animate-spin" /></div>
+            <h2 className="text-xl text-gray-900 mb-2">Analyzing your content...</h2>
+            <p className="text-gray-500 text-sm">This usually takes 10-15 seconds</p>
+          </div>
+        </div>
+      );
+
+      /* ─── LINKEDIN GATE ─── */
+      if (view === 'linkedin') {
+        const v = linkedin ? validateLinkedIn(linkedin) : { valid: false };
+        return (
+          <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+            <div className="max-w-md w-full">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#e8f3ff' }}><Icon name="sparkles" className="w-8 h-8" style={{ color: '#0a66c2' }} /></div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Your Roast is Ready!</h1>
+                <p className="text-gray-500 text-sm">One last step</p>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#e8f3ff' }}><Icon name="linkedin" className="w-5 h-5" /></div>
+                  <div><h3 className="font-semibold text-gray-900">Drop your LinkedIn</h3><p className="text-gray-500 text-xs">I review every roast personally. No spam.</p></div>
+                </div>
+                <input type="url" placeholder="https://linkedin.com/in/yourprofile" value={linkedin} onChange={(e) => { setLinkedin(e.target.value); setLinkedinErr(null); }} className={`w-full px-4 py-3 bg-white border-2 rounded-lg text-sm focus:outline-none ${linkedinErr ? 'border-red-400' : v.valid ? 'border-green-400' : 'border-gray-300 focus:border-blue-500'}`} />
+                {linkedinErr && <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{linkedinErr}</p>}
+                {v.valid && !linkedinErr && <p className="text-green-600 text-xs mt-2 flex items-center gap-1"><Icon name="check" className="w-3 h-3" />Valid LinkedIn URL</p>}
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                <p className="text-gray-500 text-xs mb-3">Preview:</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"><span className="text-xs text-gray-500 block">Ad</span><span className={`text-lg font-bold ${getScoreText(result?.overall_score)}`}>{result?.overall_score}/10</span></div>
+                  <div className="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"><span className="text-xs text-gray-500 block">Landing</span><span className={`text-lg font-bold ${result?.landing_page_roast?.overall_score > 0 ? getScoreText(result.landing_page_roast.overall_score) : 'text-gray-400'}`}>{result?.landing_page_roast?.overall_score > 0 ? `${result.landing_page_roast.overall_score}/10` : 'N/A'}</span></div>
+                  <div className="text-center p-2 bg-gray-50 rounded-lg border border-gray-200"><span className="text-xs text-gray-500 block">Match</span><span className={`text-lg font-bold ${result?.ad_landing_mismatch?.alignment_score > 0 ? getScoreText(result.ad_landing_mismatch.alignment_score) : 'text-gray-400'}`}>{result?.ad_landing_mismatch?.alignment_score > 0 ? `${result.ad_landing_mismatch.alignment_score}/10` : 'N/A'}</span></div>
+                </div>
+              </div>
+              <button onClick={submitLinkedIn} disabled={!linkedin || sending} style={linkedin && !sending ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`w-full py-3 rounded-full font-semibold flex items-center justify-center gap-2 transition-all ${linkedin && !sending ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>{sending ? 'Unlocking...' : <><Icon name="sparkles" className="w-5 h-5" style={{ color: 'white' }} /> See My Full Roast</>}</button>
+            </div>
+          </div>
+        );
+      }
+
+      /* ─── RESULTS ─── */
+      if (view === 'results' && result) {
+        const lp = result.landing_page_roast || {};
+        const mismatch = result.ad_landing_mismatch || {};
+        return (
+          <div className="min-h-screen bg-gray-100">
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+              <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2"><Icon name="linkedin" className="w-9 h-9" /><span className="text-gray-300 text-lg font-light">|</span><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div>
+                {!isSharedView && <button onClick={reset} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="rotateCcw" className="w-4 h-4" /> New Analysis</button>}
+                {isSharedView && <a href={window.location.origin + window.location.pathname} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="flame" className="w-4 h-4" /> Roast My Ad</a>}
+              </div>
+            </header>
+            <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+              {/* ICP */}
+              <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="border rounded-lg p-3"><p className="text-sm text-gray-900"><span className="font-semibold">Target Audience:</span> {icp}</p></div>
+              
+              {/* Scores */}
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className={`bg-white rounded-lg border ${getScoreBorder(result.overall_score)} shadow-sm p-4`}>
+                  <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-gray-500">Ad Score</span><span className={`text-2xl font-bold ${getScoreText(result.overall_score)}`}>{result.overall_score}/10</span></div>
+                  <p className="text-sm text-gray-700">{result.icp_mismatch}</p>
+                </div>
+                <div className={`bg-white rounded-lg border ${getScoreBorder(lp.overall_score || 0)} shadow-sm p-4`}>
+                  <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-gray-500">Landing Page</span><span className={`text-2xl font-bold ${lp.overall_score > 0 ? getScoreText(lp.overall_score) : 'text-gray-400'}`}>{lp.overall_score > 0 ? `${lp.overall_score}/10` : 'N/A'}</span></div>
+                  <p className="text-sm text-gray-700">{lp.headline_feedback || 'No landing page provided'}</p>
+                </div>
+                <div className={`bg-white rounded-lg border ${getScoreBorder(mismatch.alignment_score || 0)} shadow-sm p-4`}>
+                  <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-gray-500">Ad↔LP Match</span><span className={`text-2xl font-bold ${mismatch.alignment_score > 0 ? getScoreText(mismatch.alignment_score) : 'text-gray-400'}`}>{mismatch.alignment_score > 0 ? `${mismatch.alignment_score}/10` : 'N/A'}</span></div>
+                  <p className="text-sm text-gray-700">{mismatch.verdict || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Ad Issues */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900">Ad Issues</h2></div>
+                <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {result.issues.map((issue, i) => (
+                    <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-start justify-between mb-2"><span className="font-semibold text-sm text-gray-900">{issue.title}</span><span className={`px-2 py-0.5 rounded text-xs font-bold ${getScoreColor(issue.score)}`}>{issue.score}/10</span></div>
+                      <p className="text-sm text-gray-600">{issue.explanation}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Message Mismatch */}
+              {mismatch.disconnects && mismatch.disconnects.length > 0 && (
+                <div className="bg-white rounded-lg border border-amber-300 shadow-sm">
+                  <div className="px-4 py-3 border-b border-amber-200 bg-amber-50"><h2 className="font-semibold text-amber-800 flex items-center gap-2"><Icon name="linkBreak" className="w-5 h-5" /> Message Mismatch</h2></div>
+                  <div className="p-4">
+                    <p className="text-sm text-gray-800 mb-3">{mismatch.verdict}</p>
+                    {mismatch.message_match_issues && <p className="text-sm text-gray-600 mb-4">{mismatch.message_match_issues}</p>}
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {mismatch.disconnects.map((d, i) => (
+                        <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-red-600 text-sm font-medium mb-2">⚠️ {d.problem}</p>
+                          <p className="text-green-600 text-sm">✓ {d.fix}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Landing Page Roast */}
+              {lp.overall_score != null && (
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900">Landing Page Analysis</h2></div>
+                  <div className="p-4">
+                    <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                      {[
+                        { label: 'Headline', score: lp.headline_score, feedback: lp.headline_feedback },
+                        { label: 'Value Prop', score: lp.value_prop_score, feedback: lp.value_prop_feedback },
+                        { label: 'CTA', score: lp.cta_score, feedback: lp.cta_feedback },
+                        { label: 'Trust', score: lp.trust_score, feedback: lp.trust_feedback },
+                      ].map((item, i) => (
+                        <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex items-center justify-between mb-2"><span className="font-semibold text-sm text-gray-900">{item.label}</span><span className={`px-2 py-0.5 rounded text-xs font-bold ${getScoreColor(item.score)}`}>{item.score}/10</span></div>
+                          <p className="text-sm text-gray-600">{item.feedback}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {lp.top_issues && lp.top_issues.length > 0 && (
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div className="p-3 bg-red-50 rounded-lg border border-red-200"><h4 className="font-semibold text-red-700 text-sm mb-2">🚨 Top Issues</h4><ul className="space-y-1">{lp.top_issues.map((issue, i) => <li key={i} className="text-sm text-red-600">• {issue}</li>)}</ul></div>
+                        <div className="p-3 bg-green-50 rounded-lg border border-green-200"><h4 className="font-semibold text-green-700 text-sm mb-2">⚡ Quick Wins</h4><ul className="space-y-1">{(lp.quick_wins || []).map((win, i) => <li key={i} className="text-sm text-green-600">• {win}</li>)}</ul></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Fix Kit */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900">Fix Kit</h2></div>
+                <div className="p-4 grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ad Headlines</h3>
+                      <div className="space-y-2">
+                        {result.fix_kit.headlines.map((h, i) => (
+                          <div key={i} className="flex items-center justify-between p-2.5 bg-gray-50 rounded border border-gray-200 group hover:border-blue-400 transition-colors">
+                            <span className="text-sm text-gray-800">{h}</span>
+                            <button onClick={() => copy(h, `h-${i}`)} className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-blue-50 rounded transition-all"><Icon name={copied[`h-${i}`] ? 'check' : 'copy'} className={`w-4 h-4 ${copied[`h-${i}`] ? 'text-green-600' : 'text-gray-400'}`} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-2"><h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Ad Body</h3><button onClick={() => copy(result.fix_kit.body, 'body')} className="p-1 hover:bg-blue-50 rounded"><Icon name={copied.body ? 'check' : 'copy'} className={`w-4 h-4 ${copied.body ? 'text-green-600' : 'text-gray-400'}`} /></button></div>
+                      <p className="text-sm text-gray-700 p-2.5 bg-gray-50 rounded border border-gray-200">{result.fix_kit.body}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">CTAs</h3>
+                      <div className="flex flex-wrap gap-3">
+                        {result.fix_kit.ctas.map((cta, i) => (
+                          <button key={i} onClick={() => copy(cta, `cta-${i}`)} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="px-5 py-2.5 bg-white border-2 rounded-full text-base font-semibold hover:bg-blue-50 flex items-center gap-2 transition-colors">{cta} <Icon name={copied[`cta-${i}`] ? 'check' : 'copy'} className="w-4 h-4" /></button>
+                        ))}
+                      </div>
+                    </div>
+                    {result.fix_kit.landing_page_headline && (
+                      <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="p-4 rounded-lg border">
+                        <h3 style={{ color: '#0a66c2' }} className="text-xs font-bold uppercase tracking-wide mb-3">Landing Page Copy</h3>
+                        <div className="space-y-2">
+                          <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border"><span className="text-xs text-gray-500">Headline</span><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_headline}</p></div>
+                          {result.fix_kit.landing_page_subhead && <div style={{ borderColor: '#b4d4ff' }} className="p-2.5 bg-white rounded border"><span className="text-xs text-gray-500">Subheadline</span><p className="text-sm text-gray-800 mt-0.5">{result.fix_kit.landing_page_subhead}</p></div>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="px-4 pb-4"><div className="p-3 bg-gray-50 rounded border border-gray-200"><p className="text-sm text-gray-600"><span style={{ color: '#0a66c2' }} className="font-semibold">Why this works:</span> {result.fix_kit.rationale}</p></div></div>
+              </div>
+
+              {/* Experiments */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900">3 Experiments to Run</h2></div>
+                <div className="p-4 grid sm:grid-cols-3 gap-3">
+                  {result.experiments.map((exp, i) => (
+                    <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center gap-2 mb-2"><div style={{ backgroundColor: '#e8f3ff', color: '#0a66c2' }} className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{i + 1}</div><h3 className="font-semibold text-gray-900 text-sm">{exp.title}</h3></div>
+                      <p className="text-sm text-gray-600">{exp.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Next Steps */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900">Next Steps</h2></div>
+                <div className="p-4 space-y-2">
+                  {result.next_steps.map((step, i) => (
+                    <label key={i} className="flex items-start gap-3 cursor-pointer group p-2 rounded hover:bg-gray-50">
+                      <input type="checkbox" style={{ accentColor: '#0a66c2' }} className="mt-0.5 w-4 h-4 rounded border-gray-400" />
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900">{step}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Save & Share Report - only show if not viewing a shared report */}
+              {!isSharedView && (
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <div className="px-4 py-3 border-b border-gray-200"><h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="link" className="w-5 h-5" style={{ color: '#0a66c2' }} /> Save Your Report</h2></div>
+                  <div className="p-4">
+                    {pdfStatus === 'sent' ? (
+                      <div className="text-center py-2">
+                        <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3"><Icon name="check" className="w-6 h-6 text-green-600" /></div>
+                        <p className="text-green-700 font-semibold mb-1">Here's your link!</p>
+                        <p className="text-gray-500 text-sm mb-3">Also sent to {reportEmail}</p>
+                        <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 mb-3">
+                          <input type="text" readOnly value={shareableLink} className="flex-1 bg-transparent text-xs text-gray-600 outline-none truncate" />
+                          <button onClick={() => copy(shareableLink, 'shareLink')} className="p-2 hover:bg-gray-200 rounded transition-colors">
+                            {copied.shareLink ? <Icon name="check" className="w-4 h-4 text-green-600" /> : <Icon name="copy" className="w-4 h-4 text-gray-500" />}
+                          </button>
+                        </div>
+                        <button onClick={() => { setPdfStatus(null); setShareableLink(''); }} className="text-sm hover:underline" style={{ color: '#0a66c2' }}>Get a new link</button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-gray-600 text-sm mb-4">Enter your email to get a permanent link to your report.</p>
+                        <div className="mb-4">
+                          <input type="email" placeholder="your@email.com" value={reportEmail} onChange={(e) => { setReportEmail(e.target.value); setReportEmailErr(null); }} className={`w-full px-3 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:ring-1 ${reportEmailErr ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'}`} />
+                          {reportEmailErr && <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1"><Icon name="alertCircle" className="w-3 h-3" />{reportEmailErr}</p>}
+                        </div>
+                        <button onClick={sendReportLink} disabled={pdfStatus === 'sending'} style={reportEmail ? { backgroundColor: '#0a66c2', color: 'white' } : {}} className={`w-full py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 transition-all ${reportEmail ? 'hover:opacity-90' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
+                          {pdfStatus === 'sending' ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Icon name="link" className="w-4 h-4" />} Get My Link
+                        </button>
+                        <p className="text-gray-400 text-xs mt-3 text-center">Your email stays between us. No spam, ever.</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* CTA */}
+              <div style={{ backgroundColor: '#e8f3ff', borderColor: '#b4d4ff' }} className="rounded-lg border p-6 text-center">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Want better performing ads?</h2>
+                <p className="text-gray-600 mb-4">I help AI founders fix their positioning so ads actually convert.</p>
+                <a href="https://www.linkedin.com/in/koganmarinamkt" target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#0a66c2', color: 'white' }} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold hover:opacity-90 transition-opacity">
+                  <Icon name="linkedin" className="w-5 h-5" style={{ fill: 'white' }} /> Let's connect on LinkedIn
+                </a>
+              </div>
+            </main>
+          </div>
+        );
+      }
+
+      return null;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,97 +1,114 @@
-// Helper (underscore prefix => NOT a Vercel function, keeps us under the 12-function
-// Hobby cap). Queries the official LinkedIn Ad Library API for an advertiser's live ads.
+// Helper (underscore prefix => NOT a Vercel Serverless Function, so it does not count
+// against the Hobby 12-function cap). Pulls a company's REAL live ads (with creative
+// images) from the LinkedIn Ad Library via the Apify actor, and scores them.
 //
-// Auth model: the Ad Library is PUBLIC transparency data. The request is authenticated
-// with ONE app/member access token (ours), not a per-end-user token. So Marina generates
-// a token once in the LinkedIn developer portal, drops it in Vercel as LINKEDIN_ACCESS_TOKEN,
-// and every lookup reuses it. Token TTL is ~2 months; refresh it in Vercel when it expires.
+// LinkedIn's official Ad Library API returns no creative image, and its ad-library pages
+// block server reads (Cloudflare 403), so we use Apify (residential rendering) whose
+// output includes mediaUrl = the real creative.
 //
-// Env vars (Marina adds these in Vercel):
-//   LINKEDIN_ACCESS_TOKEN   - the member/app OAuth token (Bearer)
-//   LINKEDIN_API_VERSION    - optional, defaults to the current monthly version
+// Actor: automation-lab/linkedin-ad-library-scraper (pay-per-event, ~$0.001/ad, no rental)
+// Output per ad: advertiserName, advertiserLinkedInUrl, headline, bodyText, ctaLabel,
+//   ctaUrl, mediaUrl, adFormat, adId, fundingEntityName, detailUrl.
 //
-// IMPORTANT: the exact response shape (esp. the creative image field) is only knowable
-// from a real call. normalizeAd() below is defensive and reads the likely field names;
-// once we run the first live query we lock the mapping to whatever the JSON actually uses.
+// Env: APIFY_TOKEN (in Vercel). ANTHROPIC_API_KEY is reused for the quick gravity score.
+//
+// These are called from api/icp.js (action: 'ads-start' / 'ads-poll') so we add no new
+// function. Async flow: start returns a runId; poll returns { status, ads:null } while the
+// scrape runs, then { status:'SUCCEEDED', ads:[...] } (scored if an icp is passed).
 
-const LI_VERSION = process.env.LINKEDIN_API_VERSION || '202608';
+const ACTOR = 'automation-lab~linkedin-ad-library-scraper';
+const APIFY = 'https://api.apify.com/v2';
+const SCORE_MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
 
-function firstOf(obj, keys) {
-  for (const k of keys) {
-    const v = k.split('.').reduce((o, part) => (o == null ? o : o[part]), obj);
-    if (v != null && v !== '') return v;
-  }
-  return null;
-}
+function host(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return null; } }
 
-// Map one raw Ad Library element to the shape the dashboard renders. Defensive: tries the
-// likely field names for each piece. TODO(after first live call): pin exact paths.
-function normalizeAd(el) {
-  if (!el || typeof el !== 'object') return null;
-  const head = firstOf(el, ['commentary', 'adContent.commentary', 'headline', 'adContent.headline', 'text', 'name']);
-  // Creative image / preview: LinkedIn returns a creative and/or a preview. Grab whatever
-  // hotlinkable image or preview URL is present; else keep the detail/permalink for a link-out.
-  const img = firstOf(el, ['creative.imageUrl', 'creative.image', 'adPreview.imageUrl', 'previewImage', 'thumbnail', 'imageUrl', 'creative.thumbnail']);
-  const detailUrl = firstOf(el, ['adUrl', 'detailUrl', 'permalink', 'adLibraryUrl', 'url']);
-  const advertiser = firstOf(el, ['advertiserName', 'advertiser.name', 'payer.name', 'adPayer']);
-  const advertiserUrl = firstOf(el, ['advertiserUrl', 'advertiser.url']);
-  const first = firstOf(el, ['firstImpressionAt', 'adStatistics.firstImpressionAt', 'startDate']);
-  const last = firstOf(el, ['latestImpressionAt', 'adStatistics.latestImpressionAt', 'endDate']);
-  const type = firstOf(el, ['type', 'adType', 'format']);
-  if (!head && !img && !detailUrl) return null; // nothing usable
+function normalize(rec) {
+  if (!rec || typeof rec !== 'object') return null;
+  const head = rec.headline || rec.bodyText || rec.title || '';
+  const img = rec.mediaUrl || rec.imageUrl || rec.thumbnailUrl || null;
+  if (!head && !img) return null;
   return {
     plat: 'LinkedIn',
-    head: head || '(no headline in transparency record)',
-    img: img || null,          // real creative image when present
-    detailUrl: detailUrl || null,
-    dom: advertiserUrl ? String(advertiserUrl).replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : null,
-    advertiser: advertiser || null,
-    firstSeen: first || null,
-    lastSeen: last || null,
-    adType: type || null,
-    _raw: el,                  // kept so we can inspect the first real response and lock fields
+    head,
+    body: rec.bodyText || '',
+    img,
+    cta: rec.ctaLabel || null,
+    ctaUrl: rec.ctaUrl || null,
+    dom: rec.ctaUrl ? host(rec.ctaUrl) : (rec.advertiserLinkedInUrl ? 'linkedin.com' : null),
+    advertiser: rec.advertiserName || null,
+    advertiserUrl: rec.advertiserLinkedInUrl || null,
+    adId: rec.adId || null,
+    detailUrl: rec.detailUrl || null,
+    format: rec.adFormat || null,
   };
 }
 
-// Fetch a company's LinkedIn ads. Searches by advertiser keyword + countries.
-export async function fetchLinkedInAds({ company, keyword, countries = ['US'], limit = 25 }) {
-  const token = process.env.LINKEDIN_ACCESS_TOKEN;
-  if (!token) return { ok: false, reason: 'no_token', ads: [] };
-
-  const term = (keyword || company || '').trim();
-  if (!term) return { ok: false, reason: 'no_term', ads: [] };
-
-  // Rest.li finder call. Country list encoding for Rest.li 2.0.0 is List(...).
-  const countryList = (Array.isArray(countries) ? countries : [countries]).filter(Boolean);
-  const qs = [
-    'q=criteria',
-    'keyword=' + encodeURIComponent(term),
-    countryList.length ? 'countries=' + encodeURIComponent('List(' + countryList.join(',') + ')') : '',
-    'count=' + limit,
-  ].filter(Boolean).join('&');
-  const url = 'https://api.linkedin.com/rest/adLibrary?' + qs;
-
+// One cheap Haiku call scores the whole set: 1-10 fit-to-ICP + one-line verdict + a fix.
+// Best-effort; any failure returns the ads unscored.
+async function scoreAds(ads, icp) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key || !icp || !ads.length) return ads;
+  const list = ads.map((a, i) => `#${i}: headline="${(a.head || '').slice(0, 140)}" body="${(a.body || '').slice(0, 200)}" cta="${a.cta || ''}"`).join('\n');
+  const sys = `You are a B2B ad auditor. Score each ad 1-10 for how well it fits the target ICP and earns the click (1 = severe mismatch, 10 = excellent). Return ONLY a JSON array, one object per ad index, shape: {"i":0,"score":5,"verdict":"one short line","fix":"one short fix line"}. No markdown. Never use em dashes or en dashes; use commas or periods.`;
+  const usr = `ICP: ${icp}\n\nAds:\n${list}`;
   try {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 9000);
-    const res = await fetch(url, {
-      headers: {
-        Authorization: 'Bearer ' + token,
-        'X-RestLi-Protocol-Version': '2.0.0',
-        'LinkedIn-Version': LI_VERSION,
-      },
-      signal: controller.signal,
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 1500, system: sys, messages: [{ role: 'user', content: usr }] }),
     });
-    clearTimeout(t);
-    if (!res.ok) {
-      const bodyText = await res.text().catch(() => '');
-      return { ok: false, reason: 'http_' + res.status, detail: bodyText.slice(0, 300), ads: [] };
+    const d = await r.json();
+    const txt = d.content?.[0]?.text || '';
+    const m = txt.match(/\[[\s\S]*\]/);
+    if (!m) return ads;
+    const scores = JSON.parse(m[0]);
+    const byI = {};
+    for (const s of scores) if (typeof s.i === 'number') byI[s.i] = s;
+    return ads.map((a, i) => byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, fix: byI[i].fix } : a);
+  } catch (e) { return ads; }
+}
+
+// Start an Apify run for a company's LinkedIn ads. Returns { ok, runId, datasetId, status }.
+export async function apifyStart({ company, advertiserUrl, country, maxAds } = {}) {
+  const token = process.env.APIFY_TOKEN;
+  if (!token) return { ok: false, reason: 'no_token' };
+  const input = {
+    maxAds: Math.min(Number(maxAds) || 12, 24),
+    dateRange: 'all-time',
+    sortBy: 'RECENT',
+  };
+  if (advertiserUrl) input.advertiserUrls = [advertiserUrl];
+  else input.searchQuery = (company || '').trim();
+  if (!input.advertiserUrls && !input.searchQuery) return { ok: false, reason: 'no_query' };
+  if (country) input.countryCode = String(country).toLowerCase();
+  try {
+    const r = await fetch(`${APIFY}/acts/${ACTOR}/runs?token=${token}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.data) return { ok: false, reason: 'start_' + r.status, detail: (d && d.error) || null };
+    return { ok: true, runId: d.data.id, datasetId: d.data.defaultDatasetId, status: d.data.status };
+  } catch (e) { return { ok: false, reason: 'error', detail: String(e && e.message || e) }; }
+}
+
+// Poll a run. While running: { ok:true, status, ads:null }. On success: { ok:true, status,
+// ads:[...] } (scored if icp given). On failure: { ok:false, status, ads:[] }.
+export async function apifyPoll({ runId, icp } = {}) {
+  const token = process.env.APIFY_TOKEN;
+  if (!token) return { ok: false, reason: 'no_token', ads: [] };
+  if (!runId) return { ok: false, reason: 'no_runId', ads: [] };
+  try {
+    const r = await fetch(`${APIFY}/actor-runs/${runId}?token=${token}`);
+    const d = await r.json().catch(() => ({}));
+    const status = d.data?.status;
+    if (status === 'SUCCEEDED') {
+      const dsId = d.data.defaultDatasetId;
+      const items = await fetch(`${APIFY}/datasets/${dsId}/items?token=${token}&clean=true`).then(x => x.json()).catch(() => []);
+      let ads = (Array.isArray(items) ? items : []).map(normalize).filter(Boolean);
+      if (icp) ads = await scoreAds(ads, icp);
+      return { ok: true, status, ads, count: ads.length };
     }
-    const data = await res.json();
-    const els = data.elements || data.data || [];
-    const ads = els.map(normalizeAd).filter(Boolean);
-    return { ok: true, ads, count: ads.length };
-  } catch (e) {
-    return { ok: false, reason: 'error', detail: String(e && e.message || e), ads: [] };
-  }
+    if (['FAILED', 'ABORTED', 'TIMED-OUT'].includes(status)) return { ok: false, status, ads: [] };
+    return { ok: true, status: status || 'RUNNING', ads: null };
+  } catch (e) { return { ok: false, reason: 'error', detail: String(e && e.message || e), ads: [] }; }
 }
