@@ -1132,7 +1132,7 @@
               <div className="flex-none grid place-items-center rounded-full font-bold text-white" style={{ width: 42, height: 42, background: scoreCol(worst.score), fontSize: 17 }}>{worst.score}</div>
               <div style={{ minWidth: 0 }}>
                 <div className="font-bold text-gray-900" style={{ fontSize: 14.5 }}>🔥 Roast this one first: your {worst.plat} ad</div>
-                <div className="text-gray-500" style={{ fontSize: 13 }}>"{worst.head}" scored the lowest of your {ads.length} live ad{ads.length === 1 ? '' : 's'}. We roasted it free, scroll to its card.</div>
+                <div className="text-gray-500" style={{ fontSize: 13 }}>{worst.head ? '"' + worst.head + '" scored' : 'It scored'} the lowest of your {ads.length} live ad{ads.length === 1 ? '' : 's'}. We roasted it free, scroll to its card.</div>
               </div>
             </div>)}
 
