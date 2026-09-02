@@ -122,19 +122,30 @@ async function fetchLinkedInAds({ company, limit = 12 } = {}) {
   const q = (company || '').trim();
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
   const target = 'https://www.linkedin.com/ad-library/search?accountOwner=' + encodeURIComponent(q);
-  const headers = { 'X-Return-Format': 'html', 'X-Timeout': '40' };
+  const headers = { 'X-Return-Format': 'html', 'X-Timeout': '20' };
+  // A free JINA_API_KEY (env) lifts the anonymous rate limit and makes this far more
+  // reliable; without it we still work, just flakier under load.
   if (process.env.JINA_API_KEY) headers['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
-  try {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 45000);
-    const r = await fetch('https://r.jina.ai/' + target, { headers, signal: controller.signal });
-    clearTimeout(t);
-    if (!r.ok) return { ok: false, reason: 'jina_' + r.status, ads: [] };
-    const html = await r.text();
-    // Only keep ads that carry a real creative image — every board card must show a real
-    // creative, never a text-only placeholder tile.
-    return { ok: true, ads: parseAdCards(html, q).filter(a => a.img).slice(0, limit) };
-  } catch (e) { return { ok: false, reason: 'error', detail: String(e && e.message || e), ads: [] }; }
+  // Jina's anonymous proxy pool is flaky, so retry before giving up — a transient miss
+  // otherwise drops LinkedIn from the board entirely. Budget-bounded (2 x ~24s) to stay
+  // inside the 60s function limit alongside the Google fetch and the scoring call.
+  let lastReason = 'error';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 24000);
+      const r = await fetch('https://r.jina.ai/' + target, { headers, signal: controller.signal });
+      clearTimeout(t);
+      if (!r.ok) { lastReason = 'jina_' + r.status; continue; }
+      const html = await r.text();
+      // Only keep ads that carry a real creative image — every board card must show a real
+      // creative, never a text-only placeholder tile.
+      const ads = parseAdCards(html, q).filter(a => a.img).slice(0, limit);
+      if (ads.length) return { ok: true, ads };
+      lastReason = 'no_ads';
+    } catch (e) { lastReason = String(e && e.message || e); }
+  }
+  return { ok: false, reason: lastReason, ads: [] };
 }
 
 // --- Google (free, via Ads Transparency Center RPC) -----------------------------------
