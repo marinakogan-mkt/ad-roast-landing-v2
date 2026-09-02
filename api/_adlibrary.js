@@ -50,9 +50,19 @@ function parseAdCards(html, company) {
     const body = bod.length ? decodeHtml(stripTags(bod[bod.length - 1][1])).trim() : '';
     out.push({ id, advertiser, headline, body, img });
   }
+  // Collapse repeats: the same creative often runs across several campaigns and shows up
+  // as multiple cards. Keep one per unique creative (by image, falling back to headline).
+  const uniq = [];
+  const key = new Set();
+  for (const a of out) {
+    const k = (a.img ? a.img.split('?')[0] : '') || (a.headline || '') || a.id;
+    if (key.has(k)) continue;
+    key.add(k);
+    uniq.push(a);
+  }
   // We query by accountOwner (advertiser), so every returned card already belongs to the
   // company; no name filtering needed (and thought-leader ads show a person in the byline).
-  return out.map(a => ({
+  return uniq.map(a => ({
     plat: 'LinkedIn',
     head: a.headline || (a.body || '').slice(0, 80) || '(untitled ad)',
     body: a.body || '',
