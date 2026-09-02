@@ -998,6 +998,21 @@
         try { const s = new URLSearchParams(window.location.search).get('site'); if (s) { setSiteInput(s); loadReal(s); } } catch (e) {}
       }, []);
 
+      // Hand a chosen live ad off to the real roast engine. AdLibraryView renders outside
+      // AdRoastApp, so we stash the ad + company + ICP and reload into the main app with
+      // ?libroast=1; AdRoastApp picks it up, builds the roast payload (creative included as
+      // adImageUrl) and runs the actual /api/roast. Server enforces free vs paid tokens.
+      const roastThisAd = (a, co, icpText) => {
+        try {
+          localStorage.setItem('adroast_library_roast', JSON.stringify({
+            ad: { plat: a.plat, head: a.head || '', body: a.body || '', img: a.img || null, detailUrl: a.detailUrl || '', ctaUrl: a.ctaUrl || '', dom: a.dom || '' },
+            co: { name: (co && co.name) || '', domain: (co && co.domain) || '' },
+            icp: icpText || ''
+          }));
+        } catch (e) {}
+        window.location.href = '/?libroast=1';
+      };
+
       const usingReal = !!real;
       const CO = real ? real.co : YOUR_CO;
       const ICP = real ? real.icp : YOUR_ICP;
@@ -1136,12 +1151,12 @@
                         <>
                           <div className="uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.12em' }}>Biggest fix</div>
                           <div className="text-gray-800" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>{a.fix || a.verdict || a.body}</div>
-                          <button className="w-full font-bold text-white rounded-lg mt-3" style={{ fontSize: 13.5, padding: '10px', background: '#16a34a' }}>View full roast →</button>
+                          <button onClick={() => roastThisAd(a, CO, ICP)} className="w-full font-bold text-white rounded-lg mt-3" style={{ fontSize: 13.5, padding: '10px', background: '#16a34a' }}>View full roast →</button>
                         </>
                       ) : (
                         <>
                           <div className="text-gray-500" style={{ fontSize: 13, lineHeight: 1.4 }}>{a.verdict || a.body || ' '}</div>
-                          <button onClick={() => setModalHead(a.head)} className="w-full font-bold rounded-lg mt-3" style={{ fontSize: 13.5, padding: '10px', border: '1px dashed #cbd5e1', color: '#0a66c2', background: '#fff' }}>🔒 Roast this ad →</button>
+                          <button onClick={() => roastThisAd(a, CO, ICP)} className="w-full font-bold rounded-lg mt-3" style={{ fontSize: 13.5, padding: '10px', border: '1px dashed #cbd5e1', color: '#0a66c2', background: '#fff' }}>🔥 Roast this ad →</button>
                         </>
                       )}
                     </div>
@@ -1429,6 +1444,62 @@
         if (params.get('roasts') === '1') { setView('roasts-list'); return; }
         // Ad Library board (/?library=1)
         if (params.get('library') === '1') { setView('ad-library'); return; }
+
+        /* Roast handoff from the "Your Live Ads" dashboard (/?libroast=1). The dashboard
+           stashed the chosen ad + company + ICP; build the roast payload here and run the
+           real /api/roast. The creative rides along as adImageUrl (roast.js fetches it).
+           Free vs paid is decided server-side by the account's token balance, and the
+           results view handles unlock vs blur — same as a normal roast. */
+        if (params.get('libroast') === '1') {
+          window.history.replaceState({}, '', window.location.pathname);
+          let stash = null;
+          try { stash = JSON.parse(localStorage.getItem('adroast_library_roast')); } catch (e) {}
+          try { localStorage.removeItem('adroast_library_roast'); } catch (e) {}
+          if (!stash || !stash.ad) { setView('ad-library'); return; }
+          const a = stash.ad, co = stash.co || {};
+          const platMap = { LinkedIn: 'linkedin', Meta: 'meta', Google: 'google' };
+          const adText = [a.head, a.body].filter(Boolean).join('\n\n');
+          const payload = {
+            platform: platMap[a.plat] || 'linkedin',
+            offerType: 'demo', offerDetail: '',
+            icpDescription: stash.icp || '',
+            landingUrl: a.ctaUrl || '',
+            adCopy: adText,
+            visualDescription: '',
+            landingCopy: '',
+            adScreenshot: null, adScreenshotType: null,
+            adImageUrl: a.img || null,
+            company: co.name || '', website: co.domain || '',
+            adUrl: a.detailUrl || '',
+            forceFresh: false,
+            source: 'ad-library'
+          };
+          const pendingInputs = { url: '', copy: adText, visual: '', adScreenshot: null, adScreenshotPreview: null };
+          // Reflect the ad in the form state so the results header/edit views have context.
+          setPlatform(payload.platform); setOfferType('demo'); setIcp(payload.icpDescription);
+          setCompanyName(payload.company); setSiteUrl(payload.website);
+          setInputs(prev => ({ ...prev, copy: adText }));
+          setAdLink(payload.adUrl || '');
+          fetch('/api/auth?action=me', { credentials: 'same-origin' })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+              const signedIn = d && d.session && d.session.mode === 'roast';
+              if (signedIn) setRoastSession({ email: d.session.email, plan: d.plan || 'free', tokens: (typeof d.tokens === 'number' ? d.tokens : 0) });
+              if (!signedIn) {
+                // No roast account yet: stash the roast and send them through the sign-in gate.
+                try { localStorage.setItem('adroast_pending_roast', JSON.stringify({ payload, inputs: pendingInputs })); } catch (e) {}
+                setView('landing'); setShowSignupGate(true);
+                return;
+              }
+              setView('processing');
+              fetch('/api/roast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) })
+                .then(r => r.json())
+                .then(data => { if (data && !data.error) applyRoastResult(data); else { setError((data && data.error) || 'Roast failed'); setView('ad-library'); } })
+                .catch(err => { setError(err.message); setView('ad-library'); });
+            })
+            .catch(() => { setView('ad-library'); });
+          return;
+        }
         const portalParam = params.get('portal');
         const paymentStatus = params.get('payment');
         const stripeSessionId = params.get('session_id');

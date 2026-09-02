@@ -182,7 +182,14 @@ export default async function handler(req, res) {
     body = {};
   }
 
-  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, company, website, adUrl, forceFresh } = body;
+  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, adImageUrl, company, website, adUrl, forceFresh } = body;
+
+  // Working creative vars: a roast started from the "Your Live Ads" dashboard sends the
+  // real creative as a hotlinkable URL (adImageUrl) instead of an uploaded base64 image.
+  // We fetch it server-side (no browser CORS) further down and fill these in so the model
+  // sees the actual creative, exactly as if the user had uploaded a screenshot.
+  let effShot = adScreenshot || null;
+  let effShotType = adScreenshotType || null;
 
   /* Pre-LLM token gate (optimization #2): a roast only warrants an Anthropic call
      when the caller is a signed-in account WITH tokens. Out-of-token or anonymous
@@ -228,7 +235,7 @@ export default async function handler(req, res) {
     catch (e) { return _norm(u); }
   };
   const dedupeHash = crypto.createHash('sha256')
-    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null }))
+    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null, adImageUrl: adImageUrl || null }))
     .digest('hex');
   const dedupeKey = acctEmail ? `roast:dedupe:${acctEmail}:${dedupeHash}` : null;
   if (dedupeKey && !redisDown && !forceFresh) {
@@ -452,6 +459,36 @@ CASE — write ALL generated ad copy in SENTENCE CASE, never Title Case. Capital
         ? `Custom offer described by the advertiser: "${offerDetail.trim()}". Calibrate the CTA-friction scoring, the funnel stage, and the recommended pre-set button to THIS offer, not to a demo or trial by default.`
         : (offerType || 'Not specified'));
 
+  // Pull the real creative from the ad-library dashboard. adImageUrl is a public
+  // media.licdn.com (or similar) URL; fetch it here (server-side avoids browser CORS)
+  // and turn it into the base64 image the model reads. Best-effort: any failure just
+  // falls back to a copy-only roast. Cap the payload so an oversized asset can't blow
+  // the request up (the model accepts images comfortably under ~5MB).
+  if (!effShot && typeof adImageUrl === 'string' && /^https?:\/\//i.test(adImageUrl.trim())) {
+    try {
+      const ic = new AbortController();
+      const it = setTimeout(() => ic.abort(), 9000);
+      const imgRes = await fetch(adImageUrl.trim(), {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'Accept': 'image/*,*/*;q=0.8' },
+        signal: ic.signal
+      });
+      clearTimeout(it);
+      const ct = (imgRes.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      if (imgRes.ok && /^image\/(png|jpe?g|gif|webp)$/.test(ct)) {
+        const buf = Buffer.from(await imgRes.arrayBuffer());
+        if (buf.length > 0 && buf.length <= 4_500_000) {
+          effShot = buf.toString('base64');
+          effShotType = ct === 'image/jpg' ? 'image/jpeg' : ct;
+          console.log('[AdRoast v4] Attached live-ads creative from URL,', buf.length, 'bytes,', effShotType);
+        } else {
+          console.log('[AdRoast v4] Skipped live-ads creative (size', buf.length, 'bytes)');
+        }
+      } else {
+        console.log('[AdRoast v4] Live-ads creative fetch not an image:', imgRes.status, ct);
+      }
+    } catch (e) { console.log('[AdRoast v4] Live-ads creative fetch failed:', e.message); }
+  }
+
   const userPrompt = `Analyze this ad${hasAnyLandingContent ? ' AND its landing page' : ''} for ICP: "${icpDescription}"
 
 Platform: ${platform}
@@ -462,7 +499,7 @@ Landing page content available: ${hasAnyLandingContent ? 'YES — SCORE IT 1-10'
 ${effectiveAdCopy ? (isAdvancedAudit ? `=== AD COPY (MULTI-VARIANT GOOGLE/PAID-ADS AUDIT — ${variants?.length || 0} variants) ===\n${effectiveAdCopy}\n\nNOTE: This is a structured Google Ads-style audit with multiple variants. Analyse the full ad structure: scoring should reflect the overall campaign quality across variants, and the 5 Ad Issues / Fix Kit / Experiments should cite specific headlines and descriptions (by variant + number) when relevant.` : `=== AD COPY ===\n${effectiveAdCopy}`) : '=== AD COPY ===\n[No ad copy provided]'}
 
 ${visualDescription ? `=== AD VISUAL DESCRIPTION ===\n${visualDescription}` : ''}
-${adScreenshot ? `=== AD CREATIVE IMAGE ATTACHED ===\nThe actual ad creative image is attached to this message. READ the copy/text rendered ON the creative (headline, overlay text, CTA, captions) and analyze it as the ad's creative copy. Factor the creative copy AND its visual into the issues, especially headline_clarity, visual_copy_match, cta_friction and trust_signals, citing specific words shown on the creative.` : ''}
+${effShot ? `=== AD CREATIVE IMAGE ATTACHED ===\nThe actual ad creative image is attached to this message. READ the copy/text rendered ON the creative (headline, overlay text, CTA, captions) and analyze it as the ad's creative copy. Factor the creative copy AND its visual into the issues, especially headline_clarity, visual_copy_match, cta_friction and trust_signals, citing specific words shown on the creative.` : ''}
 
 ${landingPageContent ? `=== LANDING PAGE CONTENT (AUTO-SCRAPED FROM URL) ===\n${landingPageContent}` : ''}
 
@@ -495,8 +532,8 @@ Return the JSON object defined in the output contract. All fields required.`;
         // of full input price. Moving the ~500-token schema out of the (uncached) user
         // message and into this cached prefix is the bulk of the per-roast saving.
         system: [{ type: 'text', text: systemPrompt + '\n\n' + OUTPUT_CONTRACT, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: adScreenshot
-          ? [{ type: 'text', text: userPrompt }, { type: 'image', source: { type: 'base64', media_type: (adScreenshotType || 'image/png'), data: adScreenshot } }]
+        messages: [{ role: 'user', content: effShot
+          ? [{ type: 'text', text: userPrompt }, { type: 'image', source: { type: 'base64', media_type: (effShotType || 'image/png'), data: effShot } }]
           : userPrompt }]
       })
     });
@@ -604,9 +641,12 @@ Return the JSON object defined in the output contract. All fields required.`;
             /* Persist the ad creative so a shared/cold report shows the actual ad being
                roasted. Downscaled JPEG (~800px) is small; cap defensively so an oversized
                image never blows the Redis value limit (the roast still saves without it). */
-            if (adScreenshot && typeof adScreenshot === 'string' && adScreenshot.length < 700000) {
-              record.adScreenshot = adScreenshot;
-              record.adScreenshotType = adScreenshotType || 'image/jpeg';
+            if (effShot && typeof effShot === 'string' && effShot.length < 700000) {
+              record.adScreenshot = effShot;
+              record.adScreenshotType = effShotType || 'image/jpeg';
+            } else if (adImageUrl && typeof adImageUrl === 'string') {
+              // Creative too big to inline in Redis: keep the hotlink so the report can show it.
+              record.adImageUrl = adImageUrl;
             }
             await _redis.set(`roast:report:${reportId}`, JSON.stringify(record), { ex: 60 * 60 * 24 * 90 });
             const summary = { reportId, ts, email: acctEmail, platform: platform || '', company: company || '', icp: (icpDescription || '').slice(0, 160), adScore: parsed.overall_score ?? null, lpScore: parsed.landing_page_roast?.overall_score ?? null, matchScore: parsed.ad_landing_mismatch?.alignment_score ?? null };
