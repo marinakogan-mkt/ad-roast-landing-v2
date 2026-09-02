@@ -50,12 +50,9 @@ function parseAdCards(html, company) {
     const body = bod.length ? decodeHtml(stripTags(bod[bod.length - 1][1])).trim() : '';
     out.push({ id, advertiser, headline, body, img });
   }
-  // Keep only this advertiser's ads when we can match the name; the keyword search also
-  // returns competitors' ads that merely mention the company.
-  const cn = norm(company);
-  const mine = out.filter(a => cn && norm(a.advertiser).includes(cn));
-  const chosen = mine.length ? mine : out;
-  return chosen.map(a => ({
+  // We query by accountOwner (advertiser), so every returned card already belongs to the
+  // company; no name filtering needed (and thought-leader ads show a person in the byline).
+  return out.map(a => ({
     plat: 'LinkedIn',
     head: a.headline || (a.body || '').slice(0, 80) || '(untitled ad)',
     body: a.body || '',
@@ -98,7 +95,7 @@ async function scoreAds(ads, icp) {
 export async function fetchAdsViaJina({ company, icp, limit = 12 } = {}) {
   const q = (company || '').trim();
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
-  const target = 'https://www.linkedin.com/ad-library/search?keyword=' + encodeURIComponent(q);
+  const target = 'https://www.linkedin.com/ad-library/search?accountOwner=' + encodeURIComponent(q);
   const headers = { 'X-Return-Format': 'html', 'X-Timeout': '40' };
   if (process.env.JINA_API_KEY) headers['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
   let html;
