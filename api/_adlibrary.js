@@ -77,18 +77,33 @@ function parseAdCards(html, company) {
 }
 
 // One cheap Haiku call scores the whole set: 1-10 fit-to-ICP + one-line verdict + a fix.
-// Best-effort; any failure returns the ads unscored.
+// Multimodal: each ad contributes a text line AND (capped) its creative image, because the
+// copy that sells the ad usually lives ON the creative, and Google image ads carry no
+// separate text at all. Images are passed as URL sources (Anthropic fetches them), so we
+// don't download them here. Best-effort; any failure returns the ads unscored.
 async function scoreAds(ads, icp) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key || !icp || !ads.length) return ads;
-  const list = ads.map((a, i) => `#${i}: headline="${(a.head || '').slice(0, 140)}" body="${(a.body || '').slice(0, 220)}"`).join('\n');
-  const sys = `You are a B2B ad auditor. Score each ad 1-10 for how well it fits the target ICP and earns the click (1 = severe mismatch, 10 = excellent). Return ONLY a JSON array, one object per ad index, shape: {"i":0,"score":5,"verdict":"one short line","fix":"one short fix line"}. No markdown. Never use em dashes or en dashes; use commas or periods.`;
-  const usr = `ICP: ${icp}\n\nAds:\n${list}`;
+  const IMG_CAP = 14; // bound the vision tokens per board load
+  let imgUsed = 0;
+  const lines = [];
+  const content = [{ type: 'text', text: '' }]; // header filled in after the loop
+  for (let i = 0; i < ads.length; i++) {
+    const a = ads[i];
+    lines.push(`#${i} [${a.plat}] headline="${(a.head || '').slice(0, 140)}" body="${(a.body || '').slice(0, 220)}"`);
+    if (a.img && imgUsed < IMG_CAP && /^https:\/\//i.test(a.img)) {
+      content.push({ type: 'text', text: `Creative image for ad #${i}:` });
+      content.push({ type: 'image', source: { type: 'url', url: a.img } });
+      imgUsed++;
+    }
+  }
+  content[0].text = `ICP: ${icp}\n\nScore each ad 1-10 for how well it fits this ICP and earns the click (1 = severe mismatch, 10 = excellent). Several ads include their creative image below; READ the copy/text rendered on each creative and judge it as the ad's copy. Ads:\n${lines.join('\n')}`;
+  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index, shape: {"i":0,"score":5,"verdict":"one short line","fix":"one short fix line"}. Base the verdict/fix on the ad's actual copy (from the text line and, when present, the words on its creative image). No markdown. Never use em dashes or en dashes; use commas or periods.`;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 1600, system: sys, messages: [{ role: 'user', content: usr }] }),
+      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 1600, system: sys, messages: [{ role: 'user', content }] }),
     });
     const d = await r.json();
     const txt = d.content?.[0]?.text || '';
@@ -101,24 +116,102 @@ async function scoreAds(ads, icp) {
   } catch (e) { return ads; }
 }
 
-// Fetch + parse + (optionally) score a company's real LinkedIn ads. Free via Jina Reader.
-export async function fetchAdsViaJina({ company, icp, limit = 12 } = {}) {
+// --- LinkedIn (free, via Jina Reader) -------------------------------------------------
+// Pull a company's real LinkedIn ads (creative image + copy). Returns UNSCORED cards.
+async function fetchLinkedInAds({ company, limit = 12 } = {}) {
   const q = (company || '').trim();
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
   const target = 'https://www.linkedin.com/ad-library/search?accountOwner=' + encodeURIComponent(q);
   const headers = { 'X-Return-Format': 'html', 'X-Timeout': '40' };
   if (process.env.JINA_API_KEY) headers['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
-  let html;
   try {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), 45000);
     const r = await fetch('https://r.jina.ai/' + target, { headers, signal: controller.signal });
     clearTimeout(t);
     if (!r.ok) return { ok: false, reason: 'jina_' + r.status, ads: [] };
-    html = await r.text();
+    const html = await r.text();
+    return { ok: true, ads: parseAdCards(html, q).slice(0, limit) };
   } catch (e) { return { ok: false, reason: 'error', detail: String(e && e.message || e), ads: [] }; }
+}
 
-  let ads = parseAdCards(html, q).slice(0, limit);
+// --- Google (free, via Ads Transparency Center RPC) -----------------------------------
+// The Transparency Center site loads an advertiser's ads through an internal RPC that
+// needs no auth. We call it directly with the domain and pull the real static creatives
+// (tpc.googlesyndication.com/archive/simgad/...). Region 2764 = "anywhere". We keep only
+// image creatives so every Google card shows a real creative (display/HTML ads carry no
+// static image and no separate copy, so they'd be empty cards). Returns UNSCORED cards.
+async function fetchGoogleAds({ domain, limit = 12 } = {}) {
+  const dom = (domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
+  if (!dom) return { ok: false, reason: 'no_domain', ads: [] };
+  const url = 'https://adstransparency.google.com/anji/_/rpc/SearchService/SearchCreatives?authuser=';
+  const reqBody = 'f.req=' + encodeURIComponent(JSON.stringify({ '2': 40, '3': { '12': { '1': dom, '2': true } }, '7': { '1': 1, '2': 0, '3': 2764 } }));
+  let data;
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 20000);
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'x-same-domain': '1',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'accept': '*/*',
+      },
+      body: reqBody,
+      signal: c.signal,
+    });
+    clearTimeout(t);
+    if (!r.ok) return { ok: false, reason: 'google_' + r.status, ads: [] };
+    data = JSON.parse(await r.text());
+  } catch (e) { return { ok: false, reason: 'google_error', detail: String(e && e.message || e), ads: [] }; }
+
+  const arr = Array.isArray(data && data['1']) ? data['1'] : [];
+  const ads = [];
+  const seen = new Set();
+  for (const c of arr) {
+    const cr = c && c['3'];
+    const htmlImg = cr && cr['3'] && cr['3']['2'];   // image creatives: an <img src="...simgad..."> string
+    let img = null;
+    if (typeof htmlImg === 'string') {
+      const m = htmlImg.match(/https:\/\/tpc\.googlesyndication\.com\/archive\/simgad\/\d+/);
+      if (m) img = m[0];
+    }
+    if (!img || seen.has(img)) continue;
+    seen.add(img);
+    const AR = c['1'], CR = c['2'];
+    ads.push({
+      plat: 'Google', head: '', body: '', img,
+      cta: null, ctaUrl: null, dom,
+      advertiser: c['12'] || null,
+      detailUrl: (AR && CR) ? `https://adstransparency.google.com/advertiser/${AR}/creative/${CR}?region=anywhere` : 'https://adstransparency.google.com/?region=anywhere&domain=' + encodeURIComponent(dom),
+      adId: CR || null,
+    });
+    if (ads.length >= limit) break;
+  }
+  return { ok: true, ads };
+}
+
+// Merge a company's real ads across sources (LinkedIn + Google), score the whole set in one
+// pass, and return one list. LinkedIn is keyed by advertiser name, Google by domain, so we
+// take both. Each source is best-effort: one failing never sinks the other.
+export async function fetchAllAds({ company, domain, icp, limit = 24 } = {}) {
+  const [li, gg] = await Promise.all([
+    fetchLinkedInAds({ company, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
+    fetchGoogleAds({ domain, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
+  ]);
+  const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length };
+  let ads = [...(li.ads || []), ...(gg.ads || [])].slice(0, limit);
+  if (!ads.length) return { ok: false, reason: (li.reason || gg.reason || 'no_ads'), ads: [], sources };
+  if (icp) ads = await scoreAds(ads, icp);
+  return { ok: true, ads, count: ads.length, sources };
+}
+
+// Back-compat: LinkedIn-only fetch + score (kept for any caller still using it).
+export async function fetchAdsViaJina({ company, icp, limit = 12 } = {}) {
+  const li = await fetchLinkedInAds({ company, limit });
+  if (!li.ok) return li;
+  let ads = li.ads;
   if (icp && ads.length) ads = await scoreAds(ads, icp);
   return { ok: true, ads, count: ads.length };
 }

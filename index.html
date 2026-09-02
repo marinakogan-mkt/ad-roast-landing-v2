@@ -982,8 +982,8 @@
           const coName = icpRes.company || icpRes.brand || hostOf(siteRaw);
           const co = { name: coName, domain: icpRes.domain || hostOf(siteRaw), initial: (coName || '?').charAt(0).toUpperCase(), color: '#334155' };
           const icpText = icpRes.icp_text || '';
-          setStatusMsg('Pulling your live ads from the LinkedIn Ad Library…');
-          const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, icp: icpText }) }).then(r => r.json()).catch(() => ({}));
+          setStatusMsg('Pulling your live ads from LinkedIn and Google…');
+          const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText }) }).then(r => r.json()).catch(() => ({}));
           if (!res || !res.ok) {
             setPhase('error');
             setStatusMsg('Could not fetch your ads (' + ((res && res.reason) || 'error') + '). Try again.');
@@ -1079,7 +1079,7 @@
               </div>
               {phase === 'loading' && <div className="flex items-center gap-2.5 text-sm text-gray-600 mt-3"><span className="inline-block w-4 h-4 rounded-full border-2 border-blue-200 animate-spin" style={{ borderTopColor: '#0a66c2' }}></span>{statusMsg}</div>}
               {phase === 'error' && <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mt-3" style={{ maxWidth: 480 }}>{statusMsg}</div>}
-              {usingReal && real.ads.length === 0 && phase !== 'loading' && <div className="text-sm text-gray-500 mt-3">No live LinkedIn ads found for <b>{CO.name}</b> in the Ad Library. Try the exact company name, or a site that runs LinkedIn ads.</div>}
+              {usingReal && real.ads.length === 0 && phase !== 'loading' && <div className="text-sm text-gray-500 mt-3">No live ads found for <b>{CO.name}</b> on LinkedIn or Google. Try the exact company name, or a site that runs ads on those platforms.</div>}
             </div>
 
             {shown.length > 0 && (<>
@@ -1092,7 +1092,7 @@
               </div>
               <div className="ml-auto text-right">
                 <div className="font-bold text-gray-900" style={{ fontSize: 15 }}>{ads.length} live ad{ads.length === 1 ? '' : 's'}{avg ? ' · avg ' + avg + '/10' : ''}</div>
-                <div className="text-gray-400" style={{ fontSize: 12 }}>{usingReal ? 'on LinkedIn' : 'across LinkedIn, Meta & Google'}</div>
+                <div className="text-gray-400" style={{ fontSize: 12 }}>{usingReal ? (plats.length ? 'on ' + plats.join(' & ') : 'live') : 'across LinkedIn, Meta & Google'}</div>
               </div>
             </div>
             {ICP && <div className="mb-4 flex items-start gap-2 flex-wrap">
@@ -1167,7 +1167,7 @@
             </div>
             </>)}
 
-            <p className="text-gray-400 mt-8" style={{ fontSize: 12.5, maxWidth: '70ch' }}>{usingReal ? 'Real live ads pulled from the LinkedIn Ad Library. Meta and Google sources add on next.' : 'Sample data for the preview. Enter a website above to pull that company’s real live ads.'}</p>
+            <p className="text-gray-400 mt-8" style={{ fontSize: 12.5, maxWidth: '70ch' }}>{usingReal ? 'Real live ads pulled from the LinkedIn Ad Library and Google Ads Transparency Center. Meta is coming next.' : 'Sample data for the preview. Enter a website above to pull that company’s real live ads.'}</p>
           </main>
 
           {modalHead && (

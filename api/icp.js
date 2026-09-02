@@ -25,7 +25,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds } from './_adlibrary.js';
 
 // The Ad Library fetch renders a page via Jina and runs a quick Haiku score, so allow headroom.
 export const config = { maxDuration: 60 };
@@ -108,11 +108,12 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   if (!body || typeof body !== 'object') body = {};
 
-  // Ad Library dashboard (real ad creatives via Jina Reader, free) is served from this same
-  // function to stay under the Hobby 12-function cap. It carries no url, so handle it before
-  // normalizeUrl (which requires one). Synchronous: one fetch + parse + score.
+  // Ad Library dashboard (real ad creatives, free) is served from this same function to stay
+  // under the Hobby 12-function cap. It carries no url, so handle it before normalizeUrl
+  // (which requires one). Pulls LinkedIn (Jina) + Google (Ads Transparency RPC) in parallel,
+  // scores them together, returns one merged list.
   if (body.action === 'ads-fetch') {
-    return res.status(200).json(await fetchAdsViaJina({ company: body.company, icp: body.icp }));
+    return res.status(200).json(await fetchAllAds({ company: body.company, domain: body.domain, icp: body.icp }));
   }
 
   let brand, domain, url;
