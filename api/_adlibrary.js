@@ -131,7 +131,9 @@ async function fetchLinkedInAds({ company, limit = 12 } = {}) {
     clearTimeout(t);
     if (!r.ok) return { ok: false, reason: 'jina_' + r.status, ads: [] };
     const html = await r.text();
-    return { ok: true, ads: parseAdCards(html, q).slice(0, limit) };
+    // Only keep ads that carry a real creative image — every board card must show a real
+    // creative, never a text-only placeholder tile.
+    return { ok: true, ads: parseAdCards(html, q).filter(a => a.img).slice(0, limit) };
   } catch (e) { return { ok: false, reason: 'error', detail: String(e && e.message || e), ads: [] }; }
 }
 

@@ -926,14 +926,19 @@
       Meta: { c: '#7b3fe4', g: 'f' },
       Google: { c: '#ea4335', g: 'G' }
     };
+    /* Sample preview (before a website is entered) — real Semgrep creatives so the board
+       never shows a placeholder tile. Only the sources we actually pull (LinkedIn, Google). */
     const YOUR_ADS = [
-      { plat: 'Meta', head: 'Your SAST tool is lying to you.', dom: 'semgrep.dev', cta: 'Learn more', bg: 'linear-gradient(135deg,#7b3fe4,#4a2589)', score: 4, verdict: 'Bold hook, wasted. The landing page opens on a generic product tour and the promise evaporates.', fix: 'Match the landing headline to the ad and put proof in the first scroll. The hook is good, the follow-through is not.' },
-      { plat: 'Google', head: 'Semgrep, SAST for AppSec teams.', dom: 'semgrep.dev', cta: 'Visit site', bg: 'linear-gradient(135deg,#111418,#2a2f38)', score: 5, verdict: 'Reads like a category label, not a reason to click. No pain, no proof.' },
-      { plat: 'LinkedIn', head: 'Ship secure code without slowing devs down.', dom: 'semgrep.dev', cta: 'Learn more', bg: 'linear-gradient(135deg,#0a66c2,#063f78)', score: 5, verdict: 'CTA is fine, but a broad audience and zero proof dilute it.' },
-      { plat: 'Meta', head: 'Trusted by 1M+ developers.', dom: 'semgrep.dev', cta: 'Sign up', bg: 'linear-gradient(135deg,#5b3bb0,#39236e)', score: 6, verdict: 'Social proof leads, but a buyer is given no clear next step.' },
-      { plat: 'Google', head: 'Find and fix vulns in your CI.', dom: 'semgrep.dev', cta: 'Get started', bg: 'linear-gradient(135deg,#2a5e2f,#173d1a)', score: 7, verdict: 'Specific pain, clear CTA. Minor landing-page mismatch to tidy.' },
-      { plat: 'LinkedIn', head: 'Find bugs before they ship.', dom: 'semgrep.dev', cta: 'Try free', bg: 'linear-gradient(135deg,#0e6b4e,#0a4a37)', score: 8, verdict: 'Your best ad. Strong hook and CTA, keep the spend here.' }
+      { plat: 'Google', head: 'Your SAST tool is lying to you.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/7884443371482777976', score: 4, verdict: 'Bold hook, wasted. The landing page opens on a generic product tour and the promise evaporates.', fix: 'Match the landing headline to the ad and put proof in the first scroll. The hook is good, the follow-through is not.' },
+      { plat: 'Google', head: 'Semgrep, SAST for AppSec teams.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/7128692242221110330', score: 5, verdict: 'Reads like a category label, not a reason to click. No pain, no proof.' },
+      { plat: 'LinkedIn', head: 'Ship secure code without slowing devs down.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/10024762559147035022', score: 5, verdict: 'CTA is fine, but a broad audience and zero proof dilute it.' },
+      { plat: 'Google', head: 'Find and fix vulns in your CI.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/5979080786588485141', score: 7, verdict: 'Specific pain, clear CTA. Minor landing-page mismatch to tidy.' },
+      { plat: 'LinkedIn', head: 'Trusted by 1M+ developers.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/14833562389945862941', score: 6, verdict: 'Social proof leads, but a buyer is given no clear next step.' },
+      { plat: 'LinkedIn', head: 'Find bugs before they ship.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/10770812153363143712', score: 8, verdict: 'Your best ad. Strong hook and CTA, keep the spend here.' }
     ];
+    /* Sources we actually pull live vs. the ones still to come (shown greyed + blurred). */
+    const LIVE_SOURCES = ['LinkedIn', 'Google'];
+    const SOON_SOURCES = ['Meta'];
     /* Severity label from the roast score, so each ad shows a gravity level (not just a
        number): 1-4 critical mismatch, 5-6 weak, 7-8 solid, 9-10 strong. */
     const SEV = (s) => s <= 4 ? { label: 'Critical', c: '#dc2626', bg: '#fef2f2', bd: '#fecaca' }
@@ -1092,13 +1097,35 @@
               </div>
               <div className="ml-auto text-right">
                 <div className="font-bold text-gray-900" style={{ fontSize: 15 }}>{ads.length} live ad{ads.length === 1 ? '' : 's'}{avg ? ' · avg ' + avg + '/10' : ''}</div>
-                <div className="text-gray-400" style={{ fontSize: 12 }}>{usingReal ? (plats.length ? 'on ' + plats.join(' & ') : 'live') : 'across LinkedIn, Meta & Google'}</div>
+                <div className="text-gray-400" style={{ fontSize: 12 }}>{usingReal ? (plats.length ? 'on ' + plats.join(' & ') : 'live') : 'across LinkedIn & Google'}</div>
               </div>
             </div>
             {ICP && <div className="mb-4 flex items-start gap-2 flex-wrap">
               <span className="font-semibold uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.1em', paddingTop: 4 }}>ICP detected</span>
               <span className="rounded-lg" style={{ fontSize: 12.5, background: '#eef4fb', color: '#0a4a8f', padding: '5px 11px', border: '1px solid #d6e5f5' }}>{ICP}</span>
             </div>}
+
+            {/* Sources: the platforms we actually pull live ads from (only those that have
+                ads running for this company), plus the ones still to come, shown greyed and
+                blurred so it's clear they're not live yet. */}
+            <div className="flex items-center gap-2 flex-wrap mb-6">
+              <span className="font-semibold uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.1em' }}>Sources</span>
+              {(usingReal ? plats : LIVE_SOURCES).map(p => {
+                const n = ads.filter(a => a.plat === p).length;
+                return (
+                  <span key={p} className="inline-flex items-center gap-1.5 font-semibold rounded-full" style={{ fontSize: 12, padding: '5px 11px', background: '#fff', border: '1px solid #e5e7eb', color: '#374151' }}>
+                    <PlatLogo plat={p} size={14} />{p}{n ? <span className="text-gray-400" style={{ fontWeight: 600 }}>· {n}</span> : null}
+                  </span>
+                );
+              })}
+              {SOON_SOURCES.map(p => (
+                <span key={p} className="inline-flex items-center gap-1.5 font-semibold rounded-full select-none" title={p + ' ad library, coming soon'} style={{ fontSize: 12, padding: '5px 11px', background: '#f8fafc', border: '1px dashed #d1d5db', color: '#9ca3af', filter: 'grayscale(1)', cursor: 'default' }}>
+                  <span style={{ filter: 'blur(1.2px)', opacity: 0.65, display: 'inline-flex' }}><PlatLogo plat={p} size={14} /></span>
+                  <span style={{ filter: 'blur(0.6px)' }}>{p}</span>
+                  <span className="uppercase tracking-wider" style={{ fontSize: 8.5, letterSpacing: '0.06em', color: '#9ca3af', background: '#eef2f7', padding: '2px 6px', borderRadius: 5, filter: 'none' }}>Soon</span>
+                </span>
+              ))}
+            </div>
 
             {/* Urgent recommendation */}
             {worst && (<div className="rounded-2xl p-4 mb-6 flex items-center gap-3 flex-wrap" style={{ background: 'linear-gradient(180deg,#fff6f3,#ffffff)', border: '1px solid #f6d3c8' }}>
@@ -1130,20 +1157,13 @@
                       {hasScore && <span className="ml-auto inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 10.5, padding: '3px 9px', color: sev.c, background: sev.bg, border: '1px solid ' + sev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: sev.c }} />{sev.label}</span>}
                       {hasScore && <span className="flex-none grid place-items-center rounded-full font-bold text-white" style={{ width: 34, height: 34, background: scoreCol(a.score), fontSize: 15 }}>{a.score}</span>}
                     </div>
-                    {/* Real creative. Live: a.img is the actual pulled ad image. Demo: branded
-                        tile carrying the advertiser's real logo as a stand-in. */}
+                    {/* Real creative, always. a.img is the actual pulled ad image; we only
+                        ever list ads that have one, so there is no placeholder tile. */}
                     <div className="mx-4 rounded-xl border border-gray-200 overflow-hidden">
-                      {a.img ? (
-                        <img src={a.img} alt={a.head} className="w-full object-cover bg-gray-100" style={{ height: 140 }} />
-                      ) : (
-                        <div className="relative flex items-end p-4" style={{ height: 120, background: a.bg || 'linear-gradient(135deg,#0a66c2,#063f78)' }}>
-                          <div className="absolute top-3 left-3"><BrandLogo domain={CO.domain} name={CO.name} initial={CO.initial} color={CO.color} size={26} radius={6} /></div>
-                          <div className="font-bold text-white" style={{ fontSize: 16, lineHeight: 1.15, textShadow: '0 1px 12px rgba(0,0,0,.28)' }}>{a.head}</div>
-                        </div>
-                      )}
+                      <img src={a.img} alt={a.head} className="w-full object-cover bg-gray-100" style={{ height: 140 }} />
                       <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white border-t border-gray-100">
-                        <span className="text-gray-400 truncate" style={{ fontSize: 11.5, fontFamily: 'monospace' }}>{a.dom}</span>
-                        <span className="font-semibold rounded flex-none" style={{ fontSize: 11, padding: '4px 10px', color: '#374151', background: '#eef1f5', border: '1px solid #e2e6ec' }}>{a.cta}</span>
+                        <span className="text-gray-400 truncate flex items-center gap-1.5" style={{ fontSize: 11.5, fontFamily: 'monospace' }}><BrandLogo domain={CO.domain} name={CO.name} initial={CO.initial} color={CO.color} size={16} radius={4} />{a.dom || CO.domain}</span>
+                        {a.cta && <span className="font-semibold rounded flex-none" style={{ fontSize: 11, padding: '4px 10px', color: '#374151', background: '#eef1f5', border: '1px solid #e2e6ec' }}>{a.cta}</span>}
                       </div>
                     </div>
                     <div className="px-4 pt-3 pb-4 mt-auto">
