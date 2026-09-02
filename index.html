@@ -1486,9 +1486,11 @@
               const signedIn = d && d.session && d.session.mode === 'roast';
               if (signedIn) setRoastSession({ email: d.session.email, plan: d.plan || 'free', tokens: (typeof d.tokens === 'number' ? d.tokens : 0) });
               if (!signedIn) {
-                // No roast account yet: stash the roast and send them through the sign-in gate.
+                // No roast account yet: stash the roast and send them through the sign-in
+                // gate. The gate modal renders over the guided view, so land there (already
+                // prefilled with this ad) before opening it. Pending roast resumes post-signin.
                 try { localStorage.setItem('adroast_pending_roast', JSON.stringify({ payload, inputs: pendingInputs })); } catch (e) {}
-                setView('landing'); setShowSignupGate(true);
+                setGuidedStep(0); setView('guided'); setShowSignupGate(true);
                 return;
               }
               setView('processing');
