@@ -905,6 +905,189 @@
       );
     }
 
+    /* Ad Library view (/?library=1): a board of live ads pulled from LinkedIn's Ad
+       Library, each flagged by whether its CTA works. The CTA verdict is free (the hook);
+       the full roast (score + fix) is gated behind the AdRoast plan. Sample data for now,
+       swapped for the real /api/adlibrary feed once the LinkedIn Ad Library API OAuth is
+       connected. Standalone like RoastsListView so it doesn't touch the roast/payment flow. */
+    const AD_LIBRARY_SAMPLE = [
+      { co: 'Snyk', ind: 'Cybersecurity', c: '#6f52c9', head: 'Developer security, done right.', dom: 'snyk.io', cta: null, v: 'crit', impr: '20K-30K', score: 4, fix: 'No CTA anywhere. The ad ends on a claim and leaves the reader with nowhere to go.' },
+      { co: 'Semgrep', ind: 'DevTools', c: '#12805c', head: 'Find bugs before they ship.', dom: 'semgrep.dev', cta: 'Get a demo', v: 'good', impr: '10K-20K', score: 8, free: true, fix: 'Strong CTA. Name the buyer (AppSec leads) in the headline and it scores higher.' },
+      { co: 'Drata', ind: 'Cybersecurity', c: '#1f6feb', head: 'Continuous compliance, on autopilot.', dom: 'drata.com', cta: null, v: 'crit', impr: '30K-50K', score: 3, fix: 'Big spend, no CTA. Nobody knows whether to book, trial, or read. Awareness burn.' },
+      { co: 'Wiz', ind: 'Cybersecurity', c: '#0aa5b1', head: 'Secure everything you build in the cloud.', dom: 'wiz.io', cta: 'See Wiz in action', v: 'good', impr: '50K-100K', score: 8, free: true, fix: 'CTA works. The creative is text-heavy, cut 40% of the copy for mobile.' },
+      { co: 'Vanta', ind: 'Cybersecurity', c: '#4930d1', head: 'Automate SOC 2 compliance.', dom: 'vanta.com', cta: 'Learn more', v: 'warn', impr: '30K-50K', score: 6, fix: '"Learn more" is a shrug. Swap for "See your compliance gaps" to name the payoff.' },
+      { co: 'Tailscale', ind: 'DevTools', c: '#111418', head: 'The easiest way to connect your devices.', dom: 'tailscale.com', cta: 'Start for free', v: 'good', impr: '10K-20K', score: 7, fix: 'Free-trial CTA is right. Headline is generic, lead with the pain (VPNs are hell).' },
+      { co: '1Password', ind: 'Cybersecurity', c: '#1a6ce7', head: 'Secure every sign-in across your company.', dom: '1password.com', cta: null, v: 'crit', impr: '100K-150K', score: 5, fix: 'Huge reach wasted, no CTA. Add "Start a business trial" and recapture the intent.' },
+      { co: 'Postman', ind: 'DevTools', c: '#f26b3a', head: 'Build APIs together, faster.', dom: 'postman.com', cta: 'Sign up free', v: 'warn', impr: '20K-30K', score: 6, fix: 'CTA exists but the ad targets everyone. Segment by "API platform teams".' },
+      { co: 'Ramp', ind: 'Fintech', c: '#c9b537', head: 'Cut your spend, not corners.', dom: 'ramp.com', cta: 'Get started', v: 'warn', impr: '150K-200K', score: 6, fix: '"Get started" with what? Finance buyers want a number: "See how much you would save".' },
+      { co: 'Retool', ind: 'DevTools', c: '#2f6df6', head: 'Build internal tools, fast.', dom: 'retool.com', cta: null, v: 'crit', impr: '20K-30K', score: 4, fix: 'No CTA and no proof. The ad asserts speed but never invites a next step.' },
+      { co: 'Sentry', ind: 'DevTools', c: '#7452cc', head: 'Code breaks. Fix it faster.', dom: 'sentry.io', cta: 'Try Sentry', v: 'good', impr: '30K-50K', score: 7, fix: 'CTA solid. The landing headline does not match the ad, that mismatch costs conversions.' },
+      { co: 'Persona', ind: 'Fintech', c: '#0f9d7a', head: 'Identity verification for everyone.', dom: 'withpersona.com', cta: 'Book a demo', v: 'good', impr: '5K-10K', score: 7, fix: 'Demo CTA fits enterprise. "For everyone" is too broad, name the vertical.' }
+    ];
+    const CTA_META = {
+      good: { label: 'CTA works', color: '#16a34a', bg: '#f0fdf4', bd: '#bbf7d0' },
+      warn: { label: 'Weak CTA', color: '#d97706', bg: '#fffbeb', bd: '#fde68a' },
+      crit: { label: 'No CTA', color: '#dc2626', bg: '#fef2f2', bd: '#fecaca' }
+    };
+
+    function AdLibraryView() {
+      const [pro, setPro] = useState(false);
+      const [fV, setFV] = useState('all');
+      const [fI, setFI] = useState('all');
+      const [modalCo, setModalCo] = useState(null);
+
+      const ads = AD_LIBRARY_SAMPLE;
+      const shown = ads.filter(a => (fV === 'all' || a.v === fV) && (fI === 'all' || a.ind === fI));
+      const noCta = ads.filter(a => a.v === 'crit').length;
+      const weak = ads.filter(a => a.v === 'warn').length;
+      const work = ads.filter(a => a.v === 'good').length;
+      const pct = Math.round((noCta + weak) / ads.length * 100);
+      const scoreCol = (s) => s <= 3 ? '#dc2626' : s <= 6 ? '#d97706' : '#16a34a';
+
+      const chip = (active, onClick, children, dot) => (
+        <button onClick={onClick} className="inline-flex items-center gap-1.5 rounded-full font-medium transition-colors" style={{ fontSize: '13px', padding: '7px 13px', border: '1px solid ' + (active ? '#111827' : '#d1d5db'), background: active ? '#111827' : '#fff', color: active ? '#fff' : '#4b5563' }}>
+          {dot && <span style={{ width: 7, height: 7, borderRadius: 999, background: dot }}></span>}{children}
+        </button>
+      );
+
+      return (
+        <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
+          <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+            <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Icon name="flame" className="w-5 h-5" style={{ color: '#0a66c2' }} />
+                <span className="font-bold text-gray-900">AdRoast</span>
+                <span className="text-gray-300">/</span>
+                <span className="text-sm font-semibold text-gray-600">Ad Library</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="inline-flex rounded-lg p-0.5 gap-0.5" style={{ background: '#eef1f6', border: '1px solid #e2e7ee' }}>
+                  <button onClick={() => setPro(false)} className="rounded-md font-semibold transition-colors" style={{ fontSize: '13px', padding: '5px 12px', background: !pro ? '#fff' : 'transparent', color: !pro ? '#111827' : '#6b7280', boxShadow: !pro ? '0 1px 2px rgba(0,0,0,.06)' : 'none' }}>Free</button>
+                  <button onClick={() => setPro(true)} className="rounded-md font-semibold transition-colors" style={{ fontSize: '13px', padding: '5px 12px', background: pro ? '#0a66c2' : 'transparent', color: pro ? '#fff' : '#6b7280' }}>Pro</button>
+                </div>
+                <a href="/" className="text-sm font-semibold text-gray-500 hover:text-gray-800 no-underline hidden sm:inline">Home</a>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-6xl mx-auto px-4 py-8">
+            {/* Thesis */}
+            <div className="mb-6">
+              <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#f2542d', letterSpacing: '0.12em' }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#f2542d' }}></span>Live from LinkedIn Ad Library
+              </div>
+              <h1 className="font-bold text-gray-900" style={{ fontSize: 'clamp(28px, 5vw, 44px)', lineHeight: 1.05, letterSpacing: '-0.02em', maxWidth: '16ch' }}>
+                <span style={{ color: '#dc2626' }}>{pct}%</span> of live B2B SaaS ads have no working CTA.
+              </h1>
+              <p className="text-gray-500 mt-3" style={{ fontSize: '15px', maxWidth: '54ch' }}>Every active ad for your market, straight from LinkedIn. We check the one thing most get wrong, telling the reader what to do next. Browse free, unlock the full roast when you want the fixes.</p>
+              <div className="flex flex-wrap gap-2 mt-5">
+                {[['ads tracked', ads.length, '#111827'], ['no CTA at all', noCta, '#dc2626'], ['weak / vague', weak, '#d97706'], ['CTA that works', work, '#16a34a']].map(([l, k, c], i) => (
+                  <div key={i} className="bg-white rounded-xl border border-gray-200 px-4 py-3" style={{ minWidth: 120 }}>
+                    <div className="font-bold" style={{ fontSize: 24, lineHeight: 1, color: c }}>{k}</div>
+                    <div className="text-gray-400" style={{ fontSize: 12, marginTop: 5 }}>{l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex items-center gap-2 flex-wrap mb-5">
+              {chip(fV === 'all', () => setFV('all'), 'All ads')}
+              {chip(fV === 'crit', () => setFV('crit'), 'No CTA', '#dc2626')}
+              {chip(fV === 'warn', () => setFV('warn'), 'Weak CTA', '#d97706')}
+              {chip(fV === 'good', () => setFV('good'), 'Working CTA', '#16a34a')}
+              <span className="flex-1"></span>
+              {chip(fI === 'all', () => setFI('all'), 'All industries')}
+              {chip(fI === 'Cybersecurity', () => setFI('Cybersecurity'), 'Cybersecurity')}
+              {chip(fI === 'DevTools', () => setFI('DevTools'), 'DevTools')}
+              {chip(fI === 'Fintech', () => setFI('Fintech'), 'Fintech')}
+            </div>
+
+            {/* Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+              {shown.map((a, i) => {
+                const locked = !a.free && !pro;
+                const m = CTA_META[a.v];
+                return (
+                  <div key={i} className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col" style={{ boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
+                    <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
+                      <div className="flex-none rounded-lg grid place-items-center font-bold text-white" style={{ width: 34, height: 34, background: a.c, fontSize: 15 }}>{a.co[0]}</div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-gray-900 truncate" style={{ fontSize: 14.5 }}>{a.co}</div>
+                        <div className="text-gray-400 flex items-center gap-1.5" style={{ fontSize: 11.5 }}>
+                          <span className="inline-grid place-items-center text-white font-bold" style={{ width: 13, height: 13, borderRadius: 3, background: '#0a66c2', fontSize: 8 }}>in</span>{a.ind} · Sponsored
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mx-4 rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="flex items-end p-4" style={{ height: 104, background: 'linear-gradient(135deg, ' + a.c + ', ' + a.c + '99)' }}>
+                        <div className="font-bold text-white" style={{ fontSize: 16, lineHeight: 1.15, textShadow: '0 1px 12px rgba(0,0,0,.25)' }}>{a.head}</div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white">
+                        <span className="text-gray-400" style={{ fontSize: 11.5, fontFamily: 'monospace' }}>{a.dom}</span>
+                        {a.cta
+                          ? <span className="font-semibold text-white rounded-md" style={{ fontSize: 12, padding: '6px 11px', background: '#0a66c2' }}>{a.cta} →</span>
+                          : <span className="font-semibold rounded-md" style={{ fontSize: 12, padding: '5px 10px', color: '#dc2626', border: '1px dashed #dc2626', background: 'repeating-linear-gradient(45deg, #fef2f2, #fef2f2 6px, transparent 6px, transparent 12px)' }}>no CTA button</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-4 pt-3.5 pb-1">
+                      <span className="inline-flex items-center gap-1.5 font-semibold rounded-md" style={{ fontSize: 11.5, padding: '5px 10px', color: m.color, background: m.bg, border: '1px solid ' + m.bd }}>{m.label}</span>
+                      <span className="ml-auto text-gray-400" style={{ fontSize: 11, fontFamily: 'monospace' }}>{a.impr} impressions</span>
+                    </div>
+                    <div className="px-4 pt-2.5 pb-4 mt-auto relative">
+                      <div className="flex items-center gap-3.5" style={{ filter: locked ? 'blur(6px)' : 'none', opacity: locked ? 0.7 : 1, transition: 'filter .2s', userSelect: locked ? 'none' : 'auto' }}>
+                        <div className="flex-none grid place-items-center rounded-full font-bold text-white" style={{ width: 46, height: 46, background: scoreCol(a.score), fontSize: 18 }}>{a.score}</div>
+                        <div>
+                          <div className="uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.12em' }}>Biggest fix</div>
+                          <div className="text-gray-800" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.35 }}>{a.fix}</div>
+                        </div>
+                      </div>
+                      {locked && (
+                        <div className="absolute flex flex-col items-center justify-center gap-2 text-center" style={{ inset: '8px 12px 12px', borderRadius: 12, background: 'rgba(255,255,255,.62)', backdropFilter: 'blur(2px)', border: '1px dashed #d3dae3' }}>
+                          <div className="grid place-items-center rounded-lg" style={{ width: 30, height: 30, background: '#f5f7fa', border: '1px solid #d3dae3' }}>🔒</div>
+                          <div className="font-semibold text-gray-700" style={{ fontSize: 12.5 }}>Full roast locked</div>
+                          <button onClick={() => setModalCo(a.co)} className="font-semibold text-white rounded-lg" style={{ fontSize: 12.5, padding: '8px 16px', background: '#0a66c2' }}>Unlock full roast</button>
+                        </div>
+                      )}
+                      {a.free && <span className="absolute font-semibold uppercase tracking-wider" style={{ top: -1, right: 16, fontSize: 9, letterSpacing: '0.1em', color: '#16a34a', background: '#f0fdf4', padding: '3px 7px', borderRadius: '0 0 6px 6px' }}>Free sample</span>}
+                    </div>
+                  </div>
+                );
+              })}
+              {shown.length === 0 && <div className="text-gray-400 text-sm p-5">No ads match this filter.</div>}
+            </div>
+
+            <p className="text-gray-400 mt-8" style={{ fontSize: 12.5, maxWidth: '70ch' }}>Advertisers are real public brands. Scores and fixes shown here are illustrative sample data, the board fills with live ads and real roasts once the LinkedIn Ad Library API is connected.</p>
+          </main>
+
+          {modalCo && (
+            <div onClick={(e) => { if (e.target === e.currentTarget) setModalCo(null); }} className="fixed inset-0 z-50 flex items-center justify-center p-5" style={{ background: 'rgba(6,9,15,.55)' }}>
+              <div className="bg-white rounded-2xl overflow-hidden" style={{ maxWidth: 420, width: '100%', boxShadow: '0 12px 40px rgba(11,15,26,.2)' }}>
+                <div className="px-6 pt-6">
+                  <h3 className="font-bold text-gray-900" style={{ fontSize: 20 }}>Unlock the full roast</h3>
+                  <p className="text-gray-500 mt-2" style={{ fontSize: 14 }}>See the score breakdown, the CTA fix, and the ICP-match verdict for {modalCo}'s ad.</p>
+                </div>
+                <div className="px-6 pt-4 pb-1 grid gap-2.5">
+                  <button onClick={() => { setPro(true); setModalCo(null); }} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-left" style={{ border: '1px solid #d3dae3', background: '#fff' }}>
+                    <div><div className="font-bold text-gray-900" style={{ fontSize: 14.5 }}>This ad</div><div className="text-gray-400" style={{ fontSize: 12 }}>One full roast, yours to keep</div></div>
+                    <div className="ml-auto font-bold text-gray-900" style={{ fontSize: 15, fontFamily: 'monospace' }}>1 credit</div>
+                  </button>
+                  <button onClick={() => { setPro(true); setModalCo(null); }} className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-left" style={{ border: '1px solid #0a66c2', background: '#f0f6fc' }}>
+                    <div><div className="font-bold text-gray-900" style={{ fontSize: 14.5 }}>Pro · unlimited</div><div className="text-gray-400" style={{ fontSize: 12 }}>Every ad in the library, new ones weekly</div></div>
+                    <div className="ml-auto font-bold text-gray-900" style={{ fontSize: 15, fontFamily: 'monospace' }}>Go Pro</div>
+                  </button>
+                </div>
+                <div className="px-6 py-4 flex items-center justify-between">
+                  <span className="text-gray-400" style={{ fontSize: 12 }}>🔒 Preview, nothing is charged.</span>
+                  <button onClick={() => setModalCo(null)} className="text-gray-500 underline" style={{ fontSize: 13 }}>Maybe later</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     /* Per-ad prefill memory (localStorage, keyed by the ad link). When someone roasts
        the SAME ad again, we re-apply what they added by hand last time (the creative
        image, the landing-page URL, the visual note, the offer) so they don't re-enter
@@ -1149,6 +1332,8 @@
         const synthId = params.get('synth');
         // Internal roasts list (admin): /?roasts=1
         if (params.get('roasts') === '1') { setView('roasts-list'); return; }
+        // Ad Library board (/?library=1)
+        if (params.get('library') === '1') { setView('ad-library'); return; }
         const portalParam = params.get('portal');
         const paymentStatus = params.get('payment');
         const stripeSessionId = params.get('session_id');
@@ -2416,6 +2601,7 @@
 
       /* Internal admin roasts list (/?roasts=1). */
       if (view === 'roasts-list') return <RoastsListView />;
+      if (view === 'ad-library') return <AdLibraryView />;
 
       /* Private-audit sign-in gate: takes over the page when a non-signed-in
          viewer follows a portal-private audit link (e.g. an Aikido ?id=…). */
