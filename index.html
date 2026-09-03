@@ -1003,7 +1003,7 @@
           const co = { name: coName, domain: icpRes.domain || hostOf(siteRaw), initial: (coName || '?').charAt(0).toUpperCase(), color: '#334155' };
           const icpText = icpRes.icp_text || '';
           if (!silent) setStatusMsg('Pulling your live ads from LinkedIn and Google…');
-          const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText }) }).then(r => r.json()).catch(() => ({}));
+          const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText, refresh: !!opts.refresh }) }).then(r => r.json()).catch(() => ({}));
           if (!res || !res.ok || !(res.ads && res.ads.length)) {
             // Silent demo: keep showing the static sample; only a real user's fetch surfaces an error.
             if (silent) { setPhase('idle'); return; }
@@ -1190,7 +1190,7 @@
                           </div>
                         </div>
                         <div className="px-4 py-3">
-                          <button onClick={() => loadReal(siteInput || (CO && CO.domain) || '')} disabled={phase === 'loading'} className="w-full font-bold rounded-lg" style={{ fontSize: 13, padding: '9px', border: '1px solid #f59e0b', color: '#b45309', background: '#fff' }}>{phase === 'loading' ? 'Retrying…' : 'Retry ' + p + ' →'}</button>
+                          <button onClick={() => loadReal(siteInput || (CO && CO.domain) || '', { refresh: true })} disabled={phase === 'loading'} className="w-full font-bold rounded-lg" style={{ fontSize: 13, padding: '9px', border: '1px solid #f59e0b', color: '#b45309', background: '#fff' }}>{phase === 'loading' ? 'Retrying…' : 'Retry ' + p + ' →'}</button>
                         </div>
                       </div>
                     );

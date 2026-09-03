@@ -149,7 +149,28 @@ export default async function handler(req, res) {
   // (which requires one). Pulls LinkedIn (Jina) + Google (Ads Transparency RPC) in parallel,
   // scores them together, returns one merged list.
   if (body.action === 'ads-fetch') {
-    return res.status(200).json(await fetchAllAds({ company: body.company, domain: body.domain, icp: body.icp }));
+    /* Cache the board result so we don't hammer Jina on every load. LinkedIn's free path
+       (Jina anonymous) has a low rate limit: the first call returns the ads, rapid repeats
+       start returning 403 and LinkedIn vanishes. Caching means once LinkedIn comes through
+       it's reused (stays visible) instead of being re-fetched (and re-failing) every visit.
+       TTL is long when LinkedIn actually loaded, short otherwise so we keep retrying it soon
+       AND give Jina's per-minute limit time to recover between attempts. refresh:true (the
+       'change'/Retry buttons) bypasses the cache to force a fresh pull. */
+    const ck = 'ads:' + String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
+    if (_redis && ck !== 'ads:' && !body.refresh) {
+      try {
+        const raw = await _redis.get(ck);
+        const cached = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+        if (cached && cached.ads && cached.ads.length) return res.status(200).json({ ...cached, _cached: true });
+      } catch (e) { /* miss -> fetch */ }
+    }
+    const result = await fetchAllAds({ company: body.company, domain: body.domain, icp: body.icp });
+    if (_redis && ck !== 'ads:' && result && result.ok && result.ads && result.ads.length) {
+      const liOk = result.notes && result.notes.linkedin === 'ok';
+      const ttl = liOk ? 60 * 60 * 6 : 60 * 3; // 6h once LinkedIn is in; 3min retry window while it isn't
+      try { await _redis.set(ck, JSON.stringify(result), { ex: ttl }); } catch (e) {}
+    }
+    return res.status(200).json(result);
   }
 
   let brand, domain, url;
