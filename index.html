@@ -1171,15 +1171,16 @@
                 <div className="text-gray-400 flex items-center gap-2" style={{ fontSize: 12.5, fontFamily: 'monospace' }}>{CO.domain}</div>
               </div>
               <div className="ml-auto text-right">
-                {scored.length > 0
-                  ? (offTarget > 0
-                      ? <div className="inline-flex items-center gap-2 rounded-full font-bold" style={{ fontSize: 14, padding: '6px 14px', color: '#fff', background: offTarget >= scored.length / 2 ? '#dc2626' : '#d97706' }}>
-                          <span style={{ width: 8, height: 8, borderRadius: 99, background: '#fff' }} />{offTarget} of {scored.length} ads are off-target
-                        </div>
-                      : <div className="inline-flex items-center gap-2 rounded-full font-bold" style={{ fontSize: 14, padding: '6px 14px', color: '#fff', background: '#16a34a' }}>
-                          <span style={{ width: 8, height: 8, borderRadius: 99, background: '#fff' }} />Your ads are on-target
-                        </div>)
-                  : <div className="font-bold text-gray-900" style={{ fontSize: 15 }}>{ads.length} live ad{ads.length === 1 ? '' : 's'}</div>}
+                {scored.length > 0 ? (() => {
+                  const pct = Math.round(offTarget / scored.length * 100);
+                  const col = pct === 0 ? '#16a34a' : pct >= 50 ? '#dc2626' : '#d97706';
+                  return (
+                    <div className="flex items-baseline gap-1.5 justify-end">
+                      <span style={{ fontSize: 30, fontWeight: 800, lineHeight: 1, color: col }}>{pct}%</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: col }}>off-target</span>
+                    </div>
+                  );
+                })() : <div className="font-bold text-gray-900" style={{ fontSize: 15 }}>{ads.length} live ad{ads.length === 1 ? '' : 's'}</div>}
                 <div className="text-gray-400" style={{ fontSize: 12, marginTop: 4 }}>{ads.length} live ad{ads.length === 1 ? '' : 's'}{usingReal ? (plats.length ? ' on ' + plats.join(' & ') : '') : ' across LinkedIn & Google'} · start with the weakest</div>
               </div>
             </div>
@@ -1195,7 +1196,7 @@
               <>
                 <div className="flex items-baseline gap-2.5 mb-3 flex-wrap">
                   <div className="font-semibold text-gray-500 uppercase tracking-wider" style={{ fontSize: 10.5, letterSpacing: '0.1em' }}>Where you're running ads</div>
-                  <span className="text-gray-400" style={{ fontSize: 11.5 }}>ICP match = how well an ad fits your ideal customer, scored 0-10. Lower = more urgent to fix.</span>
+                  <span className="text-gray-400" style={{ fontSize: 11.5 }}>We score every ad on how well it fits your ideal customer. Red = fix it first.</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
                   {LIVE_SOURCES.map(p => {
@@ -1224,7 +1225,7 @@
                           <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{p}</span>
                           <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#b45309', background: '#fef3c7', padding: '3px 8px', borderRadius: 6 }}>Couldn't load</span>
                         </div>
-                        <div className="grid place-items-center px-4" style={{ height: 190, background: '#fffdf9' }}>
+                        <div className="grid place-items-center px-4" style={{ height: 250, background: '#fffdf9' }}>
                           <div className="text-center" style={{ maxWidth: 240 }}>
                             <Icon name="rotateCcw" className="w-6 h-6 mx-auto mb-2" style={{ color: '#f59e0b' }} />
                             <div className="text-gray-600 font-semibold" style={{ fontSize: 12.5 }}>We couldn't reach {p} just now</div>
@@ -1246,7 +1247,7 @@
                           <span className="font-bold text-gray-500" style={{ fontSize: 15 }}>{p}</span>
                           <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>No live ads</span>
                         </div>
-                        <div className="grid place-items-center px-4" style={{ height: 190, background: '#fafbfc' }}>
+                        <div className="grid place-items-center px-4" style={{ height: 250, background: '#fafbfc' }}>
                           <div className="text-center">
                             <Icon name="target" className="w-6 h-6 mx-auto mb-2" style={{ color: '#cbd5e1' }} />
                             <div className="text-gray-500 font-semibold" style={{ fontSize: 12.5 }}>Nothing running on {p}</div>
@@ -1263,21 +1264,18 @@
                           <PlatLogo plat={p} size={18} />
                           <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{p}</span>
                           <span className="text-gray-400 font-semibold" style={{ fontSize: 12 }}>{list.length} live</span>
-                          {pAvg && <span className="ml-auto inline-flex items-center gap-1 font-bold text-white rounded-full" title="Average ICP-match score across this platform's ads" style={{ fontSize: 12, padding: '3px 10px', background: scoreCol(parseFloat(pAvg)) }}>ICP match {pAvg}/10</span>}
+                          {repSev && <span className="ml-auto inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 11, padding: '3px 10px', color: repSev.c, background: repSev.bg, border: '1px solid ' + repSev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: repSev.c }} />Weakest: {repSev.label}</span>}
                         </div>
-                        <div className="grid place-items-center" style={{ background: '#f8fafc', height: 190, padding: 14, borderBottom: '1px solid #eef1f5' }}>
+                        <div className="grid place-items-center" style={{ background: '#f8fafc', height: 250, padding: 14, borderBottom: '1px solid #eef1f5' }}>
                           {rep && rep.img
                             ? <img src={IMG(rep.img)} alt={p + ' ad'} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', display: 'block', borderRadius: 8, boxShadow: '0 1px 4px rgba(11,15,26,.12)' }} />
                             : <span style={{ opacity: 0.4 }}><PlatLogo plat={p} size={40} /></span>}
                         </div>
-                        <div className="px-4 py-3">
-                          {pv && <div className="font-bold" style={{ fontSize: 13.5, color: pv.c, marginBottom: 7 }}>{pv.t}{platOff ? ' · ' + platOff + ' to fix' : ''}</div>}
-                          <div className="flex items-center justify-between gap-2">
-                            {repSev
-                              ? <span className="inline-flex items-center gap-1.5 font-semibold rounded-full" style={{ fontSize: 11, padding: '3px 9px', color: repSev.c, background: repSev.bg, border: '1px solid ' + repSev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: repSev.c }} />Weakest ad · {repSev.label}</span>
-                              : <span className="text-gray-400" style={{ fontSize: 12 }}>Live creative</span>}
-                            <span className="font-bold flex-none" style={{ fontSize: 13, color: '#0a66c2' }}>See all {list.length} &rarr;</span>
-                          </div>
+                        <div className="px-4 py-3 flex items-center justify-between gap-2">
+                          {pv
+                            ? <span className="font-bold" style={{ fontSize: 13.5, color: pv.c }}>{pv.t}{platOff ? ' · ' + platOff + ' to fix' : ''}</span>
+                            : <span className="text-gray-400" style={{ fontSize: 12 }}>Live creative</span>}
+                          <span className="font-bold flex-none" style={{ fontSize: 13, color: '#0a66c2' }}>See all {list.length} &rarr;</span>
                         </div>
                       </button>
                     );
@@ -1292,7 +1290,7 @@
                         <span className="font-bold" style={{ fontSize: 15, color: '#6b46c1' }}>{p}</span>
                         <span className="ml-auto inline-flex items-center gap-1 uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#fff', background: '#7b3fe4', padding: '3px 8px', borderRadius: 6 }}><Icon name="sparkles" className="w-3 h-3" />Coming soon</span>
                       </div>
-                      <div className="grid place-items-center" style={{ height: 190, background: 'repeating-linear-gradient(45deg,#f4f0fd,#f4f0fd 10px,#ece4fb 10px,#ece4fb 20px)' }}>
+                      <div className="grid place-items-center" style={{ height: 250, background: 'repeating-linear-gradient(45deg,#f4f0fd,#f4f0fd 10px,#ece4fb 10px,#ece4fb 20px)' }}>
                         <span style={{ opacity: 0.5 }}><PlatLogo plat={p} size={40} /></span>
                       </div>
                       <div className="px-4 py-3"><span style={{ fontSize: 12, color: '#7c6a9c' }}>{p} ads coming soon.</span></div>
@@ -1330,7 +1328,10 @@
                       {free && <span className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider" style={{ fontSize: 9.5, letterSpacing: '0.06em', color: '#16a34a', background: '#f0fdf4', padding: '4px 8px', borderRadius: 6 }}><span style={{ color: '#f59e0b' }}>★</span> Free roast</span>}
                       {/* Gravity level, not just a number */}
                       {hasScore && <span className="ml-auto inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 10.5, padding: '3px 9px', color: sev.c, background: sev.bg, border: '1px solid ' + sev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: sev.c }} />{sev.label}</span>}
-                      {hasScore && <span className="flex-none grid place-items-center rounded-full font-bold text-white" style={{ width: 34, height: 34, background: scoreCol(a.score), fontSize: 15 }}>{a.score}</span>}
+                      {hasScore && <span className="flex-none inline-flex items-center gap-1.5" title="ICP match: how well this ad fits your ideal customer, 0-10">
+                        <span style={{ fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#9ca3af', textAlign: 'right', lineHeight: 1.05 }}>ICP<br/>match</span>
+                        <span className="grid place-items-center rounded-full font-bold text-white" style={{ width: 34, height: 34, background: scoreCol(a.score), fontSize: 15 }}>{a.score}</span>
+                      </span>}
                     </div>
                     {/* Real creative, always, shown in full with no cropping. */}
                     <div className="mx-4 rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f1f5f9' }}>
