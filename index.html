@@ -1067,6 +1067,12 @@
       const shownScored = shown.filter(a => typeof a.score === 'number');
       const vWorst = shownScored.length ? shownScored.reduce((m, a) => a.score < m.score ? a : m, shownScored[0]) : null;
       const isVFree = (a) => !!vWorst && a === vWorst;
+      // Show the recommended (worst / free) creative first, then the rest most-urgent-first. Unscored last.
+      const shownOrdered = shown.slice().sort((a, b) => {
+        const sa = typeof a.score === 'number' ? a.score : 999;
+        const sb = typeof b.score === 'number' ? b.score : 999;
+        return sa - sb;
+      });
       const avg = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(1) : null;
       const plats = [...new Set(ads.map(a => a.plat))];
       const scoreCol = (s) => s == null ? '#94a3b8' : s <= 3 ? '#dc2626' : s <= 6 ? '#d97706' : '#16a34a';
@@ -1260,8 +1266,9 @@
 
             {/* Urgent recommendation (worst on this platform) */}
             {vWorst && (<div className="rounded-2xl p-4 mb-6 flex items-center gap-3 flex-wrap" style={{ background: 'linear-gradient(180deg,#fff6f3,#ffffff)', border: '1px solid #f6d3c8' }}>
+              {vWorst.img && <div className="flex-none grid place-items-center rounded-xl overflow-hidden" style={{ width: 88, height: 88, background: '#f8fafc', border: '1px solid #eee' }}><img src={IMG(vWorst.img)} alt={vWorst.head || 'recommended creative'} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', display: 'block' }} /></div>}
               <div className="flex-none grid place-items-center rounded-full font-bold text-white" style={{ width: 42, height: 42, background: scoreCol(vWorst.score), fontSize: 17 }}>{vWorst.score}</div>
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="font-bold text-gray-900 flex items-center gap-1.5" style={{ fontSize: 14.5 }}><span style={{ color: '#f59e0b' }}>★</span> Recommended: roast this one first</div>
                 <div className="text-gray-500" style={{ fontSize: 13 }}>{vWorst.head ? '"' + vWorst.head + '" scored' : 'It scored'} the lowest of your {shown.length} {fP} ad{shown.length === 1 ? '' : 's'} ({vWorst.score}/10), so it's the one costing you the most. Your first roast is on us.</div>
               </div>
@@ -1269,7 +1276,7 @@
 
             {/* Grid: every ad visible, full creative + gravity, pick one to roast */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-              {shown.map((a, i) => {
+              {shownOrdered.map((a, i) => {
                 const free = isVFree(a);
                 const hasScore = typeof a.score === 'number';
                 const sev = hasScore ? SEV(a.score) : null;
