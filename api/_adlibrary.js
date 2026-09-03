@@ -253,20 +253,106 @@ async function fetchGoogleAds({ domain, limit = 12 } = {}) {
   return { ok: true, ads };
 }
 
-// Merge a company's real ads across sources (LinkedIn + Google), score the whole set in one
-// pass, and return one list. LinkedIn is keyed by advertiser name, Google by domain, so we
-// take both. Each source is best-effort: one failing never sinks the other.
-export async function fetchAllAds({ company, domain, icp, limit = 24 } = {}) {
-  const [li, gg] = await Promise.all([
+// ---- Meta (Facebook + Instagram) via the OFFICIAL Ad Library API ----------------------------
+// Requires META_ADLIBRARY_TOKEN (a Meta access token from an identity-confirmed Meta app).
+// Without it we return nothing and the UI keeps Meta as "coming soon". The API only exposes
+// non-political ("commercial") ads that were delivered in the EU/UK (a DSA effect) plus
+// political/issue ads globally — so for a US-only advertiser this is often empty, which is
+// EXPECTED, not a bug. We query the full EU-27 + UK with ad_type=ALL (the maximum coverage the
+// API allows) and resolve each creative image from its snapshot page.
+const META_EU_UK = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'GB'];
+
+async function _fetchMetaSnapshot(url) {
+  // ad_snapshot_url embeds the access token and is fetchable server-side (unlike the bot-walled
+  // public library page). Its HTML carries the creative URLs in embedded JSON — pull the first
+  // usable image + destination link + CTA text.
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 8000);
+    let r;
+    try { r = await fetch(url, { signal: c.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36' } }); } finally { clearTimeout(t); }
+    if (!r.ok) return {};
+    const html = await r.text();
+    const unesc = (s) => s ? s.replace(/\\\//g, '/').replace(/\\u003D/gi, '=').replace(/\\u0026/gi, '&') : s;
+    const pick = (re) => { const m = html.match(re); return m ? unesc(m[1]) : null; };
+    const img = pick(/"original_image_url":"(https:[^"]+)"/) || pick(/"resized_image_url":"(https:[^"]+)"/) || pick(/"video_preview_image_url":"(https:[^"]+)"/);
+    const link = pick(/"link_url":"(https?:[^"]+)"/);
+    const cta = pick(/"cta_text":"([^"]+)"/);
+    return { img, link, cta };
+  } catch (e) { return {}; }
+}
+
+export async function fetchMetaAds({ company, domain, limit = 12 } = {}) {
+  const token = process.env.META_ADLIBRARY_TOKEN;
+  if (!token) return { ok: false, reason: 'no_token', ads: [] };
+  const term = (company || domain || '').trim();
+  if (!term) return { ok: false, reason: 'no_query', ads: [] };
+  const params = new URLSearchParams({
+    access_token: token,
+    ad_type: 'ALL',
+    ad_active_status: 'ACTIVE',
+    ad_reached_countries: JSON.stringify(META_EU_UK),
+    search_terms: term,
+    fields: 'id,page_id,page_name,ad_creative_bodies,ad_creative_link_titles,ad_creative_link_captions,ad_snapshot_url,publisher_platforms,ad_delivery_start_time',
+    limit: '25',
+  });
+  const url = 'https://graph.facebook.com/v21.0/ads_archive?' + params.toString();
+  let data;
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 12000);
+    let r;
+    try { r = await fetch(url, { signal: c.signal }); } finally { clearTimeout(t); }
+    data = await r.json();
+    if (data && data.error) return { ok: false, reason: 'meta_error:' + (data.error.code || ''), ads: [] };
+  } catch (e) { return { ok: false, reason: 'meta_fetch_failed', ads: [] }; }
+  let items = Array.isArray(data.data) ? data.data : [];
+  // search_terms is fuzzy — keep only ads whose Page name plausibly matches the advertiser.
+  const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const want = norm(company || domain);
+  if (want) items = items.filter(a => { const pn = norm(a.page_name); return pn && (pn.indexOf(want) !== -1 || want.indexOf(pn) !== -1); });
+  items = items.slice(0, limit);
+  const enriched = await Promise.all(items.map(async (a) => {
+    const snap = a.ad_snapshot_url ? await _fetchMetaSnapshot(a.ad_snapshot_url) : {};
+    const body = (a.ad_creative_bodies && a.ad_creative_bodies[0]) || '';
+    const head = (a.ad_creative_link_titles && a.ad_creative_link_titles[0]) || (a.ad_creative_link_captions && a.ad_creative_link_captions[0]) || (body ? body.slice(0, 80) : '(untitled ad)');
+    return {
+      plat: 'Meta',
+      head,
+      body,
+      img: snap.img || null,
+      cta: snap.cta || null,
+      ctaUrl: snap.link || null,
+      dom: null,
+      advertiser: a.page_name || null,
+      region: 'EU/UK',
+      detailUrl: a.ad_snapshot_url || ('https://www.facebook.com/ads/library/?q=' + encodeURIComponent(term)),
+      adId: a.id,
+    };
+  }));
+  return { ok: true, ads: enriched, reason: enriched.length ? 'ok' : 'no_ads' };
+}
+
+// Merge a company's real ads across sources (LinkedIn + Google + Meta EU/UK), score the whole
+// set in one pass, and return one list. Each source is best-effort: one failing never sinks the
+// others. Meta only returns data when META_ADLIBRARY_TOKEN is set and the advertiser ran ads in
+// the EU/UK; otherwise the UI keeps Meta as "coming soon".
+export async function fetchAllAds({ company, domain, icp, limit = 36 } = {}) {
+  const [li, gg, mt] = await Promise.all([
     fetchLinkedInAds({ company, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
     fetchGoogleAds({ domain, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
+    fetchMetaAds({ company, domain, limit: 12 }).catch(() => ({ ok: false, ads: [], reason: 'meta_fetch_failed' })),
   ]);
-  const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length };
-  // Surface why a source came back empty (e.g. LinkedIn Jina rate-limit) even when the other
-  // source succeeded, so the UI can tell "none running" from "we couldn't fetch it".
-  const notes = { linkedin: (li.ads && li.ads.length) ? 'ok' : (li.reason || 'no_ads'), google: (gg.ads && gg.ads.length) ? 'ok' : (gg.reason || 'no_ads') };
-  let ads = [...(li.ads || []), ...(gg.ads || [])].slice(0, limit);
-  if (!ads.length) return { ok: false, reason: (li.reason || gg.reason || 'no_ads'), ads: [], sources, notes };
+  const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length, meta: (mt.ads || []).length };
+  // Surface why a source came back empty (e.g. LinkedIn Jina rate-limit, Meta no-token) even when
+  // another source succeeded, so the UI can tell "none running" from "we couldn't fetch it".
+  const notes = {
+    linkedin: (li.ads && li.ads.length) ? 'ok' : (li.reason || 'no_ads'),
+    google: (gg.ads && gg.ads.length) ? 'ok' : (gg.reason || 'no_ads'),
+    meta: (mt.ads && mt.ads.length) ? 'ok' : (mt.reason || 'no_ads'),
+  };
+  let ads = [...(li.ads || []), ...(gg.ads || []), ...(mt.ads || [])].slice(0, limit);
+  if (!ads.length) return { ok: false, reason: (li.reason || gg.reason || mt.reason || 'no_ads'), ads: [], sources, notes };
   if (icp) ads = await scoreAds(ads, icp);
   return { ok: true, ads, count: ads.length, sources, notes };
 }

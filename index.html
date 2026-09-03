@@ -994,7 +994,7 @@
           // URL: ?p=<plat> means a platform grid, no p means the overview. (The app keeps the base
           // board URL at "/", so Back from a grid lands here with no p and returns to overview.)
           const p = new URLSearchParams(window.location.search).get('p');
-          if (p && LIVE_SOURCES.indexOf(p) !== -1) { setFP(p); setStage('grid'); }
+          if (p && ['LinkedIn', 'Google', 'Meta'].indexOf(p) !== -1) { setFP(p); setStage('grid'); }
           else { setStage('overview'); setFP('all'); }
           window.scrollTo(0, 0);
         };
@@ -1231,7 +1231,7 @@
                   <span className="text-gray-400" style={{ fontSize: 11.5 }}>We score every ad on how well it fits your ideal customer. Red = fix it first.</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-                  {LIVE_SOURCES.map(p => {
+                  {LIVE_SOURCES.concat(ads.some(a => a.plat === 'Meta') ? ['Meta'] : []).map(p => {
                     const list = ads.filter(a => a.plat === p);
                     const sc = list.filter(a => typeof a.score === 'number');
                     const rep = sc.length ? sc.reduce((m, a) => a.score < m.score ? a : m, sc[0]) : list[0];
@@ -1296,6 +1296,7 @@
                           <PlatLogo plat={p} size={18} />
                           <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{p}</span>
                           <span className="text-gray-400 font-semibold" style={{ fontSize: 12 }}>{list.length} live</span>
+                          {p === 'Meta' && <span className="inline-flex items-center font-semibold uppercase tracking-wider" style={{ fontSize: 8.5, letterSpacing: '0.05em', color: '#6b46c1', background: '#f3ecfd', border: '1px solid #e0d3f7', padding: '2px 6px', borderRadius: 5 }} title="Meta only exposes EU/UK-delivered ads via its official Ad Library API">EU/UK</span>}
                           {repSev && <span className="ml-auto inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 11, padding: '3px 10px', color: repSev.c, background: repSev.bg, border: '1px solid ' + repSev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: repSev.c }} />Weakest: {repSev.label}</span>}
                         </div>
                         <div className="grid place-items-center" style={{ background: '#f8fafc', height: 250, padding: 14, borderBottom: '1px solid #eef1f5' }}>
@@ -1315,7 +1316,7 @@
                   {/* State C — Meta: not a "you have none" state, a "we can't pull these yet" state.
                       Clearly framed as a platform WE are adding, so it never reads as the advertiser
                       lacking Meta ads. We can't fetch Meta creatives (bot-walled), so no image. */}
-                  {SOON_SOURCES.map(p => (
+                  {SOON_SOURCES.filter(p => !ads.some(a => a.plat === p)).map(p => (
                     <div key={p} className="rounded-2xl border overflow-hidden flex flex-col select-none" title={p + ' ad library support is coming'} style={{ borderColor: '#d8c7f5', borderStyle: 'dashed', background: '#faf8ff' }}>
                       <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: '#efe9fb' }}>
                         <span style={{ opacity: 0.8 }}><PlatLogo plat={p} size={18} /></span>
