@@ -81,20 +81,54 @@ function parseAdCards(html, company) {
 // copy that sells the ad usually lives ON the creative, and Google image ads carry no
 // separate text at all. Images are passed as URL sources (Anthropic fetches them), so we
 // don't download them here. Best-effort; any failure returns the ads unscored.
+// Fetch a creative and return it as a base64 image block. Anthropic's own URL-image fetch
+// silently fails for many ad CDNs (tpc.googlesyndication.com in particular), which made the
+// model score image-only ads "no copy, cannot evaluate" = a bogus 1. Fetching server-side
+// (same path the /api/icp?img= proxy uses) and sending base64 GUARANTEES the model sees the
+// creative, so image-only Google ads get judged on the copy printed on them.
+async function _fetchImgB64(url) {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 8000);
+    let r;
+    try {
+      r = await fetch(url, { signal: c.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', Accept: 'image/avif,image/webp,image/*,*/*;q=0.8' } });
+    } finally { clearTimeout(t); }
+    if (!r.ok) return null;
+    let ct = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!/^image\/(png|jpe?g|gif|webp)$/.test(ct)) return null;
+    if (ct === 'image/jpg') ct = 'image/jpeg';
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length || buf.length > 4_000_000) return null;
+    return { media_type: ct, data: buf.toString('base64') };
+  } catch (e) { return null; }
+}
+
 async function scoreAds(ads, icp) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key || !icp || !ads.length) return ads;
   const IMG_CAP = 14; // bound the vision tokens per board load
-  let imgUsed = 0;
+  // Pre-fetch the creatives (parallel, server-side) as base64 so the model actually sees them.
+  const toFetch = [];
+  for (let i = 0; i < ads.length && toFetch.length < IMG_CAP; i++) {
+    if (ads[i].img && /^https:\/\//i.test(ads[i].img)) toFetch.push(i);
+  }
+  const b64s = await Promise.all(toFetch.map(i => _fetchImgB64(ads[i].img)));
+  const imgByIdx = {};
+  toFetch.forEach((i, k) => { if (b64s[k]) imgByIdx[i] = b64s[k]; });
+
   const lines = [];
   const content = [{ type: 'text', text: '' }]; // header filled in after the loop
   for (let i = 0; i < ads.length; i++) {
     const a = ads[i];
     lines.push(`#${i} [${a.plat}] headline="${(a.head || '').slice(0, 140)}" body="${(a.body || '').slice(0, 220)}"`);
-    if (a.img && imgUsed < IMG_CAP && /^https:\/\//i.test(a.img)) {
+    if (imgByIdx[i]) {
+      content.push({ type: 'text', text: `Creative image for ad #${i}:` });
+      content.push({ type: 'image', source: { type: 'base64', media_type: imgByIdx[i].media_type, data: imgByIdx[i].data } });
+    } else if (a.img && /^https:\/\//i.test(a.img)) {
+      // Fallback: couldn't fetch it ourselves, let Anthropic try the URL.
       content.push({ type: 'text', text: `Creative image for ad #${i}:` });
       content.push({ type: 'image', source: { type: 'url', url: a.img } });
-      imgUsed++;
     }
   }
   content[0].text = `ICP: ${icp}\n\nScore each ad 1-10 for how well it fits this ICP and earns the click (1 = severe mismatch, 10 = excellent). Several ads include their creative image below; READ the copy/text rendered on each creative and judge it as the ad's copy. Ads:\n${lines.join('\n')}`;
