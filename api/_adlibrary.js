@@ -130,10 +130,13 @@ async function fetchLinkedInAds({ company, limit = 12 } = {}) {
   // otherwise drops LinkedIn from the board entirely. Budget-bounded (2 x ~24s) to stay
   // inside the 60s function limit alongside the Google fetch and the scoring call.
   let lastReason = 'error';
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // 3 attempts x 16s + short backoff stays under the 60s function limit (Google runs in
+  // parallel; scoring runs after). A JINA_API_KEY makes attempt 1 almost always succeed.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 700));
     try {
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 24000);
+      const t = setTimeout(() => controller.abort(), 16000);
       const r = await fetch('https://r.jina.ai/' + target, { headers, signal: controller.signal });
       clearTimeout(t);
       if (!r.ok) { lastReason = 'jina_' + r.status; continue; }
@@ -214,10 +217,13 @@ export async function fetchAllAds({ company, domain, icp, limit = 24 } = {}) {
     fetchGoogleAds({ domain, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
   ]);
   const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length };
+  // Surface why a source came back empty (e.g. LinkedIn Jina rate-limit) even when the other
+  // source succeeded, so the UI can tell "none running" from "we couldn't fetch it".
+  const notes = { linkedin: (li.ads && li.ads.length) ? 'ok' : (li.reason || 'no_ads'), google: (gg.ads && gg.ads.length) ? 'ok' : (gg.reason || 'no_ads') };
   let ads = [...(li.ads || []), ...(gg.ads || [])].slice(0, limit);
-  if (!ads.length) return { ok: false, reason: (li.reason || gg.reason || 'no_ads'), ads: [], sources };
+  if (!ads.length) return { ok: false, reason: (li.reason || gg.reason || 'no_ads'), ads: [], sources, notes };
   if (icp) ads = await scoreAds(ads, icp);
-  return { ok: true, ads, count: ads.length, sources };
+  return { ok: true, ads, count: ads.length, sources, notes };
 }
 
 // Back-compat: LinkedIn-only fetch + score (kept for any caller still using it).
