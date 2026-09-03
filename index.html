@@ -241,8 +241,8 @@
       overall_score: 4,
       icp_mismatch: "Your ad talks to 'security teams' broadly, but your ICP is CISOs who answer to a board. The hook never names their actual stakes.",
       issues: [
-        { title: "Hook is about you, not them", score: 3, explanation: "“The #1 platform for cloud security” leads with your product, not the buyer's pain. A CISO scrolls past." },
-        { title: "No proof for a skeptical buyer", score: 4, explanation: "Not a single number, customer logo, or specific claim. Security buyers discount anything unquantified by default, so a proof-free ad reads as noise." },
+        { title: "Hook is about you, not them", score: 3, explanation: "“The #1 platform for cloud security” leads with your product, not the buyer's pain. The intended buyer has no reason to stop scrolling." },
+        { title: "No proof for a skeptical buyer", score: 4, explanation: "Not a single number, customer logo, or specific claim. Without a number, customer result, or specific claim, the buyer has no reason to believe it." },
         { title: "CTA asks for too much, too soon", score: 5, explanation: "“Book a demo” is a heavy ask for a cold CISO. With no lower-commitment step offered, everyone not ready to buy today simply leaves." },
         { title: "Jargon without payoff", score: 5, explanation: "“AI-powered CNAPP” names the product category, not the outcome the buyer wants. The reader has to translate the jargon into value, and most won't bother." },
         { title: "Visual competes with the message", score: 6, explanation: "Dense dashboard screenshot, nothing guides the eye to the one thing that matters." }
@@ -286,7 +286,7 @@
       next_steps: [
         { step: "Rewrite the ad hook around buyer risk", detail: "Swap the product-category opener for the stake your CISO actually carries into the boardroom. Lead with the outcome (fewer alerts, cleaner audits) so the first line earns the scroll-stop instead of describing your tool." },
         { step: "Match the landing page to the ad's promise", detail: "Carry the '80% less alert noise' hook straight onto the LP hero headline. When the ad's promise is the first thing they read on arrival, the scent holds and bounce drops." },
-        { step: "Put one quantified proof above the fold", detail: "Move a single hard number or named-customer outcome into the hero. Security buyers discount unquantified claims by default, so one specific stat does more than three adjectives." },
+        { step: "Put one quantified proof above the fold", detail: "Move a single hard number or named-customer outcome into the hero. Buyers discount unquantified claims by default, so one specific stat does more than three adjectives." },
         { step: "Collapse the three CTAs into one", detail: "Pick the single lowest-friction action for a cold CISO: a 2-minute tour beats 'book a demo'. Remove the competing buttons so the path forward is unmistakable." }
       ]
     };
@@ -2928,7 +2928,7 @@
       const ServiceOffers = () => {
         const toggle = (k) => setOpenOffers(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
         const offers = [
-          { key: 'roadmap', popular: true, primary: true, tag: 'Audit + Plan', name: 'Campaign Repositioning Sprint', price: '$6K', sub: 'one-time · 10 days', desc: 'Our team tears down your live campaigns and hands you the specific fixes for your campaign, ranked by revenue impact.', who: 'You implement it', cta: 'Book a Call', fit: "Find out if it's a fit", bullets: ["Pinpoint exactly where you're losing qualified demos", "The one message that makes the right buyer recognize themselves", "3-5 positioning angles to test, ranked by upside", "Rewritten ad and landing-page messaging, ready to ship, no rewriting", "A fix-list ranked by revenue impact, so the biggest win ships first"] },
+          { key: 'roadmap', popular: true, primary: true, tag: 'Reposition + Rewrite', name: 'Campaign Repositioning Sprint', price: '$6K', sub: 'one-time · 10 days', desc: 'We diagnose where the campaign loses the buyer, reposition it around the right message, and rewrite the ad-to-page journey in 10 days.', who: 'Your team implements it', cta: 'Book a Call', fit: "Find out if it's a fit", bullets: ["Pinpoint exactly where you're losing qualified demos", "The one message that makes the right buyer recognize themselves", "3-5 positioning angles to test, ranked by upside", "Rewritten ad and landing-page messaging, ready to ship, no rewriting", "A fix-list ranked by revenue impact, so the biggest win ships first"] },
           { key: 'dfy', popular: false, primary: false, tag: 'End-to-End Campaign', name: 'Done-For-You Rebuild', price: '$8K/mo', sub: '3-month sprint', desc: 'Same diagnosis. Then our team builds it, launches it, and optimizes until demo conversion doubles.', who: 'We implement it', cta: 'Talk to Us ↗', fit: "Casual chat to see if there's a fit", bullets: ["Everything in the Campaign Repositioning Sprint", "New ad creatives built and shipped", "Landing page rebuilt to match the ad narrative", "Campaign launch and ongoing ad management", "Weekly optimization and testing"] }
         ];
         return (
@@ -3127,8 +3127,9 @@
                 </span>
                 <span className="sm:hidden inline-flex items-center gap-2 text-sm" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>Your live ads, brutally reviewed</span>
               </p>
-              <h1 className="hero-h1 text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontWeight: 300, lineHeight: 1.06, letterSpacing: '-0.5px' }}>Find out why<br className="mbr" /> your ads<br className="dbr" /> are<br className="mbr" /> not converting.</h1>
-              <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-2xl sm:mx-auto mb-9 sm:mb-8" style={{ fontSize: 'clamp(18px, 5vw, 20px)', lineHeight: 1.5 }}>A scored breakdown of your ad, and what to fix, in 2 min.</p>
+              <h1 className="hero-h1 text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontWeight: 300, lineHeight: 1.06, letterSpacing: '-0.5px' }}>Find out where<br className="mbr" /> your ad<br className="dbr" /> loses<br className="mbr" /> the buyer.</h1>
+              <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-2xl sm:mx-auto mb-3" style={{ fontSize: 'clamp(18px, 5vw, 20px)', lineHeight: 1.5 }}>Get your ad, landing page, and message scored, with every issue explained and the fixes ranked by impact.</p>
+              <p className="text-left sm:text-center text-gray-400 max-w-2xl sm:mx-auto mb-9 sm:mb-8" style={{ fontSize: '14px', lineHeight: 1.5 }}>Works with LinkedIn, Meta, and Google ads, across any industry.</p>
               {/* Inline ad-link input + CTA — pill-shape matching the nav button, same height across both */}
               <div className="max-w-2xl mx-auto">
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch">
@@ -3156,7 +3157,7 @@
           {/* TRUST STRIP */}
           <div className="max-w-3xl mx-auto px-4 sm:px-6 mb-8 sm:mb-10">
             <div className="border-t border-b border-gray-100 py-6 text-center">
-              <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wide font-medium">Trusted by 50+ growth teams</p>
+              <p className="text-xs sm:text-sm text-gray-400 uppercase tracking-wide font-medium">Ads roasted across B2B, e-commerce, services, and cybersecurity</p>
             </div>
           </div>
 
@@ -3222,9 +3223,9 @@
           {/* SERVICE PRICING — the paid offers live on the main page; the roast-token
               upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
           <section id="work-with-us" className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full scroll-mt-20">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Work with us</div>
-            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Want it fixed, not just scored?</h2>
-            <p className="text-gray-400 mb-8 sm:mb-12 max-w-lg" style={{ fontSize: '17px', lineHeight: 1.7 }}>The free roast is an instant, automated score of one ad and its page. This is the human next step: a positioning expert reworks the messaging across your live campaigns, not just one ad, and hands it back ready to ship, the way we have for 50+ B2B software teams.</p>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide mb-5" style={{ backgroundColor: '#0a2540', color: '#fff', letterSpacing: '0.06em' }}>Human-led services for B2B software</div>
+            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>The roast found the problem. Want us to fix the full campaign?</h2>
+            <p className="text-gray-400 mb-8 sm:mb-12 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>The free AdRoast works with ads from any industry. Our human-led services are built for B2B software teams running active paid campaigns. We go beyond one ad: we reposition and rewrite the entire ad-to-page journey, ready for your team to ship.</p>
 
             {ServiceOffers()}
 
@@ -3232,12 +3233,12 @@
 
           {/* RESULTS */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Client Results</div>
-            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>60% of your demos leak between Ad and landing page.</h2>
-            <p className="text-gray-400 mb-6 sm:mb-10 max-w-lg" style={{ fontSize: '17px', lineHeight: 1.7 }}>It's called Message Drift, and we've diagnosed it in 50+ cybersecurity funnels. Your Ad says one thing, your page says another, and demos disappear in between. It's the #1 reason demos leak, and it's invisible until someone scores it.</p>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide mb-5" style={{ backgroundColor: '#0a2540', color: '#fff', letterSpacing: '0.06em' }}>Results from our human-led B2B work</div>
+            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>The ad gets the click. Message Drift loses the buyer afterward.</h2>
+            <p className="text-gray-400 mb-6 sm:mb-10 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>In B2B campaigns, the ad often creates one expectation while the landing page introduces another. Our positioning sprints identify and repair that break, so the demo the ad earned actually shows up.</p>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { to: 50, suffix: "+", label: "cybersecurity teams repositioned" },
+                { to: 50, suffix: "+", label: "B2B software teams repositioned" },
                 { to: 3, suffix: "\u00d7", label: <span>demos in 90 days <em className="font-normal">(same Ad spend)</em></span> },
                 { to: 47, suffix: "%", label: "demo increase in 8 weeks" },
                 { to: 31, suffix: "%", label: <span>CAC drop <em className="font-normal">(same Ad spend)</em></span> }
@@ -3247,6 +3248,11 @@
                   <div className="text-gray-600 text-sm sm:text-base font-medium">{r.label}</div>
                 </div>
               ))}
+            </div>
+            {/* One number turned into a mini-case reads far more credibly than four isolated stats. */}
+            <div className="mt-4 rounded-2xl p-5 sm:p-6" style={{ background: '#f7f9fc', border: '1px solid #dbe4ef' }}>
+              <div className="font-semibold mb-1.5" style={{ fontSize: 'clamp(18px, 3vw, 22px)', color: '#0a2540' }}>3&times; more demos with the same ad spend</div>
+              <p className="text-gray-500" style={{ fontSize: 15, lineHeight: 1.6, maxWidth: 640 }}>For a B2B software campaign, we aligned the ad, landing page, and sales narrative around one buyer problem. Demo volume tripled within 90 days without increasing media spend.</p>
             </div>
           </section>
 
@@ -3343,12 +3349,21 @@
 
           {/* BOTTOM CTA */}
           <section className="text-center px-4 pb-10 sm:pb-20 max-w-5xl mx-auto">
-            <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(34px, 8vw, 46px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
-            <p className="text-gray-400 mb-8" style={{ fontSize: 'clamp(18px, 4.5vw, 18px)', lineHeight: 1.6 }}>Same spend, aligned message, 3x demos.</p>
-            <div className="flex items-center justify-center">
-              <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-8 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity">Roast my Ad for free</button>
+            <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(34px, 8vw, 46px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
+            <div className="grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto text-left">
+              {/* Route 1 — the universal free product */}
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 flex flex-col">
+                <h3 className="font-semibold text-gray-900 mb-2" style={{ fontSize: 18 }}>Not sure where the message breaks?</h3>
+                <p className="text-gray-500 mb-5 flex-1" style={{ fontSize: 14.5, lineHeight: 1.6 }}>Roast one ad free and get your first diagnosis in two minutes. Any industry, any platform.</p>
+                <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-6 py-2.5 border rounded-full font-semibold text-sm hover:opacity-90 transition-opacity self-start">Roast my ad free &rarr;</button>
+              </div>
+              {/* Route 2 — the B2B-software human service */}
+              <div className="rounded-2xl border p-6 flex flex-col" style={{ borderColor: '#0a2540', background: '#f7f9fc' }}>
+                <h3 className="font-semibold text-gray-900 mb-2" style={{ fontSize: 18 }}>Running active B2B campaigns?</h3>
+                <p className="text-gray-500 mb-5 flex-1" style={{ fontSize: 14.5, lineHeight: 1.6 }}>Want the full ad-to-page journey repositioned and rewritten for you? That's the Campaign Repositioning Sprint.</p>
+                <a href="/#work-with-us" onClick={(e) => { const el = document.getElementById('work-with-us'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }} className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-full font-semibold text-sm no-underline self-start" style={{ background: '#0a2540', color: '#fff' }}>Explore the Repositioning Sprint <Icon name="arrowRight" className="w-4 h-4" /></a>
+              </div>
             </div>
-            <p className="text-gray-400 mt-3 text-xs">Free &middot; 2&prime; &middot; no call required</p>
           </section>
 
           {/* LEGAL MODAL */}
