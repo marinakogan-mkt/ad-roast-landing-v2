@@ -983,6 +983,28 @@
       const [sel, setSel] = useState(null);            // ad the user picked -> confirm pop-up
       const [acct, setAcct] = useState({ loaded: false, signedIn: false }); // roast credits for the pop-up
 
+      /* Per-step browser history: entering a platform's grid pushes ?library=1&p=<plat>, so the
+         browser Back button returns to the platform overview (not out to the home page). Driven by
+         the URL so Back AND Forward both work; if the library param is gone the browser has already
+         navigated to a different document (home), and this no-ops. */
+      React.useEffect(() => {
+        const onPop = () => {
+          const q = new URLSearchParams(window.location.search);
+          if (q.get('library') !== '1') return; // left the board entirely
+          const p = q.get('p');
+          if (p && LIVE_SOURCES.indexOf(p) !== -1) { setFP(p); setStage('grid'); }
+          else { setStage('overview'); setFP('all'); }
+          window.scrollTo(0, 0);
+        };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+      }, []);
+      const openGrid = (p) => {
+        setFP(p); setStage('grid');
+        try { window.history.pushState({ libGrid: p }, '', '?library=1&p=' + encodeURIComponent(p)); } catch (e) {}
+        window.scrollTo(0, 0);
+      };
+
       const hostOf = (u) => { try { return new URL(/^https?:\/\//.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
       /* Route every creative through our own origin so ad-blockers (which block the raw
@@ -1259,7 +1281,7 @@
 
                     /* State A — running: real creative framed with margin + colour-coded average. */
                     return (
-                      <button key={p} onClick={() => { setFP(p); setStage('grid'); window.scrollTo(0, 0); }} className="bg-white rounded-2xl border overflow-hidden flex flex-col text-left cursor-pointer p-0 hover:shadow-lg transition-shadow" style={{ borderColor: '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
+                      <button key={p} onClick={() => openGrid(p)} className="bg-white rounded-2xl border overflow-hidden flex flex-col text-left cursor-pointer p-0 hover:shadow-lg transition-shadow" style={{ borderColor: '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
                         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                           <PlatLogo plat={p} size={18} />
                           <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{p}</span>
@@ -1301,7 +1323,7 @@
             ) : (<>
             {/* STEP 2 — status of every ad on the chosen platform, colour-coded by gravity. */}
             <div className="flex items-center gap-3 mb-5 flex-wrap">
-              <button onClick={() => { setStage('overview'); window.scrollTo(0, 0); }} className="inline-flex items-center gap-1.5 font-semibold rounded-full bg-white cursor-pointer hover:bg-gray-50 transition-colors" style={{ fontSize: 13, padding: '7px 13px', border: '1px solid #d1d5db', color: '#4b5563' }}>&larr; All platforms</button>
+              <button onClick={() => { if (window.history.state && window.history.state.libGrid) { window.history.back(); } else { setStage('overview'); setFP('all'); try { window.history.replaceState({}, '', '?library=1'); } catch (e) {} window.scrollTo(0, 0); } }} className="inline-flex items-center gap-1.5 font-semibold rounded-full bg-white cursor-pointer hover:bg-gray-50 transition-colors" style={{ fontSize: 13, padding: '7px 13px', border: '1px solid #d1d5db', color: '#4b5563' }}>&larr; All platforms</button>
               <span className="inline-flex items-center gap-2 font-bold text-gray-900" style={{ fontSize: 16 }}><PlatLogo plat={fP} size={18} />{fP} ads</span>
             </div>
 
