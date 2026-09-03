@@ -100,6 +100,42 @@ async function fetchSite(url) {
 }
 
 export default async function handler(req, res) {
+  /* Image proxy (GET /api/icp?img=<encoded url>). Ad creatives live on
+     tpc.googlesyndication.com (Google) and media.licdn.com (LinkedIn) — hosts that every
+     ad-blocker (uBlock, Brave, AdBlock) blocks by name, so hotlinked creatives silently
+     vanish for anyone running one. Re-serving them from our own origin defeats that: the
+     browser only ever sees adroast.in/api/icp?img=..., which no blocklist matches.
+     Host-allowlisted + image-content-type-checked so it can't be used as an open proxy.
+     Folded into this function (not a new one) to stay under the Hobby 12-function cap. */
+  if (req.method === 'GET' && req.query && req.query.img) {
+    try {
+      const raw = Array.isArray(req.query.img) ? req.query.img[0] : req.query.img;
+      const u = new URL(raw);
+      const ALLOW = /(^|\.)licdn\.com$|(^|\.)googlesyndication\.com$|(^|\.)gstatic\.com$|(^|\.)ggpht\.com$/i;
+      if (u.protocol !== 'https:' || !ALLOW.test(u.hostname)) {
+        return res.status(400).json({ error: 'Host not allowed' });
+      }
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 9000);
+      let upstream;
+      try {
+        upstream = await fetch(u.toString(), {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8' },
+        });
+      } finally { clearTimeout(t); }
+      if (!upstream.ok) return res.status(502).json({ error: 'Upstream ' + upstream.status });
+      const ct = upstream.headers.get('content-type') || 'image/jpeg';
+      if (!/^image\//i.test(ct)) return res.status(415).json({ error: 'Not an image' });
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      res.setHeader('Content-Type', ct);
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, immutable');
+      return res.status(200).send(buf);
+    } catch (e) {
+      return res.status(502).json({ error: 'Proxy failed' });
+    }
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

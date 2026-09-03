@@ -983,21 +983,30 @@
 
       const hostOf = (u) => { try { return new URL(/^https?:\/\//.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      /* Route every creative through our own origin so ad-blockers (which block the raw
+         googlesyndication.com / licdn.com hosts by name) can't make them vanish. Only for
+         DISPLAY — the roast handoff keeps the raw URL, which the server fetches directly. */
+      const IMG = (u) => (u && /^https?:\/\//.test(u)) ? ('/api/icp?img=' + encodeURIComponent(u)) : u;
 
       // Enter a website -> detect company + ICP, then pull the company's real live ads
       // (with creative images) from the LinkedIn Ad Library via /api/ads (Apify).
-      const loadReal = async (s) => {
+      const loadReal = async (s, opts = {}) => {
         const siteRaw = (s || '').trim();
         if (!siteRaw) return;
-        setPhase('loading'); setReal(null); setStatusMsg('Reading your site and finding your ICP…');
+        // silent (background demo autoload): don't surface spinners/errors over the sample.
+        const silent = !!opts.silent;
+        if (!silent) { setPhase('loading'); setReal(null); }
+        setStatusMsg('Reading your site and finding your ICP…');
         try {
           const icpRes = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: siteRaw }) }).then(r => r.json()).catch(() => ({}));
           const coName = icpRes.company || icpRes.brand || hostOf(siteRaw);
           const co = { name: coName, domain: icpRes.domain || hostOf(siteRaw), initial: (coName || '?').charAt(0).toUpperCase(), color: '#334155' };
           const icpText = icpRes.icp_text || '';
-          setStatusMsg('Pulling your live ads from LinkedIn and Google…');
+          if (!silent) setStatusMsg('Pulling your live ads from LinkedIn and Google…');
           const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText }) }).then(r => r.json()).catch(() => ({}));
-          if (!res || !res.ok) {
+          if (!res || !res.ok || !(res.ads && res.ads.length)) {
+            // Silent demo: keep showing the static sample; only a real user's fetch surfaces an error.
+            if (silent) { setPhase('idle'); return; }
             setPhase('error');
             setStatusMsg('Could not fetch your ads (' + ((res && res.reason) || 'error') + '). Try again.');
             return;
@@ -1005,11 +1014,19 @@
           setReal({ co, icp: icpText, ads: res.ads || [] });
           setStage('overview'); setGridPlat('all');
           setPhase('idle');
-        } catch (e) { setPhase('error'); setStatusMsg(String(e && e.message || e)); }
+        } catch (e) { if (silent) { setPhase('idle'); return; } setPhase('error'); setStatusMsg(String(e && e.message || e)); }
       };
 
       useEffect(() => {
-        try { const s = new URLSearchParams(window.location.search).get('site'); if (s) { setSiteInput(s); loadReal(s); } } catch (e) {}
+        try {
+          const s = new URLSearchParams(window.location.search).get('site');
+          if (s) { setSiteInput(s); loadReal(s); return; }
+        } catch (e) {}
+        /* No website given: show the static sample instantly (creatives visible via the
+           proxy), and in the BACKGROUND pull the real Semgrep ads so the preview upgrades
+           to actual live creatives + real scores. Falls back to the sample if the pull fails. */
+        setSiteInput('semgrep.dev');
+        loadReal('semgrep.dev', { silent: true });
       }, []);
 
       // Load the roast account so the confirm pop-up can show real remaining credits.
@@ -1141,37 +1158,66 @@
               <>
                 <div className="font-semibold text-gray-500 uppercase tracking-wider mb-3" style={{ fontSize: 10.5, letterSpacing: '0.1em' }}>Where you're running ads</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-                  {(usingReal ? plats : LIVE_SOURCES).map(p => {
+                  {LIVE_SOURCES.map(p => {
                     const list = ads.filter(a => a.plat === p);
                     const sc = list.filter(a => typeof a.score === 'number');
                     const rep = sc.length ? sc.reduce((m, a) => a.score < m.score ? a : m, sc[0]) : list[0];
                     const pAvg = sc.length ? (sc.reduce((s, a) => s + a.score, 0) / sc.length).toFixed(1) : null;
+                    const repSev = rep && typeof rep.score === 'number' ? SEV(rep.score) : null;
+
+                    /* State B — supported platform, but the advertiser is running NO ads on it.
+                       Distinct from Meta's "coming soon": here WE support it, THEY just aren't
+                       live. Only reachable with real data (the sample always has ads on both). */
+                    if (list.length === 0) return (
+                      <div key={p} className="rounded-2xl border overflow-hidden flex flex-col select-none" style={{ borderColor: '#e5e7eb', background: '#fff' }}>
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                          <span style={{ opacity: 0.55 }}><PlatLogo plat={p} size={18} /></span>
+                          <span className="font-bold text-gray-500" style={{ fontSize: 15 }}>{p}</span>
+                          <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>No live ads</span>
+                        </div>
+                        <div className="grid place-items-center px-4" style={{ height: 150, background: '#fafbfc' }}>
+                          <div className="text-center">
+                            <Icon name="target" className="w-6 h-6 mx-auto mb-2" style={{ color: '#cbd5e1' }} />
+                            <div className="text-gray-500 font-semibold" style={{ fontSize: 12.5 }}>Nothing running on {p}</div>
+                          </div>
+                        </div>
+                        <div className="px-4 py-3"><span className="text-gray-400" style={{ fontSize: 12 }}>{CO.name} isn't advertising on {p} right now.</span></div>
+                      </div>
+                    );
+
+                    /* State A — running: real creative + colour-coded average so gravity reads at a glance. */
                     return (
                       <button key={p} onClick={() => { setFP(p); setStage('grid'); window.scrollTo(0, 0); }} className="bg-white rounded-2xl border overflow-hidden flex flex-col text-left cursor-pointer p-0 hover:shadow-lg transition-shadow" style={{ borderColor: '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
                         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                           <PlatLogo plat={p} size={18} />
                           <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{p}</span>
-                          <span className="ml-auto font-semibold text-gray-500" style={{ fontSize: 12.5 }}>{list.length} live ad{list.length === 1 ? '' : 's'}{pAvg ? ' · avg ' + pAvg : ''}</span>
+                          <span className="text-gray-400 font-semibold" style={{ fontSize: 12 }}>{list.length} live</span>
+                          {pAvg && <span className="ml-auto inline-flex items-center gap-1 font-bold text-white rounded-full" style={{ fontSize: 12, padding: '3px 10px', background: scoreCol(parseFloat(pAvg)) }}>avg {pAvg}</span>}
                         </div>
-                        {rep && rep.img && <div style={{ background: '#f1f5f9' }}><img src={rep.img} alt={p + ' ad'} style={{ width: '100%', height: 'auto', display: 'block' }} /></div>}
-                        <div className="px-4 py-3 flex items-center justify-between">
-                          <span className="text-gray-400" style={{ fontSize: 12 }}>Sample creative</span>
-                          <span className="font-bold" style={{ fontSize: 13, color: '#0a66c2' }}>See all {list.length} &rarr;</span>
+                        {rep && rep.img && <div style={{ background: '#f1f5f9' }}><img src={IMG(rep.img)} alt={p + ' ad'} loading="lazy" style={{ width: '100%', height: 'auto', display: 'block' }} /></div>}
+                        <div className="px-4 py-3 flex items-center justify-between gap-2">
+                          {repSev
+                            ? <span className="inline-flex items-center gap-1.5 font-semibold rounded-full" style={{ fontSize: 11, padding: '3px 9px', color: repSev.c, background: repSev.bg, border: '1px solid ' + repSev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: repSev.c }} />Weakest: {repSev.label}</span>
+                            : <span className="text-gray-400" style={{ fontSize: 12 }}>Live creative</span>}
+                          <span className="font-bold flex-none" style={{ fontSize: 13, color: '#0a66c2' }}>See all {list.length} &rarr;</span>
                         </div>
                       </button>
                     );
                   })}
+                  {/* State C — Meta: not a "you have none" state, a "we can't pull these yet" state.
+                      Clearly framed as a platform WE are adding, so it never reads as the advertiser
+                      lacking Meta ads. We can't fetch Meta creatives (bot-walled), so no image. */}
                   {SOON_SOURCES.map(p => (
-                    <div key={p} className="rounded-2xl border overflow-hidden flex flex-col select-none" title={p + ' ad library, coming soon'} style={{ borderColor: '#e5e7eb', borderStyle: 'dashed', background: '#fbfcfe' }}>
-                      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100" style={{ filter: 'grayscale(1)', opacity: 0.7 }}>
-                        <PlatLogo plat={p} size={18} />
-                        <span className="font-bold text-gray-400" style={{ fontSize: 15 }}>{p}</span>
-                        <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.08em', color: '#9ca3af', background: '#eef2f7', padding: '3px 8px', borderRadius: 6 }}>Coming soon</span>
+                    <div key={p} className="rounded-2xl border overflow-hidden flex flex-col select-none" title={p + ' ad library support is coming'} style={{ borderColor: '#d8c7f5', borderStyle: 'dashed', background: '#faf8ff' }}>
+                      <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: '#efe9fb' }}>
+                        <span style={{ opacity: 0.8 }}><PlatLogo plat={p} size={18} /></span>
+                        <span className="font-bold" style={{ fontSize: 15, color: '#6b46c1' }}>{p}</span>
+                        <span className="ml-auto inline-flex items-center gap-1 uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#fff', background: '#7b3fe4', padding: '3px 8px', borderRadius: 6 }}><Icon name="sparkles" className="w-3 h-3" />Coming soon</span>
                       </div>
-                      <div className="grid place-items-center" style={{ height: 150, background: 'repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 10px,#e9eef5 10px,#e9eef5 20px)', filter: 'blur(1px)' }}>
-                        <span style={{ filter: 'grayscale(1)', opacity: 0.45 }}><PlatLogo plat={p} size={40} /></span>
+                      <div className="grid place-items-center" style={{ height: 150, background: 'repeating-linear-gradient(45deg,#f4f0fd,#f4f0fd 10px,#ece4fb 10px,#ece4fb 20px)' }}>
+                        <span style={{ opacity: 0.5 }}><PlatLogo plat={p} size={40} /></span>
                       </div>
-                      <div className="px-4 py-3"><span className="text-gray-400" style={{ fontSize: 12 }}>We're adding {p} ads next.</span></div>
+                      <div className="px-4 py-3"><span style={{ fontSize: 12, color: '#7c6a9c' }}>We're adding {p} ads next. This isn't about your account, we just can't pull {p} creatives yet.</span></div>
                     </div>
                   ))}
                 </div>
@@ -1187,8 +1233,8 @@
             {vWorst && (<div className="rounded-2xl p-4 mb-6 flex items-center gap-3 flex-wrap" style={{ background: 'linear-gradient(180deg,#fff6f3,#ffffff)', border: '1px solid #f6d3c8' }}>
               <div className="flex-none grid place-items-center rounded-full font-bold text-white" style={{ width: 42, height: 42, background: scoreCol(vWorst.score), fontSize: 17 }}>{vWorst.score}</div>
               <div style={{ minWidth: 0 }}>
-                <div className="font-bold text-gray-900" style={{ fontSize: 14.5 }}>🔥 Roast this one first</div>
-                <div className="text-gray-500" style={{ fontSize: 13 }}>{vWorst.head ? '"' + vWorst.head + '" scored' : 'It scored'} the lowest of your {shown.length} {fP} ad{shown.length === 1 ? '' : 's'}. Your first roast is on us.</div>
+                <div className="font-bold text-gray-900 flex items-center gap-1.5" style={{ fontSize: 14.5 }}><span style={{ color: '#f59e0b' }}>★</span> Recommended: roast this one first</div>
+                <div className="text-gray-500" style={{ fontSize: 13 }}>{vWorst.head ? '"' + vWorst.head + '" scored' : 'It scored'} the lowest of your {shown.length} {fP} ad{shown.length === 1 ? '' : 's'} ({vWorst.score}/10), so it's the one costing you the most. Your first roast is on us.</div>
               </div>
             </div>)}
 
@@ -1202,16 +1248,16 @@
                   <div key={i} className="bg-white rounded-2xl border overflow-hidden flex flex-col" style={{ borderColor: free ? '#bbe6cf' : '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
                     <div className="flex items-center gap-2 px-4 pt-4 pb-2.5">
                       <span className="inline-flex items-center gap-1.5 font-semibold rounded-md" style={{ fontSize: 11.5, padding: '4px 9px', background: '#fff', border: '1px solid #e5e7eb', color: '#374151' }}><PlatLogo plat={a.plat} size={14} />{a.plat}</span>
-                      {free && <span className="font-semibold uppercase tracking-wider" style={{ fontSize: 9.5, letterSpacing: '0.06em', color: '#16a34a', background: '#f0fdf4', padding: '4px 8px', borderRadius: 6 }}>Free roast</span>}
+                      {free && <span className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider" style={{ fontSize: 9.5, letterSpacing: '0.06em', color: '#16a34a', background: '#f0fdf4', padding: '4px 8px', borderRadius: 6 }}><span style={{ color: '#f59e0b' }}>★</span> Recommended · Free</span>}
                       {/* Gravity level, not just a number */}
                       {hasScore && <span className="ml-auto inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 10.5, padding: '3px 9px', color: sev.c, background: sev.bg, border: '1px solid ' + sev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: sev.c }} />{sev.label}</span>}
                       {hasScore && <span className="flex-none grid place-items-center rounded-full font-bold text-white" style={{ width: 34, height: 34, background: scoreCol(a.score), fontSize: 15 }}>{a.score}</span>}
                     </div>
                     {/* Real creative, always, shown in full with no cropping. */}
                     <div className="mx-4 rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f1f5f9' }}>
-                      <img src={a.img} alt={a.head} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                      <img src={IMG(a.img)} alt={a.head} loading="lazy" style={{ width: '100%', height: 'auto', display: 'block' }} />
                       <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white border-t border-gray-100">
-                        <span className="text-gray-400 truncate flex items-center gap-1.5" style={{ fontSize: 11.5, fontFamily: 'monospace' }}><BrandLogo domain={CO.domain} name={CO.name} initial={CO.initial} color={CO.color} size={16} radius={4} />{a.dom || CO.domain}</span>
+                        <span className="text-gray-400 truncate flex items-center gap-1.5" style={{ fontSize: 11.5, fontFamily: 'monospace' }}><BrandLogo domain={CO.domain} name={CO.name} initial={CO.initial} color={CO.color} size={16} radius={4} />{(a.dom && /\./.test(a.dom) && !/linkedin\.com|licdn|googlesyndication|adstransparency/i.test(a.dom)) ? hostOf(a.dom) : CO.domain}</span>
                         {a.cta && <span className="font-semibold rounded flex-none" style={{ fontSize: 11, padding: '4px 10px', color: '#374151', background: '#eef1f5', border: '1px solid #e2e6ec' }}>{a.cta}</span>}
                       </div>
                     </div>
@@ -1259,7 +1305,7 @@
                 {/* The chosen creative, in full */}
                 <div className="px-6 pt-4">
                   <div className="rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f1f5f9' }}>
-                    <img src={sel.img} alt={sel.head} style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 220, objectFit: 'contain' }} />
+                    <img src={IMG(sel.img)} alt={sel.head} style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 220, objectFit: 'contain' }} />
                   </div>
                   <div className="flex items-center gap-2 mt-2.5">
                     <span className="inline-flex items-center gap-1.5 font-semibold rounded-md" style={{ fontSize: 11.5, padding: '4px 9px', background: '#fff', border: '1px solid #e5e7eb', color: '#374151' }}><PlatLogo plat={sel.plat} size={14} />{sel.plat}</span>
