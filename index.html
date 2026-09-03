@@ -981,6 +981,7 @@
       const [stage, setStage] = useState('overview'); // overview (platforms) -> grid (one platform's ads)
       const [gridPlat, setGridPlat] = useState('all'); // which platform's ads the grid shows
       const [sel, setSel] = useState(null);            // ad the user picked -> confirm pop-up
+      const [landingInput, setLandingInput] = useState(''); // landing page for the picked ad (auto or manual)
       const [acct, setAcct] = useState({ loaded: false, signedIn: false }); // roast credits for the pop-up
 
       /* Per-step browser history: entering a platform's grid pushes ?library=1&p=<plat>, so the
@@ -1077,10 +1078,11 @@
       // AdRoastApp, so we stash the ad + company + ICP and reload into the main app with
       // ?libroast=1; AdRoastApp picks it up, builds the roast payload (creative included as
       // adImageUrl) and runs the actual /api/roast. Server enforces free vs paid tokens.
-      const roastThisAd = (a, co, icpText) => {
+      const roastThisAd = (a, co, icpText, landingOverride) => {
+        const landing = (landingOverride || a.ctaUrl || '').trim();
         try {
           localStorage.setItem('adroast_library_roast', JSON.stringify({
-            ad: { plat: a.plat, head: a.head || '', body: a.body || '', img: a.img || null, detailUrl: a.detailUrl || '', ctaUrl: a.ctaUrl || '', dom: a.dom || '' },
+            ad: { plat: a.plat, head: a.head || '', body: a.body || '', img: a.img || null, detailUrl: a.detailUrl || '', ctaUrl: landing, dom: a.dom || '' },
             co: { name: (co && co.name) || '', domain: (co && co.domain) || '' },
             icp: icpText || ''
           }));
@@ -1093,6 +1095,13 @@
       const ICP = real ? real.icp : YOUR_ICP;
       const ads = real ? real.ads : YOUR_ADS;
       const scored = ads.filter(a => typeof a.score === 'number');
+      // Seed the landing field when an ad is picked: auto-fill the ad's resolved landing if we have
+      // one, otherwise pre-fill the company homepage so the user can paste the exact landing.
+      React.useEffect(() => {
+        if (!sel) return;
+        const dom = (CO && CO.domain) ? String(CO.domain).replace(/^https?:\/\//, '').replace(/\/.*$/, '') : '';
+        setLandingInput(sel.ctaUrl || (dom ? 'https://' + dom : ''));
+      }, [sel]);
       // How many ads are off-target for the ICP (score <= 6). This is the headline number a
       // first-timer actually cares about: how many ads are working against them right now.
       const offTarget = scored.filter(a => a.score <= 6).length;
@@ -1416,6 +1425,20 @@
                     {hasScore && <span className="ml-auto grid place-items-center rounded-full font-bold text-white" style={{ width: 30, height: 30, background: scoreCol(sel.score), fontSize: 13.5 }}>{sel.score}</span>}
                   </div>
                 </div>
+                {/* Landing page: auto-filled when the ad resolves one, otherwise editable (pre-filled
+                    with the site). We only roast ads that point somewhere, so this must be a real URL. */}
+                <div className="px-6 pt-4">
+                  <label className="block font-semibold text-gray-700" style={{ fontSize: 12.5, marginBottom: 5 }}>
+                    {sel.ctaUrl ? <span className="inline-flex items-center gap-1.5"><Icon name="check" className="w-3.5 h-3.5" style={{ color: '#16a34a' }} />Landing page (read from the ad)</span> : 'Landing page this ad points to'}
+                  </label>
+                  <input value={landingInput} onChange={(e) => setLandingInput(e.target.value)} placeholder="https://your-landing-page.com"
+                    className="w-full px-3 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900" style={{ borderColor: '#d1d5db' }} />
+                  <p className="text-gray-400" style={{ fontSize: 11.5, marginTop: 5 }}>
+                    {sel.ctaUrl
+                      ? "We read this from the ad. Change it if it's wrong."
+                      : "The ad library didn't expose this ad's link (usually because the ad isn't live right now), so add the exact page it sends people to. We can only roast an ad that has a landing page."}
+                  </p>
+                </div>
                 {/* Remaining roasts */}
                 <div className="px-6 pt-4">
                   <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: covered ? '#f0fdf4' : '#fef2f2', border: '1px solid ' + (covered ? '#bbf7d0' : '#fecaca') }}>
@@ -1433,7 +1456,7 @@
                 </div>
                 <div className="px-6 pt-4 pb-5 flex items-center gap-2.5">
                   <button onClick={() => setSel(null)} className="flex-none font-semibold rounded-full bg-white cursor-pointer hover:bg-gray-50 transition-colors" style={{ fontSize: 13.5, padding: '10px 16px', border: '1px solid #d1d5db', color: '#4b5563' }}>Pick another</button>
-                  <button onClick={() => { const s = sel; setSel(null); roastThisAd(s, CO, ICP); }} className="flex-1 font-bold text-white rounded-full hover:opacity-90 transition-opacity" style={{ fontSize: 13.5, padding: '10px 16px', background: '#0a66c2' }}>Roast this ad &rarr;</button>
+                  <button onClick={() => { const s = sel, lp = landingInput; setSel(null); roastThisAd(s, CO, ICP, lp); }} disabled={!/^https?:\/\/.+\..+/.test((landingInput || '').trim())} className="flex-1 font-bold text-white rounded-full hover:opacity-90 transition-opacity disabled:opacity-50" style={{ fontSize: 13.5, padding: '10px 16px', background: '#0a66c2' }}>Roast this ad &rarr;</button>
                 </div>
               </div>
             </div>
