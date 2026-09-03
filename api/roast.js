@@ -536,6 +536,10 @@ Return the JSON object defined in the output contract. All fields required.`;
         // With the brevity rules the JSON output is small, so 4000 is ample headroom.
         max_tokens: 4000,
         thinking: { type: 'disabled' },
+        // Low temperature so the SAME ad gets a consistent score/verdict run to run (kills
+        // the "different result each time" flakiness at zero extra token cost), while a small
+        // amount of variance keeps the generated fix-kit copy from reading rote.
+        temperature: 0.3,
         // Optimization #1 + #5: prompt-cache the large static system prompt AND the
         // JSON output contract together. Both are byte-identical across every roast,
         // so after the first call the whole prefix bills at ~0.1x (cache read) instead

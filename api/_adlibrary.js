@@ -98,12 +98,23 @@ async function scoreAds(ads, icp) {
     }
   }
   content[0].text = `ICP: ${icp}\n\nScore each ad 1-10 for how well it fits this ICP and earns the click (1 = severe mismatch, 10 = excellent). Several ads include their creative image below; READ the copy/text rendered on each creative and judge it as the ad's copy. Ads:\n${lines.join('\n')}`;
-  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index, shape: {"i":0,"score":5,"verdict":"one short line","fix":"one short fix line"}. Base the verdict/fix on the ad's actual copy (from the text line and, when present, the words on its creative image). No markdown. Never use em dashes or en dashes; use commas or periods.`;
+  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"verdict":"one short line","fix":"one short fix line"}. Base the verdict/fix on the ad's actual copy (from the text line and, when present, the words on its creative image).
+
+SCORING SCALE (calibrate consistently, the SAME ad must always land on the same score, do NOT cluster at 0-1 or 9-10):
+1-3 = actively hurting the click (severe ICP mismatch, no clear value, confusing).
+4-6 = generic / average, where MOST real ads land (understandable but forgettable, weak proof or CTA).
+7-8 = solid (clear ICP fit, specific value, a real reason to click).
+9-10 = best-in-class (sharp hook, strong proof, unmistakable CTA).
+An image-only ad with a readable value proposition is NOT a 1: judge the copy shown on the creative. Only score 1-2 when the ad is genuinely broken or badly mismatched to the ICP.
+
+No markdown. Never use em dashes or en dashes; use commas or periods.`;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 1600, system: sys, messages: [{ role: 'user', content }] }),
+      // temperature 0: the SAME ads must score the SAME way run to run. Default temp made the
+      // board swing (e.g. Google avg 1.1 one run, 7.7 the next) — pure sampling noise, not signal.
+      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 1600, temperature: 0, system: sys, messages: [{ role: 'user', content }] }),
     });
     const d = await r.json();
     const txt = d.content?.[0]?.text || '';
