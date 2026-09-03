@@ -1632,7 +1632,11 @@
           const adText = [a.head, a.body].filter(Boolean).join('\n\n');
           const payload = {
             platform: platMap[a.plat] || 'linkedin',
-            offerType: 'demo', offerDetail: '',
+            // We don't know the ad's funnel stage from the library, so DON'T force 'demo'
+            // (that unfairly dings a content/lead-magnet ad's low-commitment CTA). Tell the
+            // model to infer the stage from the creative + landing and calibrate to that.
+            offerType: 'other',
+            offerDetail: 'Unknown funnel stage. Infer whether this ad is a booked-demo, free-trial/self-serve, or content/lead-magnet offer from the creative and landing page, then calibrate the CTA-friction scoring and the recommended pre-set button to THAT stage. Do not assume a demo by default.',
             icpDescription: stash.icp || '',
             landingUrl: a.ctaUrl || (co.domain ? 'https://' + String(co.domain).replace(/^https?:\/\//, '') : ''),
             adCopy: adText,
