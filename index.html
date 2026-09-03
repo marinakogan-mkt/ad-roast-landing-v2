@@ -942,7 +942,7 @@
     /* Severity label from the roast score, so each ad shows a gravity level (not just a
        number): 1-4 critical mismatch, 5-6 weak, 7-8 solid, 9-10 strong. */
     const SEV = (s) => s <= 4 ? { label: 'Critical', c: '#dc2626', bg: '#fef2f2', bd: '#fecaca' }
-      : s <= 6 ? { label: 'Weak', c: '#d97706', bg: '#fffbeb', bd: '#fde68a' }
+      : s <= 6 ? { label: 'Needs work', c: '#d97706', bg: '#fffbeb', bd: '#fde68a' }
       : s <= 8 ? { label: 'Solid', c: '#16a34a', bg: '#f0fdf4', bd: '#bbf7d0' }
       : { label: 'Strong', c: '#15803d', bg: '#f0fdf4', bd: '#bbf7d0' };
 
@@ -1142,7 +1142,7 @@
                 <div className="text-gray-400 flex items-center gap-2" style={{ fontSize: 12.5, fontFamily: 'monospace' }}>{CO.domain}{usingReal && <button onClick={() => { setReal(null); setPhase('idle'); }} className="no-underline bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2', fontWeight: 600 }}>change</button>}</div>
               </div>
               <div className="ml-auto text-right">
-                <div className="font-bold text-gray-900" style={{ fontSize: 15 }}>{ads.length} live ad{ads.length === 1 ? '' : 's'}{avg ? ' · avg score ' + avg + '/10' : ''}</div>
+                <div className="font-bold text-gray-900" style={{ fontSize: 15 }}>{ads.length} live ad{ads.length === 1 ? '' : 's'}{avg ? ' · ' + avg + '/10 avg ICP match' : ''}</div>
                 <div className="text-gray-400" style={{ fontSize: 12 }}>{usingReal ? (plats.length ? 'on ' + plats.join(' & ') : 'live') : 'across LinkedIn & Google'}</div>
               </div>
             </div>
@@ -1158,7 +1158,7 @@
               <>
                 <div className="flex items-baseline gap-2.5 mb-3 flex-wrap">
                   <div className="font-semibold text-gray-500 uppercase tracking-wider" style={{ fontSize: 10.5, letterSpacing: '0.1em' }}>Where you're running ads</div>
-                  <span className="text-gray-400" style={{ fontSize: 11.5 }}>Each score is how well the ad matches your ICP, out of 10. Lower = more urgent to fix.</span>
+                  <span className="text-gray-400" style={{ fontSize: 11.5 }}>ICP match = how well an ad fits your ideal customer, scored 0-10. Lower = more urgent to fix.</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
                   {LIVE_SOURCES.map(p => {
@@ -1221,12 +1221,12 @@
                           <PlatLogo plat={p} size={18} />
                           <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{p}</span>
                           <span className="text-gray-400 font-semibold" style={{ fontSize: 12 }}>{list.length} live</span>
-                          {pAvg && <span className="ml-auto inline-flex items-center gap-1 font-bold text-white rounded-full" title="Average ICP-match score across this platform's ads" style={{ fontSize: 12, padding: '3px 10px', background: scoreCol(parseFloat(pAvg)) }}>avg {pAvg}/10</span>}
+                          {pAvg && <span className="ml-auto inline-flex items-center gap-1 font-bold text-white rounded-full" title="Average ICP-match score across this platform's ads" style={{ fontSize: 12, padding: '3px 10px', background: scoreCol(parseFloat(pAvg)) }}>ICP match {pAvg}/10</span>}
                         </div>
                         {rep && rep.img && <div className="grid place-items-center" style={{ background: '#f8fafc', padding: 14, borderBottom: '1px solid #eef1f5' }}><img src={IMG(rep.img)} alt={p + ' ad'} style={{ maxWidth: '100%', maxHeight: 210, width: 'auto', height: 'auto', display: 'block', borderRadius: 8, boxShadow: '0 1px 4px rgba(11,15,26,.12)' }} /></div>}
                         <div className="px-4 py-3 flex items-center justify-between gap-2">
                           {repSev
-                            ? <span className="inline-flex items-center gap-1.5 font-semibold rounded-full" style={{ fontSize: 11, padding: '3px 9px', color: repSev.c, background: repSev.bg, border: '1px solid ' + repSev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: repSev.c }} />Weakest: {repSev.label}</span>
+                            ? <span className="inline-flex items-center gap-1.5 font-semibold rounded-full" style={{ fontSize: 11, padding: '3px 9px', color: repSev.c, background: repSev.bg, border: '1px solid ' + repSev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: repSev.c }} />Weakest ad · {repSev.label}</span>
                             : <span className="text-gray-400" style={{ fontSize: 12 }}>Live creative</span>}
                           <span className="font-bold flex-none" style={{ fontSize: 13, color: '#0a66c2' }}>See all {list.length} &rarr;</span>
                         </div>
