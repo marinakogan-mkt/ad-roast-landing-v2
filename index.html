@@ -1194,7 +1194,7 @@
                           <span className="text-gray-400 font-semibold" style={{ fontSize: 12 }}>{list.length} live</span>
                           {pAvg && <span className="ml-auto inline-flex items-center gap-1 font-bold text-white rounded-full" style={{ fontSize: 12, padding: '3px 10px', background: scoreCol(parseFloat(pAvg)) }}>avg {pAvg}</span>}
                         </div>
-                        {rep && rep.img && <div style={{ background: '#f1f5f9' }}><img src={IMG(rep.img)} alt={p + ' ad'} loading="lazy" style={{ width: '100%', height: 'auto', display: 'block' }} /></div>}
+                        {rep && rep.img && <div style={{ background: '#f1f5f9' }}><img src={IMG(rep.img)} alt={p + ' ad'} style={{ width: '100%', height: 'auto', display: 'block' }} /></div>}
                         <div className="px-4 py-3 flex items-center justify-between gap-2">
                           {repSev
                             ? <span className="inline-flex items-center gap-1.5 font-semibold rounded-full" style={{ fontSize: 11, padding: '3px 9px', color: repSev.c, background: repSev.bg, border: '1px solid ' + repSev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: repSev.c }} />Weakest: {repSev.label}</span>
