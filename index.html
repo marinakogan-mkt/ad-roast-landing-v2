@@ -3258,7 +3258,8 @@
 
           {/* POSITIONING-PROBLEM CHECKLIST (one column, condensed from the old services page) */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
-            <h2 className="text-gray-900 mb-1" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Do you have a positioning problem?</h2>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>For B2B software teams</div>
+            <h2 className="text-gray-900 mb-1" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Is positioning hurting your paid campaigns?</h2>
             <p className="text-gray-400 text-sm mb-6">(Check all that apply)</p>
             <div className="grid grid-cols-1 gap-3 max-w-2xl">
               {[
@@ -3280,18 +3281,24 @@
                 );
               })}
             </div>
-            <div className="mt-6 max-w-md">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${(svcChecked.length / 4) * 100}%`, background: svcChecked.length >= 2 ? '#0a66c2' : '#93c5fd', transition: 'width .25s ease' }} />
-                </div>
-                <span className="text-xs font-bold text-gray-500 tabular-nums">{svcChecked.length}/4</span>
-              </div>
-              <p className="text-sm font-medium" style={{ color: svcChecked.length >= 2 ? '#0a2540' : '#64748b' }}>
-                {svcChecked.length === 0 ? 'Tap the ones that hit.' : svcChecked.length < 2 ? "That's positioning, not ad execution." : "Definitely positioning. We fix exactly this."}
-              </p>
-              {svcChecked.length >= 2 && <a href={CALENDLY_URL} target="_blank" rel="noopener" onClick={bookingClick} style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="inline-flex items-center gap-1.5 mt-3 px-5 py-2 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity no-underline step-in">Book a call <Icon name="arrowRight" className="w-4 h-4" /></a>}
-            </div>
+            {/* Selecting problems must pay off with a named diagnosis + a contextual CTA into the
+                sprint — otherwise the checklist reads as decorative. */}
+            {svcChecked.length === 0
+              ? <p className="mt-6 text-sm font-medium text-gray-500">Tap the ones that hit.</p>
+              : (() => {
+                  const has = (i) => svcChecked.includes(i);
+                  const dx = has(2) ? { name: 'Message Drift', line: 'your ad, landing page, and demo are telling three different stories, so the click never compounds into a booked demo.' }
+                    : has(1) ? { name: 'Weak Differentiation', line: 'buyers get what you do, but not why to pick you over the alternative, so they stall.' }
+                    : has(0) ? { name: 'an Unclear Promise', line: 'the click lands, but what you actually do never clicks, so the visit bounces.' }
+                    : { name: 'Wrong-Fit Demos', line: 'the pipeline fills, then the right buyers go quiet, because the ad is pulling the wrong people in.' };
+                  return (
+                    <div className="mt-6 max-w-2xl rounded-2xl p-5 sm:p-6" style={{ background: '#f0f6fd', border: '1px solid #cfe0f5' }}>
+                      <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#0a66c2', letterSpacing: '0.08em' }}>Your diagnosis</div>
+                      <p className="font-semibold text-gray-900" style={{ fontSize: 'clamp(17px, 3vw, 20px)', lineHeight: 1.4 }}>Your answers point to <span style={{ color: '#0a66c2' }}>{dx.name}</span> across the campaign — {dx.line}</p>
+                      <a href="/#deliverables" onClick={(e) => { const el = document.getElementById('deliverables'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }} className="inline-flex items-center gap-1.5 mt-4 px-5 py-2.5 rounded-full font-semibold text-sm no-underline step-in" style={{ backgroundColor: '#0a66c2', color: '#fff' }}>See how the sprint fixes it <Icon name="arrowRight" className="w-4 h-4" /></a>
+                    </div>
+                  );
+                })()}
           </section>
 
           {/* TESTIMONIALS */}
