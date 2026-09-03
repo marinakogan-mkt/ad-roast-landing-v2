@@ -989,9 +989,10 @@
          navigated to a different document (home), and this no-ops. */
       React.useEffect(() => {
         const onPop = () => {
-          const q = new URLSearchParams(window.location.search);
-          if (q.get('library') !== '1') return; // left the board entirely
-          const p = q.get('p');
+          // This effect only runs while the board is mounted, so drive the step straight off the
+          // URL: ?p=<plat> means a platform grid, no p means the overview. (The app keeps the base
+          // board URL at "/", so Back from a grid lands here with no p and returns to overview.)
+          const p = new URLSearchParams(window.location.search).get('p');
           if (p && LIVE_SOURCES.indexOf(p) !== -1) { setFP(p); setStage('grid'); }
           else { setStage('overview'); setFP('all'); }
           window.scrollTo(0, 0);
