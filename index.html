@@ -986,7 +986,15 @@
       /* Route every creative through our own origin so ad-blockers (which block the raw
          googlesyndication.com / licdn.com hosts by name) can't make them vanish. Only for
          DISPLAY — the roast handoff keeps the raw URL, which the server fetches directly. */
-      const IMG = (u) => (u && /^https?:\/\//.test(u)) ? ('/api/icp?img=' + encodeURIComponent(u)) : u;
+      // Route creative images through our origin so ad-blockers don't nuke them. Base64url the
+      // target URL (param p=) so the blocked hostnames never appear literally in the proxy URL —
+      // otherwise a substring filter (Brave/uBlock) matches "googlesyndication"/"licdn" in the
+      // query and blocks the proxy request too, exactly as it blocks the original hotlink.
+      const IMG = (u) => {
+        if (!u || !/^https?:\/\//.test(u)) return u;
+        try { return '/api/icp?p=' + btoa(u).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+        catch (e) { return '/api/icp?img=' + encodeURIComponent(u); }
+      };
 
       // Enter a website -> detect company + ICP, then pull the company's real live ads
       // (with creative images) from the LinkedIn Ad Library via /api/ads (Apify).

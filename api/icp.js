@@ -107,9 +107,18 @@ export default async function handler(req, res) {
      browser only ever sees adroast.in/api/icp?img=..., which no blocklist matches.
      Host-allowlisted + image-content-type-checked so it can't be used as an open proxy.
      Folded into this function (not a new one) to stay under the Hobby 12-function cap. */
-  if (req.method === 'GET' && req.query && req.query.img) {
+  if (req.method === 'GET' && req.query && (req.query.img || req.query.p)) {
     try {
-      const raw = Array.isArray(req.query.img) ? req.query.img[0] : req.query.img;
+      let raw;
+      if (req.query.p) {
+        // base64url-encoded target so the blocked hostnames ("googlesyndication", "licdn")
+        // never appear literally in the proxy URL — substring ad-blocker filters match the
+        // whole URL incl. query, so ?img=https://...googlesyndication... was itself blocked.
+        const b = Array.isArray(req.query.p) ? req.query.p[0] : req.query.p;
+        raw = Buffer.from(b.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+      } else {
+        raw = Array.isArray(req.query.img) ? req.query.img[0] : req.query.img;
+      }
       const u = new URL(raw);
       const ALLOW = /(^|\.)licdn\.com$|(^|\.)googlesyndication\.com$|(^|\.)gstatic\.com$|(^|\.)ggpht\.com$/i;
       if (u.protocol !== 'https:' || !ALLOW.test(u.hostname)) {
