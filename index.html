@@ -5,6 +5,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="google-site-verification" content="oFtEdYerbhw7qfxwPIvnmOYuDCjEjjIsYBRdV_rrOp0" />
+  <!-- Perf: warm up connections to the script CDNs before the parser reaches them -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
   <title>AdRoast: Free ad & landing page audit for B2B SaaS</title>
   <meta name="description" content="Paste your ad and landing page for a brutally honest, scored teardown in 2 minutes: the exact issues and the fixes that make the right buyers convert. Free, no card.">
   <link rel="canonical" href="https://www.adroast.in/">
@@ -30,8 +37,8 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.adroast.in/">
   <meta property="og:site_name" content="AdRoast">
-  <meta property="og:title" content="AdRoast: Find out why your ads aren't converting">
-  <meta property="og:description" content="A brutally honest, scored teardown of your ad and landing page in 2 minutes. Every issue, and the fixes that convert the right buyers. Free.">
+  <meta property="og:title" content="Find out where your ad loses the buyer">
+  <meta property="og:description" content="Get your ad, landing page, and message scored in 2 minutes, with every issue explained and the fixes ranked by impact. Free, no card.">
   <meta property="og:image" content="https://www.adroast.in/og-hero.png?v=1">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -39,17 +46,17 @@
 
   <!-- Twitter/X Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="AdRoast: Find out why your ads aren't converting">
-  <meta name="twitter:description" content="A brutally honest, scored teardown of your ad and landing page in 2 minutes. Every issue, and the fixes that convert the right buyers. Free.">
+  <meta name="twitter:title" content="Find out where your ad loses the buyer">
+  <meta name="twitter:description" content="Get your ad, landing page, and message scored in 2 minutes, with every issue explained and the fixes ranked by impact. Free, no card.">
   <meta name="twitter:image" content="https://www.adroast.in/og-hero.png?v=1">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png?v=3">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=3">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=3">
   <link id="dynamic-favicon" rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png?v=3">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.4/babel.min.js"></script>
   <style>
     body { font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -858,7 +865,7 @@
       }, []);
 
       const fmtDate = (ts) => { if (!ts) return ''; try { return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
-      const scoreColor = (s) => s == null ? '#94a3b8' : s <= 3 ? '#dc2626' : s <= 6 ? '#d97706' : '#16a34a';
+      const scoreColor = (s) => s == null ? '#94a3b8' : s <= 3 ? '#dc2626' : s <= 6 ? '#d97706' : '#0a66c2';
       const Pill = ({ v, label }) => (<span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: scoreColor(v) }}>{label} {v == null ? '-' : v}</span>);
 
       return (
@@ -926,7 +933,7 @@
     const YOUR_CO = { name: 'Semgrep', domain: 'semgrep.dev', initial: 'S', color: '#12805c' };
     const PLATMETA = {
       LinkedIn: { c: '#0a66c2', g: 'in' },
-      Meta: { c: '#7b3fe4', g: 'f' },
+      Meta: { c: '#0866ff', g: 'f' },
       Google: { c: '#ea4335', g: 'G' }
     };
     /* Sample preview (before a website is entered) - real Semgrep creatives so the board
@@ -945,9 +952,9 @@
     /* Severity label from the roast score, so each ad shows a gravity level (not just a
        number): 1-4 critical mismatch, 5-6 weak, 7-8 solid, 9-10 strong. */
     const SEV = (s) => s <= 4 ? { label: 'Critical', c: '#dc2626', bg: '#fef2f2', bd: '#fecaca' }
-      : s <= 6 ? { label: 'Needs work', c: '#d97706', bg: '#fffbeb', bd: '#fde68a' }
-      : s <= 8 ? { label: 'Solid', c: '#16a34a', bg: '#f0fdf4', bd: '#bbf7d0' }
-      : { label: 'Strong', c: '#15803d', bg: '#f0fdf4', bd: '#bbf7d0' };
+      : s <= 6 ? { label: 'Needs work', c: '#b45309', bg: '#fff8ed', bd: '#fde3bd' }
+      : s <= 8 ? { label: 'Solid', c: '#0a66c2', bg: '#eef4fb', bd: '#cfe1f5' }
+      : { label: 'Strong', c: '#075aad', bg: '#eef4fb', bd: '#cfe1f5' };
 
     /* Real platform logos (official brand marks), not letter badges. */
     function PlatLogo({ plat, size = 16 }) {
@@ -1123,7 +1130,7 @@
       });
       const avg = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(1) : null;
       const plats = [...new Set(ads.map(a => a.plat))];
-      const scoreCol = (s) => s == null ? '#94a3b8' : s <= 3 ? '#dc2626' : s <= 6 ? '#d97706' : '#16a34a';
+      const scoreCol = (s) => s == null ? '#94a3b8' : s <= 3 ? '#dc2626' : s <= 6 ? '#d97706' : '#0a66c2';
 
       const chip = (active, onClick, children, plat) => (
         <button onClick={onClick} className="inline-flex items-center gap-1.5 rounded-full font-medium transition-colors" style={{ fontSize: '13px', padding: '7px 13px', border: '1px solid ' + (active ? '#111827' : '#d1d5db'), background: active ? '#111827' : '#fff', color: active ? '#fff' : '#4b5563' }}>
@@ -1161,10 +1168,10 @@
               ].map((s, i, arr) => (
                 <React.Fragment key={i}>
                   <div className="flex items-center gap-2">
-                    <div className="grid place-items-center rounded-full font-bold flex-none" style={{ width: 24, height: 24, fontSize: 12, background: s.done ? '#16a34a' : s.active ? '#0a66c2' : '#e5e7eb', color: s.done || s.active ? '#fff' : '#9ca3af' }}>{s.n}</div>
-                    <span className="font-semibold" style={{ fontSize: 12.5, color: s.done ? '#16a34a' : s.active ? '#0a66c2' : '#9ca3af' }}>{s.label}</span>
+                    <div className="grid place-items-center rounded-full font-bold flex-none" style={{ width: 24, height: 24, fontSize: 12, background: s.done || s.active ? '#0a66c2' : '#e5e7eb', color: s.done || s.active ? '#fff' : '#9ca3af', opacity: s.done ? 0.55 : 1 }}>{s.n}</div>
+                    <span className="font-semibold" style={{ fontSize: 12.5, color: s.done ? '#0a66c2' : s.active ? '#0a66c2' : '#9ca3af', opacity: s.done ? 0.7 : 1 }}>{s.label}</span>
                   </div>
-                  {i < arr.length - 1 && <div className="flex-1 rounded-full" style={{ height: 2, background: s.done ? '#16a34a' : '#e5e7eb' }} />}
+                  {i < arr.length - 1 && <div className="flex-1 rounded-full" style={{ height: 2, background: s.done ? '#0a66c2' : '#e5e7eb' }} />}
                 </React.Fragment>
               ))}
             </div>
@@ -1189,8 +1196,8 @@
                 {usingReal && real.ads.length === 0 && phase !== 'loading' && <div className="text-sm text-gray-500 mt-3">No live ads found for <b>{CO.name}</b> on LinkedIn or Google. Try the exact company name, or a site that runs ads on those platforms.</div>}
               </div>
             ) : (
-              <div className="mb-6 inline-flex items-center gap-2 rounded-lg" style={{ fontSize: 13, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '7px 12px' }}>
-                <Icon name="check" className="w-4 h-4" style={{ color: '#16a34a' }} />
+              <div className="mb-6 inline-flex items-center gap-2 rounded-lg" style={{ fontSize: 13, background: '#f8fafc', border: '1px solid #e5e7eb', color: '#374151', padding: '7px 12px' }}>
+                <Icon name="check" className="w-4 h-4" style={{ color: '#0a66c2' }} />
                 <span className="font-semibold">Your website:</span>
                 <span style={{ fontFamily: 'monospace' }}>{CO.domain}</span>
                 <button onClick={() => { setReal(null); setPhase('idle'); setStage('overview'); setFP('all'); }} className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold" style={{ color: '#0a66c2' }}>change</button>
@@ -1208,7 +1215,7 @@
               <div className="ml-auto text-right">
                 {scored.length > 0 ? (() => {
                   const pct = Math.round(offTarget / scored.length * 100);
-                  const col = pct === 0 ? '#16a34a' : pct >= 50 ? '#dc2626' : '#d97706';
+                  const col = pct === 0 ? '#6b7280' : '#dc2626';
                   return (
                     <div className="flex items-baseline gap-1.5 justify-end">
                       <span style={{ fontSize: 30, fontWeight: 800, lineHeight: 1, color: col }}>{pct}%</span>
@@ -1221,7 +1228,7 @@
             </div>
             {ICP && <div className="mb-6 flex items-start gap-2 flex-wrap">
               <span className="font-semibold uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.1em', paddingTop: 4 }}>ICP detected</span>
-              <span className="rounded-lg" style={{ fontSize: 12.5, background: '#eef4fb', color: '#0a4a8f', padding: '5px 11px', border: '1px solid #d6e5f5' }}>{ICP}</span>
+              <span className="rounded-lg" style={{ fontSize: 12.5, background: '#eef2ff', color: '#0a66c2', padding: '5px 11px', border: '1px solid #dbe4fb' }}>{ICP}</span>
             </div>}
 
             {stage === 'overview' ? (
@@ -1243,8 +1250,8 @@
                     const platOff = sc.filter(a => a.score <= 6).length; // ads off-target on this platform
                     const pv = pAvg == null ? null
                       : parseFloat(pAvg) <= 4 ? { t: 'Most ads miss your ICP', c: '#dc2626' }
-                      : parseFloat(pAvg) <= 6 ? { t: 'Several ads need work', c: '#d97706' }
-                      : { t: 'Mostly on-target', c: '#16a34a' };
+                      : parseFloat(pAvg) <= 6 ? { t: 'Several ads need work', c: '#b45309' }
+                      : { t: 'Mostly on-target', c: '#0a66c2' };
                     // Why is this platform empty? 'ok' = has ads, 'no_ads' = genuinely none running,
                     // anything else = the fetch failed (e.g. LinkedIn Jina rate-limit) and we should
                     // offer a retry instead of falsely claiming they run nothing there.
@@ -1254,21 +1261,21 @@
                     /* State D - the fetch failed (not "no ads"). Semgrep DOES run LinkedIn ads, but
                        Jina rate-limited us this run. Say so honestly and let them retry. */
                     if (fetchFailed) return (
-                      <div key={p} className="rounded-2xl border overflow-hidden flex flex-col" style={{ borderColor: '#fcd9b6', background: '#fffaf4' }}>
-                        <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: '#fbe6cf' }}>
+                      <div key={p} className="rounded-2xl border overflow-hidden flex flex-col" style={{ borderColor: '#e5e7eb', background: '#fff' }}>
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                           <PlatLogo plat={p} size={18} />
                           <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{p}</span>
-                          <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#b45309', background: '#fef3c7', padding: '3px 8px', borderRadius: 6 }}>Couldn't load</span>
+                          <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>Retry needed</span>
                         </div>
-                        <div className="grid place-items-center px-4" style={{ height: 250, background: '#fffdf9' }}>
-                          <div className="text-center" style={{ maxWidth: 240 }}>
-                            <Icon name="rotateCcw" className="w-6 h-6 mx-auto mb-2" style={{ color: '#f59e0b' }} />
-                            <div className="text-gray-600 font-semibold" style={{ fontSize: 12.5 }}>We couldn't reach {p} just now</div>
-                            <div className="text-gray-400" style={{ fontSize: 11.5, marginTop: 2 }}>This is a temporary fetch limit, not your account.</div>
+                        <div className="grid place-items-center px-4" style={{ height: 250, background: '#fafbfc' }}>
+                          <div className="text-center" style={{ maxWidth: 250 }}>
+                            <Icon name="rotateCcw" className="w-6 h-6 mx-auto mb-2" style={{ color: '#94a3b8' }} />
+                            <div className="text-gray-700 font-semibold" style={{ fontSize: 12.5 }}>We couldn't reach {p} just now</div>
+                            <div className="text-gray-400" style={{ fontSize: 11.5, marginTop: 3, lineHeight: 1.45 }}>A temporary fetch limit on our side, not your account. Give it a moment and retry.</div>
                           </div>
                         </div>
                         <div className="px-4 py-3">
-                          <button onClick={() => loadReal(siteInput || (CO && CO.domain) || '', { refresh: true })} disabled={phase === 'loading'} className="w-full font-bold rounded-lg" style={{ fontSize: 13, padding: '9px', border: '1px solid #f59e0b', color: '#b45309', background: '#fff' }}>{phase === 'loading' ? 'Retrying…' : 'Retry ' + p + ' →'}</button>
+                          <button onClick={() => loadReal(siteInput || (CO && CO.domain) || '', { refresh: true })} disabled={phase === 'loading'} className="w-full font-bold rounded-lg transition-colors hover:bg-blue-50" style={{ fontSize: 13, padding: '9px', border: '1.5px solid #0a66c2', color: '#0a66c2', background: '#fff' }}>{phase === 'loading' ? 'Retrying…' : 'Retry ' + p + ' →'}</button>
                         </div>
                       </div>
                     );
@@ -1299,7 +1306,7 @@
                           <PlatLogo plat={p} size={18} />
                           <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{p}</span>
                           <span className="text-gray-400 font-semibold" style={{ fontSize: 12 }}>{list.length} live</span>
-                          {p === 'Meta' && <span className="inline-flex items-center font-semibold uppercase tracking-wider" style={{ fontSize: 8.5, letterSpacing: '0.05em', color: '#6b46c1', background: '#f3ecfd', border: '1px solid #e0d3f7', padding: '2px 6px', borderRadius: 5 }} title="Meta only exposes EU/UK-delivered ads via its official Ad Library API">EU/UK</span>}
+                          {p === 'Meta' && <span className="inline-flex items-center font-semibold uppercase tracking-wider" style={{ fontSize: 8.5, letterSpacing: '0.05em', color: '#475569', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '2px 6px', borderRadius: 5 }} title="Meta only exposes EU/UK-delivered ads via its official Ad Library API">EU/UK</span>}
                           {repSev && <span className="ml-auto inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 11, padding: '3px 10px', color: repSev.c, background: repSev.bg, border: '1px solid ' + repSev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: repSev.c }} />Weakest: {repSev.label}</span>}
                         </div>
                         <div className="flex items-center justify-center" style={{ background: '#f8fafc', height: 250, padding: 14, borderBottom: '1px solid #eef1f5', overflow: 'hidden' }}>
@@ -1320,16 +1327,16 @@
                       Clearly framed as a platform WE are adding, so it never reads as the advertiser
                       lacking Meta ads. We can't fetch Meta creatives (bot-walled), so no image. */}
                   {SOON_SOURCES.filter(p => !ads.some(a => a.plat === p)).map(p => (
-                    <div key={p} className="rounded-2xl border overflow-hidden flex flex-col select-none" title={p + ' ad library support is coming'} style={{ borderColor: '#d8c7f5', borderStyle: 'dashed', background: '#faf8ff' }}>
-                      <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: '#efe9fb' }}>
-                        <span style={{ opacity: 0.8 }}><PlatLogo plat={p} size={18} /></span>
-                        <span className="font-bold" style={{ fontSize: 15, color: '#6b46c1' }}>{p}</span>
-                        <span className="ml-auto inline-flex items-center gap-1 uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#fff', background: '#7b3fe4', padding: '3px 8px', borderRadius: 6 }}><Icon name="sparkles" className="w-3 h-3" />Coming soon</span>
+                    <div key={p} className="rounded-2xl border overflow-hidden flex flex-col select-none" title={p + ' ad library support is coming'} style={{ borderColor: '#dbe4ef', borderStyle: 'dashed', background: '#fafbfc' }}>
+                      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                        <span style={{ opacity: 0.7 }}><PlatLogo plat={p} size={18} /></span>
+                        <span className="font-bold text-gray-500" style={{ fontSize: 15 }}>{p}</span>
+                        <span className="ml-auto inline-flex items-center gap-1 uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#0a66c2', background: '#eef2ff', border: '1px solid #dbe4fb', padding: '3px 8px', borderRadius: 6 }}><Icon name="sparkles" className="w-3 h-3" />Coming soon</span>
                       </div>
-                      <div className="grid place-items-center" style={{ height: 250, background: 'repeating-linear-gradient(45deg,#f4f0fd,#f4f0fd 10px,#ece4fb 10px,#ece4fb 20px)' }}>
-                        <span style={{ opacity: 0.5 }}><PlatLogo plat={p} size={40} /></span>
+                      <div className="grid place-items-center" style={{ height: 250, background: 'repeating-linear-gradient(45deg,#f6f8fb,#f6f8fb 10px,#eef1f6 10px,#eef1f6 20px)' }}>
+                        <span style={{ opacity: 0.45 }}><PlatLogo plat={p} size={40} /></span>
                       </div>
-                      <div className="px-4 py-3"><span style={{ fontSize: 12, color: '#7c6a9c' }}>{p} ads coming soon.</span></div>
+                      <div className="px-4 py-3"><span className="text-gray-400" style={{ fontSize: 12 }}>{p} ads coming soon.</span></div>
                     </div>
                   ))}
                 </div>
@@ -1358,10 +1365,10 @@
                 const hasScore = typeof a.score === 'number';
                 const sev = hasScore ? SEV(a.score) : null;
                 return (
-                  <div key={i} className="bg-white rounded-2xl border overflow-hidden flex flex-col" style={{ borderColor: free ? '#bbe6cf' : '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
+                  <div key={i} className="bg-white rounded-2xl border overflow-hidden flex flex-col" style={{ borderColor: free ? '#bcd8f2' : '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
                     <div className="flex items-center gap-2 px-4 pt-4 pb-2.5">
                       <span className="inline-flex items-center gap-1.5 font-semibold rounded-md" style={{ fontSize: 11.5, padding: '4px 9px', background: '#fff', border: '1px solid #e5e7eb', color: '#374151' }}><PlatLogo plat={a.plat} size={14} />{a.plat}</span>
-                      {free && <span className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider" style={{ fontSize: 9.5, letterSpacing: '0.06em', color: '#16a34a', background: '#f0fdf4', padding: '4px 8px', borderRadius: 6 }}><span style={{ color: '#f59e0b' }}>★</span> Free roast</span>}
+                      {free && <span className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider" style={{ fontSize: 9.5, letterSpacing: '0.06em', color: '#0a66c2', background: '#eef2ff', border: '1px solid #dbe4fb', padding: '4px 8px', borderRadius: 6 }}><span style={{ color: '#f59e0b' }}>★</span> Free roast</span>}
                       {/* Gravity level, not just a number */}
                       {hasScore && <span className="ml-auto inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 10.5, padding: '3px 9px', color: sev.c, background: sev.bg, border: '1px solid ' + sev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: sev.c }} />{sev.label}</span>}
                       {hasScore && <span className="flex-none inline-flex items-center gap-1.5" title="ICP match: how well this ad fits your ideal customer, 0-10">
@@ -1382,7 +1389,7 @@
                         <>
                           <div className="uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.12em' }}>Biggest fix</div>
                           <div className="text-gray-800" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>{a.fix || a.verdict || a.body}</div>
-                          <button onClick={() => setSel(a)} className="w-full font-bold text-white rounded-lg mt-3" style={{ fontSize: 13.5, padding: '10px', background: '#16a34a' }}>View full roast →</button>
+                          <button onClick={() => setSel(a)} className="w-full font-bold text-white rounded-lg mt-3 hover:opacity-90 transition-opacity" style={{ fontSize: 13.5, padding: '10px', background: '#0a66c2' }}>View full roast →</button>
                         </>
                       ) : (
                         <>
@@ -1433,7 +1440,7 @@
                     with the site). We only roast ads that point somewhere, so this must be a real URL. */}
                 <div className="px-6 pt-4">
                   <label className="block font-semibold text-gray-700" style={{ fontSize: 12.5, marginBottom: 5 }}>
-                    {sel.ctaUrl ? <span className="inline-flex items-center gap-1.5"><Icon name="check" className="w-3.5 h-3.5" style={{ color: '#16a34a' }} />Landing page (read from the ad)</span> : 'Landing page this ad points to'}
+                    {sel.ctaUrl ? <span className="inline-flex items-center gap-1.5"><Icon name="check" className="w-3.5 h-3.5" style={{ color: '#0a66c2' }} />Landing page (read from the ad)</span> : 'Landing page this ad points to'}
                   </label>
                   <input value={landingInput} onChange={(e) => setLandingInput(e.target.value)} placeholder="https://your-landing-page.com"
                     className="w-full px-3 py-2.5 bg-white border rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900" style={{ borderColor: '#d1d5db' }} />
@@ -3157,7 +3164,7 @@
                 </span>
                 <span className="sm:hidden inline-flex items-center gap-2 text-sm px-4 py-2 border border-gray-200 rounded-full" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>Your live ads, brutally reviewed</span>
               </p>
-              <h1 className="hero-h1 text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontWeight: 300, lineHeight: 1.0, letterSpacing: '-0.5px' }}>Find out where<br className="mbr" /> your ad<br className="dbr" /> <span style={{ color: '#0a66c2', fontWeight: 600 }}>loses<br className="mbr" /> the buyer.</span></h1>
+              <h1 className="hero-h1 text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontWeight: 300, lineHeight: 1.0, letterSpacing: '-0.5px' }}>Find out where<br className="mbr" /> your ad<br className="dbr" /> loses<br className="mbr" /> the buyer.</h1>
               <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-2xl sm:mx-auto mb-3" style={{ fontSize: 'clamp(18px, 5vw, 20px)', lineHeight: 1.5 }}>Get your <strong className="font-semibold text-gray-600">ad, landing page, and message</strong> scored,<br className="hidden sm:inline" /> with every issue explained and the fixes <strong className="font-semibold text-gray-600">ranked by impact</strong>.</p>
               <p className="text-left sm:text-center text-gray-400 max-w-2xl sm:mx-auto mb-9 sm:mb-8" style={{ fontSize: '14px', lineHeight: 1.5 }}>Works with LinkedIn, Meta, and Google ads, across any industry.</p>
               {/* Inline ad-link input + CTA - pill-shape matching the nav button, same height across both */}
