@@ -166,15 +166,25 @@ export default async function handler(req, res) {
        AND give Jina's per-minute limit time to recover between attempts. refresh:true (the
        'change'/Retry buttons) bypasses the cache to force a fresh pull. */
     const ck = 'ads:' + String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
+    const wantScore = !!body.icp; // the board always sends the ICP; display-only calls don't
     if (_redis && ck !== 'ads:' && !body.refresh) {
       try {
         const raw = await _redis.get(ck);
         const cached = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-        if (cached && cached.ads && cached.ads.length) return res.status(200).json({ ...cached, _cached: true });
+        const cachedScored = cached && cached.ads && cached.ads.some(a => typeof a.score === 'number');
+        // Serve the cache UNLESS the caller wants scores and the cached set has none (a display-only
+        // call, e.g. a no-ICP probe, had poisoned it). In that case fall through and re-fetch WITH
+        // scoring so the "Weakest: Critical" gravity chips come back.
+        if (cached && cached.ads && cached.ads.length && (!wantScore || cachedScored)) {
+          return res.status(200).json({ ...cached, _cached: true });
+        }
       } catch (e) { /* miss -> fetch */ }
     }
     const result = await fetchAllAds({ company: body.company, domain: body.domain, icp: body.icp });
-    if (_redis && ck !== 'ads:' && result && result.ok && result.ads && result.ads.length) {
+    // Only overwrite the cache with a result that's scored, OR when no score was requested — so a
+    // no-ICP probe can never replace a good scored cache with an unscored one.
+    const resScored = result && result.ads && result.ads.some(a => typeof a.score === 'number');
+    if (_redis && ck !== 'ads:' && result && result.ok && result.ads && result.ads.length && (resScored || !wantScore)) {
       const liOk = result.notes && result.notes.linkedin === 'ok';
       const ttl = liOk ? 60 * 60 * 6 : 60 * 3; // 6h once LinkedIn is in; 3min retry window while it isn't
       try { await _redis.set(ck, JSON.stringify(result), { ex: ttl }); } catch (e) {}
