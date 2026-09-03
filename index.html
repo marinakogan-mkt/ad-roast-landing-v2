@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="google-site-verification" content="oFtEdYerbhw7qfxwPIvnmOYuDCjEjjIsYBRdV_rrOp0" />
-  <title>AdRoast — Free ad & landing page audit for B2B SaaS</title>
+  <title>AdRoast: Free ad & landing page audit for B2B SaaS</title>
   <meta name="description" content="Paste your ad and landing page for a brutally honest, scored teardown in 2 minutes: the exact issues and the fixes that make the right buyers convert. Free, no card.">
   <link rel="canonical" href="https://www.adroast.in/">
 
@@ -30,15 +30,18 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.adroast.in/">
   <meta property="og:site_name" content="AdRoast">
-  <meta property="og:title" content="AdRoast — Find out why your ads aren't converting">
+  <meta property="og:title" content="AdRoast: Find out why your ads aren't converting">
   <meta property="og:description" content="A brutally honest, scored teardown of your ad and landing page in 2 minutes. Every issue, and the fixes that convert the right buyers. Free.">
-  <meta property="og:image" content="https://www.brandswithpurpose.us/og-image.png">
+  <meta property="og:image" content="https://www.adroast.in/og-hero.png?v=1">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="AdRoast: find out where your ad loses the buyer.">
 
   <!-- Twitter/X Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="AdRoast — Find out why your ads aren't converting">
+  <meta name="twitter:title" content="AdRoast: Find out why your ads aren't converting">
   <meta name="twitter:description" content="A brutally honest, scored teardown of your ad and landing page in 2 minutes. Every issue, and the fixes that convert the right buyers. Free.">
-  <meta name="twitter:image" content="https://www.brandswithpurpose.us/og-image.png">
+  <meta name="twitter:image" content="https://www.adroast.in/og-hero.png?v=1">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png?v=3">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=3">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=3">
@@ -89,7 +92,7 @@
     @keyframes dotBounce { 0%,80%,100%{transform:scale(.5);opacity:.35} 40%{transform:scale(1);opacity:1} }
     .dot-bounce { animation: dotBounce 1s infinite ease-in-out; }
     @media (prefers-reduced-motion: reduce){ .card-pop:hover{transform:none} .pop-reveal,.dot-bounce{animation:none !important} }
-    /* Results overview metric card — obviously clickable, lifts + turns blue on hover. */
+    /* Results overview metric card - obviously clickable, lifts + turns blue on hover. */
     .metric-card { transition: transform .18s, box-shadow .18s, border-color .18s, background-color .18s; }
     .metric-card:hover { transform: translateY(-4px); border-color: #0a66c2 !important; background-color: #f8fbff; box-shadow: 0 12px 30px rgba(10,102,194,0.18); }
     .metric-card:hover .metric-open { color: #0a66c2 !important; }
@@ -132,7 +135,7 @@
       .hero-h1 .dbr { display: inline; }
     }
 
-    /* Ambient hero wash — slow, quiet, non-distracting */
+    /* Ambient hero wash - slow, quiet, non-distracting */
     @keyframes floatWash { 0%,100% { transform: translate(0,0) scale(1); opacity: 0.5; } 50% { transform: translate(2%, -3%) scale(1.08); opacity: 0.75; } }
     .hero-wash { position: absolute; inset: -20% 0 auto 0; height: 460px; z-index: 0; pointer-events: none;
       background: radial-gradient(600px 300px at 70% 20%, rgba(10,102,194,0.10), transparent 60%),
@@ -236,7 +239,7 @@
       );
     };
 
-    /* TEMP DEMO DATA — remove before deploy (only used when ?demo=roast) */
+    /* TEMP DEMO DATA - remove before deploy (only used when ?demo=roast) */
     const DEMO_ROAST = {
       overall_score: 4,
       icp_mismatch: "Your ad talks to 'security teams' broadly, but your ICP is CISOs who answer to a board. The hook never names their actual stakes.",
@@ -390,7 +393,7 @@
       );
     };
 
-    /* Semicircular "conversion health" gauge for the overall score — red/amber/green
+    /* Semicircular "conversion health" gauge for the overall score - red/amber/green
        zones (severity only) with a needle at the score and a digital readout beneath. */
     const HealthGauge = ({ score }) => {
       const has = typeof score === 'number' && score > 0;
@@ -450,11 +453,11 @@
     /* Icon per ad-issue category, so the section scans as a visual grid, not a text list. */
     const CATEGORY_ICON = { headline_clarity: 'fileText', cta_friction: 'zap', visual_copy_match: 'eye', benefit_specificity: 'target', trust_signals: 'shield' };
     /* Compact ad-issue card: category icon + big severity score + one-line reason + bar.
-       No expand — the reason is a short fragment that reads at a glance. */
+       No expand - the reason is a short fragment that reads at a glance. */
     /* Per-rank progressive disclosure engineered from the model's OWN words:
        the roast line is split on its first sentence boundary. The lead sentence
        is the card's verdict (always shown); "Go deeper" unlocks the rest of the
-       SAME output as the deeper read. Nothing is fabricated — the deeper text is
+       SAME output as the deeper read. Nothing is fabricated - the deeper text is
        the tail of the original explanation. Single-sentence lines show no button. */
     const RankReveal = ({ text, accent = '#0a66c2', tint = '#eff6ff' }) => {
       const parts = React.useMemo(() => {
@@ -653,7 +656,7 @@
 
     /* ---- Booking flow: an email + LinkedIn capture that runs BEFORE Calendly ----
        Every "Book a call" / main CTA opens this instead of jumping straight to
-       Calendly. We ask for their work email (always — it powers the auto-nudge to
+       Calendly. We ask for their work email (always - it powers the auto-nudge to
        no-shows, since a non-booker never reaches Calendly's email step) plus their
        LinkedIn. If they already gave their LinkedIn earlier (results-page team
        review), openBooking() is called WITH it and we only ask for email. On
@@ -683,7 +686,7 @@
         });
       } catch (e) { console.error('book-mark error:', e); }
     };
-    // Instant heads-up to Marina — fires when they reach Calendly, and again if they book.
+    // Instant heads-up to Marina - fires when they reach Calendly, and again if they book.
     const notifyBookingLead = async ({ email, linkedin, booked }) => {
       try {
         await fetch('https://api.emailjs.com/api/v1.0/email/send', {
@@ -926,7 +929,7 @@
       Meta: { c: '#7b3fe4', g: 'f' },
       Google: { c: '#ea4335', g: 'G' }
     };
-    /* Sample preview (before a website is entered) — real Semgrep creatives so the board
+    /* Sample preview (before a website is entered) - real Semgrep creatives so the board
        never shows a placeholder tile. Only the sources we actually pull (LinkedIn, Google). */
     const YOUR_ADS = [
       { plat: 'Google', head: 'Your SAST tool is lying to you.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/7884443371482777976', score: 4, verdict: 'Bold hook, wasted. The landing page opens on a generic product tour and the promise evaporates.', fix: 'Match the landing headline to the ad and put proof in the first scroll. The hook is good, the follow-through is not.' },
@@ -965,7 +968,7 @@
       return (<img src={src} alt={name || domain} onError={() => { if (src.indexOf('clearbit') > -1) setSrc('https://www.google.com/s2/favicons?domain=' + domain + '&sz=128'); else setDead(true); }} className="flex-none object-contain bg-white border border-gray-200" style={{ ...box }} />);
     }
 
-    /* AdRoast brand mark (also used in the main app header) — module-level so the Live Ads
+    /* AdRoast brand mark (also used in the main app header) - module-level so the Live Ads
        board header can match the rest of the app. */
     // Real brand mark served from our own origin. (The old inline base64 decoded to a fully
     // transparent PNG -> the logo rendered invisible everywhere; that was the "no logo" bug.)
@@ -1011,9 +1014,9 @@
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
       /* Route every creative through our own origin so ad-blockers (which block the raw
          googlesyndication.com / licdn.com hosts by name) can't make them vanish. Only for
-         DISPLAY — the roast handoff keeps the raw URL, which the server fetches directly. */
+         DISPLAY - the roast handoff keeps the raw URL, which the server fetches directly. */
       // Route creative images through our origin so ad-blockers don't nuke them. Base64url the
-      // target URL (param p=) so the blocked hostnames never appear literally in the proxy URL —
+      // target URL (param p=) so the blocked hostnames never appear literally in the proxy URL -
       // otherwise a substring filter (Brave/uBlock) matches "googlesyndication"/"licdn" in the
       // query and blocks the proxy request too, exactly as it blocks the original hotlink.
       const IMG = (u) => {
@@ -1166,7 +1169,7 @@
               ))}
             </div>
 
-            {/* Website entry lives in STEP 1. Once we have results (step 2), the website is fixed —
+            {/* Website entry lives in STEP 1. Once we have results (step 2), the website is fixed -
                 to change it you go back (the "change" control resets to the entry state). */}
             {ads.length === 0 ? (
               <div className="mb-6">
@@ -1222,7 +1225,7 @@
             </div>}
 
             {stage === 'overview' ? (
-              /* STEP 1 — Overview: one card per platform we actually pull, each showing a real
+              /* STEP 1 - Overview: one card per platform we actually pull, each showing a real
                  sample creative in full. Click a platform to see the status of every ad on it.
                  Sources we don't have yet (Meta) show greyed + blurred as "coming soon". */
               <>
@@ -1248,7 +1251,7 @@
                     const note = usingReal && real.notes ? (real.notes[p.toLowerCase()] || 'no_ads') : 'ok';
                     const fetchFailed = list.length === 0 && note !== 'ok' && note !== 'no_ads';
 
-                    /* State D — the fetch failed (not "no ads"). Semgrep DOES run LinkedIn ads, but
+                    /* State D - the fetch failed (not "no ads"). Semgrep DOES run LinkedIn ads, but
                        Jina rate-limited us this run. Say so honestly and let them retry. */
                     if (fetchFailed) return (
                       <div key={p} className="rounded-2xl border overflow-hidden flex flex-col" style={{ borderColor: '#fcd9b6', background: '#fffaf4' }}>
@@ -1270,7 +1273,7 @@
                       </div>
                     );
 
-                    /* State B — supported platform, genuinely running NO ads. Distinct from Meta's
+                    /* State B - supported platform, genuinely running NO ads. Distinct from Meta's
                        "coming soon" (we support it, they just aren't live) and from State D (failed). */
                     if (list.length === 0) return (
                       <div key={p} className="rounded-2xl border overflow-hidden flex flex-col select-none" style={{ borderColor: '#e5e7eb', background: '#fff' }}>
@@ -1289,7 +1292,7 @@
                       </div>
                     );
 
-                    /* State A — running: real creative framed with margin + colour-coded average. */
+                    /* State A - running: real creative framed with margin + colour-coded average. */
                     return (
                       <button key={p} onClick={() => openGrid(p)} className="bg-white rounded-2xl border overflow-hidden flex flex-col text-left cursor-pointer p-0 hover:shadow-lg transition-shadow" style={{ borderColor: '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
                         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
@@ -1313,7 +1316,7 @@
                       </button>
                     );
                   })}
-                  {/* State C — Meta: not a "you have none" state, a "we can't pull these yet" state.
+                  {/* State C - Meta: not a "you have none" state, a "we can't pull these yet" state.
                       Clearly framed as a platform WE are adding, so it never reads as the advertiser
                       lacking Meta ads. We can't fetch Meta creatives (bot-walled), so no image. */}
                   {SOON_SOURCES.filter(p => !ads.some(a => a.plat === p)).map(p => (
@@ -1332,7 +1335,7 @@
                 </div>
               </>
             ) : (<>
-            {/* STEP 2 — status of every ad on the chosen platform, colour-coded by gravity. */}
+            {/* STEP 2 - status of every ad on the chosen platform, colour-coded by gravity. */}
             <div className="flex items-center gap-3 mb-5 flex-wrap">
               <button onClick={() => { if (window.history.state && window.history.state.libGrid) { window.history.back(); } else { setStage('overview'); setFP('all'); try { window.history.replaceState({}, '', '?library=1'); } catch (e) {} window.scrollTo(0, 0); } }} className="inline-flex items-center gap-1.5 font-semibold rounded-full bg-white cursor-pointer hover:bg-gray-50 transition-colors" style={{ fontSize: 13, padding: '7px 13px', border: '1px solid #d1d5db', color: '#4b5563' }}>&larr; All platforms</button>
               <span className="inline-flex items-center gap-2 font-bold text-gray-900" style={{ fontSize: 16 }}><PlatLogo plat={fP} size={18} />{fP} ads</span>
@@ -1477,7 +1480,7 @@
       try {
         if (!link) return;
         localStorage.setItem(_prefillKey(link), JSON.stringify(data));
-      } catch (e) { /* quota / disabled — prefill is best-effort */ }
+      } catch (e) { /* quota / disabled - prefill is best-effort */ }
     };
     const loadAdPrefill = (link) => {
       try { const r = localStorage.getItem(_prefillKey(link)); return r ? JSON.parse(r) : null; }
@@ -1563,7 +1566,7 @@
       const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
       const platformFromLink = (link) => { const l = (link || '').toLowerCase(); return /linkedin/.test(l) ? 'linkedin' : /facebook|instagram|fb\.|meta/.test(l) ? 'meta' : /google|goog|youtube|doubleclick/.test(l) ? 'google' : 'linkedin'; };
       const detectFromAd = async (overrideLink, forceRefresh) => {
-        /* Prefer the website the user typed in "Is this your website?" — ad-library pages
+        /* Prefer the website the user typed in "Is this your website?" - ad-library pages
            are often bot-blocked so we can't read the advertiser from them, but the company's
            own site scrapes cleanly. Fall back to the ad link when no site is given. */
         const typedSite = (siteUrl || '').trim();
@@ -1572,7 +1575,7 @@
         if (!link) { setIcpAuto({ loading: false, err: '', done: true }); return; }
 
         /* Re-apply what the user added by hand the last time they roasted THIS ad
-           (creative image, landing URL, visual note, offer). Only fills gaps — never
+           (creative image, landing URL, visual note, offer). Only fills gaps - never
            overwrites something they just typed in this session. */
         const saved = loadAdPrefill(link);
         if (saved) {
@@ -1657,7 +1660,7 @@
       /* Declared here (with the other hooks) so the URL-sync useEffect below can
          reference it; it must initialize before its first use to avoid a TDZ crash. */
       const [synthResult, setSynthResult] = useState(null);
-      /* Monetization 2b — roast-tool account (mode:'roast'). Null until we confirm a
+      /* Monetization 2b - roast-tool account (mode:'roast'). Null until we confirm a
          session via /api/auth?action=me. Shape: { email, roastCount, freeAvailable }. */
       const [roastSession, setRoastSession] = useState(null);
       /* Sign-up gate shown between the wizard's last step and the roast running. */
@@ -1674,7 +1677,7 @@
       const [navOpen, setNavOpen] = useState(false);
       /* Which nav path is active on the home page. Driven by scroll position so that when the
          reader lands in the "Work with us" section the nav highlights it (blue + underline) and
-         de-highlights "Roast an ad" — clicking "Roast an ad" then scrolls back to the top. */
+         de-highlights "Roast an ad" - clicking "Roast an ad" then scrolls back to the top. */
       const [activeNav, setActiveNav] = useState('tool');
       useEffect(() => {
         if (view !== 'landing') { setActiveNav('tool'); return; }
@@ -1709,11 +1712,11 @@
       }, [paymentVerified, view]);
       const hasInput = inputs.url.trim() || inputs.copy.trim() || inputs.adScreenshot;
       const canProceed = platform && offerType && (offerType !== 'other' || offerDetail.trim().length > 2) && icp.length > 10;
-      /* A saved/shared report (opened via ?id=<reportId>) always shows in full —
+      /* A saved/shared report (opened via ?id=<reportId>) always shows in full -
          the report was already generated, so the premium blur must never appear
          on an opened link. Gating only applies to a freshly-run, out-of-token roast. */
       const showFull = isPortalView || isUnlocked || isSharedView;
-      /* TEMP DEMO — remove before deploy: ?demo=roast renders the results page with sample data */
+      /* TEMP DEMO - remove before deploy: ?demo=roast renders the results page with sample data */
       React.useEffect(() => {
         if (typeof window !== 'undefined' && window.location.search.includes('demo=roast')) {
           setIcp('CISOs and security engineering leads at Series A+ cybersecurity startups');
@@ -1736,7 +1739,7 @@
            stashed the chosen ad + company + ICP; build the roast payload here and run the
            real /api/roast. The creative rides along as adImageUrl (roast.js fetches it).
            Free vs paid is decided server-side by the account's token balance, and the
-           results view handles unlock vs blur — same as a normal roast. */
+           results view handles unlock vs blur - same as a normal roast. */
         if (params.get('libroast') === '1') {
           window.history.replaceState({}, '', window.location.pathname);
           let stash = null;
@@ -1801,12 +1804,12 @@
         // Synthesis report (shareable): /?synth=XXX
         if (synthId) {
           setView('loading-report');
-          /* Auto-detect portal session in parallel — gives signed-in viewers
+          /* Auto-detect portal session in parallel - gives signed-in viewers
              the full report without needing &portal=1 (mirrors the audit flow). */
           fetch('/api/auth?action=me', { credentials: 'same-origin' })
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d && d.session && d.session.mode !== 'roast') setIsPortalView(true); })
-            .catch(() => { /* not signed in — keep public flow */ });
+            .catch(() => { /* not signed in - keep public flow */ });
 
           fetch(`/api/synthesize?id=${encodeURIComponent(synthId)}`, { credentials: 'same-origin' })
             .then(async r => ({ ok: r.ok, status: r.status, data: await r.json().catch(() => ({})) }))
@@ -1837,7 +1840,7 @@
         /* Direct link to the services page (adroast.in/#services). */
         if (window.location.hash === '#services' || window.location.pathname.replace(/\/+$/, '') === '/services') { try { window.history.replaceState({}, '', '/'); } catch (e) {} }
 
-        /* Magic sign-in link failed (expired / already used) — show a clear message
+        /* Magic sign-in link failed (expired / already used) - show a clear message
            on the landing instead of dumping the user into the portal gate. */
         const signinParam = params.get('signin');
         if (signinParam) {
@@ -1847,7 +1850,7 @@
           window.history.replaceState({}, '', window.location.pathname);
         }
 
-        /* Roast-account sign-in return (?signedin=1) — set after Google/magic-link.
+        /* Roast-account sign-in return (?signedin=1) - set after Google/magic-link.
            Confirm the session, then resume the roast the user was about to run
            (payload stashed in sessionStorage right before we sent them to sign in). */
         if (signedinParam === '1') {
@@ -1889,7 +1892,7 @@
           return;
         }
 
-        // Handle Stripe payment return (plan purchase — monetization #3)
+        // Handle Stripe payment return (plan purchase - monetization #3)
         if (paymentStatus === 'success' && stripeSessionId) {
           // A blurred roast may have been stashed before checkout (paywall path).
           let hadSaved = false;
@@ -1962,7 +1965,7 @@
           fetch('/api/auth?action=me', { credentials: 'same-origin' })
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d && d.session && d.session.mode !== 'roast') setIsPortalView(true); })
-            .catch(() => { /* not signed in — keep public flow */ });
+            .catch(() => { /* not signed in - keep public flow */ });
 
           fetch(`/api/roast-view?id=${reportId}`, { credentials: 'same-origin' })
             .then(async res => {
@@ -1996,7 +1999,7 @@
                 setView('results');
                 return;
               }
-              /* Portal-private audit, viewer isn't signed in — surface a clear
+              /* Portal-private audit, viewer isn't signed in - surface a clear
                  sign-in prompt and a link to the portal, not a generic error. */
               if (status === 401 && data.private) {
                 setPrivateAuditGate({
@@ -2041,17 +2044,17 @@
             try {
               const u = new URL(shareableLink, window.location.origin);
               target = u.pathname + u.search + u.hash;
-            } catch (e) { /* ignore — leave URL untouched */ }
+            } catch (e) { /* ignore - leave URL untouched */ }
           } else if (view === 'landing') {
             /* Don't reset the URL if there's a payment-success ?id= already handled
-               by the init effect — only reset on a true return to landing. */
+               by the init effect - only reset on a true return to landing. */
             const hasReportParam = /[?&](id|synth|payment)=/.test(window.location.search);
             if (!hasReportParam) target = '/';
           }
           if (target && (window.location.pathname + window.location.search + window.location.hash) !== target) {
             window.history.replaceState(null, '', target);
           }
-        } catch (e) { /* clipboard blocked — silently ignore */ }
+        } catch (e) { /* clipboard blocked - silently ignore */ }
       }, [view, synthResult, shareableLink]);
 
       /* Route to the services page whenever the hash becomes #services (covers
@@ -2065,7 +2068,7 @@
       /* Fresh-load deep links to landing sections (the results-page cards open
          /#deliverables and /#work-with-us in a NEW tab so the roast stays put).
          React renders after the browser's native hash scroll, AND the landing's
-         images keep loading and shifting layout after the section first appears —
+         images keep loading and shifting layout after the section first appears -
          so a single scroll lands short. We re-align to the section repeatedly for a
          couple of seconds (instant, respecting scroll-mt) and again once images
          finish, but stop the moment the user scrolls or interacts. */
@@ -2283,8 +2286,8 @@
           : window.location.href;
         
         // Marina already got the full roast at roast time (notifyRoastToMarina).
-        // This is a short, high-intent addendum — the lead just requested a team
-        // review and handed over their LinkedIn — so we don't repeat the roast.
+        // This is a short, high-intent addendum - the lead just requested a team
+        // review and handed over their LinkedIn - so we don't repeat the roast.
         const handle = linkedin.split('/in/')[1]?.replace(/\/$/, '').split('?')[0] || 'New';
         try {
           await fetch('https://api.emailjs.com/api/v1.0/email/send', {
@@ -2347,7 +2350,7 @@
          the user's report link + LinkedIn notify already use. Skips admin/internal
          runs and gated paywall re-shows (not a fresh roast). Persists the roast to
          Notion first so the heads-up carries a clickable link to the rendered report
-         — Marina no longer has to wait for the viewer to fill "Save Your Report". */
+         - Marina no longer has to wait for the viewer to fill "Save Your Report". */
       const notifyRoastToMarina = async (data) => {
         if (adminMode || !data || data._gated) return;
         const adScore = (data.overall_score != null ? data.overall_score : 'N/A');
@@ -2440,8 +2443,8 @@
         } catch (err) { setError(err.message); setView('guided'); setLoading(false); }
       };
 
-      /* Admin-only: submit a multi-variant audit. Flattens all variants — including pin
-         positions, display paths, Ad Strength, campaign metadata — into a structured
+      /* Admin-only: submit a multi-variant audit. Flattens all variants - including pin
+         positions, display paths, Ad Strength, campaign metadata - into a structured
          adCopy block so the LLM can analyze the full RSA structure as one audit. */
       const generateAdvanced = async () => {
         setError(null); setLoading(true); setView('processing');
@@ -2830,7 +2833,7 @@
       ];
 
       /* Platform-aware display filter for the Ad Issues grid.
-         Google Search RSAs render text only — no logos, customer logos, vendor
+         Google Search RSAs render text only - no logos, customer logos, vendor
          badges, security/compliance badges, or screenshots inside the ad creative
          or ad extensions. So for Google ads, hide any issue card whose body
          observes the absence of visual trust signals (or recommends adding them
@@ -2865,7 +2868,7 @@
         });
       })();
 
-      /* Persistent site nav — two clear paths (Roast an ad / Work with us) plus the
+      /* Persistent site nav - two clear paths (Roast an ad / Work with us) plus the
          primary Book-a-call CTA, shared by the tool and service pages. Mobile collapses
          to a menu (navOpen). Called as a plain function to avoid remount on re-render. */
       const goTool = () => {
@@ -2950,7 +2953,7 @@
         </header>
       );
 
-      /* Reusable service sections — rendered on both the /services page and the
+      /* Reusable service sections - rendered on both the /services page and the
          main-page 'Work with us' block, so there's one source of truth. */
       const ServiceOffers = () => {
         const toggle = (k) => setOpenOffers(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
@@ -3002,7 +3005,7 @@
             <div className="mb-6">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-3" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What you get</div>
               <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(32px, 8vw, 36px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Your whole campaign, repositioned.</h2>
-              <p className="text-gray-400 max-w-lg" style={{ fontSize: '17px', lineHeight: 1.7 }}>The whole funnel repositioned, not just reworded, delivered in 10 days. Tap any piece to see what's inside.</p>
+              <p className="text-gray-400 max-w-lg" style={{ fontSize: '17px', lineHeight: 1.7 }}>The whole funnel <strong className="font-semibold text-gray-600">repositioned, not just reworded</strong>, delivered in <strong className="font-semibold text-gray-600">10 days</strong>. Tap any piece to see what's inside.</p>
             </div>
             <div className="space-y-3">
               {items.map((it, i) => {
@@ -3125,7 +3128,7 @@
             </div>
           )}
 
-          {/* NAV — persistent two-path nav on the tool page; admin keeps its toolbar */}
+          {/* NAV - persistent two-path nav on the tool page; admin keeps its toolbar */}
           {adminMode ? (
             <header className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-50" style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
               <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
@@ -3152,12 +3155,12 @@
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>
                   <span style={{ fontSize: '17px' }}>Your live ads, brutally reviewed</span>
                 </span>
-                <span className="sm:hidden inline-flex items-center gap-2 text-sm" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>Your live ads, brutally reviewed</span>
+                <span className="sm:hidden inline-flex items-center gap-2 text-sm px-4 py-2 border border-gray-200 rounded-full" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>Your live ads, brutally reviewed</span>
               </p>
-              <h1 className="hero-h1 text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontWeight: 300, lineHeight: 1.0, letterSpacing: '-0.5px' }}>Find out where<br className="mbr" /> your ad<br className="dbr" /> loses<br className="mbr" /> the buyer.</h1>
-              <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-2xl sm:mx-auto mb-3" style={{ fontSize: 'clamp(18px, 5vw, 20px)', lineHeight: 1.5 }}>Get your ad, landing page, and message scored,<br />with every issue explained and the fixes ranked by impact.</p>
+              <h1 className="hero-h1 text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontWeight: 300, lineHeight: 1.0, letterSpacing: '-0.5px' }}>Find out where<br className="mbr" /> your ad<br className="dbr" /> <span style={{ color: '#0a66c2', fontWeight: 600 }}>loses<br className="mbr" /> the buyer.</span></h1>
+              <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-2xl sm:mx-auto mb-3" style={{ fontSize: 'clamp(18px, 5vw, 20px)', lineHeight: 1.5 }}>Get your <strong className="font-semibold text-gray-600">ad, landing page, and message</strong> scored,<br className="hidden sm:inline" /> with every issue explained and the fixes <strong className="font-semibold text-gray-600">ranked by impact</strong>.</p>
               <p className="text-left sm:text-center text-gray-400 max-w-2xl sm:mx-auto mb-9 sm:mb-8" style={{ fontSize: '14px', lineHeight: 1.5 }}>Works with LinkedIn, Meta, and Google ads, across any industry.</p>
-              {/* Inline ad-link input + CTA — pill-shape matching the nav button, same height across both */}
+              {/* Inline ad-link input + CTA - pill-shape matching the nav button, same height across both */}
               <div className="max-w-2xl mx-auto">
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch">
                   <input
@@ -3247,12 +3250,12 @@
             <p className="text-center text-xs text-gray-400 mt-3">Tap any answer to see what's inside.</p>
           </section>
 
-          {/* SERVICE PRICING — the paid offers live on the main page; the roast-token
+          {/* SERVICE PRICING - the paid offers live on the main page; the roast-token
               upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
           <section id="work-with-us" className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full scroll-mt-20">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Human-led services for B2B software</div>
-            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>The roast found the problem.<br />Want us to fix the full campaign?</h2>
-            <p className="text-gray-400 mb-8 sm:mb-12 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>The free AdRoast works with ads from any industry. Our human-led services are built for B2B software teams running active paid campaigns. We go beyond one ad: we reposition and rewrite the entire ad-to-page journey, ready for your team to ship.</p>
+            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>The roast found the problem.<br className="hidden sm:inline" />Want us to fix the full campaign?</h2>
+            <p className="text-gray-400 mb-8 sm:mb-12 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>The free AdRoast works with ads from any industry. Our human-led services are <strong className="font-semibold text-gray-600">built for B2B software teams</strong> running active paid campaigns. We go beyond one ad: we <strong className="font-semibold text-gray-600">reposition and rewrite the entire ad-to-page journey</strong>, ready for your team to ship.</p>
 
             {ServiceOffers()}
 
@@ -3261,8 +3264,8 @@
           {/* RESULTS */}
           <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Results from our human-led B2B work</div>
-            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>The ad gets the click.<br />Message Drift loses the buyer afterward.</h2>
-            <p className="text-gray-400 mb-6 sm:mb-10 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>In B2B campaigns, the ad often creates one expectation while the landing page introduces another. Our positioning sprints identify and repair that break, so the demo the ad earned actually shows up.</p>
+            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>The ad gets the click.<br className="hidden sm:inline" />Message Drift loses the buyer afterward.</h2>
+            <p className="text-gray-400 mb-6 sm:mb-10 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>In B2B campaigns, the ad often creates one expectation while <strong className="font-semibold text-gray-600">the landing page introduces another</strong>. Our positioning sprints <strong className="font-semibold text-gray-600">identify and repair that break</strong>, so the demo the ad earned actually shows up.</p>
             <div className="grid grid-cols-2 gap-4">
               {[
                 { to: 50, suffix: "+", label: "B2B software teams repositioned" },
@@ -3279,7 +3282,7 @@
             {/* One number turned into a mini-case reads far more credibly than four isolated stats. */}
             <div className="mt-4 rounded-2xl p-5 sm:p-6" style={{ background: '#f7f9fc', border: '1px solid #dbe4ef' }}>
               <div className="font-semibold mb-1.5" style={{ fontSize: 'clamp(18px, 3vw, 22px)', color: '#0a2540' }}>3&times; more demos with the same ad spend</div>
-              <p className="text-gray-500" style={{ fontSize: 15, lineHeight: 1.6, maxWidth: 640 }}>For a B2B software campaign, we aligned the ad, landing page, and sales narrative around one buyer problem. Demo volume tripled within 90 days without increasing media spend.</p>
+              <p className="text-gray-500" style={{ fontSize: 15, lineHeight: 1.6, maxWidth: 640 }}>For a B2B software campaign, we <strong className="font-semibold text-gray-700">aligned the ad, landing page, and sales narrative</strong> around one buyer problem. <strong className="font-semibold text-gray-700">Demo volume tripled within 90 days</strong> without increasing media spend.</p>
             </div>
           </section>
 
@@ -3315,7 +3318,7 @@
               })}
             </div>
             {/* Selecting problems must pay off with a named diagnosis + a contextual CTA into the
-                sprint — otherwise the checklist reads as decorative. */}
+                sprint - otherwise the checklist reads as decorative. */}
             {svcChecked.length === 0
               ? <p className="mt-6 text-sm font-medium text-gray-500">Tap the ones that hit.</p>
               : (() => {
@@ -3327,7 +3330,7 @@
                   return (
                     <div className="mt-6 max-w-2xl rounded-2xl p-5 sm:p-6" style={{ background: '#f0f6fd', border: '1px solid #cfe0f5' }}>
                       <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#0a66c2', letterSpacing: '0.08em' }}>Your diagnosis</div>
-                      <p className="font-semibold text-gray-900" style={{ fontSize: 'clamp(17px, 3vw, 20px)', lineHeight: 1.4 }}>Your answers point to <span style={{ color: '#0a66c2' }}>{dx.name}</span> across the campaign — {dx.line}</p>
+                      <p className="font-semibold text-gray-900" style={{ fontSize: 'clamp(17px, 3vw, 20px)', lineHeight: 1.4 }}>Your answers point to <span style={{ color: '#0a66c2' }}>{dx.name}</span> across the campaign: {dx.line}</p>
                       <a href="/#deliverables" onClick={(e) => { const el = document.getElementById('deliverables'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }} className="inline-flex items-center gap-1.5 mt-4 px-5 py-2.5 rounded-full font-semibold text-sm no-underline step-in" style={{ backgroundColor: '#0a66c2', color: '#fff' }}>See how the sprint fixes it <Icon name="arrowRight" className="w-4 h-4" /></a>
                     </div>
                   );
@@ -3378,17 +3381,17 @@
           <section className="text-center px-4 pb-10 sm:pb-20 max-w-5xl mx-auto">
             <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(34px, 8vw, 46px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
             <div className="grid sm:grid-cols-2 gap-4 max-w-3xl mx-auto text-left">
-              {/* Route 1 — the universal free product */}
+              {/* Route 1 - the universal free product */}
               <div className="rounded-2xl border border-gray-200 bg-white p-6 flex flex-col">
                 <h3 className="font-semibold text-gray-900 mb-2" style={{ fontSize: 18 }}>Not sure where the message breaks?</h3>
                 <p className="text-gray-500 mb-5 flex-1" style={{ fontSize: 14.5, lineHeight: 1.6 }}>Roast one ad free and get your first diagnosis in two minutes. Any industry, any platform.</p>
                 <button onClick={() => { setGuidedHadCopyAtStart(!!(inputs.copy?.trim() || inputs.adScreenshot)); setGuidedStep(0); setView('guided'); }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-6 py-2.5 border rounded-full font-semibold text-sm hover:opacity-90 transition-opacity self-start">Roast my ad free &rarr;</button>
               </div>
-              {/* Route 2 — the B2B-software human service */}
-              <div className="rounded-2xl border p-6 flex flex-col" style={{ borderColor: '#0a2540', background: '#f7f9fc' }}>
+              {/* Route 2 - the B2B-software human service */}
+              <div className="rounded-2xl border-2 p-6 flex flex-col" style={{ borderColor: '#0a66c2', background: '#f7f9fc' }}>
                 <h3 className="font-semibold text-gray-900 mb-2" style={{ fontSize: 18 }}>Running active B2B campaigns?</h3>
                 <p className="text-gray-500 mb-5 flex-1" style={{ fontSize: 14.5, lineHeight: 1.6 }}>Want the full ad-to-page journey repositioned and rewritten for you? That's the Campaign Repositioning Sprint.</p>
-                <a href="/#work-with-us" onClick={(e) => { const el = document.getElementById('work-with-us'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }} className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-full font-semibold text-sm no-underline self-start transition-colors hover:bg-gray-50" style={{ background: '#fff', color: '#0a2540', border: '1.5px solid #0a2540' }}>Explore the Repositioning Sprint <Icon name="arrowRight" className="w-4 h-4" /></a>
+                <a href="/#work-with-us" onClick={(e) => { const el = document.getElementById('work-with-us'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }} className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-full font-semibold text-sm no-underline self-start border-2 bg-white transition-colors hover:bg-blue-50" style={{ borderColor: '#0a66c2', color: '#0a66c2' }}>Explore the Repositioning Sprint <Icon name="arrowRight" className="w-4 h-4" /></a>
               </div>
             </div>
           </section>
@@ -3545,7 +3548,7 @@
         );
       }
 
-      /* ─── SYNTHESIS RESULT VIEW (internal & shareable) — renders with same TOC + collapsible
+      /* ─── SYNTHESIS RESULT VIEW (internal & shareable) - renders with same TOC + collapsible
          sections + NudgeStyleSection styling as the Aikido positioning report. ─── */
       if (view === 'synthesis-result' && synthResult) {
         const shareLink = synthResult.id ? `${window.location.origin}/?synth=${synthResult.id}` : null;
@@ -3580,7 +3583,7 @@
           const noVisualRe = /[^.!?\n]*\b(no|missing|absent)\s+(image|visual|screenshot|asset|preview)s?\s+(provided|available|attached|shown)\b[^.!?\n]*[.!?]?/gi;
           out = out.replace(noVisualRe, '');
           /* Soften absolutist "Lead with X in all Y / in every Y" recommendations
-             into "Prioritize X in Y" — less prescriptive, gives the team room to
+             into "Prioritize X in Y" - less prescriptive, gives the team room to
              test. Targets recommendation patterns only; doesn't touch factual
              statistics ("trust score averages 3.4/10 across 5 ads") because those
              don't use the "in all/every" prefix.
@@ -3726,7 +3729,7 @@
                   </button>
                 </div>
               )}
-              {/* TOC card — matches Nudge: white bg, rounded-xl, uppercase tracking-wider
+              {/* TOC card - matches Nudge: white bg, rounded-xl, uppercase tracking-wider
                   header, row-flow grid (left-right top-bottom). Sits OUTSIDE the main
                   white report card so it visually separates like Nudge's. */}
               {sections.length > 0 && (
@@ -3772,7 +3775,7 @@
                   );
                 })}
                 </div>
-                {/* Audit navigation footer — lists each source audit as a clickable link
+                {/* Audit navigation footer - lists each source audit as a clickable link
                     so the reader can move from the synthesis into the underlying audits.
                     Mirrors the ContentNav at the bottom of Nudge's positioning page. */}
                 {synthResult.sourceLinks && synthResult.sourceLinks.length > 0 && (
@@ -4262,7 +4265,7 @@
               </div>
             </main>
 
-            {/* Monetization 2b — sign-up gate: shown when the wizard finishes but no
+            {/* Monetization 2b - sign-up gate: shown when the wizard finishes but no
                 roast account exists yet. Google or magic-link; the pending roast was
                 already stashed in localStorage and resumes after ?signedin=1. */}
             {showSignupGate && (
@@ -4349,7 +4352,7 @@
       );
 
       /* ─── INPUT ─── */
-      /* Legacy 'input' view — should never be rendered. If something routes here, redirect to guided. */
+      /* Legacy 'input' view - should never be rendered. If something routes here, redirect to guided. */
       if (view === 'input') { setTimeout(() => setView('guided'), 0); return null; }
       if (view === '_legacy_input_never_used') return (
         <div className="min-h-screen bg-gray-100">
@@ -4501,7 +4504,7 @@
             <header className="border-b border-gray-200 sticky top-0 z-50" style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)' }}>
               <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
                 <div onClick={reset} className="flex items-center gap-2 cursor-pointer"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAHpElEQVR4nM2YW4xdVRnHf99ae+8z55yZYVo6LTMttBViZUppESjQFIcq3hFEOQVUiA8ixifRaEx4GCYmXp404cFoAKPRoDOxXhCVpAGaoMFLFYRWoRe1tAUGaDsz5zL7stbnwz4znenMcIY6Rf/Jzj7Z31lr/dd3XwvmwVClYndu3dwHCMDBd15VyT5wtcbv3+r/sW3zbQCP9fcH841fLJi5PmqlYivDw/68wFx39NqrfgsQWJYbAUA6A/vFgf7+4Jpdu9z/hOAwIKCJ8b/q6Si+Z981m28Qrz1iDA3v067Abqj46tsFdKhSsW86we6REVGQQMx5eHXWUBHhHeo94vFFa2iPwisUpHtkRM4kwVk+pCBUqyKghw2f8y6zHYH5sEGKNefwobcgIH6JgD5fLFpUZ5tajLZcXb0gwAACjxsGt7mcwrRpZpHLP+qBa6/48upC9LVq7LwNxKgqahRZV/fRcx1mJE13ikei0aN3rtj9wgED+Dekm4VhiqCCCGilry/61qqzvr48CO6a0Mz5srM6HiixEbu2Qbh5jMbOpXSNCs92LGdj32eeUmMTVJshJIoiuKQNldc3v5EUCbxYqQdZ4+EL9v3wm3uHhxNQAVFomlhBGBiQoeHh8taVZ/2ypxBtG5tInUbY6OpRsic7hUwINlZRo5jehPjVUKsY1WLnprltWVqgfvL9pB3Lrn7+gtu29vf33bjrmns8g5wkSKViZHDQ/etdV32lp1jYNprECamJgvMbSJvDXlRDig4CD5lguxN8WJDlaVU66sf9WFhSUYdO95hJjS4Ioho3nDvrnOt+f1nfRxi8eYihIcv27S5QEBkedk9s2dJRNvrxiTT1JCYwvTF2fQ1ig+lKc607AQOmw+FLSinJKPvUjDEHlxbWnQVVVbx3xqwFYE+3AJg8gqAcurOt4ew0w0hXJuHm8Uk3gFggIU9KHog8lBziwNA6WBdOEoNoOv2TkUH8ziuvXDnusk0KxwIEu74KBZ9rLFPkohDptZA041wgiBx1CanaCBaX5AzVG4C17Wm1Owo+6R2ZlL3K0hRSgUjwCZiyIfxgCW0T8Lm1A3X8u20Jo2GZWf63iDDa3x+cv3P3aElk37JC2zkN8c5YEWLFXBgSfqiE6bWYsmDODSBVMrXYquOhpW8DE2F1ETV4KkF27XIK8kxc++poXH9uScMHaWJ9FhlkVUjQF2GWBfhM8AVLUjB0jiQ8m67mgVVXIi7GyZwVc3EICuhwZchc98Qzx7+w+t2ff6z9Qjr2Om33NUI3gZAipQxjYorHx+k80eCpfW+lsu52ToQlxLvF9MBZCAC206wk5/TXH1hT4MYjl8gN+5+i72eHWXZxSlQWxg8aDvx9Hb9ubOT7ay6nGhUwWYwagz0lpXhVVPPdGxF8cwcieYw5rwve1FSzIKDlxqu2XuhlR++l7Mgug+MxwSMNsjQDE0JbCdoFSDAuwYsBp7g0OzmjAqHBhhaXOHzqwJomM83lbQHGCH4Bvjujm5kQqwKYpI5YyCKhe0Unm3o6Ue+x6gkU9p+I2fNyDVBWdERcvrIT31zbCux9pcbBw+OsO7eDT2zs4dLeToqh5cXxmEcPHuPBv71EbcJhItuS5FztFl4MgQhMpLxvTRcP3Lhhxn++/adDfPane0GELed2sePWjTPkd/xiD5evKPO9mzZQDGcucevFPdy1ZTU3//hpnn2p1pJky/BLPDhVYueJncepUk9PNlapV5wqifdkzd8f27CCH92yiWIYMJF5Uqc4nz+pU/qWt/PQ7ZfQVQpQ5183g7YkKIAVmfEYmVsemPy97S3LMM1l2wJDaAURwRohtELilDVdJe68YhUaZ1gzP8XTSmCtaoZvNpd/OTrKQ3tfZv+xWp7PmnJrQBWuX9cNoZmK8rmw6MfGfDHlUz/fw/1/OAwqFEPhB7ds4Kb1PThVDIIIrO4qUiyGNBLX7AxnY1FLgPOKEXhk/6vc/8QhTCEkKoU0UuXunQfJvMeITBEphpZiYHJm85hlUQlOLvz4P49jrGAFUueRguWFsZiXqslUDz1r0Dw4LYKt0ms9c1N5EXJ/S70nzvzCJvhvCZ4uTqchOyNRvJg4QxpcvC28qSY+HfzfE2yZqFUh80o2Ld27acV9Uu6aPSAwb2VwzXkm+8HMtz7JtCRYCAyByevsJNqjk8OiIJcF05YqhmbOVLK0FM6Ya1kpbOmu8xL0CgSGvSM17tt9hKypnkCERw8eywsqcOBYg/t2H57qRQOBvx4dm1VjVeE7fz5CdznCq2JEqCWOiUxfl+RMgiqC5ky8KkSGJw+d4Mn9r50yykKYE3z66Dh3/OSZmfLQwvQ+T/Jm+u6Hn4PpvZ8IFAKYWlYVmXl+mEEwFJfGNhDSxCFiUJAgb99naldPnjOsYMvRvPLpsKVwlrKmfFvVIzYwXuPp13gy9R4YkJ4Xe9tGzu79nVuychPVU7R2plHsxNaPvxadOLSpce8dR/IGQnQyzSjAi9+9s9554pXrg7GR3xhkonnLccYfI6S2MfrHQv219zbu/fRhBu4RJL8YOkXj+cWhAOUvPXjhRNixhLQB/o1eVS0QRpWwSJTFtcY3Pvq0AgwMGAYHp6z8H64mYytBcDRRAAAAAElFTkSuQmCC" alt="AdRoast" className="w-9 h-9 rounded" /><span className="text-gray-300 text-lg font-light">|</span><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div>
-                {/* Account chip shows whenever a roast session exists — including on an
+                {/* Account chip shows whenever a roast session exists - including on an
                     opened report link (shared view), so a signed-in viewer never looks
                     logged out. The right-hand CTA adapts to shared vs live results. */}
                 <div className="flex items-center gap-2 sm:gap-3">
@@ -4521,7 +4524,7 @@
             <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-5 sm:pt-10 pb-16 space-y-8" style={{ position: 'relative' }}>
               <div className="hero-wash" style={{ inset: '-30px 0 auto 0', height: '540px' }} />
               <div style={{ position: 'relative', zIndex: 1 }} className="space-y-8">
-                {/* Results hero — cold-resource framing: names the advertiser + says what
+                {/* Results hero - cold-resource framing: names the advertiser + says what
                     the reader is about to see, with an AdRoast attribution eyebrow, so a
                     first-time recipient (this link gets shared cold) understands it instantly. */}
                 <div className="reveal">
@@ -4533,7 +4536,7 @@
                   </h1>
                   <p className="text-gray-400 max-w-xl" style={{ fontSize: 'clamp(19px, 5vw, 20px)', lineHeight: 1.7 }}>A clear, scored breakdown of {roastedName ? roastedName + "'s" : 'your'} ad and landing page, and what to fix first.</p>
 
-                  {/* What's being roasted — the actual ad creative + the ad/landing links,
+                  {/* What's being roasted - the actual ad creative + the ad/landing links,
                       shown up front so a cold viewer sees exactly which ad and page this is
                       about. The deeper context (ICP, site, offer) stays in the expandable. */}
                   {showcaseVisible && (
@@ -4587,7 +4590,7 @@
                     </div>
                   )}
                 </div>
-                {/* Overview — a clickable metric card per section. Each previews its number
+                {/* Overview - a clickable metric card per section. Each previews its number
                     + a mini bar, and expands the full section below when tapped. */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                   {overviewCards.map(c => {
@@ -4615,13 +4618,13 @@
 
               {/* SCORES */}
               {activeTab === 'scores' && (<>
-              {/* Scoreboard hero — animated rings + one-line verdict */}
+              {/* Scoreboard hero - animated rings + one-line verdict */}
               <div id="sec-scores" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 reveal scroll-mt-20">
                 <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast</div>
                   {roastedName && <div className="text-xs text-gray-500 truncate max-w-[60%]"><span className="font-semibold text-gray-700">{roastedName}</span></div>}
                 </div>
-                {/* Scores are clickable — the gauge opens the ad issues, each ring opens
+                {/* Scores are clickable - the gauge opens the ad issues, each ring opens
                     the landing-page section (which holds both the LP analysis and the
                     ad-to-landing match). */}
                 <button type="button" onClick={() => { setActiveTab('issues'); try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) {} }} className="block w-full bg-transparent border-none cursor-pointer p-0 transition-transform hover:scale-[1.01]" title="See the ad issues" aria-label="Open ad issues">
@@ -4649,7 +4652,7 @@
                 </div>
               </div>
 
-              {/* RECOMMENDATION — picks one next step based on how grave the roast is,
+              {/* RECOMMENDATION - picks one next step based on how grave the roast is,
                   with a personalized reason. The other paths sit below as questions. */}
               {(() => {
                 const sev = result.overall_score;
@@ -4728,7 +4731,7 @@
 
               {/* AD ISSUES */}
               {activeTab === 'issues' && (<>
-              {/* Ad Issues — interactive severity rows */}
+              {/* Ad Issues - interactive severity rows */}
               <div id="sec-issues" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6 scroll-mt-20">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-1">
                   <h2 className="font-bold text-gray-900 flex items-center gap-2"><Icon name="alertCircle" className="w-5 h-5 text-red-500" /> What's holding the ad back</h2>
@@ -4742,7 +4745,7 @@
               </div>
               </>)}
 
-              {/* LANDING PAGE — mismatch + LP analysis */}
+              {/* LANDING PAGE - mismatch + LP analysis */}
               {activeTab === 'landing' && (<>
               {/* Auto-scrape failed on a JS-rendered / bot-blocked landing (e.g. Orca, Wiz).
                   Explain why the LP scored blank and let the roaster paste the copy to
@@ -4948,7 +4951,7 @@
               </div>
               </>)}
 
-              {/* ACTION PLAN — experiments + next steps */}
+              {/* ACTION PLAN - experiments + next steps */}
               {activeTab === 'plan' && (<>
               {/* Experiments */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -4981,7 +4984,7 @@
                 </div>)}
               </div>
 
-              {/* Next Steps — interactive checklist with progress */}
+              {/* Next Steps - interactive checklist with progress */}
               <div id="sec-next" className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden scroll-mt-20">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Icon name="check" className="w-5 h-5" style={{ color: '#0a66c2' }} /> Your action plan {showFull && <span className="text-xs font-normal text-gray-400">· check them off</span>}</h2>
@@ -5044,7 +5047,7 @@
 
             </main>
 
-            {/* ROAST ANOTHER AD — quick popup to paste a new Ad Library link */}
+            {/* ROAST ANOTHER AD - quick popup to paste a new Ad Library link */}
             {showReroast && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4" onClick={() => setShowReroast(false)}>
                 <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
@@ -5102,7 +5105,7 @@
 
 
         /* Portal data is loaded server-side per authenticated user via
-           /api/portal-data — only the slice the user is allowed to see. It is
+           /api/portal-data - only the slice the user is allowed to see. It is
            populated into this module-scope variable after sign-in, so no client
            data ships in the bundle. */
         let portalData = { partners: {}, directClients: {} };
@@ -5206,7 +5209,7 @@
                     );
                     continue;
                 }
-                // Table — line with pipes and next line is separator
+                // Table - line with pipes and next line is separator
                 if (line.includes('|') && i + 1 < lines.length && /^\s*\|?[\s\-|:]+\|?\s*$/.test(lines[i+1]) && lines[i+1].includes('-')) {
                     const parseRow = (row) => row.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim());
                     const headers = parseRow(lines[i]);
@@ -5276,9 +5279,9 @@
                     );
                     continue;
                 }
-                // Empty line — skip
+                // Empty line - skip
                 if (line.trim() === '') { i++; continue; }
-                // Paragraph — collect consecutive non-empty, non-special lines
+                // Paragraph - collect consecutive non-empty, non-special lines
                 const plines = [];
                 while (i < lines.length && lines[i].trim() !== '' && !/^(#{1,4}\s|>\s?|\s*[-*]\s+|\s*\d+\.\s+|\s*---+\s*$)/.test(lines[i]) && !(lines[i].includes('|') && i+1 < lines.length && /^\s*\|?[\s\-|:]+\|?\s*$/.test(lines[i+1]))) {
                     plines.push(lines[i]);
@@ -5295,7 +5298,7 @@
             return <div className="markdown-body" style={{ color: 'var(--ink-light)' }}>{blocks}</div>;
         };
 
-        /* NudgeStyleSection — applies section-specific rendering enhancements
+        /* NudgeStyleSection - applies section-specific rendering enhancements
            (numbered finding circles, variant cards, callout boxes, pillar numbers,
            day badges, final-diagnosis box) per Nudge's positioning report design.
            Falls back to plain Markdown for sections without special handling. */
@@ -5602,7 +5605,7 @@
             /* E) ICP & Segmentation: detect Primary ICP paragraph and render in blue box.
                The Primary ICP is a bold paragraph directly after the '### Primary ICP' or similar heading. */
             if (/^E\)?\s*ICP/i.test(title)) {
-                /* Find the Primary ICP block — bold paragraph after first ### */
+                /* Find the Primary ICP block - bold paragraph after first ### */
                 const lines = body.split('\n');
                 const out = [];
                 let i = 0;
@@ -5777,7 +5780,7 @@
             return <Markdown content={body} />;
         };
 
-        /* Rich card-based audit view — renders pre-parsed structured audit data
+        /* Rich card-based audit view - renders pre-parsed structured audit data
            in the exact visual style the AdRoast tool generates after running an audit
            (Nudge-style polish: tailwind colors, score badges, paneled sections). */
         const RichAuditView = ({ audit }) => {
@@ -6094,7 +6097,7 @@
         );
 
         /* ============================================================
-           PORTAL GATE — Google sign-in only.
+           PORTAL GATE - Google sign-in only.
            Google verifies the user controls the email; the server checks that
            email against the allowlist and issues a 7-day session cookie. No
            passwords, no email step. An unauthorized account gets a clear
@@ -6276,7 +6279,7 @@
         };
 
         /* ============================================================
-           DIRECT CLIENT HUB  — lists a direct client's projects
+           DIRECT CLIENT HUB  - lists a direct client's projects
            (e.g. Aikido Security → Google Search Campaigns, future LinkedIn…)
            ============================================================ */
         const DirectClientHub = ({ partnerId, onNavigate, accessMode }) => {
@@ -6540,7 +6543,7 @@
                 const trimmed = raw.replace(/^[\s\S]*?(?=\n## )/, '').trim();
                 /* Drop leading numeric prefixes (e.g., "1) A) Executive Summary" → "A) Executive Summary"). */
                 const cleanTitle = (t) => t.replace(/^\d+\)\s*/, '').trim();
-                /* Detect sections whose body is empty or only metadata lines — drop those
+                /* Detect sections whose body is empty or only metadata lines - drop those
                    from the rendered TOC + collapsibles. */
                 const META_RE_PORTAL = /^\*\*(Prepared for|Date|Prepared by):\*\*/i;
                 const isMetaOnly = (body) => {
@@ -6585,7 +6588,7 @@
                                 <p className="text-lg mb-6" style={{ color: 'var(--slate)' }}>{client.positioning.subtitle}</p>
                             )}
                             <div className="mb-2"></div>
-                            {/* TOC card — same Nudge styling as the synthesis viewer:
+                            {/* TOC card - same Nudge styling as the synthesis viewer:
                                 white background, rounded-xl, uppercase tracking-wider header,
                                 row-flow grid. Sits OUTSIDE the main report card. */}
                             {sections.length > 0 && (
@@ -6609,7 +6612,7 @@
                             )}
                             <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: 'var(--cloud)' }}>
                                 <div className="p-6 sm:p-8 space-y-14">
-                                    {/* Collapsible sections — with Nudge-style enhancements per section type */}
+                                    {/* Collapsible sections - with Nudge-style enhancements per section type */}
                                     {sections.map((s, i) => {
                                         const sid = slug(s.title);
                                         const open = openSections[sid] !== false; // default open
@@ -6712,7 +6715,7 @@
             );
 
             /* Report content + metadata come from the server (client.positioning.report),
-               filtered per session — never in the browser bundle. */
+               filtered per session - never in the browser bundle. */
             const r = client.positioning.report;
             const meta = client.positioning.meta || {};
             if (!r) {
@@ -7065,7 +7068,7 @@
             const [liveRoastError, setLiveRoastError] = useState(false);
             /* Permalink for the underlying audit report. We always append &portal=1 so the
                URL stays in the portal-styled view. The address bar is updated to this URL
-               while the audit is visible — the user can copy it from the navigator
+               while the audit is visible - the user can copy it from the navigator
                directly (no separate copy banner needed). */
             const fullAuditUrl = (audit.auditUrl && audit.auditUrl !== '#')
                 ? (audit.auditUrl.includes('portal=1') ? audit.auditUrl : audit.auditUrl + '&portal=1')
@@ -7098,10 +7101,10 @@
             }, [reportId]);
 
             /* Rewrite wrong-surface trust-signal recommendations. Google Search RSAs and
-               ad extensions are text-only — recommendations like "add customer logos to the ad"
+               ad extensions are text-only - recommendations like "add customer logos to the ad"
                or "no logos / no badges" (observed inside an AD issue) don't map to anything
                the format supports. Translate to text-native equivalents. We only apply this to
-               AD issues (r.issues), NOT to landing_page_roast — LP logos/badges are valid. */
+               AD issues (r.issues), NOT to landing_page_roast - LP logos/badges are valid. */
             const scrubAdSurfaceTrustText = (text) => {
                 if (!text || typeof text !== 'string') return text;
                 let out = text;
@@ -7145,7 +7148,7 @@
             };
 
             /* Platform-aware filter mirroring the public viewer. Google Search RSAs
-               are text-only — drop any trust_signals issue (or any other) that
+               are text-only - drop any trust_signals issue (or any other) that
                observes the absence of logos/badges. Meta/LinkedIn keep these cards.
                Legacy Aikido IDs fall through as a backup if the platform field is
                missing from the stored roast record. */
@@ -7181,7 +7184,7 @@
                     const verdict = r.ad_landing_mismatch?.verdict;
                     return verdict && !isCapabilityDisclaimer(verdict) ? verdict : null;
                 }
-                /* Sort by lowest score first — those are the biggest problems */
+                /* Sort by lowest score first - those are the biggest problems */
                 const sorted = [...issues].sort((a, b) => (a.score || 0) - (b.score || 0));
                 const top = sorted.slice(0, 2);
                 /* Scrub any residual wrong-surface logo/badge text */
@@ -7197,7 +7200,7 @@
                 const filterRecs = (list) => list.filter(s => typeof s === 'string' && s.trim() && !isCapabilityDisclaimer(s));
                 const steps = filterRecs(r.next_steps || []);
                 if (steps.length > 0) return steps.slice(0, 3).map(scrubAdSurfaceTrustText);
-                /* Fall back to landing-page quick wins (LP-context — don't scrub logo text) */
+                /* Fall back to landing-page quick wins (LP-context - don't scrub logo text) */
                 const wins = filterRecs(r.landing_page_roast?.quick_wins || []);
                 if (wins.length > 0) return wins.slice(0, 3);
                 /* Last fallback: fix-kit rationale as one paragraph */
@@ -7255,7 +7258,7 @@
                                     )}
                                 </section>
 
-                                {/* Creative assets — CTAs only, no titles.
+                                {/* Creative assets - CTAs only, no titles.
                                     Button label switches between singular and plural based on whether
                                     the URL points to a specific /creative/ (one ad) or to the
                                     advertiser library (multiple ads). */}
@@ -7277,7 +7280,7 @@
                                             onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
                                         >View Landing Page<ExternalIcon /></a>
                                     </div>
-                                    {/* Live ads in this campaign — the specific creatives still running
+                                    {/* Live ads in this campaign - the specific creatives still running
                                         in Google's Transparency Center, each as its own CTA. Hidden when
                                         there are no live creatives identified for this campaign. */}
                                     {audit.liveAds && audit.liveAds.length > 0 && (
@@ -7372,7 +7375,7 @@
         };
 
         /* ============================================================
-           AUDIT FULL VIEW — rich card-based UI (deep dive)
+           AUDIT FULL VIEW - rich card-based UI (deep dive)
            Accessed via the 'Open Complete Audit Report' button on AuditPage.
            ============================================================ */
         const AuditFullPage = ({ partnerId, clientId, auditId, onNavigate, accessMode }) => {
@@ -7493,7 +7496,7 @@
                         const d = meRes.ok ? await meRes.json() : null;
                         if (d && d.success && d.session) {
                             /* Load ONLY the portal data this user is allowed to see. The
-                               full data set never ships in the bundle — it comes from
+                               full data set never ships in the bundle - it comes from
                                /api/portal-data, filtered server-side by the session. */
                             try {
                                 const pdRes = await fetch('/api/portal-data');
@@ -7522,7 +7525,7 @@
                             }
                             setState(next);
                         }
-                    } catch (e) { /* silent — gate will show */ }
+                    } catch (e) { /* silent - gate will show */ }
                     setAuthChecking(false);
                 })();
             }, []);
@@ -7573,7 +7576,7 @@
 
             const { mode, view, partnerId, clientId, auditId } = state;
 
-            /* Still checking session — render a brief loading state so the gate
+            /* Still checking session - render a brief loading state so the gate
                doesn't flash before the cookie check completes. */
             if (authChecking) {
                 return (
@@ -7601,7 +7604,7 @@
                 </div>
             );
 
-            /* A client's "home" — never the full portal. Direct clients (Aikido) see
+            /* A client's "home" - never the full portal. Direct clients (Aikido) see
                their project list; partner-scoped clients see their client hub.
                Used as the fallback for any view a client shouldn't reach. */
             const clientHome = portalData.directClients[partnerId]
@@ -7654,7 +7657,7 @@
       const link = document.getElementById('dynamic-favicon');
       if (link) link.href = '/favicon-96.png?v=3'; // padded logo; ?v bust so browsers/Google refresh the cached favicon
       // Keep the SEO-optimized title on the public site; only the portal overrides it.
-      document.title = isPortal ? 'AdRoast | Partner Portal' : 'AdRoast — Free ad & landing page audit for B2B SaaS';
+      document.title = isPortal ? 'AdRoast | Partner Portal' : 'AdRoast: Free ad & landing page audit for B2B SaaS';
     }
 
     /* ============================================================
