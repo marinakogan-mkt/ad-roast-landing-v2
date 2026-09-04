@@ -364,6 +364,39 @@
     /* ── Results-page visual primitives (used by the roast report) ─────────── */
     const hexForScore = (s) => (typeof s !== 'number' || s <= 0) ? '#cbd5e1' : s <= 3 ? '#dc2626' : s <= 6 ? '#f59e0b' : '#16a34a';
 
+    /* Urgency meter: a single line that animates to how off-target the score is, coloured by
+       gravity, with a bold label + a plain-language consequence so the reader feels the stakes.
+       Shared by the roast report and the Live Ads board. `sub` can be overridden per context. */
+    const gravityOf = (s) => (typeof s !== 'number' || s <= 0)
+      ? { t: 'Unscored', c: '#94a3b8', off: 0, sub: '' }
+      : s <= 4 ? { t: 'Critical', c: '#dc2626', off: Math.round((10 - s) / 10 * 100), sub: 'Burning budget: the wrong people click and the right buyer scrolls past.' }
+      : s <= 6 ? { t: 'Weak', c: '#b45309', off: Math.round((10 - s) / 10 * 100), sub: 'Leaking spend: the funnel pulls the wrong buyer or loses the right one.' }
+      : s <= 8 ? { t: 'Solid', c: '#0a66c2', off: Math.round((10 - s) / 10 * 100), sub: 'Working, with clear upside: a few fixes and it converts harder.' }
+      : { t: 'Strong', c: '#075aad', off: Math.round((10 - s) / 10 * 100), sub: 'Dialed in: keep the spend here and scale it.' };
+    const UrgencyMeter = ({ score, subline, dense, offOverride }) => {
+      const g = gravityOf(score);
+      const has = typeof score === 'number' && score > 0;
+      const off = (typeof offOverride === 'number') ? offOverride : g.off;
+      const [w, setW] = useState(0);
+      useEffect(() => { const t = setTimeout(() => setW(off), 180); return () => clearTimeout(t); }, [off]);
+      return (
+        <div className="rounded-2xl border" style={{ borderColor: g.c + '3d', background: g.c + '0c', padding: dense ? '12px 14px' : '16px 18px' }}>
+          <div className="flex items-center justify-between gap-3 flex-wrap" style={{ marginBottom: 10 }}>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center rounded-full" style={{ width: 24, height: 24, background: g.c + '22' }}><Icon name={has && score <= 6 ? 'alertCircle' : 'zap'} className="w-4 h-4" style={{ color: g.c }} /></span>
+              <span className="font-extrabold uppercase" style={{ color: g.c, fontSize: 13.5, letterSpacing: '0.03em' }}>{g.t}</span>
+              {has && <span className="font-bold" style={{ color: g.c, fontSize: 12 }}>&middot; {score}/10</span>}
+            </div>
+            {has && <span className="font-semibold" style={{ color: g.c, fontSize: 12 }}>{off}% off-target</span>}
+          </div>
+          <div className="relative rounded-full overflow-hidden" style={{ height: dense ? 8 : 10, background: '#e9edf2' }}>
+            <div style={{ width: w + '%', height: '100%', borderRadius: 99, background: g.c, transition: 'width 1.1s cubic-bezier(.22,1,.36,1)' }} />
+          </div>
+          {(subline || g.sub) && <p className="text-gray-600" style={{ fontSize: dense ? 12.5 : 13.5, lineHeight: 1.5, marginTop: 10 }}>{subline || g.sub}</p>}
+        </div>
+      );
+    };
+
     /* Animated circular score gauge. Arc sweeps to the score and the number
        counts up. Grey "N/A" when no score (e.g. no landing page provided). */
     const ScoreRing = ({ score, label, grade, big = false }) => {
@@ -959,7 +992,7 @@
     /* Real platform logos (official brand marks), not letter badges. */
     function PlatLogo({ plat, size = 16 }) {
       const s = { width: size, height: size, display: 'block' };
-      if (plat === 'LinkedIn') return (<svg viewBox="0 0 24 24" style={s} aria-label="LinkedIn"><rect width="24" height="24" rx="4" fill="#0A66C2" /><path fill="#fff" d="M4.98 3.5A2.5 2.5 0 1 0 4.96 8.5 2.5 2.5 0 0 0 4.98 3.5zM3.25 9.25h3.46V21H3.25V9.25zM9.02 9.25h3.32v1.6h.05c.46-.87 1.6-1.8 3.29-1.8 3.52 0 4.17 2.32 4.17 5.33V21h-3.46v-4.92c0-1.17-.02-2.68-1.63-2.68-1.63 0-1.88 1.28-1.88 2.6V21H9.02V9.25z" /></svg>);
+      if (plat === 'LinkedIn') return (<svg viewBox="0 0 24 24" style={s} aria-label="LinkedIn"><rect width="24" height="24" rx="4.2" fill="#0A66C2" /><path fill="#fff" d="M7.12 20.45H3.56V9h3.56v11.45zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67h-3.55V9h3.41v1.56h.05c.48-.9 1.63-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29z" /></svg>);
       if (plat === 'Meta') return (<svg viewBox="0 0 36 24" style={{ width: size * 1.5, height: size, display: 'block' }} aria-label="Meta"><path fill="#0081FB" d="M6.9 4C3.7 4 1.6 7.5 1.6 12s2 8 5.2 8c2 0 3.4-1.3 5-3.9.9-1.5 1.8-3.2 2.6-4.8.7 1.3 1.5 2.9 2.3 4.3C18.5 18.6 20 20 22 20c3.2 0 4.4-3.5 4.4-8s-1.7-8-4.7-8c-1.9 0-3.4 1.4-4.9 4-.6-1-1.2-2-1.8-2.8C13.6 4.7 12.3 4 10.9 4zm.2 2.6c1 0 1.9.8 2.8 2-.9 1.4-1.8 3-2.6 4.5-1.2 2.2-1.8 2.9-2.6 2.9-1 0-1.7-1.4-1.7-4 0-2.7.9-5.4 4.1-5.4zm14.5 0c1.4 0 2.3 1.8 2.3 5.4 0 2.6-.6 4-1.7 4-.8 0-1.4-.7-2.5-2.7-.6-1.1-1.3-2.5-2-3.9 1-1.7 2-2.8 3.6-2.8z" /></svg>);
       if (plat === 'Google') return (<svg viewBox="0 0 24 24" style={s} aria-label="Google"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>);
       return null;
@@ -1241,6 +1274,16 @@
               <span className="font-semibold uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.1em', paddingTop: 4 }}>ICP detected</span>
               <span className="rounded-lg" style={{ fontSize: 12.5, background: '#eef2ff', color: '#0a66c2', padding: '5px 11px', border: '1px solid #dbe4fb' }}>{ICP}</span>
             </div>}
+
+            {scored.length > 0 && !bootLoading && (
+              <div className="mb-6">
+                <UrgencyMeter
+                  score={Math.round(scored.reduce((s, a) => s + a.score, 0) / scored.length * 10) / 10}
+                  offOverride={Math.round(offTarget / scored.length * 100)}
+                  subline={offTarget > 0 ? `${offTarget} of your ${scored.length} scored ads miss your ICP. Start with the weakest to stop the bleed.` : 'Your live ads are broadly on-target for your ICP.'}
+                />
+              </div>
+            )}
 
             {stage === 'overview' ? (
               /* STEP 1 - Overview: one card per platform we actually pull, each showing a real
@@ -4663,6 +4706,8 @@
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast</div>
                   {roastedName && <div className="text-xs text-gray-500 truncate max-w-[60%]"><span className="font-semibold text-gray-700">{roastedName}</span></div>}
                 </div>
+                {/* Urgency line first: the reader feels how grave it is before anything else. */}
+                <div className="mb-6"><UrgencyMeter score={result.overall_score} /></div>
                 {/* Scores are clickable - the gauge opens the ad issues, each ring opens
                     the landing-page section (which holds both the LP analysis and the
                     ad-to-landing match). */}
