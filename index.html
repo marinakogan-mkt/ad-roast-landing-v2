@@ -49,10 +49,10 @@
   <meta name="twitter:title" content="Find out where your ad loses the buyer">
   <meta name="twitter:description" content="Get your ad, landing page, and message scored in 2 minutes, with every issue explained and the fixes ranked by impact. Free, no card.">
   <meta name="twitter:image" content="https://www.adroast.in/og-hero.png?v=1">
-  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png?v=3">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=3">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png?v=4">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=4">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=3">
-  <link id="dynamic-favicon" rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png?v=3">
+  <link id="dynamic-favicon" rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png?v=4">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" crossorigin></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
@@ -7893,7 +7893,7 @@
 
     function setFaviconAndTitle(isPortal) {
       const link = document.getElementById('dynamic-favicon');
-      if (link) link.href = '/favicon-96.png?v=3'; // padded logo; ?v bust so browsers/Google refresh the cached favicon
+      if (link) link.href = '/favicon-96.png?v=4'; // padded logo; ?v bust so browsers/Google refresh the cached favicon
       // Keep the SEO-optimized title on the public site; only the portal overrides it.
       document.title = isPortal ? 'AdRoast | Partner Portal' : 'AdRoast: Free ad & landing page audit for B2B SaaS';
     }

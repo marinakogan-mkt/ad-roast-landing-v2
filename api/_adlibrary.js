@@ -175,16 +175,26 @@ async function fetchLinkedInAds({ company, limit = 12 } = {}) {
   // otherwise drops LinkedIn from the board entirely. Budget-bounded (2 x ~24s) to stay
   // inside the 60s function limit alongside the Google fetch and the scoring call.
   let lastReason = 'error';
-  // 3 attempts x 16s + short backoff stays under the 60s function limit (Google runs in
-  // parallel; scoring runs after). A JINA_API_KEY makes attempt 1 almost always succeed.
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // 3 attempts stays under the 60s function limit (Google runs in parallel; scoring runs
+  // after). A JINA_API_KEY makes attempt 1 almost always succeed. The reason encodes whether
+  // the key is even set (_keyed vs _anon) so a persistent 403 tells us if the env var is the
+  // problem vs LinkedIn's Cloudflare blocking Jina's proxy pool.
+  const keyed = !!process.env.JINA_API_KEY;
+  for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, 700));
+    const h = { ...headers };
+    // Last attempt: Jina's browser engine renders the page in a real headless browser, which
+    // gets past LinkedIn's Cloudflare 403 far more often than the default proxy pool. Slower,
+    // so only as a final fallback (403s return fast, leaving budget for one longer try inside
+    // the 60s function limit: ~15s default + ~26s browser + Google in parallel, scoring after).
+    const lastTry = attempt === 1;
+    if (lastTry) h['X-Engine'] = 'browser';
     try {
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 16000);
-      const r = await fetch('https://r.jina.ai/' + target, { headers, signal: controller.signal });
+      const t = setTimeout(() => controller.abort(), lastTry ? 26000 : 15000);
+      const r = await fetch('https://r.jina.ai/' + target, { headers: h, signal: controller.signal });
       clearTimeout(t);
-      if (!r.ok) { lastReason = 'jina_' + r.status; continue; }
+      if (!r.ok) { lastReason = 'jina_' + r.status + (keyed ? '_keyed' : '_anon'); continue; }
       const html = await r.text();
       // Only keep ads that carry a real creative image — every board card must show a real
       // creative, never a text-only placeholder tile.
