@@ -941,10 +941,10 @@
     const YOUR_ADS = [
       { plat: 'Google', head: 'Your SAST tool is lying to you.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/7884443371482777976', score: 4, verdict: 'Bold hook, wasted. The landing page opens on a generic product tour and the promise evaporates.', fix: 'Match the landing headline to the ad and put proof in the first scroll. The hook is good, the follow-through is not.' },
       { plat: 'Google', head: 'Semgrep, SAST for AppSec teams.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/7128692242221110330', score: 5, verdict: 'Reads like a category label, not a reason to click. No pain, no proof.' },
-      { plat: 'LinkedIn', head: 'Ship secure code without slowing devs down.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/10024762559147035022', score: 5, verdict: 'CTA is fine, but a broad audience and zero proof dilute it.' },
+      { plat: 'LinkedIn', head: 'Ship secure code without slowing devs down.', dom: 'semgrep.dev', score: 5, verdict: 'CTA is fine, but a broad audience and zero proof dilute it.' },
       { plat: 'Google', head: 'Find and fix vulns in your CI.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/5979080786588485141', score: 7, verdict: 'Specific pain, clear CTA. Minor landing-page mismatch to tidy.' },
-      { plat: 'LinkedIn', head: 'Trusted by 1M+ developers.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/14833562389945862941', score: 6, verdict: 'Social proof leads, but a buyer is given no clear next step.' },
-      { plat: 'LinkedIn', head: 'Find bugs before they ship.', dom: 'semgrep.dev', img: 'https://tpc.googlesyndication.com/archive/simgad/10770812153363143712', score: 8, verdict: 'Your best ad. Strong hook and CTA, keep the spend here.' }
+      { plat: 'LinkedIn', head: 'Trusted by 1M+ developers.', dom: 'semgrep.dev', score: 6, verdict: 'Social proof leads, but a buyer is given no clear next step.' },
+      { plat: 'LinkedIn', head: 'Find bugs before they ship.', dom: 'semgrep.dev', score: 8, verdict: 'Your best ad. Strong hook and CTA, keep the spend here.' }
     ];
     /* Sources we actually pull live vs. the ones still to come (shown greyed + blurred). */
     const LIVE_SOURCES = ['LinkedIn', 'Google'];
@@ -993,6 +993,9 @@
       const [sel, setSel] = useState(null);            // ad the user picked -> confirm pop-up
       const [landingInput, setLandingInput] = useState(''); // landing page for the picked ad (auto or manual)
       const [acct, setAcct] = useState({ loaded: false, signedIn: false }); // roast credits for the pop-up
+      // True during the initial background pull of real ads, so the overview shows a clean loading
+      // state instead of the static sample (whose LinkedIn tiles aren't the real creatives yet).
+      const [bootLoading, setBootLoading] = useState(true);
 
       /* Per-step browser history: entering a platform's grid pushes ?library=1&p=<plat>, so the
          browser Back button returns to the platform overview (not out to the home page). Driven by
@@ -1039,7 +1042,7 @@
         if (!siteRaw) return;
         // silent (background demo autoload): don't surface spinners/errors over the sample.
         const silent = !!opts.silent;
-        if (!silent) { setPhase('loading'); setReal(null); }
+        if (!silent) { setPhase('loading'); setReal(null); setBootLoading(false); }
         setStatusMsg('Reading your site and finding your ICP…');
         try {
           const icpRes = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: siteRaw }) }).then(r => r.json()).catch(() => ({}));
@@ -1050,15 +1053,15 @@
           const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText, refresh: !!opts.refresh }) }).then(r => r.json()).catch(() => ({}));
           if (!res || !res.ok || !(res.ads && res.ads.length)) {
             // Silent demo: keep showing the static sample; only a real user's fetch surfaces an error.
-            if (silent) { setPhase('idle'); return; }
+            if (silent) { setPhase('idle'); setBootLoading(false); return; }
             setPhase('error');
             setStatusMsg('Could not fetch your ads (' + ((res && res.reason) || 'error') + '). Try again.');
             return;
           }
           setReal({ co, icp: icpText, ads: res.ads || [], notes: res.notes || {} });
           setStage('overview'); setGridPlat('all');
-          setPhase('idle');
-        } catch (e) { if (silent) { setPhase('idle'); return; } setPhase('error'); setStatusMsg(String(e && e.message || e)); }
+          setPhase('idle'); setBootLoading(false);
+        } catch (e) { if (silent) { setPhase('idle'); setBootLoading(false); return; } setPhase('error'); setStatusMsg(String(e && e.message || e)); }
       };
 
       useEffect(() => {
@@ -1215,11 +1218,15 @@
               <div className="ml-auto text-right">
                 {scored.length > 0 ? (() => {
                   const pct = Math.round(offTarget / scored.length * 100);
-                  const col = pct === 0 ? '#6b7280' : '#dc2626';
+                  const bad = pct > 0;
+                  const col = bad ? '#dc2626' : '#0a66c2';
+                  const bg = bad ? '#fef2f2' : '#eef2ff';
+                  const bd = bad ? '#fde0e0' : '#dbe4fb';
                   return (
-                    <div className="flex items-baseline gap-1.5 justify-end">
-                      <span style={{ fontSize: 30, fontWeight: 800, lineHeight: 1, color: col }}>{pct}%</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: col }}>off-target</span>
+                    <div className="inline-flex items-center gap-1.5 rounded-full" style={{ background: bg, border: '1px solid ' + bd, padding: '5px 13px 5px 10px' }}>
+                      <Icon name={bad ? 'alertCircle' : 'check'} className="w-4 h-4 flex-none" style={{ color: col }} />
+                      <span style={{ color: col, fontWeight: 800, fontSize: 16, lineHeight: 1 }}>{pct}%</span>
+                      <span style={{ color: col, fontWeight: 700, fontSize: 12.5 }}>off-target</span>
                     </div>
                   );
                 })() : <div className="font-bold text-gray-900" style={{ fontSize: 15 }}>{ads.length} live ad{ads.length === 1 ? '' : 's'}</div>}
@@ -1242,6 +1249,25 @@
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
                   {LIVE_SOURCES.concat(ads.some(a => a.plat === 'Meta') ? ['Meta'] : []).map(p => {
+                    /* Initial background pull: show a clean loading card per platform instead of the
+                       static sample, so a real creative never lands in the wrong platform's slot. */
+                    if (bootLoading && !real) return (
+                      <div key={p} className="rounded-2xl border overflow-hidden flex flex-col" style={{ borderColor: '#e5e7eb', background: '#fff' }}>
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                          <PlatLogo plat={p} size={18} />
+                          <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{p}</span>
+                          <span className="ml-auto inline-flex items-center gap-1.5 text-gray-400" style={{ fontSize: 11 }}><span className="inline-block w-3 h-3 rounded-full border-2 border-gray-200 animate-spin" style={{ borderTopColor: '#0a66c2' }} />Loading</span>
+                        </div>
+                        <div className="grid place-items-center px-4" style={{ height: 250, background: '#fafbfc' }}>
+                          <div className="text-center">
+                            <span className="inline-block w-6 h-6 rounded-full border-2 border-gray-200 animate-spin" style={{ borderTopColor: '#0a66c2', marginBottom: 10 }} />
+                            <div className="text-gray-500 font-semibold" style={{ fontSize: 12.5 }}>Pulling your live {p} ads…</div>
+                            <div className="text-gray-400" style={{ fontSize: 11.5, marginTop: 2 }}>Reading real creatives and scoring them</div>
+                          </div>
+                        </div>
+                        <div className="px-4 py-3"><span className="inline-block rounded" style={{ width: '55%', height: 10, background: '#eef1f5' }} /></div>
+                      </div>
+                    );
                     const list = ads.filter(a => a.plat === p);
                     const sc = list.filter(a => typeof a.score === 'number');
                     const rep = sc.length ? sc.reduce((m, a) => a.score < m.score ? a : m, sc[0]) : list[0];
