@@ -1264,10 +1264,10 @@
         const nodeX = sc.map((a, i) => n === 1 ? 50 : Math.round((6 + rankOf[i] / (n - 1) * 88) * 10) / 10);
         return (
           <>
-            {/* Severity line, then the three metrics as SEPARATE cards on the page background
-                (like the homepage "Message Drift" metric squares), not nested in one big block. */}
+            {/* Section eyebrow (the per-card gravity chips carry the severity now, so this label is
+                neutral and does not repeat "Budget at risk"), then the three metric cards. */}
             <div className="flex items-center gap-2.5 flex-wrap" style={{ marginBottom: 12 }}>
-              <span className="inline-flex items-center gap-1.5 rounded-full" style={{ padding: '4px 11px', background: sev.c + '14', color: sev.c, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', border: '1px solid ' + sev.c + '33' }}><span style={{ width: 7, height: 7, borderRadius: 99, background: sev.c, display: 'inline-block' }} />{sev.t}</span>
+              <span className="font-bold text-gray-500 uppercase" style={{ fontSize: 10.5, letterSpacing: '0.1em' }}>Your ad spend at a glance</span>
             </div>
             <div className="grid gap-3 sm:gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', marginBottom: 22 }}>
               <div className="card-lift bg-white border rounded-2xl" style={{ borderColor: gravAds.bd, padding: '14px 18px 16px', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 22px rgba(11,15,26,.05)' }}>
@@ -1418,11 +1418,21 @@
                 {usingReal && real.ads.length === 0 && phase !== 'loading' && <div className="text-sm text-gray-500 mt-3">No live ads found for <b>{CO.name}</b> on LinkedIn or Google. Try the exact company name, or a site that runs ads on those platforms.</div>}
               </div>
             ) : (
-              <div className="mb-6 inline-flex items-center gap-2 rounded-lg" style={{ fontSize: 13, background: '#f8fafc', border: '1px solid #e5e7eb', color: '#374151', padding: '7px 12px' }}>
-                <Icon name="check" className="w-4 h-4" style={{ color: '#0a66c2' }} />
-                <span className="font-semibold">Your website:</span>
-                <span style={{ fontFamily: 'monospace' }}>{CO.domain}</span>
-                <button onClick={() => { setReal(null); setPhase('idle'); setStage('overview'); setFP('all'); }} className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold" style={{ color: '#0a66c2' }}>change</button>
+              <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
+                <div className="inline-flex items-center gap-2 rounded-lg" style={{ fontSize: 13, background: '#f8fafc', border: '1px solid #e5e7eb', color: '#374151', padding: '7px 12px' }}>
+                  <Icon name="check" className="w-4 h-4" style={{ color: '#0a66c2' }} />
+                  <span className="font-semibold">Your website:</span>
+                  <span style={{ fontFamily: 'monospace' }}>{CO.domain}</span>
+                  <button onClick={() => { setReal(null); setPhase('idle'); setStage('overview'); setFP('all'); }} className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold" style={{ color: '#0a66c2' }}>change</button>
+                </div>
+                {ICPeff && !icpEditing && (
+                  <div className="inline-flex items-center gap-2 rounded-lg" style={{ fontSize: 13, background: '#f8fafc', border: '1px solid #e5e7eb', color: '#374151', padding: '7px 12px', maxWidth: 460, minWidth: 0 }} title={ICPeff}>
+                    <Icon name="target" className="w-4 h-4 flex-none" style={{ color: '#0a66c2' }} />
+                    <span className="font-semibold flex-none">Buyer:</span>
+                    <span className="text-gray-600 truncate" style={{ minWidth: 0 }}>{ICPeff}</span>
+                    <button onClick={() => { setIcpDraft(ICPeff || ''); setIcpEditing(true); }} className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold flex-none" style={{ color: '#0a66c2' }}>edit</button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1436,14 +1446,6 @@
                 <h1 className="font-bold text-gray-900" style={{ fontSize: 22, letterSpacing: '-0.01em' }}>{CO.name}</h1>
                 <div className="text-gray-400" style={{ fontSize: 12.5, fontFamily: 'monospace' }}>{CO.domain}</div>
               </div>
-              {ICPeff && !icpEditing && (
-                <div className="ml-auto inline-flex items-center gap-2 rounded-xl border" style={{ background: '#f8fafc', borderColor: '#e5e7eb', padding: '7px 11px', maxWidth: 400, minWidth: 0 }} title={ICPeff}>
-                  <Icon name="target" className="w-3.5 h-3.5 flex-none" style={{ color: '#0a66c2' }} />
-                  <span className="flex-none font-bold text-gray-500 uppercase" style={{ fontSize: 9.5, letterSpacing: '0.06em' }}>Buyer</span>
-                  <span className="text-gray-600 truncate" style={{ fontSize: 12, minWidth: 0 }}>{ICPeff}</span>
-                  <button onClick={() => { setIcpDraft(ICPeff || ''); setIcpEditing(true); }} className="flex-none font-semibold rounded-full bg-white cursor-pointer hover:bg-blue-50 transition-colors" style={{ fontSize: 11, padding: '3px 10px', border: '1px solid #cfe1f5', color: '#0a66c2' }}>Edit</button>
-                </div>
-              )}
             </div>
             {icpEditing && <div className="mb-6 rounded-xl border" style={{ background: '#f8fafc', borderColor: '#e5e7eb', padding: '10px 12px' }}>
               <div className="font-semibold text-gray-500 uppercase tracking-wider mb-1.5" style={{ fontSize: 10, letterSpacing: '0.1em' }}>Who we grade every ad against</div>
