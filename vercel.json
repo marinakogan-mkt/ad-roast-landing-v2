@@ -1,4 +1,6 @@
 {
+  "buildCommand": "node build.js",
+  "outputDirectory": ".",
   "rewrites": [
     { "source": "/services", "destination": "/index.html" }
   ],

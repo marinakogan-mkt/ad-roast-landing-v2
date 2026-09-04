@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "node build.js"
+  },
   "dependencies": {
     "@upstash/redis": "^1.28.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.10",
+    "@babel/preset-react": "^7.26.3"
   }
 }
