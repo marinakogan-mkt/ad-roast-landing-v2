@@ -31,6 +31,26 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.adroast.in/teardowns/ox-security</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/semgrep</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/apiiro</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/endor-labs</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.adroast.in/services</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
