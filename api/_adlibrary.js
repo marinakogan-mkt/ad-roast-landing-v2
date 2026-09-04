@@ -132,7 +132,7 @@ async function scoreAds(ads, icp) {
     }
   }
   content[0].text = `ICP: ${icp}\n\nScore each ad 1-10 for how well it fits this ICP and earns the click (1 = severe mismatch, 10 = excellent). Several ads include their creative image below; READ the copy/text rendered on each creative and judge it as the ad's copy. Ads:\n${lines.join('\n')}`;
-  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"verdict":"one short line","fix":"one short fix line"}. Base the verdict/fix on the ad's actual copy (from the text line and, when present, the words on its creative image).
+  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"title":"3 to 6 word name for the ad","verdict":"one short line","fix":"one short fix line"}. The title names the ad in a list: for an image ad with no headline text, READ the main line printed on the creative and use that (or a short plain descriptor of the offer), under 6 words, no trailing period. Base the title/verdict/fix on the ad's actual copy (from the text line and, when present, the words on its creative image).
 
 SCORING SCALE (calibrate consistently, the SAME ad must always land on the same score, do NOT cluster at 0-1 or 9-10):
 1-3 = actively hurting the click (severe ICP mismatch, no clear value, confusing).
@@ -157,7 +157,9 @@ No markdown. Never use em dashes or en dashes; use commas or periods.`;
     const scores = JSON.parse(mm[0]);
     const byI = {};
     for (const s of scores) if (typeof s.i === 'number') byI[s.i] = s;
-    return ads.map((a, i) => byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, fix: byI[i].fix } : a);
+    // head falls back to the model's title so image-only Google ads (no headline text) still
+    // show a real name in the board/preview instead of "Live creative".
+    return ads.map((a, i) => byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, fix: byI[i].fix, title: byI[i].title || null, head: a.head || byI[i].title || '' } : a);
   } catch (e) { return ads; }
 }
 

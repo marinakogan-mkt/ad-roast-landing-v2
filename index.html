@@ -1224,55 +1224,57 @@
         const platSet = allPlat ? Array.from(new Set(sc.map(a => a.plat).filter(Boolean))) : [];
         let worstIdx = 0;
         sc.forEach((a, i) => { if (a.score < sc[worstIdx].score) worstIdx = i; });
-        const fit = Math.round(sc.reduce((s, a) => s + a.score, 0) / sc.length * 10);
+        // Negative, urgent framing (Marina: "dame metricas de negatividad para que quiera corregirlas").
         const onT = sc.filter(a => a.score > 6).length;
+        const off = sc.length - onT;                       // ads reaching the wrong buyer
+        const offPct = Math.round(off / sc.length * 100);  // share of spend off-target
+        const crit = sc.filter(a => a.score <= 4).length;  // badly off
+        const sev = (offPct >= 30 || crit >= 2) ? { t: 'Budget at risk', c: '#dc2626' }
+          : (offPct >= 10 || crit >= 1) ? { t: 'Leaking budget', c: '#b45309' }
+          : off > 0 ? { t: 'Minor leaks', c: '#b45309' }
+          : { t: 'On track', c: '#15803d' };
+        const headline = off > 0
+          ? `${off} of your ${sc.length} live ads ${off === 1 ? 'is' : 'are'} reaching the wrong buyer`
+          : `All ${sc.length} of your live ads are reaching the right buyer`;
         const active = (specHi != null && sc[specHi]) ? sc[specHi] : sc[worstIdx];
         const aFree = isVFree(active);
-        // Spread nodes that share a rounded score so they don't stack on one point.
-        const groupCount = {};
-        sc.forEach(a => { const k = Math.round(a.score); groupCount[k] = (groupCount[k] || 0) + 1; });
-        const seen = {};
-        const nodeX = sc.map(a => {
-          const k = Math.round(a.score); const total = groupCount[k]; const idx = (seen[k] = (seen[k] || 0)); seen[k] = idx + 1;
-          const base = Math.max(6, Math.min(94, a.score * 10));
-          return Math.max(5, Math.min(95, base + (idx - (total - 1) / 2) * 5));
-        });
+        // Rank-based positions: sort worst -> best and space evenly, so the line is strictly
+        // ordered (worst on the wrong-buyer side, best on target) and dots never overlap or look
+        // scrambled, whatever the score spread. Colour still encodes the actual score.
+        const order = sc.map((a, i) => i).sort((x, y) => sc[x].score - sc[y].score);
+        const rankOf = {}; order.forEach((oi, r) => { rankOf[oi] = r; });
+        const n = sc.length;
+        const nodeX = sc.map((a, i) => n === 1 ? 50 : Math.round((6 + rankOf[i] / (n - 1) * 88) * 10) / 10);
         return (
           <div className="rounded-2xl border bg-white mb-6" style={{ borderColor: '#e8ecf1', padding: '18px 20px' }}>
+            {/* Merged header: severity + the negative headline (this is the old "Budget at risk"
+                panel, now folded into the same card as the spectrum, per Marina). */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 rounded-full" style={{ padding: '3px 10px', background: '#0a66c214', color: '#0a66c2', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}><Icon name="target" className="w-3 h-3" />{allPlat ? 'Every ad, ranked' : 'Your ad spectrum'}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full" style={{ padding: '3px 10px', background: sev.c + '18', color: sev.c, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}><Icon name={off > 0 ? 'flame' : 'target'} className="w-3 h-3" />{sev.t}</span>
               {allPlat && platSet.length > 0 && <span className="flex items-center gap-1.5">{platSet.map(pl => <PlatLogo key={pl} plat={pl} size={15} />)}</span>}
             </div>
-            <p className="text-gray-500" style={{ fontSize: 12.5, marginTop: 6 }}>{allPlat ? 'Every live ad you are running, ranked by how well it fits the buyer you want. Hover any ad to see it up close.' : 'Hover an ad to preview it. Left is reaching the wrong buyer, right is on target.'}</p>
-            {/* Three headline metrics in plain language (replaces the insider "70/100 fit"): overall
-                buyer fit with a dynamic bar, how many ads are on target, and how many to fix. */}
-            {(() => {
-              const off = sc.length - onT;
-              return (
-                <div className="grid mt-3.5" style={{ gridTemplateColumns: '1.5fr 1fr 1fr', gap: 10 }}>
-                  <div className="rounded-xl border" style={{ borderColor: '#eef1f6', background: '#fafbfc', padding: '11px 13px' }}>
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="font-extrabold" style={{ fontSize: 23, color: scoreCol(fit / 10), lineHeight: 1 }}>{fit}<span style={{ fontSize: 12.5 }}>%</span></span>
-                      <span className="text-gray-600 font-semibold" style={{ fontSize: 11.5 }}>buyer fit</span>
-                    </div>
-                    <div className="rounded-full mt-2" style={{ height: 6, background: '#eef1f5', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: fit + '%', borderRadius: 99, background: 'linear-gradient(90deg,#dc2626,#d97706 55%,#0a66c2)', transition: 'width .8s cubic-bezier(.22,1,.36,1)' }} />
-                    </div>
-                    <div className="text-gray-400" style={{ fontSize: 10.5, marginTop: 5 }}>how well your ads match the buyer you want</div>
-                  </div>
-                  <div className="rounded-xl border" style={{ borderColor: '#d7ebd9', background: '#f4fbf5', padding: '11px 13px' }}>
-                    <div className="font-extrabold" style={{ fontSize: 23, color: '#15803d', lineHeight: 1 }}>{onT}<span className="text-gray-400 font-semibold" style={{ fontSize: 12.5 }}> / {sc.length}</span></div>
-                    <div className="text-gray-700 font-semibold" style={{ fontSize: 11.5, marginTop: 5 }}>ads on target</div>
-                    <div className="text-gray-400" style={{ fontSize: 10.5, marginTop: 2 }}>reaching the right buyer</div>
-                  </div>
-                  <div className="rounded-xl border" style={{ borderColor: off > 0 ? '#f6d5d5' : '#e5e7eb', background: off > 0 ? '#fef4f4' : '#fafbfc', padding: '11px 13px' }}>
-                    <div className="font-extrabold" style={{ fontSize: 23, color: off > 0 ? '#dc2626' : '#6b7280', lineHeight: 1 }}>{off}</div>
-                    <div className="text-gray-700 font-semibold" style={{ fontSize: 11.5, marginTop: 5 }}>to fix</div>
-                    <div className="text-gray-400" style={{ fontSize: 10.5, marginTop: 2 }}>reaching the wrong buyer</div>
-                  </div>
+            <h3 className="font-bold text-gray-900" style={{ fontSize: 16.5, marginTop: 9, letterSpacing: '-0.01em', lineHeight: 1.3 }}>{headline}</h3>
+            {/* Two urgent, negative metrics: off-target spend (with a bar) and how many ads to fix.
+                Number + label sit on one baseline so "8 to fix" never reads as "8K". */}
+            <div className="grid mt-3" style={{ gridTemplateColumns: '1.5fr 1fr', gap: 10 }}>
+              <div className="rounded-xl border" style={{ borderColor: off > 0 ? '#f3d0d0' : '#dbe7dc', background: off > 0 ? '#fdf3f3' : '#f4fbf5', padding: '11px 13px' }}>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-extrabold" style={{ fontSize: 25, color: off > 0 ? '#dc2626' : '#15803d', lineHeight: 1 }}>{offPct}<span style={{ fontSize: 13.5 }}>%</span></span>
+                  <span className="text-gray-700 font-semibold" style={{ fontSize: 11.5 }}>of spend off-target</span>
                 </div>
-              );
-            })()}
+                <div className="rounded-full mt-2.5" style={{ height: 6, background: off > 0 ? '#f2dede' : '#e3f0e4', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: offPct + '%', borderRadius: 99, background: off > 0 ? '#dc2626' : '#15803d', transition: 'width .8s cubic-bezier(.22,1,.36,1)' }} />
+                </div>
+                <div className="text-gray-400" style={{ fontSize: 10.5, marginTop: 5 }}>ad spend reaching people who won't buy</div>
+              </div>
+              <div className="rounded-xl border" style={{ borderColor: off > 0 ? '#f3d0d0' : '#dbe7dc', background: off > 0 ? '#fdf3f3' : '#f4fbf5', padding: '11px 13px' }}>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-extrabold" style={{ fontSize: 25, color: off > 0 ? '#dc2626' : '#15803d', lineHeight: 1 }}>{off}</span>
+                  <span className="text-gray-700 font-semibold" style={{ fontSize: 11.5 }}>{off === 1 ? 'ad to fix' : 'ads to fix'}</span>
+                </div>
+                <div className="text-gray-400" style={{ fontSize: 10.5, marginTop: 8 }}>{crit > 0 ? crit + (crit === 1 ? ' is' : ' are') + " badly off. Start there, it's free." : 'fix the weakest first, it is free'}</div>
+              </div>
+            </div>
             {/* Live preview of the active (hovered, else worst) ad: the real creative, up close. */}
             <div className="flex items-center gap-3.5 rounded-xl border mt-4" style={{ borderColor: '#eef1f6', background: '#fafbfc', padding: 12 }}>
               <div className="flex-none grid place-items-center rounded-lg overflow-hidden" style={{ width: 74, height: 74, background: '#f1f5f9', border: '2px solid ' + scoreCol(active.score) }}>
@@ -1290,9 +1292,10 @@
               </div>
               <button onClick={() => setSel(active)} className="flex-none font-bold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ fontSize: 12.5, padding: '9px 13px', background: '#0a66c2', whiteSpace: 'nowrap' }}>{aFree ? 'Roast free →' : 'Roast this →'}</button>
             </div>
-            {/* The track: clean dots positioned by buyer fit (no tiny creatives, those read as
-                weird thumbnails). The real creative shows only in the preview above on hover. */}
-            <div className="relative" style={{ height: 68, marginTop: 18 }}>
+            {/* The track: clean dots ordered worst -> best (rank-based, no tiny creatives, those
+                read as weird thumbnails). The real creative shows only in the preview above on hover. */}
+            <div className="text-gray-400 mt-4" style={{ fontSize: 11.5 }}>Every ad ranked worst to best. Hover any dot to preview the real creative above.</div>
+            <div className="relative" style={{ height: 68, marginTop: 10 }}>
               <div className="absolute" style={{ left: 0, right: 0, top: 32, height: 6, borderRadius: 99, background: 'linear-gradient(90deg,#dc2626,#d97706 48%,#0a66c2)', opacity: 0.9 }} />
               {sc.map((a, i) => {
                 const on = specHi === i;
@@ -1422,21 +1425,8 @@
               )}
             </div>}
 
-            {scored.length > 0 && !pulling && (() => {
-              const offPct = Math.round(offTarget / scored.length * 100);
-              const crit = scored.filter(a => a.score <= 4).length;
-              const sev = (offPct >= 30 || crit >= 2) ? { t: 'Budget at risk', c: '#dc2626' }
-                : (offPct >= 10 || crit >= 1) ? { t: 'Leaking budget', c: '#b45309' }
-                : offPct > 0 ? { t: 'Minor leaks', c: '#b45309' }
-                : { t: 'On track', c: '#0a66c2' };
-              const head = offTarget > 0
-                ? `${offTarget} of your ${scored.length} live ads are reaching the wrong buyer`
-                : `All ${scored.length} of your live ads match the buyer you want`;
-              const sub = offTarget > 0
-                ? `That's ad spend going to people who won't buy${crit ? `, and ${crit} ${crit === 1 ? 'ad is' : 'ads are'} badly off` : ''}. Fix the weakest first, it's free.`
-                : 'Nice, your spend is reaching the right people. Keep watching as you add creatives.';
-              return <div className="mb-6"><UrgencyMeter label={sev.t} color={sev.c} offOverride={offPct} bigStat={offPct} bigUnit="%" bigCaption="ads off-target" headline={head} subline={sub} /></div>;
-            })()}
+            {/* The urgency (Budget at risk + off-target headline/metrics) is now MERGED into the
+                spectrum card below, so it is one block, not two separate panels. */}
 
             {stage === 'overview' ? (
               /* STEP 1 - Overview: one card per platform we actually pull, each showing a real
