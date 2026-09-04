@@ -182,10 +182,12 @@ h3 { font-size: 15px; margin: 0; letter-spacing: -.005em; }
 .stitle { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); margin: 0 0 14px; }
 
 /* ---- CTA band ---- */
-.band { margin: 20px 0 0; background: linear-gradient(135deg, #0b1220, #12294a); border-radius: 22px; padding: 40px 34px; text-align: center; color: #fff; }
+.band { margin: 20px 0 0; background: linear-gradient(135deg, var(--blue), var(--blue-ink)); border-radius: 22px; padding: 40px 34px; text-align: center; color: #fff; }
 .band h2 { color: #fff; }
-.band p { color: #c3d0e2; margin: 8px auto 0; max-width: 48ch; font-size: 15.5px; }
-.band .btn-red { margin-top: 20px; }
+.band p { color: #dce8f7; margin: 8px auto 0; max-width: 48ch; font-size: 15.5px; }
+/* On the blue band use a clean white button (no red, no black) so the whole block stays on AdRoast brand. */
+.band .btn-red { margin-top: 20px; background: #fff; color: var(--blue-ink); box-shadow: 0 8px 20px rgba(8,32,64,.22); }
+.band .btn-red:hover { background: #eef4fb; color: var(--blue-ink); }
 
 /* ---- hub grid ---- */
 .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
