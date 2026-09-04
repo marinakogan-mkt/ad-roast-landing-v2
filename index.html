@@ -373,7 +373,7 @@
       : s <= 6 ? { t: 'Weak', c: '#b45309', off: Math.round((10 - s) / 10 * 100), sub: 'Leaking spend: the funnel pulls the wrong buyer or loses the right one.' }
       : s <= 8 ? { t: 'Solid', c: '#0a66c2', off: Math.round((10 - s) / 10 * 100), sub: 'Working, with clear upside: a few fixes and it converts harder.' }
       : { t: 'Strong', c: '#075aad', off: Math.round((10 - s) / 10 * 100), sub: 'Dialed in: keep the spend here and scale it.' };
-    const UrgencyMeter = ({ score, subline, dense, offOverride, label, color, headline }) => {
+    const UrgencyMeter = ({ score, subline, dense, offOverride, label, color, headline, bigStat, bigUnit, bigCaption }) => {
       const g = gravityOf(score);
       const c = color || g.c;
       const has = typeof score === 'number' && score > 0;
@@ -381,6 +381,7 @@
       const t = label || g.t;
       const [w, setW] = useState(0);
       useEffect(() => { const tt = setTimeout(() => setW(fill), 180); return () => clearTimeout(tt); }, [fill]);
+      const showBig = typeof bigStat === 'number';
       return (
         <div className="rounded-2xl border" style={{ borderColor: c + '3d', background: c + '0c', padding: dense ? '12px 14px' : '16px 18px' }}>
           <div className="flex items-center gap-2" style={{ marginBottom: headline ? 8 : 10 }}>
@@ -388,13 +389,39 @@
             <span className="font-extrabold uppercase" style={{ color: c, fontSize: 13.5, letterSpacing: '0.03em' }}>{t}</span>
             {has && !label && <span className="font-bold" style={{ color: c, fontSize: 12 }}>&middot; {score}/10</span>}
           </div>
-          {headline && <div className="font-bold text-gray-900" style={{ fontSize: 'clamp(15.5px,2.4vw,18px)', lineHeight: 1.3, marginBottom: 10 }}>{headline}</div>}
-          <div className="relative rounded-full overflow-hidden" style={{ height: dense ? 8 : 10, background: '#e9edf2' }}>
-            <div style={{ width: w + '%', height: '100%', borderRadius: 99, background: c, transition: 'width 1.1s cubic-bezier(.22,1,.36,1)' }} />
-          </div>
-          {(subline || (!label && g.sub)) && <p className="text-gray-600" style={{ fontSize: dense ? 12.5 : 13.5, lineHeight: 1.5, marginTop: 10 }}>{subline || g.sub}</p>}
+          {headline && <div className="font-bold text-gray-900" style={{ fontSize: 'clamp(15.5px,2.4vw,18px)', lineHeight: 1.3, marginBottom: showBig ? 12 : 10 }}>{headline}</div>}
+          {showBig ? (
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 text-center rounded-xl px-3.5 py-2" style={{ background: c + '14', minWidth: 84 }}>
+                <div className="font-extrabold leading-none" style={{ color: c, fontSize: 34 }}><CountUp to={bigStat} dur={1200} />{bigUnit || ''}</div>
+                {bigCaption && <div className="font-semibold uppercase tracking-wide mt-1" style={{ color: c, fontSize: 9, opacity: 0.85 }}>{bigCaption}</div>}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="relative rounded-full overflow-hidden" style={{ height: 10, background: '#e9edf2' }}>
+                  <div style={{ width: w + '%', height: '100%', borderRadius: 99, background: c, transition: 'width 1.1s cubic-bezier(.22,1,.36,1)' }} />
+                </div>
+                {(subline || (!label && g.sub)) && <p className="text-gray-600" style={{ fontSize: 13, lineHeight: 1.5, marginTop: 9 }}>{subline || g.sub}</p>}
+              </div>
+            </div>
+          ) : (<>
+            <div className="relative rounded-full overflow-hidden" style={{ height: dense ? 8 : 10, background: '#e9edf2' }}>
+              <div style={{ width: w + '%', height: '100%', borderRadius: 99, background: c, transition: 'width 1.1s cubic-bezier(.22,1,.36,1)' }} />
+            </div>
+            {(subline || (!label && g.sub)) && <p className="text-gray-600" style={{ fontSize: dense ? 12.5 : 13.5, lineHeight: 1.5, marginTop: 10 }}>{subline || g.sub}</p>}
+          </>)}
         </div>
       );
+    };
+    /* Money-at-stake framing derived honestly from the 0-10 score: the off-target
+       share of spend = (10-score)*10%. Plain-language headline per gravity tier. */
+    const stakeOf = (s) => {
+      const off = (typeof s === 'number' && s > 0) ? Math.round((10 - s)) * 10 : 0;
+      const head = (typeof s !== 'number' || s <= 0) ? ''
+        : s <= 4 ? "You're paying for clicks that will never convert."
+        : s <= 6 ? "Good budget is leaking on the wrong audience."
+        : s <= 8 ? "Most of your spend works, some is slipping."
+        : "Your spend is landing where it should.";
+      return { off, head };
     };
 
     /* Animated circular score gauge. Arc sweeps to the score and the number
@@ -1296,7 +1323,7 @@
               const sub = offTarget > 0
                 ? `That's ad spend going to people who won't buy${crit ? `, and ${crit} ${crit === 1 ? 'ad is' : 'ads are'} badly off` : ''}. Fix the weakest first, it's free.`
                 : 'Nice, your spend is reaching the right people. Keep watching as you add creatives.';
-              return <div className="mb-6"><UrgencyMeter label={sev.t} color={sev.c} offOverride={offPct} headline={head} subline={sub} /></div>;
+              return <div className="mb-6"><UrgencyMeter label={sev.t} color={sev.c} offOverride={offPct} bigStat={offPct} bigUnit="%" bigCaption="ads off-target" headline={head} subline={sub} /></div>;
             })()}
 
             {stage === 'overview' ? (
@@ -1822,6 +1849,23 @@
       const [reroastLink, setReroastLink] = useState('');
       const [reroastErr, setReroastErr] = useState('');
       const [activeTab, setActiveTab] = useState('scores'); // results-page section tabs
+      /* Live reveal of the roast report: when results first appear, the scoreboard
+         blocks surface one-by-one (urgency -> gauge -> verdict -> recommendation)
+         like the homepage demo, so the reader watches the roast land. Plays once. */
+      const [revStep, setRevStep] = useState(0);
+      const revealedRef = React.useRef(false);
+      useEffect(() => {
+        if (view !== 'results' || !result) return;
+        if (revealedRef.current) { setRevStep(9); return; }
+        revealedRef.current = true;
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce) { setRevStep(9); return; }
+        setRevStep(0);
+        const ts = [500, 1200, 2000, 2800].map((ms, i) => setTimeout(() => setRevStep(i + 1), ms));
+        return () => ts.forEach(clearTimeout);
+      }, [view, result]);
+      /* Wrap a scoreboard block so it rises into view when its reveal step is reached. */
+      const revStyle = (n) => ({ opacity: revStep >= n ? 1 : 0, transform: revStep >= n ? 'none' : 'translateY(14px)', transition: 'opacity .6s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.22,1,.36,1)' });
 
       // Auto-generate link after verified payment
       React.useEffect(() => {
@@ -4741,16 +4785,18 @@
               {/* SCORES */}
               {activeTab === 'scores' && (<>
               {/* Scoreboard hero - animated rings + one-line verdict */}
-              <div id="sec-scores" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 reveal scroll-mt-20">
+              <div id="sec-scores" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 scroll-mt-20">
                 <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast</div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>Your roast · live</div>
                   {roastedName && <div className="text-xs text-gray-500 truncate max-w-[60%]"><span className="font-semibold text-gray-700">{roastedName}</span></div>}
                 </div>
-                {/* Urgency line first: the reader feels how grave it is before anything else. */}
-                <div className="mb-6"><UrgencyMeter score={result.overall_score} /></div>
+                {/* Urgency line first: the reader feels how grave it is (and what it's
+                    costing) before anything else. Reveals as step 1 of the live sequence. */}
+                <div className="mb-6" style={revStyle(1)}><UrgencyMeter score={result.overall_score} headline={stakeOf(result.overall_score).head} bigStat={stakeOf(result.overall_score).off} bigUnit="%" bigCaption="off-target spend" /></div>
                 {/* Scores are clickable - the gauge opens the ad issues, each ring opens
                     the landing-page section (which holds both the LP analysis and the
                     ad-to-landing match). */}
+                <div style={revStyle(2)}>
                 <button type="button" onClick={() => { setActiveTab('issues'); try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) {} }} className="block w-full bg-transparent border-none cursor-pointer p-0 transition-transform hover:scale-[1.01]" title="See the ad issues" aria-label="Open ad issues">
                   <HealthGauge score={result.overall_score} />
                 </button>
@@ -4764,7 +4810,8 @@
                     </button>
                   </div>
                 )}
-                <div className="mt-7 rounded-2xl border overflow-hidden flex" style={{ borderColor: hexForScore(result.overall_score) + '55' }}>
+                </div>
+                <div className="mt-7 rounded-2xl border overflow-hidden flex" style={{ ...revStyle(3), borderColor: hexForScore(result.overall_score) + '55' }}>
                   <div className="flex-shrink-0 w-1.5" style={{ background: hexForScore(result.overall_score) }} />
                   <div className="p-4 sm:p-5 flex-1" style={{ background: result.overall_score <= 3 ? '#fef2f2' : result.overall_score <= 6 ? '#fffbeb' : '#f0fdf4' }}>
                     <div className="flex items-center gap-2 mb-2">
@@ -4814,7 +4861,7 @@
                   </div>
                 );
                 return (
-                  <div className="reveal">
+                  <div style={revStyle(4)}>
                     <div className="rounded-2xl border-2 p-5 sm:p-6" style={{ borderColor: rec.color, background: rec.color + '0d' }}>
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full" style={{ background: rec.color + '22', color: rec.color }}><Icon name="sparkles" className="w-3.5 h-3.5" /> Recommended for you</span>
