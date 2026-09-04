@@ -165,7 +165,10 @@ export default async function handler(req, res) {
        TTL is long when LinkedIn actually loaded, short otherwise so we keep retrying it soon
        AND give Jina's per-minute limit time to recover between attempts. refresh:true (the
        'change'/Retry buttons) bypasses the cache to force a fresh pull. */
-    const ck = 'ads:' + String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
+    // v2: the scorer now returns a per-ad `title` (used as the name for image-only Google ads,
+    // which carry no headline). Bump the cache namespace so pre-title cached sets are invalidated
+    // and re-scored fresh, otherwise Google cards keep showing the "<domain> display ad" fallback.
+    const ck = 'ads:v2:' + String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
     const wantScore = !!body.icp; // the board always sends the ICP; display-only calls don't
     if (_redis && ck !== 'ads:' && !body.refresh) {
       try {
