@@ -981,6 +981,10 @@
     // transparent PNG -> the logo rendered invisible everywhere; that was the "no logo" bug.)
     const ADROAST_LOGO = "/apple-touch-icon.png";
 
+    /* Path the page was first opened at (captured before any effect rewrites the URL to "/").
+       Lets a clean deep link like /work-with-us land directly on that section. */
+    const BOOT_PATH = (typeof window !== 'undefined' ? window.location.pathname.replace(/\/+$/, '') : '');
+
     function AdLibraryView() {
       const [modalHead, setModalHead] = useState(null);
       const [fP, setFP] = useState('all');
@@ -2106,7 +2110,9 @@
          couple of seconds (instant, respecting scroll-mt) and again once images
          finish, but stop the moment the user scrolls or interacts. */
       React.useEffect(() => {
-        const id = (window.location.hash || '').replace('#', '');
+        let id = (window.location.hash || '').replace('#', '');
+        /* Clean-path deep links: /work-with-us (and /services) land on the services section. */
+        if (!id && (BOOT_PATH === '/work-with-us' || BOOT_PATH === '/services')) id = 'work-with-us';
         if (id !== 'deliverables' && id !== 'work-with-us') return;
         let stopped = false;
         const stop = () => { stopped = true; };

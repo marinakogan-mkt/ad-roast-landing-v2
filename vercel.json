@@ -2,7 +2,8 @@
   "buildCommand": "node build.js",
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/services", "destination": "/index.html" }
+    { "source": "/services", "destination": "/index.html" },
+    { "source": "/work-with-us", "destination": "/index.html" }
   ],
   "crons": [
     { "path": "/api/verify-payment?cron=refills", "schedule": "0 8 * * *" },
