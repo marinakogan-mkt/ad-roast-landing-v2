@@ -1179,6 +1179,12 @@
       const ICPeff = (icpOverride != null && icpOverride.trim()) ? icpOverride.trim() : ICP; // what the roast grades against
       const ads = real ? real.ads : YOUR_ADS;
       const scored = ads.filter(a => typeof a.score === 'number');
+      // A real pull is in flight and hasn't landed yet (initial silent boot OR a user's
+      // "Find my ads"). While pulling, the static Semgrep sample is stale (its Google tiles
+      // carry creatives, its LinkedIn tiles don't), so showing it makes a Google creative
+      // flash in the board until LinkedIn finishes ~20s later. Render clean loading state
+      // instead of the sample until `real` lands.
+      const pulling = !real && (bootLoading || phase === 'loading');
       // Seed the landing field when an ad is picked: auto-fill the ad's resolved landing if we have
       // one, otherwise pre-fill the company homepage so the user can paste the exact landing.
       React.useEffect(() => {
@@ -1393,7 +1399,7 @@
               )}
             </div>}
 
-            {scored.length > 0 && !bootLoading && (() => {
+            {scored.length > 0 && !pulling && (() => {
               const offPct = Math.round(offTarget / scored.length * 100);
               const crit = scored.filter(a => a.score <= 4).length;
               const sev = (offPct >= 30 || crit >= 2) ? { t: 'Budget at risk', c: '#dc2626' }
@@ -1415,17 +1421,19 @@
                  Sources we don't have yet (Meta) show greyed + blurred as "coming soon". */
               <>
                 {/* Portfolio spectrum FIRST: every scored ad across all platforms on one line,
-                    so the single most urgent ad to roast is obvious before the per-platform grid. */}
-                {renderSpectrum(ads, { allPlatforms: true })}
+                    so the single most urgent ad to roast is obvious before the per-platform grid.
+                    Hidden while pulling so it never draws the stale Semgrep sample. */}
+                {!pulling && renderSpectrum(ads, { allPlatforms: true })}
                 <div className="flex items-baseline gap-2.5 mb-3 flex-wrap">
                   <div className="font-semibold text-gray-500 uppercase tracking-wider" style={{ fontSize: 10.5, letterSpacing: '0.1em' }}>Where you're running ads</div>
                   <span className="text-gray-400" style={{ fontSize: 11.5 }}>We score every ad on how well it fits your ideal customer. Red = fix it first.</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
                   {LIVE_SOURCES.concat(ads.some(a => a.plat === 'Meta') ? ['Meta'] : []).map(p => {
-                    /* Initial background pull: show a clean loading card per platform instead of the
-                       static sample, so a real creative never lands in the wrong platform's slot. */
-                    if (bootLoading && !real) return (
+                    /* Any real pull in flight (silent boot OR a user search): show a clean loading
+                       card per platform instead of the stale sample, so a Google sample creative
+                       never flashes in the LinkedIn slot until the real LinkedIn ads land. */
+                    if (pulling) return (
                       <div key={p} className="rounded-2xl border overflow-hidden flex flex-col" style={{ borderColor: '#e5e7eb', background: '#fff' }}>
                         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                           <PlatLogo plat={p} size={18} />
