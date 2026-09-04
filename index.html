@@ -1465,15 +1465,16 @@
               <span className="inline-flex items-center gap-2 font-bold text-gray-900" style={{ fontSize: 16 }}><PlatLogo plat={fP} size={18} />{fP} ads</span>
             </div>
 
-            {/* Urgent recommendation (worst on this platform) */}
-            {vWorst && (<div className="rounded-2xl p-4 mb-6 flex items-center gap-3 flex-wrap" style={{ background: 'linear-gradient(180deg,#fff6f3,#ffffff)', border: '1px solid #f6d3c8' }}>
+            {/* Urgent recommendation (worst on this platform): the whole banner is clickable. */}
+            {vWorst && (<button onClick={() => setSel(vWorst)} className="w-full text-left rounded-2xl p-4 mb-6 flex items-center gap-4 flex-wrap cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5" style={{ background: 'linear-gradient(180deg,#fff5f2,#ffffff)', border: '1.5px solid #f3b6a6' }}>
               {vWorst.img && <div className="flex-none grid place-items-center rounded-xl overflow-hidden" style={{ width: 88, height: 88, background: '#f8fafc', border: '1px solid #eee' }}><img src={IMG(vWorst.img)} alt={vWorst.head || 'recommended creative'} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', display: 'block' }} /></div>}
-              <div className="flex-none grid place-items-center rounded-full font-bold text-white" style={{ width: 42, height: 42, background: scoreCol(vWorst.score), fontSize: 17 }}>{vWorst.score}</div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="font-extrabold flex items-center gap-1.5" style={{ fontSize: 14.5, color: '#dc2626' }}><span style={{ color: '#f59e0b' }}>★</span> Start here — this ad is losing you the most</div>
-                <div className="text-gray-600" style={{ fontSize: 13, lineHeight: 1.5 }}>{vWorst.head ? '"' + vWorst.head + '"' : 'This one'} is your weakest of {shown.length} {fP} ad{shown.length === 1 ? '' : 's'} ({vWorst.score}/10): it's reaching the wrong buyer, so your spend on it is mostly wasted. Roast it free and see exactly what to change.</div>
+              <div style={{ minWidth: 180, flex: 1 }}>
+                <span className="inline-flex items-center gap-1.5 font-bold uppercase rounded-full" style={{ fontSize: 10, letterSpacing: '0.07em', color: '#fff', background: '#dc2626', padding: '3px 10px', marginBottom: 8 }}><Icon name="flame" className="w-3 h-3" />Start with this one</span>
+                <div className="font-extrabold text-gray-900" style={{ fontSize: 15.5, lineHeight: 1.3, marginTop: 8 }}>Your weakest {fP} ad is reaching the wrong buyer</div>
+                <div className="text-gray-600" style={{ fontSize: 13, lineHeight: 1.5, marginTop: 4 }}>{vWorst.head ? '"' + vWorst.head + '"' : 'This creative'} scores {vWorst.score}/10 on buyer fit, the lowest of your {shown.length} {fP} ad{shown.length === 1 ? '' : 's'}. Most of its spend is landing on people who will not convert. Roast it free to see exactly what to change.</div>
               </div>
-            </div>)}
+              <span className="flex-none inline-flex items-center gap-1.5 font-bold text-white rounded-lg self-center" style={{ fontSize: 13.5, padding: '11px 15px', background: '#dc2626', whiteSpace: 'nowrap' }}>Roast it free <Icon name="arrowRight" className="w-4 h-4" /></span>
+            </button>)}
 
             {/* Grid: every ad visible, full creative + gravity, pick one to roast */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
@@ -1485,12 +1486,12 @@
                   <div key={i} className="bg-white rounded-2xl border overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1 hover:shadow-xl" style={{ borderColor: free ? '#bcd8f2' : (sev ? sev.c + '3a' : '#e5e7eb'), boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
                     <div className="flex items-center gap-2 px-4 pt-4 pb-2.5">
                       <span className="inline-flex items-center gap-1.5 font-semibold rounded-md" style={{ fontSize: 11.5, padding: '4px 9px', background: '#fff', border: '1px solid #e5e7eb', color: '#374151' }}><PlatLogo plat={a.plat} size={14} />{a.plat}</span>
-                      {free && <span className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider" style={{ fontSize: 9.5, letterSpacing: '0.06em', color: '#0a66c2', background: '#eef2ff', border: '1px solid #dbe4fb', padding: '4px 8px', borderRadius: 6 }}><span style={{ color: '#f59e0b' }}>★</span> Free roast</span>}
+                      {free && <span className="inline-flex items-center gap-1 font-bold uppercase" style={{ fontSize: 9.5, letterSpacing: '0.06em', color: '#fff', background: '#dc2626', padding: '4px 9px', borderRadius: 6 }}><Icon name="flame" className="w-3 h-3" />Recommended</span>}
                       {/* Gravity level, not just a number */}
                       {hasScore && <span className="ml-auto inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 10.5, padding: '3px 9px', color: sev.c, background: sev.bg, border: '1px solid ' + sev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: sev.c }} />{sev.label}</span>}
-                      {hasScore && <span className="flex-none inline-flex items-center gap-1.5" title="Buyer fit: how well this ad matches the buyer you want to reach (0-10). Low = you're paying to reach the wrong people.">
-                        <span style={{ fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#9ca3af', textAlign: 'right', lineHeight: 1.05 }}>Buyer<br/>fit</span>
-                        <span className="grid place-items-center rounded-full font-bold text-white" style={{ width: 34, height: 34, background: scoreCol(a.score), fontSize: 15 }}>{a.score}</span>
+                      {hasScore && <span className="flex-none inline-flex items-center gap-1.5 rounded-full" title="Buyer fit: how well this ad matches the buyer you want to reach, scored 0 to 10. Low means you're paying to reach the wrong people." style={{ padding: '3px 4px 3px 9px', background: scoreCol(a.score) + '14', border: '1px solid ' + scoreCol(a.score) + '3a' }}>
+                        <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: scoreCol(a.score) }}>Buyer fit</span>
+                        <span className="grid place-items-center rounded-full text-white" style={{ minWidth: 34, height: 22, padding: '0 7px', background: scoreCol(a.score), fontSize: 12.5, fontWeight: 800 }}>{a.score}<span style={{ opacity: 0.65, fontWeight: 600, fontSize: 10.5 }}>/10</span></span>
                       </span>}
                     </div>
                     {/* Real creative, always, shown in full with no cropping. */}
@@ -1506,7 +1507,7 @@
                         <>
                           <div className="uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.12em' }}>Biggest fix</div>
                           <div className="text-gray-800" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>{a.fix || a.verdict || a.body}</div>
-                          <button onClick={() => setSel(a)} className="w-full font-bold text-white rounded-lg mt-3 hover:opacity-90 transition-opacity" style={{ fontSize: 13.5, padding: '10px', background: '#0a66c2' }}>View full roast →</button>
+                          <button onClick={() => setSel(a)} className="w-full font-bold text-white rounded-lg mt-3 hover:opacity-90 transition-opacity inline-flex items-center justify-center gap-1.5" style={{ fontSize: 13.5, padding: '10px', background: '#dc2626' }}><Icon name="flame" className="w-4 h-4" />Roast this one free</button>
                         </>
                       ) : (
                         <>
