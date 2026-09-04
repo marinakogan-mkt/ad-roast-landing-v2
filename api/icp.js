@@ -250,6 +250,12 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 1200,
+        // temperature 0: ICP detection must be deterministic. The board scores every ad
+        // AGAINST this ICP, so a drifting ICP silently drifts all the scores (the same
+        // unchanged Semgrep ad swung 5 -> 7 between loads just because the re-detected buyer
+        // came back slightly different). Pin it so a given site always yields the same buyer
+        // and therefore the same, reproducible scores. Mirrors scoreAds() which is already 0.
+        temperature: 0,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),
