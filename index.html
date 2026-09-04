@@ -1286,8 +1286,8 @@
             {scored.length > 0 && !bootLoading && (() => {
               const offPct = Math.round(offTarget / scored.length * 100);
               const crit = scored.filter(a => a.score <= 4).length;
-              const sev = (offPct >= 40 || crit >= 3) ? { t: 'Budget at risk', c: '#dc2626' }
-                : (offPct >= 15 || crit >= 1) ? { t: 'Leaking budget', c: '#b45309' }
+              const sev = (offPct >= 30 || crit >= 2) ? { t: 'Budget at risk', c: '#dc2626' }
+                : (offPct >= 10 || crit >= 1) ? { t: 'Leaking budget', c: '#b45309' }
                 : offPct > 0 ? { t: 'Minor leaks', c: '#b45309' }
                 : { t: 'On track', c: '#0a66c2' };
               const head = offTarget > 0
