@@ -568,13 +568,19 @@
 
     const IssueRow = ({ issue }) => {
       const col = hexForScore(issue.score);
-      const tint = issue.score <= 3 ? '#fef2f2' : issue.score <= 6 ? '#fffbeb' : '#f0fdf4';
+      const gv = SEV(issue.score); // gravity: label + colour + bg/border, matching the board cards
+      const tint = gv.bg;
       return (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 card-pop" style={{ borderTopWidth: '3px', borderTopColor: col }}>
-          <div className="flex items-center gap-3 mb-2.5">
+        <div className="rounded-xl border bg-white p-4 card-pop" style={{ borderColor: gv.bd }}>
+          <div className="flex items-center gap-2.5 mb-2.5">
             <span className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: tint }}><Icon name={CATEGORY_ICON[issue.category] || 'alertCircle'} className="w-4 h-4" style={{ color: col }} /></span>
             <span className="flex-1 min-w-0 font-semibold text-sm text-gray-900 leading-tight">{issue.title}</span>
-            <span className="text-2xl font-extrabold leading-none flex-shrink-0" style={{ color: col }}>{issue.score}</span>
+            <span className="inline-flex items-center gap-1 rounded-full font-bold flex-none" style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.03em', color: gv.c, background: gv.bg, border: '1px solid ' + gv.bd, padding: '2px 7px' }}><span style={{ width: 4, height: 4, borderRadius: 99, background: gv.c, display: 'inline-block' }} />{gv.label}</span>
+          </div>
+          {/* Labelled score so the figure is never a lonely number ("3" -> "3/10 buyer fit"). */}
+          <div className="flex items-baseline gap-1.5 mb-2">
+            <span className="font-extrabold leading-none" style={{ fontSize: 22, color: col }}>{issue.score}<span className="text-gray-400 font-bold" style={{ fontSize: 12.5 }}>/10</span></span>
+            <span className="text-gray-500 font-semibold" style={{ fontSize: 11.5 }}>buyer fit</span>
           </div>
           <div className="mb-2.5"><SeverityBar score={issue.score} height={5} /></div>
           <RankReveal text={issue.explanation} accent={col} tint={tint} />
