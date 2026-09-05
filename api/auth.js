@@ -118,15 +118,98 @@ async function handleMyRoasts(req, res) {
   }
   if (!session || !session.email) return res.status(401).json({ error: 'Session expired' });
   const email = String(session.email).toLowerCase();
+  // Include any prior emails (aliases from a verified email change) so past roasts still show.
+  const emails = new Set([email]);
+  try { const al = await redis.smembers(`roast:aliases:${email}`); (al || []).forEach(a => emails.add(String(a).toLowerCase())); } catch (e) {}
   let roasts = [];
   try {
     const raw = await redis.lrange('roast:index', 0, 999);
     roasts = (raw || [])
       .map(r => { try { return typeof r === 'string' ? JSON.parse(r) : r; } catch (e) { return null; } })
-      .filter(r => r && (r.email || '').toLowerCase() === email)
+      .filter(r => r && emails.has((r.email || '').toLowerCase()))
       .map(r => ({ reportId: r.reportId, ts: r.ts, company: r.company || '', platform: r.platform || '', icp: r.icp || '', adScore: r.adScore, lpScore: r.lpScore, matchScore: r.matchScore }));
   } catch (e) { /* redis down -> return an empty list rather than erroring the dashboard */ }
   return res.status(200).json({ success: true, email, roasts });
+}
+
+/* Move a roast account from one email to another. Renames the account record (plan +
+   tokens) and the accounts set, moves the last-roast pointer, and records the old email as
+   an ALIAS of the new one so past roasts (roast:index rows keyed by the old email) still
+   surface under the new email, without a risky rewrite of the shared roast:index list. */
+async function migrateAccountEmail(oldRaw, newRaw) {
+  const oldEmail = String(oldRaw || '').toLowerCase();
+  const newEmail = String(newRaw || '').toLowerCase();
+  if (!oldEmail || !newEmail || oldEmail === newEmail) return;
+  try {
+    const raw = await redis.get(`roast:acct:${oldEmail}`);
+    if (raw) {
+      const existing = await redis.get(`roast:acct:${newEmail}`);
+      if (!existing) await redis.set(`roast:acct:${newEmail}`, typeof raw === 'string' ? raw : JSON.stringify(raw));
+      await redis.del(`roast:acct:${oldEmail}`);
+    }
+    try { await redis.sadd('roast:accounts', newEmail); await redis.srem('roast:accounts', oldEmail); } catch (e) {}
+    try {
+      const lr = await redis.get(`roast:last:${oldEmail}`);
+      if (lr) { await redis.set(`roast:last:${newEmail}`, typeof lr === 'string' ? lr : JSON.stringify(lr), { ex: 60 * 60 * 24 * 30 }); await redis.del(`roast:last:${oldEmail}`); }
+    } catch (e) {}
+    try {
+      await redis.sadd(`roast:aliases:${newEmail}`, oldEmail);
+      const prev = await redis.smembers(`roast:aliases:${oldEmail}`);
+      if (prev && prev.length) await redis.sadd(`roast:aliases:${newEmail}`, ...prev);
+      await redis.del(`roast:aliases:${oldEmail}`);
+    } catch (e) {}
+  } catch (e) { /* best-effort: the new session still issues below */ }
+}
+
+/* Start a verified email change for the signed-in roast account: emails a confirmation
+   link to the NEW address carrying `changeFrom`; the change only applies when that link is
+   clicked (handleVerify migrates the account then). Never trusts a client-supplied current
+   email, only the session's. */
+async function handleChangeEmailRequest(req, res) {
+  const sessionToken = readSessionCookie(req);
+  if (!sessionToken) return res.status(401).json({ error: 'Not signed in' });
+  let session = null;
+  try {
+    const raw = await redis.get(`auth:session:${sessionToken}`);
+    if (raw) session = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch (e) { return res.status(500).json({ error: 'Session lookup failed' }); }
+  if (!session || !session.email || session.mode !== 'roast') return res.status(401).json({ error: 'Session expired' });
+  let body = req.body;
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
+  const newEmail = ((body && body.email) || '').trim().toLowerCase();
+  const oldEmail = String(session.email).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) return res.status(400).json({ error: 'Please enter a valid email address.' });
+  if (newEmail === oldEmail) return res.status(400).json({ error: 'That is already your email.' });
+  try { const existing = await redis.get(`roast:acct:${newEmail}`); if (existing) return res.status(409).json({ error: 'That email already has an AdRoast account. Sign in with it instead.' }); } catch (e) {}
+  const token = randomToken(24);
+  try {
+    await redis.set(`auth:magic:${token}`, JSON.stringify({ email: newEmail, mode: 'roast', changeFrom: oldEmail, createdAt: Date.now() }), { ex: 15 * 60 });
+  } catch (e) { return res.status(500).json({ error: 'Could not start the email change. Please try again.' }); }
+  const proto = (req.headers['x-forwarded-proto'] || 'https');
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  const magicLink = `${proto}://${host}/api/auth?action=verify&token=${encodeURIComponent(token)}`;
+  try {
+    const message =
+`You asked to change your AdRoast account email to this address.
+
+Click the link below to confirm the change. It expires in 15 minutes and can only be used once. Your plan and roast history move with you.
+
+${magicLink}
+
+If you didn't request this, you can ignore this email and nothing changes.
+
+AdRoast`;
+    const emailPayload = {
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: EMAILJS_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      template_params: { to_email: newEmail, subject: 'Confirm your new AdRoast email', message }
+    };
+    if (process.env.EMAILJS_PRIVATE_KEY) emailPayload.accessToken = process.env.EMAILJS_PRIVATE_KEY;
+    const emailRes = await fetch('https://api.emailjs.com/api/v1.0/email/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(emailPayload) });
+    if (!emailRes.ok) return res.status(500).json({ error: 'Could not send the confirmation email. Please try again.' });
+  } catch (e) { return res.status(500).json({ error: 'Could not send the confirmation email. Please try again.' }); }
+  return res.status(200).json({ success: true, message: `Check ${newEmail} for a link to confirm the change.` });
 }
 
 /* Open the Stripe billing portal for the SIGNED-IN account (subscription + invoices).
@@ -278,6 +361,12 @@ async function handleVerify(req, res) {
   }
   if (!magicData) return res.redirect(302, '/?signin=expired');
 
+  /* Verified email change: migrate the account from the old email to this one BEFORE issuing
+     the session, so the new session already reflects the moved plan + roast history. */
+  if (magicData.mode === 'roast' && magicData.changeFrom) {
+    try { await migrateAccountEmail(magicData.changeFrom, magicData.email); } catch (e) {}
+  }
+
   const isRoast = magicData.mode === 'roast';
   const sessionToken = randomToken(32);
   try {
@@ -403,6 +492,9 @@ export default async function handler(req, res) {
       case 'billing-portal':
         if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
         return await handleBillingPortal(req, res);
+      case 'change-email':
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+        return await handleChangeEmailRequest(req, res);
       case 'logout':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleLogout(req, res);

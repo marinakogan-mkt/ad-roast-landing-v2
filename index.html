@@ -2150,6 +2150,24 @@
       };
       // Plan & billing: open the Stripe billing portal (subscription + invoices) for paying
       // accounts; accounts that never paid have no Stripe customer, so fall back to pricing.
+      // Change email: sends a confirmation link to the new address; the swap (with plan + history)
+      // only applies when that link is clicked (server-side migration in handleVerify).
+      const [changeEmailOpen, setChangeEmailOpen] = useState(false);
+      const [changeEmailNew, setChangeEmailNew] = useState('');
+      const [changeEmailBusy, setChangeEmailBusy] = useState(false);
+      const [changeEmailMsg, setChangeEmailMsg] = useState(null); // { ok, text }
+      const submitChangeEmail = async () => {
+        const e = (changeEmailNew || '').trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { setChangeEmailMsg({ ok: false, text: 'Enter a valid email address.' }); return; }
+        setChangeEmailBusy(true); setChangeEmailMsg(null);
+        try {
+          const r = await fetch('/api/auth?action=change-email', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: e }) });
+          const d = await r.json().catch(() => ({}));
+          if (r.ok && d.success) setChangeEmailMsg({ ok: true, text: d.message || 'Check your new email to confirm.' });
+          else setChangeEmailMsg({ ok: false, text: d.error || 'Could not start the change.' });
+        } catch (err) { setChangeEmailMsg({ ok: false, text: 'Something went wrong. Please try again.' }); }
+        setChangeEmailBusy(false);
+      };
       const [billingBusy, setBillingBusy] = useState(false);
       const openBilling = async () => {
         setBillingBusy(true);
@@ -3443,6 +3461,7 @@
                           <div style={{ padding: '6px 0' }}>
                             <button onClick={() => { setShowMyRoasts(true); setAcctMenuOpen(false); }} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>
                             <a href="/?library=1" className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your live ads board</a>
+                            <button onClick={() => { setChangeEmailNew(''); setChangeEmailMsg(null); setChangeEmailOpen(true); setAcctMenuOpen(false); }} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="mail" className="w-4 h-4" style={{ color: '#0a66c2' }} />Change email</button>
                             {roastSession.plan !== 'unlimited' && <button onClick={openBilling} disabled={billingBusy} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors disabled:opacity-60" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="zap" className="w-4 h-4" style={{ color: '#0a66c2' }} />{billingBusy ? 'Opening billing…' : 'Plan & billing'}</button>}
                           </div>
                           <div className="border-t border-gray-100" style={{ padding: '6px 0' }}>
@@ -3708,6 +3727,29 @@
 
           {/* "My roasted ads" dashboard overlay, opened from the account menu. */}
           {showMyRoasts && <MyRoastsPanel onClose={() => setShowMyRoasts(false)} />}
+
+          {/* Change-email modal (opened from the account menu). Sends a confirmation link to the
+              new address; the swap applies only when that link is clicked. */}
+          {changeEmailOpen && (
+            <div className="fixed inset-0 grid place-items-center p-4" style={{ zIndex: 70, background: 'rgba(11,15,26,.45)' }} onClick={() => { if (!changeEmailBusy) setChangeEmailOpen(false); }}>
+              <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl border w-full" style={{ maxWidth: 420, borderColor: '#e8ecf1', boxShadow: '0 20px 50px rgba(11,15,26,.28)' }}>
+                <div className="p-5 sm:p-6">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <h3 className="font-bold text-gray-900" style={{ fontSize: 18 }}>Change your email</h3>
+                    <button onClick={() => setChangeEmailOpen(false)} className="text-gray-400 bg-transparent border-none cursor-pointer p-0" style={{ fontSize: 18 }} aria-label="Close">&times;</button>
+                  </div>
+                  <p className="text-gray-500" style={{ fontSize: 13.5, lineHeight: 1.5, marginBottom: 14 }}>We will send a confirmation link to your new email. Your plan and roast history move with you once you confirm.</p>
+                  <div className="text-xs font-semibold text-gray-500 mb-1.5">Currently: <span className="text-gray-800">{roastSession && roastSession.email}</span></div>
+                  <input type="email" inputMode="email" autoComplete="email" value={changeEmailNew} onChange={(e) => setChangeEmailNew(e.target.value)} placeholder="new@email.com" disabled={changeEmailBusy} onKeyDown={(e) => { if (e.key === 'Enter') submitChangeEmail(); }} className="w-full px-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:border-blue-500 text-gray-900" style={{ borderColor: '#d1d5db' }} />
+                  {changeEmailMsg && <div className="mt-2.5 rounded-lg px-3 py-2" style={{ fontSize: 12.5, lineHeight: 1.45, background: changeEmailMsg.ok ? '#ecfdf5' : '#fef2f2', color: changeEmailMsg.ok ? '#15803d' : '#b91c1c', border: '1px solid ' + (changeEmailMsg.ok ? '#a7f3d0' : '#fecaca') }}>{changeEmailMsg.text}</div>}
+                  <div className="flex items-center gap-2 mt-4">
+                    <button onClick={submitChangeEmail} disabled={changeEmailBusy} className="font-bold text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60" style={{ fontSize: 13.5, padding: '9px 16px', background: '#0a66c2' }}>{changeEmailBusy ? 'Sending…' : 'Send confirmation'}</button>
+                    <button onClick={() => setChangeEmailOpen(false)} className="font-semibold text-gray-500 bg-transparent border-none cursor-pointer" style={{ fontSize: 13.5 }}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* HERO */}
           <section className="flex-shrink-0 text-center px-4 sm:px-6" style={{ paddingTop: '56px', paddingBottom: '40px', position: 'relative', overflow: 'hidden' }}>
