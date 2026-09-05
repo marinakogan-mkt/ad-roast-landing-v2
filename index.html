@@ -2146,6 +2146,7 @@
       const [navOpen, setNavOpen] = useState(false);
       const [acctMenuOpen, setAcctMenuOpen] = useState(false);   // account dropdown (kebab) in the header
       const [showMyRoasts, setShowMyRoasts] = useState(false);   // "My roasted ads" dashboard overlay
+      const [showMyAccount, setShowMyAccount] = useState(false); // "My account" settings overlay
       // Sign out of a roast-tool account, then drop the local session so the header reflects it.
       const signOutRoast = async () => {
         try { await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
@@ -2631,6 +2632,20 @@
          Back arrow walks back a step (and out to the landing from step 0) instead
          of leaving the site. Refs avoid stale-closure reads inside the listener. */
       const viewRef = React.useRef(view); viewRef.current = view;
+      /* For a returning signed-in client, the home is their dashboard, not the marketing page:
+         when a roast account loads the bare "/" (no deep-link params, on the landing view), open
+         their roasted-ads dashboard once. They can close it to see the marketing site. */
+      const autoDashRef = React.useRef(false);
+      useEffect(() => {
+        if (autoDashRef.current) return;
+        if (!(roastSession && roastSession.email)) return;
+        try {
+          if (window.location.pathname !== '/' || (window.location.search || '')) return;
+        } catch (e) { return; }
+        if (viewRef.current && viewRef.current !== 'landing') return;
+        autoDashRef.current = true;
+        setShowMyRoasts(true);
+      }, [roastSession]);
       const stepRef = React.useRef(guidedStep); stepRef.current = guidedStep;
       const cameFromResultsRef = React.useRef(false); cameFromResultsRef.current = cameFromResults;
       const prevViewRef = React.useRef(null);
@@ -3470,16 +3485,17 @@
                       <>
                         <div className="fixed inset-0" style={{ zIndex: 40 }} onClick={() => setAcctMenuOpen(false)} />
                         <div className="absolute right-0 rounded-2xl border bg-white overflow-hidden" style={{ top: '140%', zIndex: 50, borderColor: '#e8ecf1', width: 258, boxShadow: '0 14px 38px rgba(11,15,26,.18)' }}>
-                          <div className="px-4 py-3.5 border-b border-gray-100">
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400">My account</div>
-                            <div className="text-sm font-semibold text-gray-900 truncate mt-1">{roastSession.email}</div>
-                            <div className="mt-2"><span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: paid ? '#dcfce7' : '#fef2f2', color: paid ? '#15803d' : '#b91c1c' }}><span style={{ width: 5, height: 5, borderRadius: 99, background: paid ? '#15803d' : '#b91c1c', display: 'inline-block' }} />{planLabel}</span></div>
-                          </div>
+                          <button onClick={() => { setShowMyAccount(true); setAcctMenuOpen(false); }} className="w-full text-left px-4 py-3.5 border-b border-gray-100 cursor-pointer bg-transparent hover:bg-gray-50 transition-colors flex items-center gap-2">
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-[10px] font-bold uppercase tracking-wide text-gray-400">My account</span>
+                              <span className="block text-sm font-semibold text-gray-900 truncate mt-1">{roastSession.email}</span>
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full mt-2" style={{ background: paid ? '#dcfce7' : '#fef2f2', color: paid ? '#15803d' : '#b91c1c' }}><span style={{ width: 5, height: 5, borderRadius: 99, background: paid ? '#15803d' : '#b91c1c', display: 'inline-block' }} />{planLabel}</span>
+                            </span>
+                            <Icon name="chevronRight" className="w-4 h-4 flex-none text-gray-300" />
+                          </button>
                           <div style={{ padding: '6px 0' }}>
                             <button onClick={() => { setShowMyRoasts(true); setAcctMenuOpen(false); }} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>
                             <a href="/?library=1" className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your live ads board</a>
-                            <button onClick={() => { setChangeEmailNew(''); setChangeEmailMsg(null); setChangeEmailOpen(true); setAcctMenuOpen(false); }} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="mail" className="w-4 h-4" style={{ color: '#0a66c2' }} />Change email</button>
-                            {roastSession.plan !== 'unlimited' && <button onClick={openBilling} disabled={billingBusy} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors disabled:opacity-60" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="zap" className="w-4 h-4" style={{ color: '#0a66c2' }} />{billingBusy ? 'Opening billing…' : 'Plan & billing'}</button>}
                           </div>
                           <div className="border-t border-gray-100" style={{ padding: '6px 0' }}>
                             <button onClick={signOutRoast} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-red-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#b91c1c' }}><Icon name="x" className="w-4 h-4" />Sign out</button>
@@ -3743,6 +3759,54 @@
 
           {/* "My roasted ads" dashboard overlay, opened from the account menu. */}
           {showMyRoasts && <MyRoastsPanel onClose={() => setShowMyRoasts(false)} />}
+
+          {/* "My account" settings page (profile / email, plan & billing, quick links), opened from
+              the account menu. Like a standard SaaS account area; change-email lives inside it. */}
+          {showMyAccount && roastSession && roastSession.email && (() => {
+            const paid = roastSession.plan === 'unlimited' || roastSession.tokens > 0;
+            const planLabel = roastSession.plan === 'unlimited' ? 'Unlimited' : (typeof roastSession.tokens === 'number' ? roastSession.tokens + ' roast' + (roastSession.tokens === 1 ? '' : 's') + ' left' : 'Free');
+            const planName = roastSession.plan === 'unlimited' ? 'Unlimited' : (roastSession.plan === 'monthly' ? 'Monthly' : 'Free');
+            return (
+              <div className="fixed inset-0 overflow-y-auto" style={{ background: '#f6f8fb', zIndex: 60 }}>
+                <div className="sticky top-0 border-b border-gray-200" style={{ zIndex: 10, backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
+                  <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0"><img src={ADROAST_LOGO} alt="AdRoast" className="w-8 h-8 rounded flex-none" /><span className="text-lg text-gray-800 font-semibold">AdRoast</span><span className="text-gray-300">/</span><span className="text-sm font-semibold text-gray-500 truncate">My account</span></div>
+                    <button onClick={() => setShowMyAccount(false)} className="flex-none inline-flex items-center text-sm font-semibold rounded-full px-4 py-1.5 bg-white border-2 hover:bg-gray-50 transition-colors" style={{ borderColor: '#e5e7eb', color: '#374151' }}>Close</button>
+                  </div>
+                </div>
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                  <div>
+                    <h1 className="font-bold text-gray-900" style={{ fontSize: 24, letterSpacing: '-0.01em' }}>My account</h1>
+                    <p className="text-gray-500" style={{ fontSize: 13.5, marginTop: 2 }}>Manage your profile, plan, and billing.</p>
+                  </div>
+                  <div className="bg-white border rounded-2xl" style={{ borderColor: '#e8ecf1', padding: '18px 20px' }}>
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-3">Profile</div>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="grid place-items-center rounded-full text-white font-bold flex-none" style={{ width: 44, height: 44, background: '#0a66c2', fontSize: 18 }}>{(roastSession.email || '?').charAt(0).toUpperCase()}</span>
+                        <div className="min-w-0"><div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Email</div><div className="font-semibold text-gray-900 truncate" style={{ fontSize: 15 }}>{roastSession.email}</div></div>
+                      </div>
+                      <button onClick={() => { setChangeEmailNew(''); setChangeEmailMsg(null); setChangeEmailOpen(true); }} className="font-semibold rounded-lg hover:bg-blue-50 transition-colors" style={{ fontSize: 13, padding: '8px 14px', border: '1px solid #cfe1f5', color: '#0a66c2', background: '#fff' }}>Change email</button>
+                    </div>
+                  </div>
+                  <div className="bg-white border rounded-2xl" style={{ borderColor: '#e8ecf1', padding: '18px 20px' }}>
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-3">Plan &amp; billing</div>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div><div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Current plan</div><div className="flex items-center gap-2 mt-1"><span className="font-bold text-gray-900" style={{ fontSize: 16 }}>{planName}</span><span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: paid ? '#dcfce7' : '#fef2f2', color: paid ? '#15803d' : '#b91c1c' }}>{planLabel}</span></div></div>
+                      {roastSession.plan === 'unlimited'
+                        ? <span className="text-gray-400" style={{ fontSize: 12.5 }}>Comped account, no billing.</span>
+                        : <button onClick={openBilling} disabled={billingBusy} className="font-bold text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60" style={{ fontSize: 13, padding: '8px 16px', background: '#0a66c2' }}>{billingBusy ? 'Opening…' : (paid ? 'Manage billing & invoices' : 'Upgrade')}</button>}
+                    </div>
+                  </div>
+                  <div className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: '#e8ecf1' }}>
+                    <button onClick={() => { setShowMyAccount(false); setShowMyRoasts(true); }} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#1f2937', borderBottom: '1px solid #f1f5f9' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>
+                    <a href="/?library=1" className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#1f2937', borderBottom: '1px solid #f1f5f9' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your live ads board</a>
+                    <button onClick={signOutRoast} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-red-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#b91c1c' }}><Icon name="x" className="w-4 h-4" />Sign out</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Change-email modal (opened from the account menu). Sends a confirmation link to the
               new address; the swap applies only when that link is clicked. */}
