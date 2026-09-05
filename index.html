@@ -1086,15 +1086,19 @@
         catch (e) { return '/api/icp?img=' + encodeURIComponent(u); }
       };
       const RoastCard = ({ r }) => {
+        const [broken, setBroken] = useState(false);
         const sc = typeof r.adScore === 'number' ? r.adScore : null;
         const gv = sc != null ? SEV(sc) : null;
         const plat = platOf(r.platform);
+        // Prefer the report's served creative (handles inline base64 AND hotlinks); fall back to a
+        // direct hotlink via our proxy if the summary already carries one.
+        const creativeUrl = r.img ? imgProxy(r.img) : ('/api/roast-view?action=creative&id=' + encodeURIComponent(r.reportId));
         return (
           <a href={'/?id=' + encodeURIComponent(r.reportId)} className="block no-underline card-lift bg-white border rounded-2xl overflow-hidden" style={{ borderColor: gv ? gv.bd : '#e8ecf1', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 22px rgba(11,15,26,.05)' }}>
             {/* The real ad creative, up top, like the live board. */}
             <div className="grid place-items-center" style={{ height: 150, background: '#f8fafc', borderBottom: '1px solid #eef1f5', padding: 12, overflow: 'hidden', position: 'relative' }}>
-              {r.img
-                ? <img src={imgProxy(r.img)} alt={(r.company || 'ad') + ' creative'} loading="lazy" style={{ maxWidth: '100%', maxHeight: 126, width: 'auto', height: 'auto', objectFit: 'contain', borderRadius: 6, boxShadow: '0 1px 4px rgba(11,15,26,.12)', display: 'block' }} />
+              {!broken
+                ? <img src={creativeUrl} alt={(r.company || 'ad') + ' creative'} loading="lazy" onError={() => setBroken(true)} style={{ maxWidth: '100%', maxHeight: 126, width: 'auto', height: 'auto', objectFit: 'contain', borderRadius: 6, boxShadow: '0 1px 4px rgba(11,15,26,.12)', display: 'block' }} />
                 : <span style={{ opacity: 0.32 }}>{plat ? <PlatLogo plat={plat} size={38} /> : <Icon name="alertCircle" className="w-9 h-9 text-gray-300" />}</span>}
               {gv && <span className="absolute inline-flex items-center gap-1 rounded-full font-bold" style={{ top: 8, right: 8, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.03em', color: gv.c, background: '#fff', border: '1px solid ' + gv.bd, padding: '2px 7px', boxShadow: '0 1px 3px rgba(11,15,26,.12)' }}><span style={{ width: 4, height: 4, borderRadius: 99, background: gv.c, display: 'inline-block' }} />{gv.label}</span>}
             </div>

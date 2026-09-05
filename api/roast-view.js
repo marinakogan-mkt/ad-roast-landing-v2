@@ -132,6 +132,28 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing report ID' });
   }
 
+  /* Serve a report's ad creative as a raw image (base64 stored inline -> decoded bytes; or a
+     redirect to the hotlink). Lets the "My roasted ads" dashboard show the real creative without
+     inlining heavy base64 into the roast list. Public, like the shareable report itself. */
+  if (req.query.action === 'creative') {
+    try {
+      const raw = await redis.get(`roast:report:${id}`);
+      const rec = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+      if (rec && rec.adScreenshot) {
+        const b64 = String(rec.adScreenshot).replace(/^data:[^,]+,/, '');
+        const buf = Buffer.from(b64, 'base64');
+        res.setHeader('Content-Type', rec.adScreenshotType || 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.status(200).send(buf);
+      }
+      if (rec && rec.adImageUrl) {
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.redirect(302, rec.adImageUrl);
+      }
+      return res.status(404).end();
+    } catch (e) { return res.status(404).end(); }
+  }
+
   /* Redis-first: internal roasts stored by /api/roast. Returns without ever
      touching Notion, so the report link works even if Notion is down/unset. */
   try {
