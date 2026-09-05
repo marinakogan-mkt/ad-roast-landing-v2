@@ -146,9 +146,19 @@ export default async function handler(req, res) {
         res.setHeader('Cache-Control', 'public, max-age=86400');
         return res.status(200).send(buf);
       }
-      if (rec && rec.adImageUrl) {
-        res.setHeader('Cache-Control', 'public, max-age=86400');
-        return res.redirect(302, rec.adImageUrl);
+      if (rec && rec.adImageUrl && /^https?:\/\//i.test(rec.adImageUrl)) {
+        // Proxy the hotlink server-side (licdn/googlesyndication block cross-site hotlinking, so a
+        // 302 to them renders blank); fetch it here and stream the bytes back.
+        try {
+          const r = await fetch(rec.adImageUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', 'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8' } });
+          if (r.ok) {
+            const ct = (r.headers.get('content-type') || 'image/jpeg').split(';')[0];
+            const buf = Buffer.from(await r.arrayBuffer());
+            res.setHeader('Content-Type', ct.startsWith('image/') ? ct : 'image/jpeg');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return res.status(200).send(buf);
+          }
+        } catch (e) { /* fall through to 404 */ }
       }
       return res.status(404).end();
     } catch (e) { return res.status(404).end(); }
