@@ -663,7 +663,7 @@ Return the JSON object defined in the output contract. All fields required.`;
               record.adImageUrl = adImageUrl;
             }
             await _redis.set(`roast:report:${reportId}`, JSON.stringify(record), { ex: 60 * 60 * 24 * 90 });
-            const summary = { reportId, ts, email: acctEmail, platform: platform || '', company: company || '', icp: (icpDescription || '').slice(0, 160), adScore: parsed.overall_score ?? null, lpScore: parsed.landing_page_roast?.overall_score ?? null, matchScore: parsed.ad_landing_mismatch?.alignment_score ?? null };
+            const summary = { reportId, ts, email: acctEmail, platform: platform || '', company: company || '', icp: (icpDescription || '').slice(0, 160), adScore: parsed.overall_score ?? null, lpScore: parsed.landing_page_roast?.overall_score ?? null, matchScore: parsed.ad_landing_mismatch?.alignment_score ?? null, img: (adImageUrl && typeof adImageUrl === 'string') ? adImageUrl : null };
             await _redis.lpush('roast:index', JSON.stringify(summary));
             await _redis.ltrim('roast:index', 0, 999); // keep the most recent 1000
           } catch (e) { console.error('[AdRoast] roast index error:', e.message); }

@@ -127,8 +127,22 @@ async function handleMyRoasts(req, res) {
     roasts = (raw || [])
       .map(r => { try { return typeof r === 'string' ? JSON.parse(r) : r; } catch (e) { return null; } })
       .filter(r => r && emails.has((r.email || '').toLowerCase()))
-      .map(r => ({ reportId: r.reportId, ts: r.ts, company: r.company || '', platform: r.platform || '', icp: r.icp || '', adScore: r.adScore, lpScore: r.lpScore, matchScore: r.matchScore }));
+      .map(r => ({ reportId: r.reportId, ts: r.ts, company: r.company || '', platform: r.platform || '', icp: r.icp || '', adScore: r.adScore, lpScore: r.lpScore, matchScore: r.matchScore, img: r.img || null }));
   } catch (e) { /* redis down -> return an empty list rather than erroring the dashboard */ }
+  /* Enrich each roast with its ad creative so the dashboard shows the real ad (like the live
+     board), not just a score. Newer roasts carry img in the summary; for older ones, pull the
+     creative hotlink from the report. Bounded to a page of the user's own roasts (dozens), and
+     we only include a hotlink URL (never the heavy inlined base64) to keep the response small. */
+  try {
+    const need = roasts.filter(r => !r.img && r.reportId).slice(0, 60);
+    await Promise.all(need.map(async (r) => {
+      try {
+        const rep = await redis.get(`roast:report:${r.reportId}`);
+        const rec = rep ? (typeof rep === 'string' ? JSON.parse(rep) : rep) : null;
+        if (rec && rec.adImageUrl) r.img = rec.adImageUrl;
+      } catch (e) { /* skip this one */ }
+    }));
+  } catch (e) { /* enrichment is best-effort */ }
   return res.status(200).json({ success: true, email, roasts });
 }
 
