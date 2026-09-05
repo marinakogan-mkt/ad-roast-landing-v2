@@ -102,6 +102,33 @@ async function handleMe(req, res) {
   return res.status(200).json(out);
 }
 
+/* Every ad this signed-in account has roasted, newest first. Reads the global
+   roast:index (compact summaries carry the account email) and filters to the
+   session's own email, so a user only ever sees their own roasts. Powers the
+   "My roasted ads" dashboard (by-company and all-mixed views). */
+async function handleMyRoasts(req, res) {
+  const sessionToken = readSessionCookie(req);
+  if (!sessionToken) return res.status(401).json({ error: 'Not signed in' });
+  let session = null;
+  try {
+    const raw = await redis.get(`auth:session:${sessionToken}`);
+    if (raw) session = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch (e) {
+    return res.status(500).json({ error: 'Session lookup failed' });
+  }
+  if (!session || !session.email) return res.status(401).json({ error: 'Session expired' });
+  const email = String(session.email).toLowerCase();
+  let roasts = [];
+  try {
+    const raw = await redis.lrange('roast:index', 0, 999);
+    roasts = (raw || [])
+      .map(r => { try { return typeof r === 'string' ? JSON.parse(r) : r; } catch (e) { return null; } })
+      .filter(r => r && (r.email || '').toLowerCase() === email)
+      .map(r => ({ reportId: r.reportId, ts: r.ts, company: r.company || '', platform: r.platform || '', icp: r.icp || '', adScore: r.adScore, lpScore: r.lpScore, matchScore: r.matchScore }));
+  } catch (e) { /* redis down -> return an empty list rather than erroring the dashboard */ }
+  return res.status(200).json({ success: true, email, roasts });
+}
+
 async function handleLogout(req, res) {
   const sessionToken = readSessionCookie(req);
   if (sessionToken) {
@@ -334,6 +361,9 @@ export default async function handler(req, res) {
       case 'me':
         if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
         return await handleMe(req, res);
+      case 'my-roasts':
+        if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+        return await handleMyRoasts(req, res);
       case 'logout':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleLogout(req, res);
