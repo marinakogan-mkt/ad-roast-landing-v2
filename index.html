@@ -2135,6 +2135,31 @@
         try { await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
         setRoastSession(null); setAcctMenuOpen(false); setShowMyRoasts(false);
       };
+      /* A signed-in Partner Portal account (mode !== 'roast'). Portal users get their own menu
+         variant (email + Partner Portal, no free-roast dashboard), per Marina. */
+      const [portalAcct, setPortalAcct] = useState(null);
+      useEffect(() => {
+        fetch('/api/auth?action=me', { credentials: 'same-origin' })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d && d.session && d.session.mode && d.session.mode !== 'roast' && d.session.email) setPortalAcct({ email: d.session.email, mode: d.session.mode }); })
+          .catch(() => {});
+      }, []);
+      const signOutPortal = async () => {
+        try { await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
+        setPortalAcct(null); setAcctMenuOpen(false);
+      };
+      // Plan & billing: open the Stripe billing portal (subscription + invoices) for paying
+      // accounts; accounts that never paid have no Stripe customer, so fall back to pricing.
+      const [billingBusy, setBillingBusy] = useState(false);
+      const openBilling = async () => {
+        setBillingBusy(true);
+        try {
+          const d = await fetch('/api/auth?action=billing-portal', { credentials: 'same-origin' }).then(r => r.json()).catch(() => null);
+          if (d && d.url) { window.location.href = d.url; return; }
+        } catch (e) {}
+        setBillingBusy(false); setAcctMenuOpen(false);
+        window.location.href = '/#pricing';
+      };
       /* Which nav path is active on the home page. Driven by scroll position so that when the
          reader lands in the "Work with us" section the nav highlights it (blue + underline) and
          de-highlights "Roast an ad" - clicking "Roast an ad" then scrolls back to the top. */
@@ -3418,7 +3443,7 @@
                           <div style={{ padding: '6px 0' }}>
                             <button onClick={() => { setShowMyRoasts(true); setAcctMenuOpen(false); }} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>
                             <a href="/?library=1" className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your live ads board</a>
-                            {roastSession.plan !== 'unlimited' && <a href="/#pricing" onClick={() => setAcctMenuOpen(false)} className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="zap" className="w-4 h-4" style={{ color: '#0a66c2' }} />Plan &amp; billing</a>}
+                            {roastSession.plan !== 'unlimited' && <button onClick={openBilling} disabled={billingBusy} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors disabled:opacity-60" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="zap" className="w-4 h-4" style={{ color: '#0a66c2' }} />{billingBusy ? 'Opening billing…' : 'Plan & billing'}</button>}
                           </div>
                           <div className="border-t border-gray-100" style={{ padding: '6px 0' }}>
                             <button onClick={signOutRoast} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-red-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#b91c1c' }}><Icon name="x" className="w-4 h-4" />Sign out</button>
@@ -3429,6 +3454,32 @@
                   </div>
                 );
               })()}
+              {!(roastSession && roastSession.email) && portalAcct && portalAcct.email && (
+                <div className="relative pl-3 ml-1 border-l border-gray-200">
+                  <button onClick={() => setAcctMenuOpen(o => !o)} className="flex items-center gap-1.5 cursor-pointer bg-transparent border-none p-0" title={portalAcct.email} aria-label="Account menu">
+                    <span className="grid place-items-center rounded-full text-white font-bold flex-none" style={{ width: 28, height: 28, background: '#0a66c2', fontSize: 12 }}>{(portalAcct.email || '?').charAt(0).toUpperCase()}</span>
+                    <span className="flex flex-col justify-center" style={{ gap: 3 }} aria-hidden="true"><span style={{ width: 3, height: 3, borderRadius: 99, background: '#64748b', display: 'block' }} /><span style={{ width: 3, height: 3, borderRadius: 99, background: '#64748b', display: 'block' }} /><span style={{ width: 3, height: 3, borderRadius: 99, background: '#64748b', display: 'block' }} /></span>
+                  </button>
+                  {acctMenuOpen && (
+                    <>
+                      <div className="fixed inset-0" style={{ zIndex: 40 }} onClick={() => setAcctMenuOpen(false)} />
+                      <div className="absolute right-0 rounded-2xl border bg-white overflow-hidden" style={{ top: '140%', zIndex: 50, borderColor: '#e8ecf1', width: 258, boxShadow: '0 14px 38px rgba(11,15,26,.18)' }}>
+                        <div className="px-4 py-3.5 border-b border-gray-100">
+                          <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400">My account</div>
+                          <div className="text-sm font-semibold text-gray-900 truncate mt-1">{portalAcct.email}</div>
+                          <div className="mt-2"><span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#eef4fb', color: '#0a66c2' }}><span style={{ width: 5, height: 5, borderRadius: 99, background: '#0a66c2', display: 'inline-block' }} />Partner</span></div>
+                        </div>
+                        <div style={{ padding: '6px 0' }}>
+                          <a href="/#portal" onClick={() => setAcctMenuOpen(false)} className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="users" className="w-4 h-4" style={{ color: '#0a66c2' }} />Partner Portal</a>
+                        </div>
+                        <div className="border-t border-gray-100" style={{ padding: '6px 0' }}>
+                          <button onClick={signOutPortal} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-red-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#b91c1c' }}><Icon name="x" className="w-4 h-4" />Sign out</button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               <a href={CALENDLY_URL} target="_blank" rel="noopener" onClick={bookingClick} style={{ backgroundColor: '#0a66c2', color: '#fff' }} className="text-sm font-semibold no-underline rounded-full px-5 py-2 hover:opacity-90 transition-opacity">Book a call</a>
             </nav>
             <button onClick={() => setNavOpen(o => !o)} className="sm:hidden bg-transparent border-none cursor-pointer p-1.5" aria-label="Menu">

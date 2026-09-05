@@ -129,6 +129,42 @@ async function handleMyRoasts(req, res) {
   return res.status(200).json({ success: true, email, roasts });
 }
 
+/* Open the Stripe billing portal for the SIGNED-IN account (subscription + invoices).
+   Uses the session's own email (never a client-supplied one) so a user can only ever
+   reach their own billing. Returns { url } to redirect to, or no_customer for accounts
+   that have never paid (the UI then sends them to pricing instead). */
+async function handleBillingPortal(req, res) {
+  const sessionToken = readSessionCookie(req);
+  if (!sessionToken) return res.status(401).json({ error: 'Not signed in' });
+  let session = null;
+  try {
+    const raw = await redis.get(`auth:session:${sessionToken}`);
+    if (raw) session = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch (e) {
+    return res.status(500).json({ error: 'Session lookup failed' });
+  }
+  if (!session || !session.email) return res.status(401).json({ error: 'Session expired' });
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return res.status(500).json({ error: 'billing_unconfigured' });
+  const siteUrl = process.env.SITE_URL || 'https://adroast.in';
+  try {
+    const cr = await fetch('https://api.stripe.com/v1/customers?email=' + encodeURIComponent(session.email) + '&limit=1', { headers: { 'Authorization': `Bearer ${key}` } });
+    const cd = await cr.json();
+    const customer = cd && cd.data && cd.data[0] && cd.data[0].id;
+    if (!customer) return res.status(404).json({ error: 'no_customer' });
+    const pr = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ customer, return_url: siteUrl }).toString()
+    });
+    const pd = await pr.json();
+    if (!pr.ok || !pd.url) return res.status(500).json({ error: 'portal_failed' });
+    return res.status(200).json({ success: true, url: pd.url });
+  } catch (e) {
+    return res.status(500).json({ error: 'portal_error' });
+  }
+}
+
 async function handleLogout(req, res) {
   const sessionToken = readSessionCookie(req);
   if (sessionToken) {
@@ -364,6 +400,9 @@ export default async function handler(req, res) {
       case 'my-roasts':
         if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
         return await handleMyRoasts(req, res);
+      case 'billing-portal':
+        if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+        return await handleBillingPortal(req, res);
       case 'logout':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleLogout(req, res);
