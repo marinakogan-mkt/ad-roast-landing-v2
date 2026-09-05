@@ -4811,13 +4811,18 @@
            (JS-rendered / bot-blocked). Keyed off inputs.url (client state), so it also
            shows on a cached/deduped roast and on an opened report link (for the owner). */
         const lpScrapeFailed = canReroast && (lp.overall_score || 0) === 0 && !!(inputs.url || '').trim();
+        // Cards are grouped into two dashboard sections: "diagnose" (where the click is leaking,
+        // the don't) and "act" (what to ship, the do). Each diagnostic card carries a gravity
+        // chip so its score reads as a severity level.
         const overviewCards = [
-          { id: 'scores', label: 'Scores', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score) },
-          { id: 'issues', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue) },
-          ...((lp.overall_score != null || (mismatch.disconnects && mismatch.disconnects.length > 0)) ? [{ id: 'landing', label: 'Landing page', value: lp.overall_score > 0 ? lp.overall_score : '-', suffix: lp.overall_score > 0 ? '/10' : '', desc: 'page & ad match', valueColor: hexForScore(lp.overall_score), barPct: (lp.overall_score || 0) * 10, barColor: hexForScore(lp.overall_score) }] : []),
-          { id: 'fixes', label: 'Fixes', value: (result.fix_kit && result.fix_kit.headlines ? result.fix_kit.headlines.length : 0), suffix: '', desc: 'ready-to-ship rewrites', valueColor: '#0a66c2', barPct: 100, barColor: '#0a66c2' },
-          { id: 'plan', label: 'Action plan', value: (result.next_steps ? result.next_steps.length : 0), suffix: '', desc: 'steps to ship', valueColor: '#0a66c2', barPct: 100, barColor: '#0a66c2' },
+          { id: 'scores', group: 'diagnose', label: 'Ad score', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score), grav: SEV(result.overall_score || 0) },
+          { id: 'issues', group: 'diagnose', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue), grav: SEV(avgIssue) },
+          ...((lp.overall_score != null || (mismatch.disconnects && mismatch.disconnects.length > 0)) ? [{ id: 'landing', group: 'diagnose', label: 'Landing page', value: lp.overall_score > 0 ? lp.overall_score : '-', suffix: lp.overall_score > 0 ? '/10' : '', desc: 'page & ad match', valueColor: hexForScore(lp.overall_score), barPct: (lp.overall_score || 0) * 10, barColor: hexForScore(lp.overall_score), grav: lp.overall_score > 0 ? SEV(lp.overall_score) : null }] : []),
+          { id: 'fixes', group: 'act', label: 'Fixes', value: (result.fix_kit && result.fix_kit.headlines ? result.fix_kit.headlines.length : 0), suffix: '', desc: 'ready-to-ship rewrites', valueColor: '#0a66c2', barPct: 100, barColor: '#0a66c2' },
+          { id: 'plan', group: 'act', label: 'Action plan', value: (result.next_steps ? result.next_steps.length : 0), suffix: '', desc: 'steps to ship', valueColor: '#0a66c2', barPct: 100, barColor: '#0a66c2' },
         ];
+        const diagnoseCards = overviewCards.filter(c => c.group === 'diagnose');
+        const actCards = overviewCards.filter(c => c.group === 'act');
         return (
           <div className="min-h-screen bg-white">
             <header className="border-b border-gray-200 sticky top-0 z-50" style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)' }}>
@@ -4912,30 +4917,47 @@
                     </div>
                   )}
                 </div>
-                {/* Overview - a clickable metric card per section. Each previews its number
-                    + a mini bar, and expands the full section below when tapped. */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                  {overviewCards.map(c => {
+                {/* Overview as a dashboard, in two sections: where the click is leaking (diagnose,
+                    the "don't") and what to do about it (act, the "do"). Each card previews its
+                    number with a clear label right under it (so no lonely number) + a gravity chip
+                    on the diagnostic cards, and opens the full section below when tapped. */}
+                {(() => {
+                  const renderCard = (c) => {
                     const on = activeTab === c.id;
                     return (
                       <button key={c.id} onClick={() => { setActiveTab(c.id); try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) {} }}
                         className="text-left rounded-2xl border bg-white p-5 cursor-pointer metric-card"
-                        style={{ borderColor: on ? '#0a66c2' : '#e8ecf1', boxShadow: on ? '0 8px 24px rgba(10,102,194,0.13)' : '0 1px 2px rgba(16,24,40,0.04)' }}>
-                        <div className="flex items-center justify-between mb-2">
+                        style={{ borderColor: on ? '#0a66c2' : (c.grav ? c.grav.bd : '#e8ecf1'), boxShadow: on ? '0 8px 24px rgba(10,102,194,0.13)' : '0 1px 2px rgba(16,24,40,0.04)' }}>
+                        <div className="flex items-center justify-between gap-2 mb-2.5">
                           <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{c.label}</span>
-                          <Icon name="chevronRight" className="w-4 h-4 metric-chev" style={{ color: on ? '#0a66c2' : '#cbd5e1', transform: on ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
+                          {c.grav
+                            ? <span className="inline-flex items-center gap-1 rounded-full font-bold flex-none" style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.03em', color: c.grav.c, background: c.grav.bg, border: '1px solid ' + c.grav.bd, padding: '1px 6px' }}><span style={{ width: 4, height: 4, borderRadius: 99, background: c.grav.c, display: 'inline-block' }} />{c.grav.label}</span>
+                            : <Icon name="chevronRight" className="w-4 h-4 metric-chev flex-none" style={{ color: on ? '#0a66c2' : '#cbd5e1', transform: on ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />}
                         </div>
                         <div className="flex items-baseline gap-0.5">
-                          <span className="font-extrabold leading-none" style={{ fontSize: 'clamp(38px, 6vw, 48px)', color: c.valueColor }}>{c.value}</span>
+                          <span className="font-extrabold leading-none" style={{ fontSize: 'clamp(34px, 6vw, 44px)', color: c.valueColor }}>{c.value}</span>
                           {c.suffix && <span className="text-lg font-semibold text-gray-400">{c.suffix}</span>}
                         </div>
-                        <div className="text-xs text-gray-500 mt-1.5 mb-3 leading-snug">{c.desc}</div>
+                        {/* Label directly under the number so the figure is never orphaned ("4 what?"). */}
+                        <div className="font-semibold text-gray-700 mt-1 mb-3 leading-snug" style={{ fontSize: 12.5 }}>{c.desc}</div>
                         <MiniBar pct={c.barPct} color={c.barColor} height={6} />
                         <div className="text-[11px] font-semibold mt-2.5 metric-open inline-flex items-center gap-1" style={{ color: on ? '#0a66c2' : '#94a3b8' }}>{on ? 'Viewing ↓' : 'Tap to open →'}</div>
                       </button>
                     );
-                  })}
-                </div>
+                  };
+                  return (
+                    <div className="space-y-5">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2.5"><span className="w-1.5 h-1.5 rounded-full" style={{ background: '#dc2626' }} /><span className="font-bold uppercase" style={{ fontSize: 10.5, letterSpacing: '0.1em', color: '#b42318' }}>Where you're losing the click</span></div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">{diagnoseCards.map(renderCard)}</div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-2.5"><span className="w-1.5 h-1.5 rounded-full" style={{ background: '#0a66c2' }} /><span className="font-bold uppercase" style={{ fontSize: 10.5, letterSpacing: '0.1em', color: '#0a66c2' }}>What to do about it</span></div>
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4" style={{ maxWidth: 520 }}>{actCards.map(renderCard)}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* SCORES */}
