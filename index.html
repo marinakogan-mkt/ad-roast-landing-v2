@@ -1398,7 +1398,7 @@
         fetch('/api/auth?action=me', { credentials: 'same-origin' })
           .then(r => r.ok ? r.json() : null)
           .then(d => {
-            if (d && d.session && d.session.mode === 'roast') setAcct({ loaded: true, signedIn: true, plan: d.plan || 'free', tokens: (typeof d.tokens === 'number' ? d.tokens : 0) });
+            if (d && d.session && d.session.mode === 'roast') setAcct({ loaded: true, signedIn: true, email: d.session.email || '', plan: d.plan || 'free', tokens: (typeof d.tokens === 'number' ? d.tokens : 0) });
             else setAcct({ loaded: true, signedIn: false });
           })
           .catch(() => setAcct({ loaded: true, signedIn: false }));
@@ -1615,7 +1615,7 @@
         <div className="min-h-screen" style={{ background: '#f6f8fb' }}>
           <header className="bg-white border-b border-gray-200 sticky top-0 z-10" style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-              <a href="/" className="flex items-center gap-2.5 no-underline">
+              <a href="/?home=1" title="AdRoast home" className="flex items-center gap-2.5 no-underline">
                 <img src={ADROAST_LOGO} alt="AdRoast" className="w-8 h-8 rounded" />
                 <span className="text-lg text-gray-800 font-semibold">AdRoast</span>
                 <span className="text-gray-300">/</span>
@@ -1625,7 +1625,9 @@
                 {acct.signedIn && (acct.plan === 'unlimited' || typeof acct.tokens === 'number') && (
                   <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: (acct.plan === 'unlimited' || acct.tokens > 0) ? '#dcfce7' : '#fef2f2', color: (acct.plan === 'unlimited' || acct.tokens > 0) ? '#15803d' : '#b91c1c' }}>{acct.plan === 'unlimited' ? 'Unlimited' : `${acct.tokens} roast${acct.tokens === 1 ? '' : 's'} left`}</span>
                 )}
-                <a href="/" className="text-sm font-semibold text-gray-500 hover:text-gray-800 no-underline">Home</a>
+                {acct.signedIn
+                  ? <a href="/account" title="My account" className="grid place-items-center rounded-full text-white font-bold no-underline flex-none hover:opacity-90 transition-opacity" style={{ width: 32, height: 32, background: '#0a66c2', fontSize: 14 }}>{String(acct.email || '?').charAt(0).toUpperCase()}</a>
+                  : <a href="/?home=1" className="text-sm font-semibold text-gray-500 hover:text-gray-800 no-underline">Home</a>}
               </div>
             </div>
           </header>
@@ -2430,6 +2432,9 @@
         const params = new URLSearchParams(window.location.search);
         const reportId = params.get('id');
         const synthId = params.get('synth');
+        // The marketing homepage, even for a signed-in account (the AdRoast logo links here).
+        // Suppress the auto-redirect-to-board so "/" actually shows the landing.
+        if (params.get('home') === '1') { try { window.history.replaceState({}, '', '/'); } catch (e) {} autoDashRef.current = true; return; }
         // Internal roasts list (admin): /?roasts=1
         if (params.get('roasts') === '1') { setView('roasts-list'); return; }
         // Ad Library board (/?library=1)
