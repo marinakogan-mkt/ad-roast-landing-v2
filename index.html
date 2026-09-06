@@ -1399,7 +1399,8 @@
         const [dead, setDead] = React.useState(false);
         const base = IMG(ad && ad.img);
         const src = tries ? (base + (base.indexOf('?') > -1 ? '&' : '?') + 'r=' + tries) : base;
-        const plat = platOf(ad && ad.plat);
+        const _p = String((ad && ad.plat) || '').toLowerCase();
+        const plat = _p.indexOf('linkedin') > -1 ? 'LinkedIn' : _p.indexOf('google') > -1 ? 'Google' : (_p.indexOf('meta') > -1 || _p.indexOf('facebook') > -1 || _p.indexOf('instagram') > -1) ? 'Meta' : '';
         if (!ad || !ad.img || dead) return (<span style={{ opacity: 0.3 }}>{plat ? <PlatLogo plat={plat} size={40} /> : <Icon name="alertCircle" className="w-9 h-9 text-gray-300" />}</span>);
         return <img src={src} alt={ad.head || 'creative'} loading="lazy" onError={() => { if (tries < 2) setTimeout(() => setTries(t => t + 1), 500); else setDead(true); }} style={{ maxWidth: '100%', maxHeight: maxH, width: 'auto', height: 'auto', display: 'block', borderRadius: 8, boxShadow: '0 1px 4px rgba(11,15,26,.12)' }} />;
       };
