@@ -1049,6 +1049,10 @@
 
     /* Real company logo pulled by domain (works for any advertiser live). Clearbit first,
        Google favicon fallback, then the letter initial if both fail. */
+    /* Logo.dev PUBLISHABLE token (pk_...): high-quality brand logos, the best source. It's a
+       publishable key (safe in client code, like a Maps key). Get a free one at logo.dev ->
+       API keys -> Publishable key, and paste it here. Empty = the chain skips Logo.dev. */
+    const LOGO_DEV_TOKEN = '';
     // Deterministic, distinct-per-company color for the fallback initial badge, so companies whose
     // logo can't be fetched don't all show the same grey square (the "repeated logos" look).
     const BADGE_PALETTE = ['#0a66c2', '#7c3aed', '#0f766e', '#b45309', '#be123c', '#4338ca', '#15803d', '#a21caf', '#c2410c', '#0369a1'];
@@ -1063,9 +1067,10 @@
        everything else. */
     function BrandLogo({ domain, name, initial, color, size = 44, radius = 12 }) {
       const sources = React.useMemo(() => domain ? [
+        LOGO_DEV_TOKEN ? ('https://img.logo.dev/' + domain + '?token=' + LOGO_DEV_TOKEN + '&size=128&retina=true') : null,
         'https://logo.clearbit.com/' + domain + '?size=128',
         'https://www.google.com/s2/favicons?sz=128&domain=' + domain,
-      ] : [], [domain]);
+      ].filter(Boolean) : [], [domain]);
       const [i, setI] = useState(0);
       React.useEffect(() => { setI(0); }, [domain]);
       const box = { width: size, height: size, borderRadius: radius };
