@@ -27,6 +27,35 @@ export default async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') try { body = JSON.parse(body); } catch(e) { body = {}; }
 
+  /* TEMPORARY one-shot: create the Starter/Pro products + 4 prices in Stripe using the
+     server-side STRIPE_SECRET_KEY (never exposed), gated by a throwaway secret. Called once,
+     then this block + the secret are removed. Returns the 4 price IDs to wire into PLANS. */
+  if (body.setup === 'setup_9f3k2p7q_x1a7') {
+    const sk = process.env.STRIPE_SECRET_KEY;
+    if (!sk) return res.status(500).json({ error: 'no stripe key' });
+    const S = async (path, params) => {
+      const r = await fetch('https://api.stripe.com/v1/' + path, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${sk}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(params).toString(),
+      });
+      return r.json();
+    };
+    try {
+      const starter = await S('products', { name: 'AdRoast Starter' });
+      const pro = await S('products', { name: 'AdRoast Pro' });
+      if (starter.error || pro.error) return res.status(400).json({ error: (starter.error || pro.error).message });
+      const mk = (product, amount, interval) => S('prices', { product, unit_amount: String(amount), currency: 'usd', 'recurring[interval]': interval });
+      const [sm, sy, pm, py] = await Promise.all([
+        mk(starter.id, 2900, 'month'), mk(starter.id, 29000, 'year'),
+        mk(pro.id, 7900, 'month'), mk(pro.id, 79000, 'year'),
+      ]);
+      const err = [sm, sy, pm, py].find(x => x.error);
+      if (err) return res.status(400).json({ error: err.error.message });
+      return res.status(200).json({ ok: true, ids: { starter_monthly: sm.id, starter_yearly: sy.id, pro_monthly: pm.id, pro_yearly: py.id } });
+    } catch (e) { return res.status(500).json({ error: String(e && e.message || e) }); }
+  }
+
   const { email } = body;
   const plan = PLANS[body.plan] ? body.plan : 'starter_monthly';
   if (!email) return res.status(400).json({ error: 'Email required' });
