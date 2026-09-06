@@ -1425,6 +1425,8 @@
         const off = sc.length - onT;                       // ads reaching the wrong buyer
         const offPct = Math.round(off / sc.length * 100);  // share of spend off-target
         const crit = sc.filter(a => a.score <= 4).length;  // badly off
+        const strong = sc.filter(a => a.score >= 9).length;       // best-in-class (9-10)
+        const strengthen = sc.length - strong - off;              // solid (7-8), not best-in-class yet
         const avgFit = Math.round(sc.reduce((s, a) => s + a.score, 0) / sc.length * 10) / 10; // mean score /10
         const fitSev = SEV(Math.round(avgFit));            // colour + label for the average fit
         const sev = (offPct >= 30 || crit >= 2) ? { t: 'Budget at risk', c: '#dc2626' }
@@ -1435,6 +1437,14 @@
         // colour reads as severity, not decoration (Marina: "transformarlo en gravedad... mas urgencia").
         const chipOf = (label, c) => ({ label: label, c: c, bg: c + '14', bd: c + '33' });
         const gravAds = chipOf(off > 0 ? sev.t : 'On track', sev.c);
+        // Card 1 never smugly shows "0 to fix" while ads are merely "solid" (7-8): with nothing
+        // reaching the wrong buyer it pivots to how many are solid-but-not-best-in-class, so there
+        // is always an honest next move (Marina: a 7-avg board is NOT "0 to fix").
+        const c1 = off > 0
+          ? { num: off, unit: off === 1 ? 'ad to fix' : 'ads to fix', chip: gravAds, cap: 'reaching the wrong buyer' + (crit > 0 ? ', ' + crit + ' badly off' : '') }
+          : strengthen > 0
+            ? { num: strengthen, unit: strengthen === 1 ? 'ad to strengthen' : 'ads to strengthen', chip: chipOf('Room to grow', '#0a66c2'), cap: 'solid, but not best-in-class yet' }
+            : { num: 0, unit: 'ads to fix', chip: chipOf('Best-in-class', '#15803d'), cap: 'every ad is best-in-class' };
         const gravOff = offPct >= 30 ? chipOf('Severe waste', '#dc2626')
           : offPct >= 15 ? chipOf('High waste', '#dc2626')
           : offPct >= 5 ? chipOf('Leaking', '#b45309')
@@ -1457,13 +1467,13 @@
               <span className="font-bold text-gray-500 uppercase" style={{ fontSize: 10.5, letterSpacing: '0.1em' }}>Your ad spend at a glance</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4" style={{ marginBottom: 22 }}>
-              <div className="card-lift bg-white border rounded-2xl" style={{ borderColor: gravAds.bd, padding: '14px 18px 16px', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 22px rgba(11,15,26,.05)' }}>
-                <div style={{ marginBottom: 9 }}><span className="inline-flex items-center gap-1.5 rounded-full font-bold" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.03em', color: gravAds.c, background: gravAds.bg, border: '1px solid ' + gravAds.bd, padding: '2px 8px' }}><span style={{ width: 5, height: 5, borderRadius: 99, background: gravAds.c, display: 'inline-block' }} />{gravAds.label}</span></div>
+              <div className="card-lift bg-white border rounded-2xl" style={{ borderColor: c1.chip.bd, padding: '14px 18px 16px', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 22px rgba(11,15,26,.05)' }}>
+                <div style={{ marginBottom: 9 }}><span className="inline-flex items-center gap-1.5 rounded-full font-bold" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.03em', color: c1.chip.c, background: c1.chip.bg, border: '1px solid ' + c1.chip.bd, padding: '2px 8px' }}><span style={{ width: 5, height: 5, borderRadius: 99, background: c1.chip.c, display: 'inline-block' }} />{c1.chip.label}</span></div>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="font-extrabold" style={{ fontSize: 'clamp(26px,5vw,34px)', color: gravAds.c, lineHeight: 1, letterSpacing: '-0.02em' }}>{off}</span>
-                  <span className="font-bold text-gray-900" style={{ fontSize: 13.5 }}>{off === 1 ? 'ad to fix' : 'ads to fix'}</span>
+                  <span className="font-extrabold" style={{ fontSize: 'clamp(26px,5vw,34px)', color: c1.chip.c, lineHeight: 1, letterSpacing: '-0.02em' }}>{c1.num}</span>
+                  <span className="font-bold text-gray-900" style={{ fontSize: 13.5 }}>{c1.unit}</span>
                 </div>
-                <div className="text-gray-500" style={{ fontSize: 11.5, marginTop: 7 }}>reaching the wrong buyer{crit > 0 ? ', ' + crit + ' badly off' : ''}</div>
+                <div className="text-gray-500" style={{ fontSize: 11.5, marginTop: 7 }}>{c1.cap}</div>
               </div>
               <div className="card-lift bg-white border rounded-2xl" style={{ borderColor: gravOff.bd, padding: '14px 18px 16px', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 22px rgba(11,15,26,.05)' }}>
                 <div style={{ marginBottom: 9 }}><span className="inline-flex items-center gap-1.5 rounded-full font-bold" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.03em', color: gravOff.c, background: gravOff.bg, border: '1px solid ' + gravOff.bd, padding: '2px 8px' }}><span style={{ width: 5, height: 5, borderRadius: 99, background: gravOff.c, display: 'inline-block' }} />{gravOff.label}</span></div>
@@ -1518,7 +1528,7 @@
             <div className="text-gray-400 mt-4" style={{ fontSize: 11.5 }}>Every ad ranked worst to best. Tap or hover a dot to see the creative above.</div>
             {/* Scrolls horizontally on narrow screens so the dots never cram together on mobile. */}
             <div style={{ overflowX: 'auto', overflowY: 'hidden', marginTop: 10, WebkitOverflowScrolling: 'touch' }}>
-            <div className="relative" style={{ height: 68, minWidth: 440 }}>
+            <div className="relative" style={{ height: 68, minWidth: Math.max(460, n * 30) }}>
               <div className="absolute" style={{ left: 0, right: 0, top: 32, height: 6, borderRadius: 99, background: 'linear-gradient(90deg,#dc2626,#d97706 48%,#0a66c2)', opacity: 0.9 }} />
               {sc.map((a, i) => {
                 const on = specHi === i;
@@ -1907,7 +1917,7 @@
                   <div className="flex items-center gap-2 mt-2.5">
                     <span className="inline-flex items-center gap-1.5 font-semibold rounded-md" style={{ fontSize: 11.5, padding: '4px 9px', background: '#fff', border: '1px solid #e5e7eb', color: '#374151' }}><PlatLogo plat={sel.plat} size={14} />{sel.plat}</span>
                     {hasScore && <span className="inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 10.5, padding: '3px 9px', color: sev.c, background: sev.bg, border: '1px solid ' + sev.bd }}><span style={{ width: 6, height: 6, borderRadius: 99, background: sev.c }} />{sev.label}</span>}
-                    {hasScore && <span className="ml-auto grid place-items-center rounded-full font-bold text-white" style={{ width: 30, height: 30, background: scoreCol(sel.score), fontSize: 13.5 }}>{sel.score}</span>}
+                    {hasScore && <span className="ml-auto inline-flex items-baseline gap-1 rounded-full font-bold" style={{ padding: '4px 11px', background: sev.bg, border: '1px solid ' + sev.bd, color: sev.c }}><span style={{ fontSize: 9.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', alignSelf: 'center' }}>Buyer fit</span><span style={{ fontSize: 14, fontWeight: 800 }}>{sel.score}</span><span style={{ fontSize: 10.5, fontWeight: 700, opacity: 0.7 }}>/10</span></span>}
                   </div>
                 </div>
                 {/* Landing page: auto-filled when the ad resolves one, otherwise editable (pre-filled
@@ -1930,7 +1940,7 @@
                     <Icon name="flame" className="w-5 h-5 flex-none" style={{ color: covered ? '#16a34a' : '#dc2626' }} />
                     <div style={{ fontSize: 13 }}>
                       {!acct.signedIn
-                        ? <span className="text-gray-700"><b>Your first roast is free.</b> You'll sign in on the next step to see it.</span>
+                        ? <span className="text-gray-700"><b>Your first roast is free.</b> No credit card needed.</span>
                         : unlimited
                           ? <span className="text-gray-700"><b>Unlimited roasts.</b> This one won't use a credit.</span>
                           : tokens > 0
