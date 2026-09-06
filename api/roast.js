@@ -658,8 +658,17 @@ Return the JSON object defined in the output contract. All fields required.`;
             if (effShot && typeof effShot === 'string' && effShot.length < 700000) {
               record.adScreenshot = effShot;
               record.adScreenshotType = effShotType || 'image/jpeg';
+            } else if (effShot && typeof effShot === 'string' && effShot.length < 1300000) {
+              /* Too big to inline next to the result JSON, but a hotlink (adImageUrl) would EXPIRE and
+                 the dashboard/report would later go blank (this is why some cards showed no creative).
+                 Store the creative in its OWN key so it stays PERMANENT (roast-view serves it from there). */
+              try {
+                await _redis.set(`roast:creative:${reportId}`, JSON.stringify({ b64: effShot, type: effShotType || 'image/jpeg' }), { ex: 60 * 60 * 24 * 90 });
+                record.adCreativeKey = true;
+                record.adScreenshotType = effShotType || 'image/jpeg';
+              } catch (e) { if (adImageUrl && typeof adImageUrl === 'string') record.adImageUrl = adImageUrl; }
             } else if (adImageUrl && typeof adImageUrl === 'string') {
-              // Creative too big to inline in Redis: keep the hotlink so the report can show it.
+              // No usable base64 at all: keep the hotlink so the report can at least try to show it.
               record.adImageUrl = adImageUrl;
             }
             await _redis.set(`roast:report:${reportId}`, JSON.stringify(record), { ex: 60 * 60 * 24 * 90 });

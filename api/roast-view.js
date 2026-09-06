@@ -146,6 +146,17 @@ export default async function handler(req, res) {
         res.setHeader('Cache-Control', 'public, max-age=86400');
         return res.status(200).send(buf);
       }
+      // Larger creatives are stored in their own key (permanent, never expires like a hotlink).
+      if (rec && rec.adCreativeKey) {
+        const craw = await redis.get(`roast:creative:${id}`);
+        const c = craw ? (typeof craw === 'string' ? JSON.parse(craw) : craw) : null;
+        if (c && c.b64) {
+          const buf = Buffer.from(String(c.b64).replace(/^data:[^,]+,/, ''), 'base64');
+          res.setHeader('Content-Type', c.type || 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          return res.status(200).send(buf);
+        }
+      }
       if (rec && rec.adImageUrl && /^https?:\/\//i.test(rec.adImageUrl)) {
         // Proxy the hotlink server-side (licdn/googlesyndication block cross-site hotlinking, so a
         // 302 to them renders blank); fetch it here and stream the bytes back.
