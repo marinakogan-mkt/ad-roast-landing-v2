@@ -1357,6 +1357,18 @@
         try { return '/api/icp?p=' + btoa(u).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
         catch (e) { return '/api/icp?img=' + encodeURIComponent(u); }
       };
+      /* A board creative that RETRIES on failure (licdn/googlesyndication can 429 when a dozen load
+         at once) before falling back to the platform logo, so a transient miss doesn't leave a card
+         showing just the platform icon with no creative. */
+      const AdCreative = ({ ad, maxH = 260 }) => {
+        const [tries, setTries] = React.useState(0);
+        const [dead, setDead] = React.useState(false);
+        const base = IMG(ad && ad.img);
+        const src = tries ? (base + (base.indexOf('?') > -1 ? '&' : '?') + 'r=' + tries) : base;
+        const plat = platOf(ad && ad.plat);
+        if (!ad || !ad.img || dead) return (<span style={{ opacity: 0.3 }}>{plat ? <PlatLogo plat={plat} size={40} /> : <Icon name="alertCircle" className="w-9 h-9 text-gray-300" />}</span>);
+        return <img src={src} alt={ad.head || 'creative'} loading="lazy" onError={() => { if (tries < 2) setTimeout(() => setTries(t => t + 1), 500); else setDead(true); }} style={{ maxWidth: '100%', maxHeight: maxH, width: 'auto', height: 'auto', display: 'block', borderRadius: 8, boxShadow: '0 1px 4px rgba(11,15,26,.12)' }} />;
+      };
 
       // Enter a website -> detect company + ICP, then pull the company's real live ads
       // (with creative images) from the LinkedIn Ad Library via /api/ads (Apify).
@@ -1382,7 +1394,10 @@
             return;
           }
           setEntryMode(false);
-          const realObj = { co, icp: icpText, ads: res.ads || [], notes: res.notes || {}, fresh: res.fresh || null };
+          // Drop content-less display ads (the scorer labels a creative with no readable copy
+          // "Blank ad"); they render as an empty box and read as broken.
+          const cleanAds = (res.ads || []).filter(a => { const t = String(a.head || a.title || '').trim().toLowerCase(); return t !== 'blank ad' && t !== '(untitled ad)' && t !== 'untitled ad'; });
+          const realObj = { co, icp: icpText, ads: cleanAds, notes: res.notes || {}, fresh: res.fresh || null };
           try { boardCacheRef.current[siteRaw.toLowerCase()] = realObj; if (co.domain) boardCacheRef.current[String(co.domain).toLowerCase()] = realObj; } catch (e) {}
           setReal(realObj);
           setStage('overview'); setGridPlat('all');
@@ -1962,7 +1977,7 @@
                     </div>
                     {/* Real creative, always, shown in full with no cropping. */}
                     <div className="mx-4 rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f1f5f9' }}>
-                      <div className="grid place-items-center" style={{ background: '#f8fafc', padding: 14 }}><img src={IMG(a.img)} alt={a.head} loading="lazy" style={{ maxWidth: '100%', maxHeight: 260, width: 'auto', height: 'auto', display: 'block', borderRadius: 8, boxShadow: '0 1px 4px rgba(11,15,26,.12)' }} /></div>
+                      <div className="grid place-items-center" style={{ background: '#f8fafc', padding: 14, minHeight: 80 }}><AdCreative ad={a} maxH={260} /></div>
                       <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white border-t border-gray-100">
                         <span className="text-gray-400 truncate flex items-center gap-1.5" style={{ fontSize: 11.5, fontFamily: 'monospace' }}><BrandLogo domain={CO.domain} name={CO.name} initial={CO.initial} color={CO.color} size={16} radius={4} />{(a.dom && /\./.test(a.dom) && !/linkedin\.com|licdn|googlesyndication|adstransparency/i.test(a.dom)) ? hostOf(a.dom) : CO.domain}</span>
                         {a.cta && <span className="font-semibold rounded flex-none" style={{ fontSize: 11, padding: '4px 10px', color: '#374151', background: '#eef1f5', border: '1px solid #e2e6ec' }}>{a.cta}</span>}
