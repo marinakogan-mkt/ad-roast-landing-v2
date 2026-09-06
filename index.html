@@ -1049,15 +1049,28 @@
 
     /* Real company logo pulled by domain (works for any advertiser live). Clearbit first,
        Google favicon fallback, then the letter initial if both fail. */
+    // Deterministic, distinct-per-company color for the fallback initial badge, so companies whose
+    // logo can't be fetched don't all show the same grey square (the "repeated logos" look).
+    const BADGE_PALETTE = ['#0a66c2', '#7c3aed', '#0f766e', '#b45309', '#be123c', '#4338ca', '#15803d', '#a21caf', '#c2410c', '#0369a1'];
+    function domainColor(key) {
+      const s = String(key || ''); let h = 0;
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+      return BADGE_PALETTE[Math.abs(h) % BADGE_PALETTE.length];
+    }
+    /* Generic company logo for ANY domain (works for every user's roasted companies, nothing is
+       hardcoded): tries real logo sources in order, falling back to a distinct-color initial badge.
+       Clearbit gives real brand logos and 404s cleanly when missing; Google favicons covers almost
+       everything else. */
     function BrandLogo({ domain, name, initial, color, size = 44, radius = 12 }) {
-      const [src, setSrc] = useState('https://logo.clearbit.com/' + domain + '?size=128');
-      const [dead, setDead] = useState(false);
-      // useState only seeds on mount; when this instance is reused with a NEW domain (e.g. the board
-      // header when you switch companies), reset so it shows the new brand's logo, not the old one.
-      React.useEffect(() => { setSrc('https://logo.clearbit.com/' + domain + '?size=128'); setDead(false); }, [domain]);
+      const sources = React.useMemo(() => domain ? [
+        'https://logo.clearbit.com/' + domain + '?size=128',
+        'https://www.google.com/s2/favicons?sz=128&domain=' + domain,
+      ] : [], [domain]);
+      const [i, setI] = useState(0);
+      React.useEffect(() => { setI(0); }, [domain]);
       const box = { width: size, height: size, borderRadius: radius };
-      if (dead || !domain) return (<div className="flex-none grid place-items-center font-bold text-white" style={{ ...box, background: color || '#334155', fontSize: size * 0.42 }}>{initial || (name || '?').charAt(0)}</div>);
-      return (<img src={src} alt={name || domain} onError={() => { if (src.indexOf('clearbit') > -1) setSrc('https://www.google.com/s2/favicons?domain=' + domain + '&sz=128'); else setDead(true); }} className="flex-none object-contain bg-white border border-gray-200" style={{ ...box }} />);
+      if (!domain || i >= sources.length) return (<div className="flex-none grid place-items-center font-bold text-white" style={{ ...box, background: domainColor(domain || name), fontSize: size * 0.42 }}>{initial || (name || '?').charAt(0).toUpperCase()}</div>);
+      return (<img src={sources[i]} alt={name || domain} onError={() => setI(i + 1)} className="flex-none object-contain bg-white border border-gray-200" style={{ ...box }} />);
     }
 
     /* AdRoast brand mark (also used in the main app header) - module-level so the Live Ads
