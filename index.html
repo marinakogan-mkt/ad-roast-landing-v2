@@ -2738,7 +2738,10 @@
         if (autoDashRef.current) return;
         if (!(roastSession && roastSession.email)) return;
         try {
-          if (window.location.pathname !== '/' || (window.location.search || '')) return;
+          // Only auto-open the dashboard on a TRULY bare "/" — not when a hash deep-links to a
+          // section (e.g. the roast's "See the roadmap" -> /#deliverables), or the dashboard would
+          // hijack that jump and cover the section.
+          if (window.location.pathname !== '/' || (window.location.search || '') || (window.location.hash || '')) return;
         } catch (e) { return; }
         if (viewRef.current && viewRef.current !== 'landing') return;
         autoDashRef.current = true;
