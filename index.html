@@ -2786,8 +2786,13 @@
             });
         }
 
-        /* Passively detect an existing roast-tool session so a returning signed-in
-           user isn't re-prompted to sign up at the end of the wizard. Fire-and-forget. */
+      }, []);
+
+      /* Load the roast-tool session in its OWN effect so it ALWAYS runs, independent of the
+         routing effect above (whose early returns for /?home=1, /board, /dashboard, /account, etc.
+         used to skip it, leaving the whole app looking signed-out). Confirms/updates the optimistic
+         localStorage session; a transient failure keeps the cached one rather than signing you out. */
+      useEffect(() => {
         fetch('/api/auth?action=me', { credentials: 'same-origin' })
           .then(r => r.ok ? r.json() : null)
           .then(d => {
