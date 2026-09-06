@@ -109,7 +109,7 @@ async function callTool(name, args, key) {
     };
     const r = await fetch(`${ORIGIN}/api/roast`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key }, body: JSON.stringify(payload) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(((d && d.error) || 'Roast failed') + (d && d._diag ? ' [' + d._diag + ']' : ''));
+    if (!r.ok) throw new Error((d && d.error) || 'Roast failed');
     const ent = d._entitlement || {};
     if (ent.full === false) return { locked: true, message: "This roast is gated because the account is out of free roasts. Top up at adroast.in or roast the account's worst ad free from the board.", overall_score: d.overall_score ?? null };
     return {

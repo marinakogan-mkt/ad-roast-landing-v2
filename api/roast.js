@@ -545,10 +545,9 @@ Return the JSON object defined in the output contract. All fields required.`;
         // With the brevity rules the JSON output is small, so 4000 is ample headroom.
         max_tokens: 4000,
         thinking: { type: 'disabled' },
-        // Low temperature so the SAME ad gets a consistent score/verdict run to run (kills
-        // the "different result each time" flakiness at zero extra token cost), while a small
-        // amount of variance keeps the generated fix-kit copy from reading rote.
-        temperature: 0.3,
+        // NOTE: no `temperature` — claude-sonnet-5 REJECTS it ("temperature is deprecated for this
+        // model"), which was 503-ing every roast. Consistency now comes from the deterministic
+        // prompt + the dedupe cache, not a temperature setting.
         // Optimization #1 + #5: prompt-cache the large static system prompt AND the
         // JSON output contract together. Both are byte-identical across every roast,
         // so after the first call the whole prefix bills at ~0.1x (cache read) instead
@@ -567,7 +566,7 @@ Return the JSON object defined in the output contract. All fields required.`;
       /* Never leak the upstream provider error (billing, rate limits, model
          names) to the end user. Log the real one; show a neutral message. */
       console.error('[AdRoast] Upstream API error:', data.error.type, '-', data.error.message);
-      return res.status(503).json({ error: "AdRoast is briefly unavailable. Please try again in a few minutes.", _diag: (data.error.type || '') + ': ' + String(data.error.message || '').slice(0, 200), _meta: meta });
+      return res.status(503).json({ error: "AdRoast is briefly unavailable. Please try again in a few minutes.", _meta: meta });
     }
 
     const modelText = Array.isArray(data.content)
