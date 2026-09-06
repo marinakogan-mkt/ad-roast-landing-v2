@@ -2218,10 +2218,32 @@
       };
       const copyText = (t, which) => { try { navigator.clipboard.writeText(t); setApiKeyCopied(which); setTimeout(() => setApiKeyCopied(''), 1600); } catch (e) {} };
       useEffect(() => { if (showMyAccount && !apiKey && !apiKeyLoading) loadApiKey(); }, [showMyAccount]);
+      /* The full-screen overlays (My roasted ads, My account) get their OWN clean URLs
+         (/dashboard, /account) so they are copyable/bookmarkable and the browser Back button
+         returns to the site instead of trapping you (Marina). These helpers set the overlay
+         state AND the address bar together; a popstate listener syncs them on Back/Forward. */
+      const goOverlay = (which) => {
+        const path = which === 'account' ? '/account' : which === 'dash' ? '/dashboard' : '/';
+        setShowMyAccount(which === 'account');
+        setShowMyRoasts(which === 'dash');
+        try { if (window.location.pathname !== path) window.history.pushState({ ov: which }, '', path); } catch (e) {}
+      };
+      const openMyRoasts = () => { setAcctMenuOpen(false); goOverlay('dash'); };
+      const openMyAccount = () => { setAcctMenuOpen(false); goOverlay('account'); };
+      const closeOverlays = () => { goOverlay(null); };
+      useEffect(() => {
+        const onPop = () => {
+          const p = window.location.pathname;
+          setShowMyRoasts(p === '/dashboard');
+          setShowMyAccount(p === '/account');
+        };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+      }, []);
       // Sign out of a roast-tool account, then drop the local session so the header reflects it.
       const signOutRoast = async () => {
         try { await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
-        setRoastSession(null); setAcctMenuOpen(false); setShowMyRoasts(false);
+        setRoastSession(null); setAcctMenuOpen(false); closeOverlays();
       };
       /* A signed-in Partner Portal account (mode !== 'roast'). Portal users get their own menu
          variant (email + Partner Portal, no free-roast dashboard), per Marina. */
@@ -2342,10 +2364,11 @@
         if (params.get('roasts') === '1') { setView('roasts-list'); return; }
         // Ad Library board (/?library=1)
         if (params.get('library') === '1') { setView('ad-library'); return; }
-        // Direct open of the "My roasted ads" dashboard (e.g. the back link from a roast report).
-        if (params.get('dash') === '1') { try { window.history.replaceState({}, '', '/'); } catch (e) {} setShowMyRoasts(true); return; }
-        // Direct open of the My account page (e.g. a link straight to the API & MCP section).
-        if (params.get('account') === '1') { try { window.history.replaceState({}, '', '/'); } catch (e) {} setShowMyAccount(true); return; }
+        // Clean overlay URLs so they are copyable and Back-able (Marina): /dashboard, /account.
+        // The legacy ?dash=1 / ?account=1 links still work by normalizing to the clean path.
+        const path = window.location.pathname;
+        if (path === '/dashboard' || params.get('dash') === '1') { try { window.history.replaceState({ ov: 'dash' }, '', '/dashboard'); } catch (e) {} setShowMyRoasts(true); return; }
+        if (path === '/account' || params.get('account') === '1') { try { window.history.replaceState({ ov: 'account' }, '', '/account'); } catch (e) {} setShowMyAccount(true); return; }
 
         /* Roast handoff from the "Your Live Ads" dashboard (/?libroast=1). The dashboard
            stashed the chosen ad + company + ICP; build the roast payload here and run the
@@ -2719,7 +2742,7 @@
         } catch (e) { return; }
         if (viewRef.current && viewRef.current !== 'landing') return;
         autoDashRef.current = true;
-        setShowMyRoasts(true);
+        goOverlay('dash');
       }, [roastSession]);
       const stepRef = React.useRef(guidedStep); stepRef.current = guidedStep;
       const cameFromResultsRef = React.useRef(false); cameFromResultsRef.current = cameFromResults;
@@ -3560,7 +3583,7 @@
                       <>
                         <div className="fixed inset-0" style={{ zIndex: 40 }} onClick={() => setAcctMenuOpen(false)} />
                         <div className="absolute right-0 rounded-2xl border bg-white overflow-hidden" style={{ top: '140%', zIndex: 50, borderColor: '#e8ecf1', width: 258, boxShadow: '0 14px 38px rgba(11,15,26,.18)' }}>
-                          <button onClick={() => { setShowMyAccount(true); setAcctMenuOpen(false); }} className="w-full text-left px-4 py-3.5 border-b border-gray-100 cursor-pointer bg-transparent hover:bg-gray-50 transition-colors flex items-center gap-2">
+                          <button onClick={() => openMyAccount()} className="w-full text-left px-4 py-3.5 border-b border-gray-100 cursor-pointer bg-transparent hover:bg-gray-50 transition-colors flex items-center gap-2">
                             <span className="flex-1 min-w-0">
                               <span className="block text-[10px] font-bold uppercase tracking-wide text-gray-400">My account</span>
                               <span className="block text-sm font-semibold text-gray-900 truncate mt-1">{roastSession.email}</span>
@@ -3569,7 +3592,7 @@
                             <Icon name="chevronRight" className="w-4 h-4 flex-none text-gray-300" />
                           </button>
                           <div style={{ padding: '6px 0' }}>
-                            <button onClick={() => { setShowMyRoasts(true); setAcctMenuOpen(false); }} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>
+                            <button onClick={() => openMyRoasts()} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>
                             <a href="/?library=1" className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your live ads board</a>
                           </div>
                           <div className="border-t border-gray-100" style={{ padding: '6px 0' }}>
@@ -3629,7 +3652,7 @@
               {navLink('Work with us', goPricing, active === 'work')}
               {roastSession && roastSession.email && (
                 <>
-                  <button onClick={() => { setShowMyRoasts(true); setNavOpen(false); }} className="text-sm font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>My roasted ads</button>
+                  <button onClick={() => { openMyRoasts(); setNavOpen(false); }} className="text-sm font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>My roasted ads</button>
                   <button onClick={() => { signOutRoast(); setNavOpen(false); }} className="text-sm font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#b91c1c' }}>Sign out</button>
                 </>
               )}
@@ -3833,7 +3856,7 @@
           ) : SiteNav({ active: activeNav })}
 
           {/* "My roasted ads" dashboard overlay, opened from the account menu. */}
-          {showMyRoasts && <MyRoastsPanel onClose={() => setShowMyRoasts(false)} />}
+          {showMyRoasts && <MyRoastsPanel onClose={closeOverlays} />}
 
           {/* "My account" settings page (profile / email, plan & billing, quick links), opened from
               the account menu. Like a standard SaaS account area; change-email lives inside it. */}
@@ -3846,7 +3869,7 @@
                 <div className="sticky top-0 border-b border-gray-200" style={{ zIndex: 10, backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
                   <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0"><img src={ADROAST_LOGO} alt="AdRoast" className="w-8 h-8 rounded flex-none" /><span className="text-lg text-gray-800 font-semibold">AdRoast</span><span className="text-gray-300">/</span><span className="text-sm font-semibold text-gray-500 truncate">My account</span></div>
-                    <button onClick={() => setShowMyAccount(false)} className="flex-none inline-flex items-center text-sm font-semibold rounded-full px-4 py-1.5 bg-white border-2 hover:bg-gray-50 transition-colors" style={{ borderColor: '#e5e7eb', color: '#374151' }}>Close</button>
+                    <button onClick={closeOverlays} className="flex-none inline-flex items-center text-sm font-semibold rounded-full px-4 py-1.5 bg-white border-2 hover:bg-gray-50 transition-colors" style={{ borderColor: '#e5e7eb', color: '#374151' }}>Close</button>
                   </div>
                 </div>
                 <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -3898,7 +3921,7 @@
                       </>) : <button onClick={() => loadApiKey()} className="font-bold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ fontSize: 13, padding: '8px 16px', background: '#0a66c2' }}>Create API key</button>}
                   </div>
                   <div className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: '#e8ecf1' }}>
-                    <button onClick={() => { setShowMyAccount(false); setShowMyRoasts(true); }} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#1f2937', borderBottom: '1px solid #f1f5f9' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>
+                    <button onClick={() => openMyRoasts()} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#1f2937', borderBottom: '1px solid #f1f5f9' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>
                     <a href="/?library=1" className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#1f2937', borderBottom: '1px solid #f1f5f9' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your live ads board</a>
                     <button onClick={signOutRoast} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-red-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#b91c1c' }}><Icon name="x" className="w-4 h-4" />Sign out</button>
                   </div>
@@ -5267,7 +5290,7 @@
         // everyone else goes back to the live-ads board for that company. Either way the roast reads
         // as a view inside the dashboard, not a dead-end page.
         const signedInRoast = !!(roastSession && roastSession.email);
-        const backToAds = signedInRoast ? '/?dash=1' : ('/?library=1' + (backDom ? '&site=' + encodeURIComponent(backDom) : ''));
+        const backToAds = signedInRoast ? '/dashboard' : ('/?library=1' + (backDom ? '&site=' + encodeURIComponent(backDom) : ''));
         const backLabel = signedInRoast ? 'My roasted ads' : 'Your ads';
         const offerLabelText = offerType === 'other'
           ? ((offerDetail || '').trim() || 'Other')
