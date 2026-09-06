@@ -2348,6 +2348,8 @@
         if (params.get('library') === '1') { setView('ad-library'); return; }
         // Direct open of the "My roasted ads" dashboard (e.g. the back link from a roast report).
         if (params.get('dash') === '1') { try { window.history.replaceState({}, '', '/'); } catch (e) {} setShowMyRoasts(true); return; }
+        // Direct open of the My account page (e.g. a link straight to the API & MCP section).
+        if (params.get('account') === '1') { try { window.history.replaceState({}, '', '/'); } catch (e) {} setShowMyAccount(true); return; }
 
         /* Roast handoff from the "Your Live Ads" dashboard (/?libroast=1). The dashboard
            stashed the chosen ad + company + ICP; build the roast payload here and run the
