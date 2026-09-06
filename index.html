@@ -1052,6 +1052,9 @@
     function BrandLogo({ domain, name, initial, color, size = 44, radius = 12 }) {
       const [src, setSrc] = useState('https://logo.clearbit.com/' + domain + '?size=128');
       const [dead, setDead] = useState(false);
+      // useState only seeds on mount; when this instance is reused with a NEW domain (e.g. the board
+      // header when you switch companies), reset so it shows the new brand's logo, not the old one.
+      React.useEffect(() => { setSrc('https://logo.clearbit.com/' + domain + '?size=128'); setDead(false); }, [domain]);
       const box = { width: size, height: size, borderRadius: radius };
       if (dead || !domain) return (<div className="flex-none grid place-items-center font-bold text-white" style={{ ...box, background: color || '#334155', fontSize: size * 0.42 }}>{initial || (name || '?').charAt(0)}</div>);
       return (<img src={src} alt={name || domain} onError={() => { if (src.indexOf('clearbit') > -1) setSrc('https://www.google.com/s2/favicons?domain=' + domain + '&sz=128'); else setDead(true); }} className="flex-none object-contain bg-white border border-gray-200" style={{ ...box }} />);
@@ -1146,13 +1149,16 @@
         <div className="fixed inset-0 overflow-y-auto" style={{ background: '#f6f8fb', zIndex: 60 }}>
           <div className="sticky top-0 border-b border-gray-200" style={{ zIndex: 10, backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
             <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
+              <a href="/?home=1" className="flex items-center gap-2.5 min-w-0 no-underline">
                 <img src={ADROAST_LOGO} alt="AdRoast" className="w-8 h-8 rounded flex-none" />
                 <span className="text-lg text-gray-800 font-semibold">AdRoast</span>
                 <span className="text-gray-300">/</span>
                 <span className="text-sm font-semibold text-gray-500 truncate">My roasted ads</span>
+              </a>
+              <div className="flex items-center gap-2 flex-none">
+                <a href="/account" className="inline-flex items-center text-sm font-semibold rounded-full px-4 py-1.5 bg-white border-2 hover:bg-gray-50 transition-colors no-underline" style={{ borderColor: '#cfe1f5', color: '#0a66c2' }}>My account</a>
+                <button onClick={onClose} className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-full px-4 py-1.5 bg-white border-2 hover:bg-gray-50 transition-colors" style={{ borderColor: '#e5e7eb', color: '#374151' }}>Close</button>
               </div>
-              <button onClick={onClose} className="flex-none inline-flex items-center gap-1.5 text-sm font-semibold rounded-full px-4 py-1.5 bg-white border-2 hover:bg-gray-50 transition-colors" style={{ borderColor: '#e5e7eb', color: '#374151' }}>Close</button>
             </div>
           </div>
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
@@ -1283,6 +1289,7 @@
       const [acctOpen, setAcctOpen] = useState(false); // board header account dropdown
       const [entryMode, setEntryMode] = useState(false); // force the "enter a website" form (New / change company)
       const boardCacheRef = React.useRef({}); // domain -> last-loaded board, so re-clicking a company is instant (no re-pull)
+      const [loadingCo, setLoadingCo] = useState(null); // the company being pulled, so the header shows it (not the sample)
       // Map of creatives this account has already roasted (normalized image URL -> reportId), so the
       // board can mark them "already roasted -> View" instead of implying a fresh (billable) roast.
       const [roastedMap, setRoastedMap] = useState({});
@@ -1358,14 +1365,14 @@
         if (!siteRaw) return;
         // silent (background demo autoload): don't surface spinners/errors over the sample.
         const silent = !!opts.silent;
-        if (!silent) { setPhase('loading'); setReal(null); setBootLoading(false); }
+        if (!silent) { setPhase('loading'); setReal(null); setBootLoading(false); const h = hostOf(siteRaw); setLoadingCo({ name: h, domain: h, initial: (h || '?').charAt(0).toUpperCase(), color: '#334155' }); }
         setStatusMsg('Reading your site and finding your ICP…');
         try {
           const icpRes = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: siteRaw }) }).then(r => r.json()).catch(() => ({}));
           const coName = icpRes.company || icpRes.brand || hostOf(siteRaw);
           const co = { name: coName, domain: icpRes.domain || hostOf(siteRaw), initial: (coName || '?').charAt(0).toUpperCase(), color: '#334155' };
           const icpText = icpRes.icp_text || '';
-          if (!silent) setStatusMsg('Pulling your live ads from LinkedIn and Google…');
+          if (!silent) { setLoadingCo(co); setStatusMsg('Pulling your live ads from LinkedIn and Google…'); }
           const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText, refresh: !!opts.refresh }) }).then(r => r.json()).catch(() => ({}));
           if (!res || !res.ok || !(res.ads && res.ads.length)) {
             // Silent demo: keep showing the static sample; only a real user's fetch surfaces an error.
@@ -1436,7 +1443,7 @@
       };
 
       const usingReal = !!real;
-      const CO = real ? real.co : YOUR_CO;
+      const CO = real ? real.co : (loadingCo || YOUR_CO);
       const ICP = real ? real.icp : YOUR_ICP;
       const ICPeff = (icpOverride != null && icpOverride.trim()) ? icpOverride.trim() : ICP; // what the roast grades against
       const ads = real ? real.ads : YOUR_ADS;
@@ -2288,7 +2295,11 @@
       const [synthResult, setSynthResult] = useState(null);
       /* Monetization 2b - roast-tool account (mode:'roast'). Null until we confirm a
          session via /api/auth?action=me. Shape: { email, roastCount, freeAvailable }. */
-      const [roastSession, setRoastSession] = useState(null);
+      // Seed the session OPTIMISTICALLY from localStorage so a returning user shows as signed in
+      // instantly (avatar + /account render) instead of flickering signed-out while /api/auth?me
+      // loads or transiently fails. The me-fetch below confirms/updates it.
+      const [roastSession, setRoastSession] = useState(() => { try { const s = JSON.parse(localStorage.getItem('adroast_session') || 'null'); return (s && s.email) ? s : null; } catch (e) { return null; } });
+      useEffect(() => { try { if (roastSession && roastSession.email) localStorage.setItem('adroast_session', JSON.stringify({ email: roastSession.email, plan: roastSession.plan, tokens: roastSession.tokens })); } catch (e) {} }, [roastSession]);
       /* Sign-up gate shown between the wizard's last step and the roast running. */
       const [showSignupGate, setShowSignupGate] = useState(false);
       const [signupEmail, setSignupEmail] = useState('');
@@ -2345,6 +2356,7 @@
       // Sign out of a roast-tool account, then drop the local session so the header reflects it.
       const signOutRoast = async () => {
         try { await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
+        try { localStorage.removeItem('adroast_session'); } catch (e) {}
         setRoastSession(null); setAcctMenuOpen(false); closeOverlays();
       };
       /* A signed-in Partner Portal account (mode !== 'roast'). Portal users get their own menu
