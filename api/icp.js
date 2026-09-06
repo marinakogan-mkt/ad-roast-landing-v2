@@ -47,7 +47,35 @@ function normalizeUrl(input) {
   return { url: url.toString(), domain, brand: brand.charAt(0).toUpperCase() + brand.slice(1) };
 }
 
+/* Jina Reader fallback: when the direct fetch is blocked/rate-limited (429, Cloudflare, JS-only
+   pages), render the page through r.jina.ai (same proxy that gets us past LinkedIn's block) and
+   return its clean readable text. This is why sublime.security etc. now resolve a real ICP instead
+   of "page content insufficient". */
+async function fetchSiteViaJina(url) {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), 13000);
+  try {
+    const headers = { 'X-Return-Format': 'text', 'X-Timeout': '15' };
+    if (process.env.JINA_API_KEY) headers['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
+    const r = await fetch('https://r.jina.ai/' + url, { headers, signal: c.signal });
+    if (!r.ok) return null;
+    const text = (await r.text()).replace(/\s+/g, ' ').trim().slice(0, 10000);
+    if (text.length < 40) return null;
+    return { title: '', desc: '', body: text, blocked: false };
+  } catch (e) { return null; } finally { clearTimeout(t); }
+}
+
 async function fetchSite(url) {
+  let direct = null;
+  try { direct = await fetchSiteDirect(url); } catch (e) { direct = null; }
+  if (direct && !direct.blocked && direct.body && direct.body.length >= 60) return direct;
+  // Direct fetch blocked or thin -> try the Jina Reader proxy before giving up.
+  const jina = await fetchSiteViaJina(url);
+  if (jina && jina.body && jina.body.length >= 60) return jina;
+  return direct || { title: '', desc: '', body: '', blocked: true };
+}
+
+async function fetchSiteDirect(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
   try {

@@ -1415,7 +1415,7 @@
         if (!silent) { setPhase('loading'); setReal(null); setBootLoading(false); const h = hostOf(siteRaw); setLoadingCo({ name: h, domain: h, initial: (h || '?').charAt(0).toUpperCase(), color: '#334155' }); }
         setStatusMsg('Reading your site and finding your ICP…');
         try {
-          const icpRes = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: siteRaw }) }).then(r => r.json()).catch(() => ({}));
+          const icpRes = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: siteRaw, refresh: !!opts.refresh }) }).then(r => r.json()).catch(() => ({}));
           const coName = icpRes.company || icpRes.brand || hostOf(siteRaw);
           const co = { name: coName, domain: icpRes.domain || hostOf(siteRaw), initial: (coName || '?').charAt(0).toUpperCase(), color: '#334155' };
           const icpText = icpRes.icp_text || '';
