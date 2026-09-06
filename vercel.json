@@ -6,6 +6,8 @@
     { "source": "/work-with-us", "destination": "/index.html" },
     { "source": "/dashboard", "destination": "/index.html" },
     { "source": "/account", "destination": "/index.html" },
+    { "source": "/board", "destination": "/index.html" },
+    { "source": "/board/(.*)", "destination": "/index.html" },
     { "source": "/api/mcp", "destination": "/api/icp?mcp=1" }
   ],
   "crons": [

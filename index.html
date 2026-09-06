@@ -1280,6 +1280,7 @@
       const [barReady, setBarReady] = useState(false); // false on mount -> the urgency bar grows from 0 on load
       const [railCos, setRailCos] = useState(null); // the account's roasted companies, for the left sidebar
       const [railOpen, setRailOpen] = useState(true); // sidebar expanded/collapsed
+      const [acctOpen, setAcctOpen] = useState(false); // board header account dropdown
       const [entryMode, setEntryMode] = useState(false); // force the "enter a website" form (New / change company)
       const boardCacheRef = React.useRef({}); // domain -> last-loaded board, so re-clicking a company is instant (no re-pull)
       // Map of creatives this account has already roasted (normalized image URL -> reportId), so the
@@ -1316,8 +1317,11 @@
         const onPop = () => {
           // This effect only runs while the board is mounted, so drive the step straight off the
           // URL: ?p=<plat> means a platform grid, no p means the overview. (The app keeps the base
-          // board URL at "/", so Back from a grid lands here with no p and returns to overview.)
-          const p = new URLSearchParams(window.location.search).get('p');
+          // board URL at "/board/<domain>", so a grid is /board/<domain>/<platform>. Back from a grid
+          // drops the platform segment and returns to the overview.
+          const PN = { linkedin: 'LinkedIn', google: 'Google', meta: 'Meta' };
+          const m = window.location.pathname.match(/^\/board\/[^\/]+\/([^\/]+)/);
+          const p = m ? PN[m[1].toLowerCase()] : (new URLSearchParams(window.location.search).get('p'));
           if (p && ['LinkedIn', 'Google', 'Meta'].indexOf(p) !== -1) { setFP(p); setStage('grid'); }
           else { setStage('overview'); setFP('all'); }
           window.scrollTo(0, 0);
@@ -1327,7 +1331,8 @@
       }, []);
       const openGrid = (p) => {
         setFP(p); setStage('grid');
-        try { window.history.pushState({ libGrid: p }, '', '?library=1&p=' + encodeURIComponent(p)); } catch (e) {}
+        const dom = (real && real.co && real.co.domain) || '';
+        try { window.history.pushState({ libGrid: p }, '', dom ? ('/board/' + encodeURIComponent(dom) + '/' + p.toLowerCase()) : ('?library=1&p=' + encodeURIComponent(p))); } catch (e) {}
         window.scrollTo(0, 0);
       };
 
@@ -1375,13 +1380,23 @@
           setReal(realObj);
           setStage('overview'); setGridPlat('all');
           setPhase('idle'); setBootLoading(false);
+          // Clean, shareable URL for this company's board: /board/<domain>.
+          if (!silent) { try { const clean = '/board/' + encodeURIComponent(co.domain || siteRaw); if (window.location.pathname !== clean) window.history.pushState({ board: co.domain }, '', clean); } catch (e) {} }
         } catch (e) { if (silent) { setPhase('idle'); setBootLoading(false); return; } setPhase('error'); setStatusMsg(String(e && e.message || e)); }
       };
 
       useEffect(() => {
         try {
-          const s = new URLSearchParams(window.location.search).get('site');
-          if (s) { setSiteInput(s); loadReal(s); return; }
+          // Clean path first: /board/<domain>[/<platform>]. Falls back to the legacy ?site= query.
+          const bm = window.location.pathname.match(/^\/board\/([^\/]+)(?:\/([^\/]+))?/);
+          const s = (bm && decodeURIComponent(bm[1])) || new URLSearchParams(window.location.search).get('site');
+          const pseg = bm && bm[2];
+          if (s && s !== 'board') {
+            setSiteInput(s);
+            if (pseg) { const PN = { linkedin: 'LinkedIn', google: 'Google', meta: 'Meta' }; const p = PN[pseg.toLowerCase()]; if (p) { setFP(p); setStage('grid'); } }
+            loadReal(s);
+            return;
+          }
         } catch (e) {}
         /* No website given: show the static sample instantly (creatives visible via the
            proxy), and in the BACKGROUND pull the real Semgrep ads so the preview upgrades
@@ -1626,7 +1641,22 @@
                   <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: (acct.plan === 'unlimited' || acct.tokens > 0) ? '#dcfce7' : '#fef2f2', color: (acct.plan === 'unlimited' || acct.tokens > 0) ? '#15803d' : '#b91c1c' }}>{acct.plan === 'unlimited' ? 'Unlimited' : `${acct.tokens} roast${acct.tokens === 1 ? '' : 's'} left`}</span>
                 )}
                 {acct.signedIn
-                  ? <a href="/account" title="My account" className="grid place-items-center rounded-full text-white font-bold no-underline flex-none hover:opacity-90 transition-opacity" style={{ width: 32, height: 32, background: '#0a66c2', fontSize: 14 }}>{String(acct.email || '?').charAt(0).toUpperCase()}</a>
+                  ? <div className="relative flex-none">
+                      <button onClick={() => setAcctOpen(o => !o)} title="Account" className="grid place-items-center rounded-full text-white font-bold cursor-pointer border-none flex-none hover:opacity-90 transition-opacity" style={{ width: 32, height: 32, background: '#0a66c2', fontSize: 14 }}>{String(acct.email || '?').charAt(0).toUpperCase()}</button>
+                      {acctOpen && (<>
+                        <div className="fixed inset-0" style={{ zIndex: 19 }} onClick={() => setAcctOpen(false)} />
+                        <div className="absolute right-0 mt-2 bg-white rounded-xl border shadow-lg overflow-hidden" style={{ zIndex: 20, minWidth: 210, borderColor: '#e8ecf1', boxShadow: '0 12px 32px rgba(11,15,26,.16)' }}>
+                          <div className="px-4 py-3 border-b" style={{ borderColor: '#f1f5f9' }}>
+                            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Signed in</div>
+                            <div className="font-semibold text-gray-800 truncate" style={{ fontSize: 13 }}>{acct.email}</div>
+                          </div>
+                          <a href="/account" className="block px-4 py-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}>My account</a>
+                          <a href="/dashboard" className="block px-4 py-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}>My roasted ads</a>
+                          <a href="/?home=1" className="block px-4 py-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}>Home</a>
+                          <button onClick={async () => { try { await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {} window.location.href = '/?home=1'; }} className="block w-full text-left px-4 py-2.5 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors" style={{ fontSize: 13.5, fontWeight: 600, color: '#b91c1c' }}>Sign out</button>
+                        </div>
+                      </>)}
+                    </div>
                   : <a href="/?home=1" className="text-sm font-semibold text-gray-500 hover:text-gray-800 no-underline">Home</a>}
               </div>
             </div>
@@ -1649,7 +1679,7 @@
                   const active = CO && CO.domain && co.domain && CO.domain.toLowerCase() === String(co.domain).toLowerCase();
                   return (
                     <button key={co.domain} title={co.name || co.domain}
-                      onClick={() => { const s = co.site || co.domain; const c = boardCacheRef.current[String(s).toLowerCase()] || boardCacheRef.current[String(co.domain).toLowerCase()]; setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setStage('overview'); setFP('all'); setPhase('idle'); window.scrollTo(0, 0); } else loadReal(s); }}
+                      onClick={() => { const s = co.site || co.domain; const c = boardCacheRef.current[String(s).toLowerCase()] || boardCacheRef.current[String(co.domain).toLowerCase()]; setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setStage('overview'); setFP('all'); setPhase('idle'); try { window.history.pushState({ board: co.domain }, '', '/board/' + encodeURIComponent(co.domain)); } catch (e) {} window.scrollTo(0, 0); } else loadReal(s); }}
                       className="w-full flex items-center rounded-lg transition-colors bg-transparent border-none cursor-pointer" style={{ padding: railOpen ? '7px 10px' : '7px 0', gap: 9, justifyContent: railOpen ? 'flex-start' : 'center', background: active ? '#eef4fb' : 'transparent' }}>
                       <BrandLogo domain={co.domain} name={co.name} initial={String(co.name || co.domain || '?').charAt(0).toUpperCase()} color={active ? '#0a66c2' : '#94a3b8'} size={24} radius={6} />
                       {railOpen && <span className="truncate font-semibold" style={{ fontSize: 13, color: active ? '#0a66c2' : '#374151' }}>{co.name || co.domain}</span>}
@@ -2156,7 +2186,7 @@
         if (!v) { setHeroErr('Enter your website to see your live ads.'); return; }
         if (!isValidUrl(v)) { setHeroErr('That does not look like a website. Try yourcompany.com'); return; }
         setHeroErr('');
-        try { window.history.pushState({}, '', '/?library=1&site=' + encodeURIComponent(v)); } catch (e) {}
+        try { const dom = String(v).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, ''); window.history.pushState({}, '', '/board/' + encodeURIComponent(dom || v)); } catch (e) {}
         try { window.scrollTo(0, 0); } catch (e) {}
         setView('ad-library');
       };
@@ -2437,8 +2467,8 @@
         if (params.get('home') === '1') { try { window.history.replaceState({}, '', '/'); } catch (e) {} autoDashRef.current = true; return; }
         // Internal roasts list (admin): /?roasts=1
         if (params.get('roasts') === '1') { setView('roasts-list'); return; }
-        // Ad Library board (/?library=1)
-        if (params.get('library') === '1') { setView('ad-library'); return; }
+        // Ad Library board: clean path /board[/<domain>[/<platform>]] (or legacy ?library=1).
+        if (window.location.pathname === '/board' || window.location.pathname.indexOf('/board/') === 0 || params.get('library') === '1') { setView('ad-library'); return; }
         // Clean overlay URLs so they are copyable and Back-able (Marina): /dashboard, /account.
         // The legacy ?dash=1 / ?account=1 links still work by normalizing to the clean path.
         const path = window.location.pathname;
@@ -2827,9 +2857,8 @@
           .then(r => r.ok ? r.json() : null)
           .then(d => {
             const co = d && d.companies && d.companies[0];
-            const site = co && (co.site || co.domain);
-            if (site && viewRef.current === 'landing' && window.location.pathname === '/' && !window.location.search) {
-              try { window.history.replaceState({}, '', '/?library=1&site=' + encodeURIComponent(site)); } catch (e) {}
+            if (co && (co.domain || co.site) && viewRef.current === 'landing' && window.location.pathname === '/' && !window.location.search) {
+              try { window.history.replaceState({}, '', '/board/' + encodeURIComponent(co.domain || co.site)); } catch (e) {}
               setView('ad-library');
             }
           })
@@ -3687,7 +3716,7 @@
                           </button>
                           <div style={{ padding: '6px 0' }}>
                             <button onClick={() => openMyRoasts()} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>
-                            <a href="/?library=1" className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your live ads board</a>
+                            <a href="/board" className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your live ads board</a>
                           </div>
                           <div className="border-t border-gray-100" style={{ padding: '6px 0' }}>
                             <button onClick={signOutRoast} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-red-50 transition-colors" style={{ padding: '9px 16px', fontSize: 13.5, fontWeight: 600, color: '#b91c1c' }}><Icon name="x" className="w-4 h-4" />Sign out</button>
@@ -4017,7 +4046,7 @@
                   </div>
                   <div className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: '#e8ecf1' }}>
                     <button onClick={() => openMyRoasts()} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#1f2937', borderBottom: '1px solid #f1f5f9' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>
-                    <a href="/?library=1" className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#1f2937', borderBottom: '1px solid #f1f5f9' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your live ads board</a>
+                    <a href="/board" className="w-full text-left flex items-center gap-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#1f2937', borderBottom: '1px solid #f1f5f9' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your live ads board</a>
                     <button onClick={signOutRoast} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-red-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#b91c1c' }}><Icon name="x" className="w-4 h-4" />Sign out</button>
                   </div>
                 </div>
@@ -5385,7 +5414,7 @@
         // everyone else goes back to the live-ads board for that company. Either way the roast reads
         // as a view inside the dashboard, not a dead-end page.
         const signedInRoast = !!(roastSession && roastSession.email);
-        const backToAds = signedInRoast ? '/dashboard' : ('/?library=1' + (backDom ? '&site=' + encodeURIComponent(backDom) : ''));
+        const backToAds = signedInRoast ? '/dashboard' : ('/board' + (backDom ? '/' + encodeURIComponent(backDom) : ''));
         const backLabel = signedInRoast ? 'My roasted ads' : 'Your ads';
         const offerLabelText = offerType === 'other'
           ? ((offerDetail || '').trim() || 'Other')
@@ -5439,7 +5468,7 @@
                   {!isSharedView && (
                     <button onClick={() => { setReroastLink(''); setReroastErr(''); setShowReroast(true); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="rotateCcw" className="w-4 h-4" /> <span className="hidden sm:inline">Roast another ad</span></button>
                   )}
-                  {isSharedView && <a href="/?library=1" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name={roastSession && roastSession.email ? 'rotateCcw' : 'flame'} className="w-4 h-4" /> {roastSession && roastSession.email ? <><span className="hidden sm:inline">Roast another ad</span><span className="sm:hidden">Roast</span></> : 'Roast My Ad'}</a>}
+                  {isSharedView && <a href="/board" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name={roastSession && roastSession.email ? 'rotateCcw' : 'flame'} className="w-4 h-4" /> {roastSession && roastSession.email ? <><span className="hidden sm:inline">Roast another ad</span><span className="sm:hidden">Roast</span></> : 'Roast My Ad'}</a>}
                 </div>
               </div>
             </header>
@@ -5660,7 +5689,7 @@
                 const weakest = areas.slice().sort((a, b) => a.s - b.s)[0];
                 const OPTIONS = {
                   review:     { tag: 'Team review', color: '#0a66c2', title: 'Get the team on your roast',   q: 'Want the team to weigh in?',  kind: 'linkedin' },
-                  diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', href: '/?library=1' },
+                  diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', href: '/board' },
                   withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Campaign Repositioning Sprint',    q: 'Want it fixed with you?',  cta: 'See the roadmap', href: '/#deliverables', meta: '$6K · 10 days' },
                   doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', href: '/#work-with-us', meta: '$8K/mo, managed' },
                 };
