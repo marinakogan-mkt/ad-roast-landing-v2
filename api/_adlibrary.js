@@ -163,6 +163,72 @@ No markdown. Never use em dashes or en dashes; use commas or periods.`;
   } catch (e) { return ads; }
 }
 
+// --- Per-creative score cache (token optimization) ------------------------------------
+// Pulling the ad LIST is FREE (Jina / Google RPC / Meta API, no LLM). The ONLY token cost is
+// scoreAds (a Haiku vision call). So instead of caching one scored blob per domain for hours
+// (which goes stale the moment the advertiser adds/removes a creative), we cache the SCORE per
+// individual creative, keyed by a stable creative signature + a hash of the ICP. On every board
+// load we re-pull the current list (cheap) and only send the creatives we've NEVER scored before
+// to the model. Unchanged creatives reuse their cached score (0 tokens); a newly launched creative
+// costs one score; a paused/removed creative simply isn't in the fresh pull. Result: the board is
+// effectively real-time on which ads are live, while tokens are spent only on genuinely new ads.
+const ADSCORE_TTL = 60 * 60 * 24 * 30; // 30 days: a creative's fit-to-ICP score doesn't drift.
+
+// Stable id for a creative so the SAME ad maps to the SAME cache slot across pulls. Platform ad
+// ids are stable; fall back to the image URL sans query (LinkedIn/Google signed params change).
+function creativeSig(a) {
+  if (a.adId) return (a.plat || '') + ':id:' + a.adId;
+  if (a.img) return (a.plat || '') + ':img:' + String(a.img).split('?')[0];
+  return (a.plat || '') + ':h:' + (a.head || a.body || '').slice(0, 80);
+}
+// Short deterministic hash of the ICP text: a different ICP => a different cache namespace, so a
+// re-scored account with a changed buyer definition doesn't reuse stale scores.
+function icpHash(icp) {
+  const s = String(icp || '');
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+// Score a pulled ad list, reusing per-creative cached scores and only calling the model on the
+// creatives we haven't scored yet. `force` (the Retry button) bypasses the reuse and re-scores all.
+// Returns { ads, scoredNew, reused }. If redis is unavailable it just scores everything (old path).
+export async function scoreAdsCached(ads, icp, redis, { force = false } = {}) {
+  if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0 };
+  if (!redis) { const scored = await scoreAds(ads, icp); return { ads: scored, scoredNew: ads.length, reused: 0 }; }
+  const ih = icpHash(icp);
+  const keyOf = (a) => 'adscore:' + ih + ':' + creativeSig(a);
+  const cachedBySig = {};
+  if (!force) {
+    try {
+      const vals = await redis.mget(...ads.map(keyOf));
+      ads.forEach((a, i) => {
+        const v = vals && vals[i];
+        const o = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null;
+        if (o && typeof o.score === 'number') cachedBySig[creativeSig(a)] = o;
+      });
+    } catch (e) { /* miss -> score all */ }
+  }
+  const need = ads.filter(a => !cachedBySig[creativeSig(a)]);
+  const freshBySig = {};
+  if (need.length) {
+    const scored = await scoreAds(need, icp);
+    const writes = [];
+    for (const a of scored) {
+      if (typeof a.score !== 'number') continue;
+      const o = { score: a.score, verdict: a.verdict, fix: a.fix, title: a.title || null };
+      freshBySig[creativeSig(a)] = o;
+      writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL }));
+    }
+    try { await Promise.all(writes); } catch (e) { /* best-effort */ }
+  }
+  const out = ads.map(a => {
+    const o = cachedBySig[creativeSig(a)] || freshBySig[creativeSig(a)];
+    return o ? { ...a, score: o.score, verdict: o.verdict, fix: o.fix, title: o.title || a.title || null, head: a.head || o.title || '' } : a;
+  });
+  return { ads: out, scoredNew: need.length, reused: Object.keys(cachedBySig).length };
+}
+
 // --- LinkedIn (free, via Jina Reader) -------------------------------------------------
 // Pull a company's real LinkedIn ads (creative image + copy). Returns UNSCORED cards.
 async function fetchLinkedInAds({ company, limit = 12 } = {}) {

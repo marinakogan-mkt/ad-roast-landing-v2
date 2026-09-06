@@ -1028,6 +1028,16 @@
       : s <= 8 ? { label: 'Solid', c: '#0a66c2', bg: '#eef4fb', bd: '#cfe1f5' }
       : { label: 'Strong', c: '#075aad', bg: '#eef4fb', bd: '#cfe1f5' };
 
+    /* Compact "how long ago" label for the board's Live freshness chip. */
+    const relTime = (ts) => {
+      const n = Number(ts) || 0; if (!n) return 'just now';
+      const s = Math.max(0, Math.floor((Date.now() - n) / 1000));
+      if (s < 45) return 'just now';
+      const m = Math.floor(s / 60); if (m < 60) return m + 'm ago';
+      const h = Math.floor(m / 60); if (h < 24) return h + 'h ago';
+      return Math.floor(h / 24) + 'd ago';
+    };
+
     /* Real platform logos (official brand marks), not letter badges. */
     function PlatLogo({ plat, size = 16 }) {
       const s = { width: size, height: size, display: 'block' };
@@ -1311,7 +1321,7 @@
             setStatusMsg('Could not fetch your ads (' + ((res && res.reason) || 'error') + '). Try again.');
             return;
           }
-          setReal({ co, icp: icpText, ads: res.ads || [], notes: res.notes || {} });
+          setReal({ co, icp: icpText, ads: res.ads || [], notes: res.notes || {}, fresh: res.fresh || null });
           setStage('overview'); setGridPlat('all');
           setPhase('idle'); setBootLoading(false);
         } catch (e) { if (silent) { setPhase('idle'); setBootLoading(false); return; } setPhase('error'); setStatusMsg(String(e && e.message || e)); }
@@ -1611,6 +1621,15 @@
                     <span className="font-semibold flex-none">Buyer:</span>
                     <span className="text-gray-600 truncate" style={{ minWidth: 0 }}>{ICPeff}</span>
                     <button onClick={() => { setIcpDraft(ICPeff || ''); setIcpEditing(true); }} className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold flex-none" style={{ color: '#0a66c2' }}>edit</button>
+                  </div>
+                )}
+                {usingReal && real.fresh && (
+                  <div className="inline-flex items-center gap-2 rounded-lg flex-none" style={{ fontSize: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', padding: '7px 12px' }}
+                    title={'We re-pull your live ad list on each visit and only re-grade newly launched creatives. Last checked ' + relTime(real.fresh.checked) + '.'}>
+                    <span className="inline-block rounded-full flex-none" style={{ width: 7, height: 7, background: '#22c55e' }}></span>
+                    <span className="font-semibold">Live</span>
+                    <span style={{ color: '#4d7c5a' }}>· checked {relTime(real.fresh.checked)}</span>
+                    <button onClick={() => loadReal(siteInput || CO.domain || '', { refresh: true })} disabled={phase === 'loading'} className="ml-0.5 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold flex-none" style={{ color: '#15803d' }}>{phase === 'loading' ? 'refreshing…' : 'refresh'}</button>
                   </div>
                 )}
               </div>
@@ -3946,7 +3965,7 @@
           <section id="work-with-us" className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full scroll-mt-20">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Human-led services for B2B software</div>
             <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>The roast found the problem.<br className="hidden sm:inline" />Want us to fix the full campaign?</h2>
-            <p className="text-gray-400 mb-8 sm:mb-12 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>The free AdRoast works with ads from any industry. Our human-led services are built for B2B software teams running active paid campaigns. <strong className="font-semibold text-gray-600">We go beyond one ad: we reposition and rewrite the entire ad-to-page journey, ready for your team to ship.</strong></p>
+            <p className="text-gray-400 mb-8 sm:mb-12 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>The free AdRoast works with ads from any industry. Our human-led services are built for B2B software teams running active paid campaigns. <strong className="font-semibold text-gray-600">We align your campaign around the buyer, helping generate 3× more demos from the ad spend you already have.</strong></p>
 
             {ServiceOffers()}
 

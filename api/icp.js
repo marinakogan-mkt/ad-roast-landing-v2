@@ -25,7 +25,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, scoreAdsCached } from './_adlibrary.js';
 
 // The Ad Library fetch renders a page via Jina and runs a quick Haiku score, so allow headroom.
 export const config = { maxDuration: 60 };
@@ -158,41 +158,57 @@ export default async function handler(req, res) {
   // (which requires one). Pulls LinkedIn (Jina) + Google (Ads Transparency RPC) in parallel,
   // scores them together, returns one merged list.
   if (body.action === 'ads-fetch') {
-    /* Cache the board result so we don't hammer Jina on every load. LinkedIn's free path
-       (Jina anonymous) has a low rate limit: the first call returns the ads, rapid repeats
-       start returning 403 and LinkedIn vanishes. Caching means once LinkedIn comes through
-       it's reused (stays visible) instead of being re-fetched (and re-failing) every visit.
-       TTL is long when LinkedIn actually loaded, short otherwise so we keep retrying it soon
-       AND give Jina's per-minute limit time to recover between attempts. refresh:true (the
-       'change'/Retry buttons) bypasses the cache to force a fresh pull. */
-    // v2: the scorer now returns a per-ad `title` (used as the name for image-only Google ads,
-    // which carry no headline). Bump the cache namespace so pre-title cached sets are invalidated
-    // and re-scored fresh, otherwise Google cards keep showing the "<domain> display ad" fallback.
-    const ck = 'ads:v2:' + String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
+    /* Two-layer cache so the board is real-time on WHICH ads are live, while spending model
+       tokens only on genuinely new creatives:
+
+       Layer A — the raw creative LIST (`ads:pull:<domain>`). Pulling the list is FREE (Jina /
+       Google RPC / Meta API, no LLM), so we cache it only briefly: long enough not to hammer
+       Jina's rate limit, short enough that a creative the advertiser ADDS or REMOVES surfaces
+       within ~90min. This is the "is the account still the same?" check the board needs — done
+       without any tokens.
+
+       Layer B — the per-creative SCORE (`adscore:<icpHash>:<creativeSig>`, handled in
+       scoreAdsCached, 30d TTL). After re-pulling the list we only send creatives we've never
+       scored to the model; unchanged ones reuse their cached score (0 tokens), removed ones are
+       just gone. So refreshing the list is nearly free even though the list itself is current.
+
+       refresh:true (the 'change'/Retry buttons) bypasses BOTH layers: re-pull the list AND
+       re-score every creative from scratch. */
+    const domKey = String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
+    const pullKey = 'ads:pull:' + domKey;
     const wantScore = !!body.icp; // the board always sends the ICP; display-only calls don't
-    if (_redis && ck !== 'ads:' && !body.refresh) {
+    const refresh = !!body.refresh;
+
+    // Layer A: current creative list (cheap, cached ~90min unless Retry).
+    let pull = null, listCached = false;
+    if (_redis && domKey && !refresh) {
       try {
-        const raw = await _redis.get(ck);
-        const cached = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-        const cachedScored = cached && cached.ads && cached.ads.some(a => typeof a.score === 'number');
-        // Serve the cache UNLESS the caller wants scores and the cached set has none (a display-only
-        // call, e.g. a no-ICP probe, had poisoned it). In that case fall through and re-fetch WITH
-        // scoring so the "Weakest: Critical" gravity chips come back.
-        if (cached && cached.ads && cached.ads.length && (!wantScore || cachedScored)) {
-          return res.status(200).json({ ...cached, _cached: true });
-        }
-      } catch (e) { /* miss -> fetch */ }
+        const raw = await _redis.get(pullKey);
+        const c = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+        if (c && c.ads && c.ads.length) { pull = c; listCached = true; }
+      } catch (e) { /* miss -> pull */ }
     }
-    const result = await fetchAllAds({ company: body.company, domain: body.domain, icp: body.icp });
-    // Only overwrite the cache with a result that's scored, OR when no score was requested — so a
-    // no-ICP probe can never replace a good scored cache with an unscored one.
-    const resScored = result && result.ads && result.ads.some(a => typeof a.score === 'number');
-    if (_redis && ck !== 'ads:' && result && result.ok && result.ads && result.ads.length && (resScored || !wantScore)) {
-      const liOk = result.notes && result.notes.linkedin === 'ok';
-      const ttl = liOk ? 60 * 60 * 6 : 60 * 3; // 6h once LinkedIn is in; 3min retry window while it isn't
-      try { await _redis.set(ck, JSON.stringify(result), { ex: ttl }); } catch (e) {}
+    if (!pull) {
+      // Pull WITHOUT the ICP so no scoring happens here — scoreAdsCached does the (token-optimized)
+      // scoring below. A failed/empty pull is returned as-is (nothing to cache or score).
+      const r = await fetchAllAds({ company: body.company, domain: body.domain });
+      if (!(r && r.ok && r.ads && r.ads.length)) return res.status(200).json(r || { ok: false, ads: [] });
+      pull = r;
+      if (_redis && domKey) {
+        const liOk = r.notes && r.notes.linkedin === 'ok';
+        const ttl = liOk ? 60 * 90 : 60 * 3; // 90min once LinkedIn's in (surfaces add/remove); 3min retry otherwise
+        try { await _redis.set(pullKey, JSON.stringify(r), { ex: ttl }); } catch (e) {}
+      }
     }
-    return res.status(200).json(result);
+
+    // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.
+    if (!wantScore) return res.status(200).json({ ...pull, _listCached: listCached });
+    const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: refresh });
+    return res.status(200).json({
+      ...pull,
+      ads: sc.ads,
+      fresh: { checked: Date.now(), listCached, count: pull.ads.length, scoredNew: sc.scoredNew, reused: sc.reused },
+    });
   }
 
   let brand, domain, url;
