@@ -2854,6 +2854,7 @@
          account (tokens are keyed to the email), so unsigned visitors hit the
          sign-up gate first. Signed-in users go straight to Stripe. */
       const [checkoutBusy, setCheckoutBusy] = useState('');
+      const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' | 'yearly' for the pricing toggle
       const startCheckout = async (plan) => {
         if (!roastSession || !roastSession.email) { setShowSignupGate(true); return; }
         setCheckoutBusy(plan);
@@ -3866,7 +3867,8 @@
           {showMyAccount && roastSession && roastSession.email && (() => {
             const paid = roastSession.plan === 'unlimited' || roastSession.tokens > 0;
             const planLabel = roastSession.plan === 'unlimited' ? 'Unlimited' : (typeof roastSession.tokens === 'number' ? roastSession.tokens + ' roast' + (roastSession.tokens === 1 ? '' : 's') + ' left' : 'Free');
-            const planName = roastSession.plan === 'unlimited' ? 'Unlimited' : (roastSession.plan === 'monthly' ? 'Monthly' : 'Free');
+            const PLAN_NAMES = { unlimited: 'Unlimited', pro: 'Pro', starter: 'Starter', monthly: 'Monthly', lifetime: 'Lifetime', free: 'Free' };
+            const planName = PLAN_NAMES[roastSession.plan] || 'Free';
             return (
               <div className="fixed inset-0 overflow-y-auto" style={{ background: '#f6f8fb', zIndex: 60 }}>
                 <div className="sticky top-0 border-b border-gray-200" style={{ zIndex: 10, backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
@@ -5975,30 +5977,66 @@
             )}
 
             {/* UNLOCK MODAL */}
-            {showUnlockModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4" onClick={() => setShowUnlockModal(false)}>
-                <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-lg font-semibold text-gray-900">You're out of roasts</h3>
-                    <button onClick={() => setShowUnlockModal(false)} className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer"><Icon name="x" className="w-5 h-5" /></button>
+            {showUnlockModal && (() => {
+              const yr = billingCycle === 'yearly';
+              const plans = [
+                { key: 'starter', name: 'Starter', mo: 29, yr: 290, roasts: 25, companies: '1 company', who: 'For a founder or marketer of one brand', popular: false,
+                  bullets: ['Full mismatch analysis', 'Fix Kit with rewritten copy', '3 experiments + next steps', 'Permanent shareable links'] },
+                { key: 'pro', name: 'Pro', mo: 79, yr: 790, roasts: 100, companies: 'Up to 5 companies', who: 'For agencies & consultants with multiple brands', popular: true,
+                  bullets: ['Everything in Starter', 'Roast up to 5 brands', 'Switch between companies anytime', 'Priority roasting'] },
+              ];
+              return (
+              <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black bg-opacity-50 px-4 py-8 overflow-y-auto" onClick={() => setShowUnlockModal(false)}>
+                <div className="bg-white rounded-2xl shadow-2xl w-full" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
+                  <div className="p-6 sm:p-7">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-xl font-bold text-gray-900">You're out of roasts</h3>
+                      <button onClick={() => setShowUnlockModal(false)} className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer"><Icon name="x" className="w-5 h-5" /></button>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-4">Pick a plan to unlock this report and keep roasting.</p>
+                    {/* Monthly / Yearly toggle */}
+                    <div className="inline-flex items-center rounded-full border mb-5" style={{ borderColor: '#e5e7eb', background: '#f8fafc', padding: 3 }}>
+                      <button onClick={() => setBillingCycle('monthly')} className="rounded-full font-semibold transition-colors" style={{ fontSize: 13, padding: '6px 16px', background: !yr ? '#0a66c2' : 'transparent', color: !yr ? '#fff' : '#4b5563' }}>Monthly</button>
+                      <button onClick={() => setBillingCycle('yearly')} className="rounded-full font-semibold transition-colors inline-flex items-center gap-1.5" style={{ fontSize: 13, padding: '6px 16px', background: yr ? '#0a66c2' : 'transparent', color: yr ? '#fff' : '#4b5563' }}>Yearly <span className="font-bold" style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: yr ? 'rgba(255,255,255,.22)' : '#dcfce7', color: yr ? '#fff' : '#15803d' }}>save 17%</span></button>
+                    </div>
+                    <div className="grid gap-3.5 sm:grid-cols-2">
+                      {plans.map(p => {
+                        const price = yr ? p.yr : p.mo;
+                        const effMo = yr ? Math.round(p.yr / 12) : p.mo;
+                        const busy = checkoutBusy === (p.key + '_' + billingCycle);
+                        return (
+                          <div key={p.key} className="rounded-2xl border relative" style={{ borderColor: p.popular ? '#0a66c2' : '#e8ecf1', borderWidth: p.popular ? 2 : 1, padding: '18px 18px 16px', background: p.popular ? '#fbfdff' : '#fff' }}>
+                            {p.popular && <span className="absolute font-bold uppercase" style={{ top: -10, left: 16, fontSize: 9.5, letterSpacing: '0.05em', color: '#fff', background: '#0a66c2', padding: '3px 9px', borderRadius: 99 }}>Most popular</span>}
+                            <div className="font-bold text-gray-900" style={{ fontSize: 17 }}>{p.name}</div>
+                            <div className="text-gray-500" style={{ fontSize: 12, lineHeight: 1.4, marginTop: 2, minHeight: 32 }}>{p.who}</div>
+                            <div className="flex items-baseline gap-1 mt-2.5">
+                              <span className="font-extrabold text-gray-900" style={{ fontSize: 30, letterSpacing: '-0.02em' }}>${price}</span>
+                              <span className="text-gray-500 font-semibold" style={{ fontSize: 13 }}>{yr ? '/yr' : '/mo'}</span>
+                            </div>
+                            <div className="text-gray-400" style={{ fontSize: 11.5, marginTop: 2, minHeight: 16 }}>{yr ? `$${effMo}/mo billed yearly · 2 months free` : ''}</div>
+                            <div className="font-semibold text-gray-700 mt-2" style={{ fontSize: 12.5 }}>{p.companies} · {p.roasts} roasts/mo</div>
+                            <div className="space-y-1.5 mt-3 mb-4">
+                              {p.bullets.map((b, i) => <div key={i} className="flex items-start gap-2 text-gray-600" style={{ fontSize: 12.5 }}><Icon name="check" className="w-3.5 h-3.5 flex-none mt-0.5" style={{ color: '#0a66c2' }} /><span>{b}</span></div>)}
+                            </div>
+                            <button onClick={() => startCheckout(p.key + '_' + billingCycle)} disabled={!!checkoutBusy}
+                              className="w-full py-2.5 rounded-full font-bold text-sm transition-opacity disabled:opacity-60 hover:opacity-90"
+                              style={p.popular ? { background: '#0a66c2', color: '#fff', border: 'none' } : { background: '#fff', color: '#0a66c2', border: '2px solid #0a66c2' }}>
+                              {busy ? 'Redirecting…' : 'Choose ' + p.name}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="text-center mt-4">
+                      <button onClick={() => startCheckout('lifetime')} disabled={!!checkoutBusy} className="bg-transparent border-none cursor-pointer font-semibold" style={{ fontSize: 12.5, color: '#6b7280' }}>
+                        {checkoutBusy === 'lifetime' ? 'Redirecting…' : 'or Lifetime · $482 once · 20 roasts/mo for life'}
+                      </button>
+                    </div>
+                    <p className="text-gray-400 text-xs mt-3 text-center">Secure payment via Stripe · cancel anytime</p>
                   </div>
-                  <p className="text-sm text-gray-500 mb-4">You've used your free roast. Pick a plan to unlock this report and keep roasting. One roast costs one token.</p>
-                  <div className="space-y-2 text-sm text-gray-600 mb-5">
-                    <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Full mismatch analysis</span></div>
-                    <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Fix Kit with rewritten copy</span></div>
-                    <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>3 experiments + next steps</span></div>
-                    <div className="flex items-center gap-2"><Icon name="check" className="w-3.5 h-3.5 text-green-500" /><span>Permanent shareable link</span></div>
-                  </div>
-                  <button onClick={() => startCheckout('monthly')} disabled={!!checkoutBusy} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-60">
-                    {checkoutBusy === 'monthly' ? 'Redirecting…' : 'Monthly · $24/mo · 20 roasts'}
-                  </button>
-                  <button onClick={() => startCheckout('lifetime')} disabled={!!checkoutBusy} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="w-full mt-2 py-2.5 bg-white border-2 rounded-full font-semibold text-sm hover:bg-blue-50 transition-colors disabled:opacity-60">
-                    {checkoutBusy === 'lifetime' ? 'Redirecting…' : 'Lifetime · $482 once · 20/mo for life'}
-                  </button>
-                  <p className="text-gray-400 text-xs mt-3 text-center">Secure payment via Stripe · cancel anytime</p>
                 </div>
-              </div>
-            )}
+              </div>);
+            })()}
           </div>
         );
       }

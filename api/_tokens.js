@@ -19,7 +19,10 @@
 
 import { sendCreditsRenewedEmail } from './_welcome.js';
 
-export const PLAN_TOKENS = { free: 1, monthly: 20, lifetime: 20 };
+// starter/pro are the current tiers; monthly/lifetime kept for existing subscribers.
+export const PLAN_TOKENS = { free: 1, starter: 25, pro: 100, monthly: 20, lifetime: 20 };
+// How many distinct companies/brands a plan may roast (soft product limit, enforced in phase 2).
+export const PLAN_COMPANIES = { free: 1, starter: 1, pro: 5, monthly: 1, lifetime: 1, unlimited: 999 };
 const CYCLE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /* Set of every paid account email, so the daily cron can poke each one to
@@ -51,7 +54,7 @@ async function readAccount(redis, email) {
    new cycle rolled over (tokens were refilled) so the caller can email once. */
 function applyReset(acct, now) {
   let refilled = false;
-  if (acct.plan === 'monthly' || acct.plan === 'lifetime') {
+  if (isPaid(acct)) {
     while (now - acct.cycleStart >= CYCLE_MS) {
       acct.cycleStart += CYCLE_MS;
       refilled = true;
@@ -65,7 +68,7 @@ async function saveAccount(redis, email, acct) {
   try { await redis.set(`roast:acct:${email}`, JSON.stringify(acct)); } catch (e) {}
 }
 
-function isPaid(acct) { return acct && (acct.plan === 'monthly' || acct.plan === 'lifetime'); }
+function isPaid(acct) { return !!(acct && acct.plan && acct.plan !== 'free' && PLAN_TOKENS[acct.plan]); }
 
 /* Best-effort: keep a set of paid emails for the cron. Backfills existing paying
    customers the first time they read/roast after this ships. */

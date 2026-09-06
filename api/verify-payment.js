@@ -83,7 +83,8 @@ export default async function handler(req, res) {
     if (session.payment_status === 'paid') {
       const email = (session.metadata && session.metadata.email) || session.customer_email;
       const plan = session.metadata && session.metadata.plan;
-      if (email && (plan === 'monthly' || plan === 'lifetime')) {
+      // metadata.plan is the base entitlement (starter/pro/monthly/lifetime); grantPlan validates it.
+      if (email && (plan === 'starter' || plan === 'pro' || plan === 'monthly' || plan === 'lifetime')) {
         /* Idempotent per checkout session: refreshing /?payment=success must NOT
            re-grant 20 tokens. We only grant once per session id. */
         try {
