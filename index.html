@@ -1313,17 +1313,33 @@
       const [roastedMap, setRoastedMap] = useState({});
       const normImg = (u) => String(u || '').split('?')[0].toLowerCase();
       const roastedIdFor = (ad) => (ad && ad.img && roastedMap[normImg(ad.img)]) || null;
+      const [coScores, setCoScores] = useState({}); // normalized company name -> avg roasted ad score (for the "needs help" sort)
       useEffect(() => {
         fetch('/api/auth?action=my-roasts', { credentials: 'same-origin' })
           .then(r => r.ok ? r.json() : null)
           .then(d => {
             if (!d || !d.roasts) return;
-            const m = {};
-            d.roasts.forEach(r => { if (r.img && r.reportId) m[normImg(r.img)] = r.reportId; });
+            const m = {}; const sc = {};
+            d.roasts.forEach(r => {
+              if (r.img && r.reportId) m[normImg(r.img)] = r.reportId;
+              if (typeof r.adScore === 'number' && r.company) { const k = String(r.company).toLowerCase().replace(/[^a-z0-9]/g, ''); if (k) { (sc[k] = sc[k] || { s: 0, n: 0 }); sc[k].s += r.adScore; sc[k].n++; } }
+            });
             setRoastedMap(m);
+            const avg = {}; Object.keys(sc).forEach(k => { avg[k] = sc[k].s / sc[k].n; });
+            setCoScores(avg);
           })
           .catch(() => {});
       }, []);
+      const [sortMode, setSortMode] = useState('recent'); // 'recent' | 'gravity' | 'alpha'
+      const [sortMenuOpen, setSortMenuOpen] = useState(false);
+      const sortedCos = React.useMemo(() => {
+        const arr = (railCos || []).slice();
+        const nk = c => String((c && (c.name || c.domain)) || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (sortMode === 'alpha') arr.sort((a, b) => String(a.name || a.domain).localeCompare(String(b.name || b.domain)));
+        else if (sortMode === 'gravity') arr.sort((a, b) => { const sa = coScores[nk(a)], sb = coScores[nk(b)]; return ((typeof sa === 'number') ? sa : 99) - ((typeof sb === 'number') ? sb : 99); }); // worst (lowest score) first, unscored last
+        else arr.sort((a, b) => (b.ts || 0) - (a.ts || 0)); // recent
+        return arr;
+      }, [railCos, sortMode, coScores]);
       useEffect(() => {
         fetch('/api/auth?action=my-companies', { credentials: 'same-origin' })
           .then(r => r.ok ? r.json() : null)
@@ -1709,13 +1725,29 @@
             <aside className="hidden lg:flex flex-col fixed left-0 border-r" style={{ top: 57, bottom: 0, width: railOpen ? 208 : 52, borderColor: '#e8ecf1', background: '#fff', zIndex: 9, transition: 'width .16s ease' }}>
               <div className="pt-4 pb-2 flex items-center justify-between" style={{ padding: railOpen ? '16px 12px 8px' : '16px 0 8px', justifyContent: railOpen ? 'space-between' : 'center' }}>
                 {railOpen && <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Your companies</span>}
-                <button onClick={() => setRailOpen(o => !o)} title={railOpen ? 'Collapse' : 'Expand'} className="grid place-items-center rounded-md bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-700 hover:bg-gray-100" style={{ width: 22, height: 22, fontSize: 15, lineHeight: 1 }}>{railOpen ? '«' : '»'}</button>
+                <div className="flex items-center gap-0.5">
+                  {railOpen && (
+                    <div className="relative">
+                      <button onClick={() => setSortMenuOpen(o => !o)} title="Sort companies" className="grid place-items-center rounded-md bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-700 hover:bg-gray-100" style={{ width: 22, height: 22, fontSize: 13, lineHeight: 1 }}>⇅</button>
+                      {sortMenuOpen && (<>
+                        <div className="fixed inset-0" style={{ zIndex: 11 }} onClick={() => setSortMenuOpen(false)} />
+                        <div className="absolute left-0 mt-1 bg-white rounded-lg border shadow-lg overflow-hidden" style={{ zIndex: 12, minWidth: 160, borderColor: '#e8ecf1', boxShadow: '0 8px 24px rgba(11,15,26,.14)' }}>
+                          <div className="px-3 pt-2 pb-1 text-[9px] font-bold uppercase tracking-wide text-gray-400">Sort by</div>
+                          {[['recent', 'Most recent'], ['gravity', 'Needs help first'], ['alpha', 'A to Z']].map(([k, l]) => (
+                            <button key={k} onClick={() => { setSortMode(k); setSortMenuOpen(false); }} className="block w-full text-left px-3 py-2 bg-transparent border-none cursor-pointer hover:bg-gray-50 transition-colors" style={{ fontSize: 12.5, fontWeight: sortMode === k ? 700 : 500, color: sortMode === k ? '#0a66c2' : '#374151' }}>{l}</button>
+                          ))}
+                        </div>
+                      </>)}
+                    </div>
+                  )}
+                  <button onClick={() => setRailOpen(o => !o)} title={railOpen ? 'Collapse' : 'Expand'} className="grid place-items-center rounded-md bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-700 hover:bg-gray-100" style={{ width: 22, height: 22, fontSize: 15, lineHeight: 1 }}>{railOpen ? '«' : '»'}</button>
+                </div>
               </div>
               {railOpen && (
                 <button onClick={() => { setEntryMode(true); setPhase('idle'); setStage('overview'); setFP('all'); setSiteInput(''); window.scrollTo(0, 0); }} className="mx-2 mb-1 flex items-center gap-2 rounded-lg font-semibold bg-transparent cursor-pointer hover:bg-blue-50 transition-colors" style={{ padding: '7px 10px', fontSize: 12.5, color: '#0a66c2', border: '1px dashed #cfe1f5' }}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Roast a new company</button>
               )}
               <div className="flex-1 overflow-y-auto px-2 pb-2">
-                {railCos.map(co => {
+                {sortedCos.map(co => {
                   const active = CO && CO.domain && co.domain && CO.domain.toLowerCase() === String(co.domain).toLowerCase();
                   return (
                     <button key={co.domain} title={co.name || co.domain}
