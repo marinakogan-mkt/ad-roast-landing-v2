@@ -306,6 +306,37 @@ async function handleApiKey(req, res) {
   }
 }
 
+/* The account's company roster (powers the logged-in sidebar + board landing). Prefers the
+   per-account hash roast:cos:<email>; backfills from the global roast index for accounts that
+   roasted before that roster existed. Newest-first. */
+async function handleMyCompanies(req, res) {
+  const email = await sessionRoastEmail(req);
+  if (!email) return res.status(401).json({ error: 'Not signed in' });
+  let companies = [];
+  try {
+    const hash = await redis.hgetall(`roast:cos:${email}`);
+    if (hash && Object.keys(hash).length) {
+      companies = Object.values(hash).map(v => { try { return typeof v === 'string' ? JSON.parse(v) : v; } catch (e) { return null; } }).filter(Boolean);
+    }
+  } catch (e) {}
+  if (!companies.length) {
+    try {
+      const raw = await redis.lrange('roast:index', 0, 999);
+      const byDom = {};
+      for (const r of (raw || [])) {
+        let s; try { s = typeof r === 'string' ? JSON.parse(r) : r; } catch (e) { continue; }
+        if (!s || String(s.email || '').toLowerCase() !== email) continue;
+        const dom = s.domain || String(s.website || '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, '') || String(s.company || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!dom) continue;
+        if (!byDom[dom] || (s.ts || 0) > byDom[dom].ts) byDom[dom] = { domain: dom, name: s.company || dom, site: s.website || dom, ts: s.ts || 0 };
+      }
+      companies = Object.values(byDom);
+    } catch (e) {}
+  }
+  companies.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  return res.status(200).json({ success: true, companies });
+}
+
 async function handleLogout(req, res) {
   const sessionToken = readSessionCookie(req);
   if (sessionToken) {
@@ -553,6 +584,9 @@ export default async function handler(req, res) {
       case 'api-key':
         if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleApiKey(req, res);
+      case 'my-companies':
+        if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+        return await handleMyCompanies(req, res);
       case 'change-email':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleChangeEmailRequest(req, res);

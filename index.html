@@ -2745,7 +2745,20 @@
         } catch (e) { return; }
         if (viewRef.current && viewRef.current !== 'landing') return;
         autoDashRef.current = true;
-        goOverlay('dash');
+        /* A returning account that has roasted lands on the BOARD of its most recent company
+           (not the roasted-ads history). A brand-new account that never roasted just sees the
+           homepage. */
+        fetch('/api/auth?action=my-companies', { credentials: 'same-origin' })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => {
+            const co = d && d.companies && d.companies[0];
+            const site = co && (co.site || co.domain);
+            if (site && viewRef.current === 'landing' && window.location.pathname === '/' && !window.location.search) {
+              try { window.history.replaceState({}, '', '/?library=1&site=' + encodeURIComponent(site)); } catch (e) {}
+              setView('ad-library');
+            }
+          })
+          .catch(() => {});
       }, [roastSession]);
       const stepRef = React.useRef(guidedStep); stepRef.current = guidedStep;
       const cameFromResultsRef = React.useRef(false); cameFromResultsRef.current = cameFromResults;

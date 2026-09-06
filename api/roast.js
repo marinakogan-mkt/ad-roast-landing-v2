@@ -698,9 +698,16 @@ Return the JSON object defined in the output contract. All fields required.`;
               record.adImageUrl = adImageUrl;
             }
             await _redis.set(`roast:report:${reportId}`, JSON.stringify(record), { ex: 60 * 60 * 24 * 90 });
-            const summary = { reportId, ts, email: acctEmail, platform: platform || '', company: company || '', icp: (icpDescription || '').slice(0, 160), adScore: parsed.overall_score ?? null, lpScore: parsed.landing_page_roast?.overall_score ?? null, matchScore: parsed.ad_landing_mismatch?.alignment_score ?? null, img: (adImageUrl && typeof adImageUrl === 'string') ? adImageUrl : null };
+            const summary = { reportId, ts, email: acctEmail, platform: platform || '', company: company || '', website: website || '', domain: _companyKey || '', adUrl: adUrl || '', icp: (icpDescription || '').slice(0, 160), adScore: parsed.overall_score ?? null, lpScore: parsed.landing_page_roast?.overall_score ?? null, matchScore: parsed.ad_landing_mismatch?.alignment_score ?? null, img: (adImageUrl && typeof adImageUrl === 'string') ? adImageUrl : null };
             await _redis.lpush('roast:index', JSON.stringify(summary));
             await _redis.ltrim('roast:index', 0, 999); // keep the most recent 1000
+            /* Per-account company roster (powers the sidebar + logged-in landing): one hash field
+               per brand, keyed by domain, with the display name + latest timestamp. */
+            try {
+              if (acctEmail && _companyKey) {
+                await _redis.hset(`roast:cos:${acctEmail}`, { [_companyKey]: JSON.stringify({ domain: _companyKey, name: company || _companyKey, site: website || _companyKey, ts }) });
+              }
+            } catch (e) {}
           } catch (e) { console.error('[AdRoast] roast index error:', e.message); }
 
           try { await _redis.set(`roast:last:${acctEmail}`, JSON.stringify(parsed), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
