@@ -13,6 +13,15 @@ const _redis = new Redis({
    roast paywall only ever counts against roast accounts. */
 async function roastAccountEmail(req) {
   try {
+    // API key (personal API / MCP server): Authorization: Bearer ak_..., x-api-key, or ?key=.
+    // Lets a script or the MCP act as the account with no browser session.
+    const authz = req.headers['authorization'] || req.headers['Authorization'] || '';
+    const bearer = /^Bearer\s+(ak_[A-Za-z0-9_]+)/i.exec(authz);
+    const apiKey = (bearer && bearer[1]) || req.headers['x-api-key'] || (req.query && req.query.key) || '';
+    if (apiKey && /^ak_[A-Za-z0-9_]+$/.test(String(apiKey))) {
+      const em = await _redis.get(`roast:apikey:${apiKey}`);
+      if (em) return String(em).trim().toLowerCase();
+    }
     const token = readSessionCookie(req);
     if (!token) return null;
     const raw = await _redis.get(`auth:session:${token}`);

@@ -2206,6 +2206,22 @@
       const [acctMenuOpen, setAcctMenuOpen] = useState(false);   // account dropdown (kebab) in the header
       const [showMyRoasts, setShowMyRoasts] = useState(false);   // "My roasted ads" dashboard overlay
       const [showMyAccount, setShowMyAccount] = useState(false); // "My account" settings overlay
+      // API & MCP: the account's personal API key (for scripts + the AdRoast MCP server). Lazily
+      // fetched when My account opens; the same key is reused, or rotated on demand.
+      const [apiKey, setApiKey] = useState(null);        // { apiKey, mcpUrl } or null
+      const [apiKeyLoading, setApiKeyLoading] = useState(false);
+      const [apiKeyReveal, setApiKeyReveal] = useState(false);
+      const [apiKeyCopied, setApiKeyCopied] = useState('');
+      const loadApiKey = async ({ rotate = false } = {}) => {
+        setApiKeyLoading(true);
+        try {
+          const r = await fetch('/api/auth?action=api-key', { method: rotate ? 'POST' : 'GET', credentials: 'same-origin', headers: rotate ? { 'Content-Type': 'application/json' } : undefined, body: rotate ? JSON.stringify({ rotate: true }) : undefined });
+          const d = await r.json();
+          if (r.ok && d.apiKey) { setApiKey({ apiKey: d.apiKey, mcpUrl: d.mcpUrl }); if (rotate) setApiKeyReveal(true); }
+        } catch (e) {} finally { setApiKeyLoading(false); }
+      };
+      const copyText = (t, which) => { try { navigator.clipboard.writeText(t); setApiKeyCopied(which); setTimeout(() => setApiKeyCopied(''), 1600); } catch (e) {} };
+      useEffect(() => { if (showMyAccount && !apiKey && !apiKeyLoading) loadApiKey(); }, [showMyAccount]);
       // Sign out of a roast-tool account, then drop the local session so the header reflects it.
       const signOutRoast = async () => {
         try { await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
@@ -3858,6 +3874,30 @@
                         ? <span className="text-gray-400" style={{ fontSize: 12.5 }}>Comped account, no billing.</span>
                         : <button onClick={openBilling} disabled={billingBusy} className="font-bold text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60" style={{ fontSize: 13, padding: '8px 16px', background: '#0a66c2' }}>{billingBusy ? 'Opening…' : (paid ? 'Manage billing & invoices' : 'Upgrade')}</button>}
                     </div>
+                  </div>
+                  <div className="bg-white border rounded-2xl" style={{ borderColor: '#e8ecf1', padding: '18px 20px' }}>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400">API &amp; MCP</div>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#eef4fb', color: '#0a66c2' }}>Beta</span>
+                    </div>
+                    <p className="text-gray-500" style={{ fontSize: 12.5, lineHeight: 1.5, marginBottom: 12 }}>Roast ads from your own tools, or connect AdRoast to Claude as an MCP so it can roast ads and pull live-ad boards for your outreach, no browser needed. Your key acts as this account and uses your roasts.</p>
+                    {apiKeyLoading && !apiKey
+                      ? <div className="text-gray-400" style={{ fontSize: 13 }}>Loading your key…</div>
+                      : apiKey ? (<>
+                        <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Your API key</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <code className="rounded-lg font-mono text-gray-800 truncate" style={{ fontSize: 12.5, padding: '8px 11px', background: '#f6f8fb', border: '1px solid #e8ecf1', maxWidth: '100%', flex: 1, minWidth: 180 }}>{apiKeyReveal ? apiKey.apiKey : apiKey.apiKey.slice(0, 10) + '••••••••••••••••••••'}</code>
+                          <button onClick={() => setApiKeyReveal(v => !v)} className="font-semibold rounded-lg bg-white hover:bg-gray-50 transition-colors flex-none" style={{ fontSize: 12.5, padding: '8px 12px', border: '1px solid #d1d5db', color: '#4b5563' }}>{apiKeyReveal ? 'Hide' : 'Reveal'}</button>
+                          <button onClick={() => copyText(apiKey.apiKey, 'key')} className="font-semibold rounded-lg text-white hover:opacity-90 transition-opacity flex-none" style={{ fontSize: 12.5, padding: '8px 12px', background: '#0a66c2' }}>{apiKeyCopied === 'key' ? 'Copied' : 'Copy'}</button>
+                        </div>
+                        <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mt-4 mb-1.5">Connect to Claude (MCP)</div>
+                        <p className="text-gray-500" style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 7 }}>In Claude, add a custom connector and paste this URL (your key is already in it, keep it private):</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <code className="rounded-lg font-mono text-gray-700 truncate" style={{ fontSize: 11.5, padding: '8px 11px', background: '#f6f8fb', border: '1px solid #e8ecf1', flex: 1, minWidth: 180 }}>{apiKey.mcpUrl}</code>
+                          <button onClick={() => copyText(apiKey.mcpUrl, 'url')} className="font-semibold rounded-lg text-white hover:opacity-90 transition-opacity flex-none" style={{ fontSize: 12.5, padding: '8px 12px', background: '#0a66c2' }}>{apiKeyCopied === 'url' ? 'Copied' : 'Copy URL'}</button>
+                        </div>
+                        <div className="text-gray-400 mt-3" style={{ fontSize: 11.5 }}>Tools: roast_ad, list_live_ads, get_report. <button onClick={() => loadApiKey({ rotate: true })} disabled={apiKeyLoading} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#b45309' }}>Regenerate key</button> (the old one stops working).</div>
+                      </>) : <button onClick={() => loadApiKey()} className="font-bold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ fontSize: 13, padding: '8px 16px', background: '#0a66c2' }}>Create API key</button>}
                   </div>
                   <div className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: '#e8ecf1' }}>
                     <button onClick={() => { setShowMyAccount(false); setShowMyRoasts(true); }} className="w-full text-left flex items-center gap-2.5 cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '13px 18px', fontSize: 14, fontWeight: 600, color: '#1f2937', borderBottom: '1px solid #f1f5f9' }}><Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />My roasted ads</button>

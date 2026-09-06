@@ -100,6 +100,12 @@ async function fetchSite(url) {
 }
 
 export default async function handler(req, res) {
+  /* MCP server (/api/mcp, rewritten to /api/icp?mcp=1). Folded in here to stay under the Hobby
+     12-function cap; the actual JSON-RPC handler lives in _mcp.js (an underscore helper). */
+  if (req.query && req.query.mcp === '1') {
+    const { mcpHandler } = await import('./_mcp.js');
+    return mcpHandler(req, res);
+  }
   /* Image proxy (GET /api/icp?img=<encoded url>). Ad creatives live on
      tpc.googlesyndication.com (Google) and media.licdn.com (LinkedIn) — hosts that every
      ad-blocker (uBlock, Brave, AdBlock) blocks by name, so hotlinked creatives silently

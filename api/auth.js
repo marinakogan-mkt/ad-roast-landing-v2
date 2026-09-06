@@ -12,6 +12,7 @@
  *   GET  /api/auth?action=google-start             -> redirect to Google OAuth consent
  */
 
+import crypto from 'crypto';
 import { Redis } from '@upstash/redis';
 import {
   findRole,
@@ -262,6 +263,49 @@ async function handleBillingPortal(req, res) {
   }
 }
 
+/* ---- API keys (for the personal API / MCP server) --------------------------------------
+   A roast account gets one long-lived API key so scripts and the AdRoast MCP server can act
+   as that account (roast an ad, pull the live-ads board) without a browser session. Stored two
+   ways: roast:apikeyfor:<email> (forward, to show/rotate in My Account) and roast:apikey:<key>
+   (reverse, so roast.js / mcp.js can resolve a key back to its email). Keys never expire; a
+   rotate deletes the old reverse mapping so the previous key stops working immediately. */
+function newApiKey() {
+  return 'ak_live_' + crypto.randomBytes(24).toString('hex');
+}
+async function getOrCreateApiKey(email, { rotate = false } = {}) {
+  const fwd = `roast:apikeyfor:${email}`;
+  let key = rotate ? null : await redis.get(fwd);
+  if (key) return String(key);
+  const prev = rotate ? await redis.get(fwd) : null;
+  key = newApiKey();
+  await redis.set(fwd, key);
+  await redis.set(`roast:apikey:${key}`, email);
+  if (prev) { try { await redis.del(`roast:apikey:${prev}`); } catch (e) {} }
+  return key;
+}
+async function sessionRoastEmail(req) {
+  const sessionToken = readSessionCookie(req);
+  if (!sessionToken) return null;
+  try {
+    const raw = await redis.get(`auth:session:${sessionToken}`);
+    const s = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+    if (s && s.mode === 'roast' && s.email) return String(s.email).trim().toLowerCase();
+  } catch (e) {}
+  return null;
+}
+async function handleApiKey(req, res) {
+  const email = await sessionRoastEmail(req);
+  if (!email) return res.status(401).json({ error: 'Not signed in' });
+  const rotate = req.method === 'POST' && ((req.body && req.body.rotate) || req.query.rotate === '1');
+  try {
+    const key = await getOrCreateApiKey(email, { rotate: !!rotate });
+    return res.status(200).json({ success: true, email, apiKey: key, mcpUrl: 'https://www.adroast.in/api/mcp?key=' + key });
+  } catch (e) {
+    console.error('[auth] api-key error:', e.message);
+    return res.status(500).json({ error: 'Could not issue an API key. Please try again.' });
+  }
+}
+
 async function handleLogout(req, res) {
   const sessionToken = readSessionCookie(req);
   if (sessionToken) {
@@ -506,6 +550,9 @@ export default async function handler(req, res) {
       case 'billing-portal':
         if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
         return await handleBillingPortal(req, res);
+      case 'api-key':
+        if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+        return await handleApiKey(req, res);
       case 'change-email':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleChangeEmailRequest(req, res);
