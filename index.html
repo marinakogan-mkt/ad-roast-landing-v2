@@ -2787,9 +2787,13 @@
             } catch (e) { /* ignore - leave URL untouched */ }
           } else if (view === 'landing') {
             /* Don't reset the URL if there's a payment-success ?id= already handled
-               by the init effect - only reset on a true return to landing. */
+               by the init effect - only reset on a true return to landing. Also never clobber a
+               clean app path (/board, /dashboard, /account): the view is transiently 'landing' on a
+               deep link before the routing effect switches it, and resetting to '/' would break it. */
+            const p = window.location.pathname;
+            const isAppPath = p === '/board' || p.indexOf('/board/') === 0 || p === '/dashboard' || p === '/account';
             const hasReportParam = /[?&](id|synth|payment)=/.test(window.location.search);
-            if (!hasReportParam) target = '/';
+            if (!hasReportParam && !isAppPath) target = '/';
           }
           if (target && (window.location.pathname + window.location.search + window.location.hash) !== target) {
             window.history.replaceState(null, '', target);
