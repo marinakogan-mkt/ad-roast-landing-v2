@@ -2855,6 +2855,7 @@
          sign-up gate first. Signed-in users go straight to Stripe. */
       const [checkoutBusy, setCheckoutBusy] = useState('');
       const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' | 'yearly' for the pricing toggle
+      const [companyLimitInfo, setCompanyLimitInfo] = useState(null); // {count,limit} when a roast is blocked by the brand cap
       const startCheckout = async (plan) => {
         if (!roastSession || !roastSession.email) { setShowSignupGate(true); return; }
         setCheckoutBusy(plan);
@@ -3050,6 +3051,7 @@
         setIsSharedView(false); // a freshly generated roast is the viewer's own, not a shared link
         notifyRoastToMarina(data); // email Marina every roast, regardless of LinkedIn opt-in
         const ent = data && data._entitlement;
+        setCompanyLimitInfo(data && data._companyLimit ? data._companyLimit : null);
         if (ent && ent.authed) {
           if (ent.full) { setIsUnlocked(true); setNeedsPayment(false); }
           else { setIsUnlocked(false); setNeedsPayment(true); }
@@ -5990,10 +5992,10 @@
                 <div className="bg-white rounded-2xl shadow-2xl w-full" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
                   <div className="p-6 sm:p-7">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-xl font-bold text-gray-900">You're out of roasts</h3>
+                      <h3 className="text-xl font-bold text-gray-900">{companyLimitInfo ? 'Upgrade to roast more brands' : "You're out of roasts"}</h3>
                       <button onClick={() => setShowUnlockModal(false)} className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer"><Icon name="x" className="w-5 h-5" /></button>
                     </div>
-                    <p className="text-sm text-gray-500 mb-4">Pick a plan to unlock this report and keep roasting.</p>
+                    <p className="text-sm text-gray-500 mb-4">{companyLimitInfo ? `Your plan covers ${companyLimitInfo.limit} ${companyLimitInfo.limit === 1 ? 'company' : 'companies'}. Go Pro to roast up to 5 brands.` : 'Pick a plan to unlock this report and keep roasting.'}</p>
                     {/* Monthly / Yearly toggle */}
                     <div className="inline-flex items-center rounded-full border mb-5" style={{ borderColor: '#e5e7eb', background: '#f8fafc', padding: 3 }}>
                       <button onClick={() => setBillingCycle('monthly')} className="rounded-full font-semibold transition-colors" style={{ fontSize: 13, padding: '6px 16px', background: !yr ? '#0a66c2' : 'transparent', color: !yr ? '#fff' : '#4b5563' }}>Monthly</button>

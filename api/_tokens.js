@@ -119,6 +119,32 @@ export async function consumeToken(redis, rawEmail) {
   return { authed: true, full: false, remaining: 0, plan: acct.plan };
 }
 
+/* --- Company (brand) limit per plan (monetization #4, phase 2). An account may roast up to
+   PLAN_COMPANIES[plan] DISTINCT companies; re-roasting one it already has is always allowed.
+   Companies are tracked as a Redis set of normalized domains, `roast:companies:<email>`. --- */
+export function companyKey(company, website) {
+  const dom = String(website || '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, '');
+  if (dom && dom.indexOf('.') !== -1) return dom;
+  const c = String(company || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  return c || dom || 'unknown';
+}
+export async function checkCompanyAllowed(redis, rawEmail, key, plan) {
+  const email = normEmail(rawEmail);
+  if (UNLIMITED_EMAILS.has(email)) return { allowed: true, count: 0, limit: 999 };
+  const limit = PLAN_COMPANIES[plan] || 1;
+  let members = [];
+  try { members = (await redis.smembers(`roast:companies:${email}`)) || []; } catch (e) { members = []; }
+  if (members.includes(key)) return { allowed: true, existing: true, count: members.length, limit };
+  if (members.length >= limit) return { allowed: false, count: members.length, limit };
+  return { allowed: true, isNew: true, count: members.length + 1, limit };
+}
+export async function addCompany(redis, rawEmail, key) {
+  const email = normEmail(rawEmail);
+  if (!email || !key || UNLIMITED_EMAILS.has(email)) return;
+  try { await redis.sadd(`roast:companies:${email}`, key); } catch (e) {}
+}
+
 /* Grant a paid plan after a successful Stripe checkout. cycleStart = now, so the
    billing month starts on the payment date. Idempotency is handled by the
    caller (once per checkout session id). */

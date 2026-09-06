@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 import crypto from 'node:crypto';
 import { readSessionCookie } from './auth/_allowlist.js';
-import { consumeToken, peekAccount } from './_tokens.js';
+import { consumeToken, peekAccount, companyKey, checkCompanyAllowed, addCompany } from './_tokens.js';
 
 const _redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -227,6 +227,22 @@ export default async function handler(req, res) {
       ? { authed: true, email: acctEmail, full: false, remaining: 0, plan: (acctBal && acctBal.plan) || 'free' }
       : { authed: false, email: null, full: false, remaining: 0, plan: null };
     return res.status(200).json(gated);
+  }
+
+  /* Company (brand) limit gate (monetization #4, phase 2): a signed-in account may only roast
+     up to its plan's number of DISTINCT companies (Free/Starter 1, Pro 5). Re-roasting a company
+     it already has is always fine. Fails OPEN on any Redis error so it never wrongly blocks. */
+  let _companyKey = null;
+  if (acctEmail && !redisDown) {
+    try {
+      _companyKey = companyKey(company, website);
+      const cChk = await checkCompanyAllowed(_redis, acctEmail, _companyKey, (acctBal && acctBal.plan) || 'free');
+      if (!cChk.allowed) {
+        const blocked = { ...LOCKED_SAMPLE, _gated: true, _version: API_VERSION, _companyLimit: { count: cChk.count, limit: cChk.limit },
+          _entitlement: { authed: true, email: acctEmail, full: false, remaining: (acctBal && acctBal.tokens) || 0, plan: (acctBal && acctBal.plan) || 'free', companyLimit: true } };
+        return res.status(200).json(blocked);
+      }
+    } catch (e) { _companyKey = _companyKey || null; }
   }
 
   /* Dedupe (token optimization): an identical re-roast — byte-identical inputs —
@@ -648,6 +664,8 @@ Return the JSON object defined in the output contract. All fields required.`;
             console.error('[AdRoast] consume error:', e.message);
             parsed._entitlement = { authed: true, email: acctEmail, full: true, remaining: null, plan: (acctBal && acctBal.plan) || null };
           }
+          // Register this company against the account's brand quota (phase 2).
+          try { if (_companyKey) await addCompany(_redis, acctEmail, _companyKey); } catch (e) {}
 
           /* Internal roasts list (Redis, no Notion): give every roast a stable id,
              store the full report under it, and push a compact summary onto a capped
