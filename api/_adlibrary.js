@@ -382,7 +382,13 @@ export async function fetchMetaAds({ company, domain, limit = 12 } = {}) {
     let r;
     try { r = await fetch(url, { signal: c.signal }); } finally { clearTimeout(t); }
     data = await r.json();
-    if (data && data.error) return { ok: false, reason: 'meta_error:' + (data.error.code || ''), ads: [] };
+    if (data && data.error) {
+      const e = data.error;
+      // Surface the full Meta error (code + subcode + message) so we can diagnose exactly why a
+      // valid token still fails (e.g. permission, identity confirmation, verification).
+      const detail = 'meta_error:' + (e.code || '') + (e.error_subcode ? '/' + e.error_subcode : '') + ':' + String(e.message || '').slice(0, 180);
+      return { ok: false, reason: detail, ads: [] };
+    }
   } catch (e) { return { ok: false, reason: 'meta_fetch_failed', ads: [] }; }
   let items = Array.isArray(data.data) ? data.data : [];
   // search_terms is fuzzy — keep only ads whose Page name plausibly matches the advertiser.
