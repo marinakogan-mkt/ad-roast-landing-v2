@@ -1279,6 +1279,25 @@
       const [specHi, setSpecHi] = useState(null);      // hovered node in the ad spectrum (index into scored)
       const [barReady, setBarReady] = useState(false); // false on mount -> the urgency bar grows from 0 on load
       const [railCos, setRailCos] = useState(null); // the account's roasted companies, for the left sidebar
+      const [railOpen, setRailOpen] = useState(true); // sidebar expanded/collapsed
+      const [entryMode, setEntryMode] = useState(false); // force the "enter a website" form (New / change company)
+      const boardCacheRef = React.useRef({}); // domain -> last-loaded board, so re-clicking a company is instant (no re-pull)
+      // Map of creatives this account has already roasted (normalized image URL -> reportId), so the
+      // board can mark them "already roasted -> View" instead of implying a fresh (billable) roast.
+      const [roastedMap, setRoastedMap] = useState({});
+      const normImg = (u) => String(u || '').split('?')[0].toLowerCase();
+      const roastedIdFor = (ad) => (ad && ad.img && roastedMap[normImg(ad.img)]) || null;
+      useEffect(() => {
+        fetch('/api/auth?action=my-roasts', { credentials: 'same-origin' })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => {
+            if (!d || !d.roasts) return;
+            const m = {};
+            d.roasts.forEach(r => { if (r.img && r.reportId) m[normImg(r.img)] = r.reportId; });
+            setRoastedMap(m);
+          })
+          .catch(() => {});
+      }, []);
       useEffect(() => {
         fetch('/api/auth?action=my-companies', { credentials: 'same-origin' })
           .then(r => r.ok ? r.json() : null)
@@ -1350,7 +1369,10 @@
             setStatusMsg('Could not fetch your ads (' + ((res && res.reason) || 'error') + '). Try again.');
             return;
           }
-          setReal({ co, icp: icpText, ads: res.ads || [], notes: res.notes || {}, fresh: res.fresh || null });
+          setEntryMode(false);
+          const realObj = { co, icp: icpText, ads: res.ads || [], notes: res.notes || {}, fresh: res.fresh || null };
+          try { boardCacheRef.current[siteRaw.toLowerCase()] = realObj; if (co.domain) boardCacheRef.current[String(co.domain).toLowerCase()] = realObj; } catch (e) {}
+          setReal(realObj);
           setStage('overview'); setGridPlat('all');
           setPhase('idle'); setBootLoading(false);
         } catch (e) { if (silent) { setPhase('idle'); setBootLoading(false); return; } setPhase('error'); setStatusMsg(String(e && e.message || e)); }
@@ -1608,33 +1630,38 @@
             </div>
           </header>
 
-          {/* Left rail (Notion-style): the account's roasted companies + a link to the roasted-ads
-              history. Desktop only; each company opens its board. */}
+          {/* Left rail (Notion-style): the account's roasted companies (real logos) + a link to the
+              roasted-ads history. Desktop only; each company opens its board (from cache = instant).
+              Collapsible: « collapses to a thin logo strip, » / the tab re-expands. */}
           {acct.signedIn && railCos && railCos.length > 0 && (
-            <aside className="hidden lg:flex flex-col fixed left-0 border-r" style={{ top: 57, bottom: 0, width: 240, borderColor: '#e8ecf1', background: '#fff', zIndex: 9 }}>
-              <div className="px-3 pt-4 pb-2 flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Your companies</span>
-                <button onClick={() => { setReal(null); setPhase('idle'); setStage('overview'); setFP('all'); setSiteInput(''); }} title="Roast a different company" className="text-[11px] font-bold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>+ New</button>
+            <aside className="hidden lg:flex flex-col fixed left-0 border-r" style={{ top: 57, bottom: 0, width: railOpen ? 208 : 52, borderColor: '#e8ecf1', background: '#fff', zIndex: 9, transition: 'width .16s ease' }}>
+              <div className="pt-4 pb-2 flex items-center justify-between" style={{ padding: railOpen ? '16px 12px 8px' : '16px 0 8px', justifyContent: railOpen ? 'space-between' : 'center' }}>
+                {railOpen && <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Your companies</span>}
+                <button onClick={() => setRailOpen(o => !o)} title={railOpen ? 'Collapse' : 'Expand'} className="grid place-items-center rounded-md bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-700 hover:bg-gray-100" style={{ width: 22, height: 22, fontSize: 15, lineHeight: 1 }}>{railOpen ? '«' : '»'}</button>
               </div>
+              {railOpen && (
+                <button onClick={() => { setEntryMode(true); setPhase('idle'); setStage('overview'); setFP('all'); setSiteInput(''); window.scrollTo(0, 0); }} className="mx-2 mb-1 flex items-center gap-2 rounded-lg font-semibold bg-transparent cursor-pointer hover:bg-blue-50 transition-colors" style={{ padding: '7px 10px', fontSize: 12.5, color: '#0a66c2', border: '1px dashed #cfe1f5' }}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Roast a new company</button>
+              )}
               <div className="flex-1 overflow-y-auto px-2 pb-2">
                 {railCos.map(co => {
                   const active = CO && CO.domain && co.domain && CO.domain.toLowerCase() === String(co.domain).toLowerCase();
                   return (
-                    <button key={co.domain} onClick={() => { const s = co.site || co.domain; setSiteInput(s); loadReal(s); }}
-                      className="w-full text-left flex items-center gap-2.5 rounded-lg transition-colors bg-transparent border-none cursor-pointer" style={{ padding: '8px 10px', background: active ? '#eef4fb' : 'transparent' }}>
-                      <span className="grid place-items-center flex-none rounded-md font-bold text-white" style={{ width: 26, height: 26, fontSize: 12, background: active ? '#0a66c2' : '#94a3b8' }}>{String(co.name || co.domain || '?').charAt(0).toUpperCase()}</span>
-                      <span className="truncate font-semibold" style={{ fontSize: 13, color: active ? '#0a66c2' : '#374151' }}>{co.name || co.domain}</span>
+                    <button key={co.domain} title={co.name || co.domain}
+                      onClick={() => { const s = co.site || co.domain; const c = boardCacheRef.current[String(s).toLowerCase()] || boardCacheRef.current[String(co.domain).toLowerCase()]; setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setStage('overview'); setFP('all'); setPhase('idle'); window.scrollTo(0, 0); } else loadReal(s); }}
+                      className="w-full flex items-center rounded-lg transition-colors bg-transparent border-none cursor-pointer" style={{ padding: railOpen ? '7px 10px' : '7px 0', gap: 9, justifyContent: railOpen ? 'flex-start' : 'center', background: active ? '#eef4fb' : 'transparent' }}>
+                      <BrandLogo domain={co.domain} name={co.name} initial={String(co.name || co.domain || '?').charAt(0).toUpperCase()} color={active ? '#0a66c2' : '#94a3b8'} size={24} radius={6} />
+                      {railOpen && <span className="truncate font-semibold" style={{ fontSize: 13, color: active ? '#0a66c2' : '#374151' }}>{co.name || co.domain}</span>}
                     </button>
                   );
                 })}
               </div>
-              <a href="/dashboard" className="flex items-center gap-2.5 no-underline border-t hover:bg-gray-50 transition-colors" style={{ padding: '12px 16px', borderColor: '#f1f5f9', color: '#1f2937', fontSize: 13, fontWeight: 600 }}>
-                <Icon name="flame" className="w-4 h-4" style={{ color: '#0a66c2' }} />Your roasted ads
+              <a href="/dashboard" title="Your roasted ads" className="flex items-center no-underline border-t hover:bg-gray-50 transition-colors" style={{ padding: railOpen ? '12px 16px' : '12px 0', gap: 9, justifyContent: railOpen ? 'flex-start' : 'center', borderColor: '#f1f5f9', color: '#1f2937', fontSize: 13, fontWeight: 600 }}>
+                <Icon name="flame" className="w-4 h-4 flex-none" style={{ color: '#0a66c2' }} />{railOpen && 'Your roasted ads'}
               </a>
             </aside>
           )}
 
-          <main className="max-w-6xl mx-auto px-4 py-8 lg:ml-60">
+          <main className={"max-w-6xl mx-auto px-4 py-8 " + ((acct.signedIn && railCos && railCos.length > 0) ? (railOpen ? "lg:ml-52" : "lg:ml-14") : "")}>
             {/* Intermediate step: this sits between the landing form (enter website) and
                 the roast. The stepper makes that placement obvious. */}
             <div className="flex items-center gap-2 mb-6" style={{ maxWidth: 560 }}>
@@ -1655,7 +1682,7 @@
 
             {/* Website entry lives in STEP 1. Once we have results (step 2), the website is fixed -
                 to change it you go back (the "change" control resets to the entry state). */}
-            {ads.length === 0 ? (
+            {(ads.length === 0 || entryMode) ? (
               <div className="mb-6">
                 <label className="block font-semibold text-gray-700 mb-1.5" style={{ fontSize: 13 }}>Your website</label>
                 <div className="flex gap-2" style={{ maxWidth: 480 }}>
@@ -1678,7 +1705,7 @@
                   <Icon name="check" className="w-4 h-4" style={{ color: '#0a66c2' }} />
                   <span className="font-semibold">Your website:</span>
                   <span style={{ fontFamily: 'monospace' }}>{CO.domain}</span>
-                  <button onClick={() => { setReal(null); setPhase('idle'); setStage('overview'); setFP('all'); }} title="Roast a different company's ads" className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold" style={{ color: '#0a66c2' }}>roast a different company</button>
+                  <button onClick={() => { setEntryMode(true); setPhase('idle'); setStage('overview'); setFP('all'); setSiteInput(''); window.scrollTo(0, 0); }} title="Roast a different company's ads" className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold" style={{ color: '#0a66c2' }}>roast a different company</button>
                 </div>
                 {ICPeff && !icpEditing && (
                   <div className="inline-flex items-center gap-2 rounded-lg" style={{ fontSize: 13, background: '#f8fafc', border: '1px solid #e5e7eb', color: '#374151', padding: '7px 12px', maxWidth: 460, minWidth: 0 }} title={ICPeff}>
@@ -1961,8 +1988,18 @@
             <div onClick={(e) => { if (e.target === e.currentTarget) setSel(null); }} className="fixed inset-0 z-50 flex items-center justify-center p-5" style={{ background: 'rgba(6,9,15,.55)' }}>
               <div className="bg-white rounded-2xl overflow-hidden" style={{ maxWidth: 430, width: '100%', boxShadow: '0 12px 40px rgba(11,15,26,.2)' }}>
                 <div className="px-6 pt-6">
-                  <h3 className="font-bold text-gray-900" style={{ fontSize: 20 }}>Roast this ad?</h3>
+                  <h3 className="font-bold text-gray-900" style={{ fontSize: 20 }}>{roastedIdFor(sel) ? 'Roast this ad again?' : 'Roast this ad?'}</h3>
                   <p className="text-gray-500 mt-1" style={{ fontSize: 13.5 }}>We'll pull the landing page and score it, plus the creative, against your ICP.</p>
+                  {(() => { const rid = roastedIdFor(sel); return rid ? (
+                    <div className="mt-3 rounded-xl flex items-start gap-2.5" style={{ background: '#eef4fb', border: '1px solid #cfe1f5', padding: '10px 12px' }}>
+                      <Icon name="check" className="w-4 h-4 flex-none mt-0.5" style={{ color: '#0a66c2' }} />
+                      <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+                        <span className="font-bold text-gray-800">You already roasted this ad.</span>{' '}
+                        <a href={'/?id=' + encodeURIComponent(rid)} className="font-bold no-underline" style={{ color: '#0a66c2' }}>View the report &rarr;</a>
+                        <div className="text-gray-500" style={{ marginTop: 2 }}>Heads up: roasting it again uses 1 roast.</div>
+                      </div>
+                    </div>
+                  ) : null; })()}
                 </div>
                 {/* The chosen creative, in full */}
                 <div className="px-6 pt-4">
@@ -2006,7 +2043,7 @@
                 </div>
                 <div className="px-6 pt-4 pb-5 flex items-center gap-2.5">
                   <button onClick={() => setSel(null)} className="flex-none font-semibold rounded-full bg-white cursor-pointer hover:bg-gray-50 transition-colors" style={{ fontSize: 13.5, padding: '10px 16px', border: '1px solid #d1d5db', color: '#4b5563' }}>Pick another</button>
-                  <button onClick={() => { const s = sel, lp = landingInput; setSel(null); roastThisAd(s, CO, ICPeff, lp); }} disabled={!/^https?:\/\/.+\..+/.test((landingInput || '').trim())} className="flex-1 font-bold text-white rounded-full hover:opacity-90 transition-opacity disabled:opacity-50" style={{ fontSize: 13.5, padding: '10px 16px', background: '#0a66c2' }}>Roast this ad &rarr;</button>
+                  <button onClick={() => { const s = sel, lp = landingInput; setSel(null); roastThisAd(s, CO, ICPeff, lp); }} disabled={!/^https?:\/\/.+\..+/.test((landingInput || '').trim())} className="flex-1 font-bold text-white rounded-full hover:opacity-90 transition-opacity disabled:opacity-50" style={{ fontSize: 13.5, padding: '10px 16px', background: '#0a66c2' }}>{roastedIdFor(sel) ? 'Regenerate roast →' : 'Roast this ad →'}</button>
                 </div>
               </div>
             </div>

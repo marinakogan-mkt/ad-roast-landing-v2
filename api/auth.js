@@ -312,29 +312,55 @@ async function handleApiKey(req, res) {
 async function handleMyCompanies(req, res) {
   const email = await sessionRoastEmail(req);
   if (!email) return res.status(401).json({ error: 'Not signed in' });
-  let companies = [];
+  const domOf = (u) => String(u || '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, '');
+  const realDom = (d) => !!(d && d.indexOf('.') > -1);
   try {
-    const hash = await redis.hgetall(`roast:cos:${email}`);
-    if (hash && Object.keys(hash).length) {
-      companies = Object.values(hash).map(v => { try { return typeof v === 'string' ? JSON.parse(v) : v; } catch (e) { return null; } }).filter(Boolean);
+    // 1) Load the already-resolved roster (from new roasts + prior enrichment).
+    let hash = {};
+    try { hash = (await redis.hgetall(`roast:cos:${email}`)) || {}; } catch (e) { hash = {}; }
+    const bySite = {}; // keyed by a real domain
+    for (const v of Object.values(hash)) {
+      let c; try { c = typeof v === 'string' ? JSON.parse(v) : v; } catch (e) { continue; }
+      const d = domOf(c && (c.site || c.domain));
+      if (realDom(d)) bySite[d] = { domain: d, name: (c.name || d), site: c.site || d, ts: c.ts || 0 };
     }
-  } catch (e) {}
-  if (!companies.length) {
-    try {
-      const raw = await redis.lrange('roast:index', 0, 999);
-      const byDom = {};
-      for (const r of (raw || [])) {
-        let s; try { s = typeof r === 'string' ? JSON.parse(r) : r; } catch (e) { continue; }
-        if (!s || String(s.email || '').toLowerCase() !== email) continue;
-        const dom = s.domain || String(s.website || '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, '') || String(s.company || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!dom) continue;
-        if (!byDom[dom] || (s.ts || 0) > byDom[dom].ts) byDom[dom] = { domain: dom, name: s.company || dom, site: s.website || dom, ts: s.ts || 0 };
+    // 2) Scan the FULL roast history (one lrange) so the roster is complete, not just recent roasts.
+    const raw = await redis.lrange('roast:index', 0, 999);
+    const pending = {}; // companies whose real domain we still need to resolve, keyed by a temp key
+    for (const r of (raw || [])) {
+      let s; try { s = typeof r === 'string' ? JSON.parse(r) : r; } catch (e) { continue; }
+      if (!s || String(s.email || '').toLowerCase() !== email) continue;
+      const d = domOf(s.website) || (realDom(s.domain) ? s.domain : '');
+      if (realDom(d)) {
+        if (!bySite[d] || (s.ts || 0) > bySite[d].ts) bySite[d] = { domain: d, name: s.company || d, site: s.website || d, ts: s.ts || 0 };
+        continue;
       }
-      companies = Object.values(byDom);
+      // No usable domain in the summary: remember the newest report to resolve it from.
+      const k = String(s.company || '').toLowerCase().replace(/[^a-z0-9]/g, '') || (s.reportId || '');
+      if (k && (!pending[k] || (s.ts || 0) > pending[k].ts)) pending[k] = { name: s.company || k, ts: s.ts || 0, reportId: s.reportId };
+    }
+    // 3) Resolve pending companies from their report record (bounded), skipping any we already have.
+    const need = Object.values(pending).slice(0, 40);
+    await Promise.all(need.map(async (c) => {
+      try {
+        const rec = await redis.get(`roast:report:${c.reportId}`);
+        const o = rec ? (typeof rec === 'string' ? JSON.parse(rec) : rec) : null;
+        const site = (o && (o.website || o.landingUrl || o.adUrl)) || '';
+        const d = domOf(site);
+        if (realDom(d) && (!bySite[d] || c.ts > bySite[d].ts)) bySite[d] = { domain: d, name: c.name || d, site: site, ts: c.ts };
+      } catch (e) {}
+    }));
+    const companies = Object.values(bySite).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    // Cache the resolved roster so subsequent calls skip the report fetches.
+    try {
+      const hset = {};
+      for (const c of companies) hset[c.domain] = JSON.stringify(c);
+      if (Object.keys(hset).length) await redis.hset(`roast:cos:${email}`, hset);
     } catch (e) {}
+    return res.status(200).json({ success: true, companies });
+  } catch (e) {
+    return res.status(200).json({ success: true, companies: [] });
   }
-  companies.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  return res.status(200).json({ success: true, companies });
 }
 
 async function handleLogout(req, res) {
