@@ -1070,7 +1070,7 @@
        Each roast card opens its saved report at /?id=<reportId>. */
     function MyRoastsPanel({ onClose }) {
       const [roasts, setRoasts] = useState(null); // null = loading
-      const [view, setView] = useState('company'); // 'company' | 'all'
+      const [view, setView] = useState('all'); // 'company' | 'all' — "by company" hidden for now (Marina), default all
       const [selCo, setSelCo] = useState(null);
       useEffect(() => {
         let alive = true;
@@ -1161,12 +1161,8 @@
                 <h1 className="font-bold text-gray-900" style={{ fontSize: 22, letterSpacing: '-0.01em' }}>Your roasted ads</h1>
                 <p className="text-gray-500" style={{ fontSize: 13, marginTop: 2 }}>{roasts === null ? 'Loading…' : (roasts.length + ' roast' + (roasts.length === 1 ? '' : 's') + ' across ' + byCompany.length + ' compan' + (byCompany.length === 1 ? 'y' : 'ies'))}</p>
               </div>
-              {roasts && roasts.length > 0 && (
-                <div className="inline-flex rounded-full border bg-white" style={{ borderColor: '#e5e7eb', padding: 3 }}>
-                  <button onClick={() => { setView('company'); setSelCo(null); }} className="rounded-full font-semibold transition-colors" style={{ fontSize: 13, padding: '6px 14px', background: view === 'company' ? '#0a66c2' : 'transparent', color: view === 'company' ? '#fff' : '#4b5563' }}>By company</button>
-                  <button onClick={() => { setView('all'); setSelCo(null); }} className="rounded-full font-semibold transition-colors" style={{ fontSize: 13, padding: '6px 14px', background: view === 'all' ? '#0a66c2' : 'transparent', color: view === 'all' ? '#fff' : '#4b5563' }}>All ads</button>
-                </div>
-              )}
+              {/* "By company" toggle hidden for now (Marina); the dashboard defaults to All ads.
+                  The by-company view code below is kept intact so it can be restored later. */}
             </div>
 
             {roasts === null && <div className="grid place-items-center py-20"><span className="inline-block w-7 h-7 rounded-full border-2 border-gray-200 animate-spin" style={{ borderTopColor: '#0a66c2' }} /></div>}
