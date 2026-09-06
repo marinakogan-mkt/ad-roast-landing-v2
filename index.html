@@ -1645,7 +1645,7 @@
                   <Icon name="check" className="w-4 h-4" style={{ color: '#0a66c2' }} />
                   <span className="font-semibold">Your website:</span>
                   <span style={{ fontFamily: 'monospace' }}>{CO.domain}</span>
-                  <button onClick={() => { setReal(null); setPhase('idle'); setStage('overview'); setFP('all'); }} className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold" style={{ color: '#0a66c2' }}>change</button>
+                  <button onClick={() => { setReal(null); setPhase('idle'); setStage('overview'); setFP('all'); }} title="Roast a different company's ads" className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold" style={{ color: '#0a66c2' }}>roast a different company</button>
                 </div>
                 {ICPeff && !icpEditing && (
                   <div className="inline-flex items-center gap-2 rounded-lg" style={{ fontSize: 13, background: '#f8fafc', border: '1px solid #e5e7eb', color: '#374151', padding: '7px 12px', maxWidth: 460, minWidth: 0 }} title={ICPeff}>
@@ -5347,7 +5347,7 @@
                   {!isSharedView && (
                     <button onClick={() => { setReroastLink(''); setReroastErr(''); setShowReroast(true); }} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name="rotateCcw" className="w-4 h-4" /> <span className="hidden sm:inline">Roast another ad</span></button>
                   )}
-                  {isSharedView && <a href={window.location.origin + window.location.pathname} style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name={roastSession && roastSession.email ? 'rotateCcw' : 'flame'} className="w-4 h-4" /> {roastSession && roastSession.email ? <><span className="hidden sm:inline">Roast another ad</span><span className="sm:hidden">Roast</span></> : 'Roast My Ad'}</a>}
+                  {isSharedView && <a href="/?library=1" style={{ borderColor: '#0a66c2', color: '#0a66c2' }} className="flex items-center gap-2 px-4 py-1.5 bg-white border-2 rounded-full text-sm font-semibold hover:bg-blue-50 transition-colors"><Icon name={roastSession && roastSession.email ? 'rotateCcw' : 'flame'} className="w-4 h-4" /> {roastSession && roastSession.email ? <><span className="hidden sm:inline">Roast another ad</span><span className="sm:hidden">Roast</span></> : 'Roast My Ad'}</a>}
                 </div>
               </div>
             </header>
@@ -5568,7 +5568,7 @@
                 const weakest = areas.slice().sort((a, b) => a.s - b.s)[0];
                 const OPTIONS = {
                   review:     { tag: 'Team review', color: '#0a66c2', title: 'Get the team on your roast',   q: 'Want the team to weigh in?',  kind: 'linkedin' },
-                  diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', href: '/' },
+                  diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', href: '/?library=1' },
                   withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Campaign Repositioning Sprint',    q: 'Want it fixed with you?',  cta: 'See the roadmap', href: '/#deliverables', meta: '$6K · 10 days' },
                   doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', href: '/#work-with-us', meta: '$8K/mo, managed' },
                 };
