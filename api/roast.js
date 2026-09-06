@@ -567,7 +567,7 @@ Return the JSON object defined in the output contract. All fields required.`;
       /* Never leak the upstream provider error (billing, rate limits, model
          names) to the end user. Log the real one; show a neutral message. */
       console.error('[AdRoast] Upstream API error:', data.error.type, '-', data.error.message);
-      return res.status(503).json({ error: "AdRoast is briefly unavailable. Please try again in a few minutes.", _meta: meta });
+      return res.status(503).json({ error: "AdRoast is briefly unavailable. Please try again in a few minutes.", _diag: (data.error.type || '') + ': ' + String(data.error.message || '').slice(0, 200), _meta: meta });
     }
 
     const modelText = Array.isArray(data.content)
