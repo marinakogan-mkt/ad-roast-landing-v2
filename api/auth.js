@@ -640,7 +640,7 @@ async function handleBackfillCreatives(req, res) {
       const rec = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
       if (!rec) { targets.push({ id, status: 'no_record' }); continue; }
       if (String(rec.email || '').toLowerCase() !== email.toLowerCase()) { targets.push({ id, status: 'not_yours' }); continue; }
-      if (rec.adScreenshot || rec.adCreativeKey || (rec.adImageUrl && /^https?:\/\//i.test(rec.adImageUrl))) { targets.push({ id, status: 'already_ok' }); continue; }
+      if (rec.adScreenshot || rec.adCreativeKey || (rec.adImageUrl && /^https?:\/\//i.test(rec.adImageUrl))) { targets.push({ id, status: 'already_ok', rec }); continue; }
       targets.push({ id, status: 'pending', rec });
     } catch (e) { targets.push({ id, status: 'error' }); }
   }
