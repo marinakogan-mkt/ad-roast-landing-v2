@@ -24,6 +24,7 @@ import {
 } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
 import { onNewSignup } from './_welcome.js';
+import { fetchLinkedInAds } from './_adlibrary.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -593,6 +594,102 @@ async function handleRoastLink(req, res) {
 
 /* ---- router --------------------------------------------------------------- */
 
+// Fetch a creative image as base64, robust against licdn's occasional 403 (retry w/ referer).
+async function _bfImage(url) {
+  const attempts = [
+    { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', 'Accept': 'image/avif,image/webp,image/png,image/*,*/*;q=0.8' },
+    { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', 'Accept': 'image/avif,image/webp,image/png,image/*,*/*;q=0.8', 'Referer': 'https://www.linkedin.com/', 'Sec-Fetch-Dest': 'image', 'Sec-Fetch-Mode': 'no-cors', 'Sec-Fetch-Site': 'cross-site' }
+  ];
+  for (let a = 0; a < attempts.length; a++) {
+    try {
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), 9000);
+      const r = await fetch(url, { headers: attempts[a], signal: c.signal });
+      clearTimeout(t);
+      const ct = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      if (r.ok && /^image\/(png|jpe?g|gif|webp|avif)$/.test(ct)) {
+        const buf = Buffer.from(await r.arrayBuffer());
+        if (buf.length > 0 && buf.length <= 4_500_000) return { b64: buf.toString('base64'), type: ct === 'image/jpg' ? 'image/jpeg' : ct };
+      }
+    } catch (e) { /* try next */ }
+  }
+  return null;
+}
+function _bfNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+// Recover missing ad creatives on OLD roasts: re-pull the company's live LinkedIn ads, match the
+// stored roast to a live creative (by headline/body), and persist the image onto the EXISTING report
+// (same id, no duplicate). Only touches roasts that currently have NO creative. Client drives it one
+// company per call (pass ?company= & the ids to attempt) to stay inside the function time limit.
+async function handleBackfillCreatives(req, res) {
+  const email = await sessionRoastEmail(req);
+  if (!email) return res.status(401).json({ error: 'Not signed in' });
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const company = String(body.company || req.query.company || '').trim();
+  let ids = Array.isArray(body.ids) ? body.ids.map(String) : String(req.query.ids || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!company || !ids.length) return res.status(400).json({ error: 'company and ids required' });
+
+  // Load each target record; skip any that already carry a creative.
+  const targets = [];
+  for (const id of ids.slice(0, 12)) {
+    try {
+      const raw = await redis.get(`roast:report:${id}`);
+      const rec = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+      if (!rec) { targets.push({ id, status: 'no_record' }); continue; }
+      if (String(rec.email || '').toLowerCase() !== email.toLowerCase()) { targets.push({ id, status: 'not_yours' }); continue; }
+      if (rec.adScreenshot || rec.adCreativeKey || (rec.adImageUrl && /^https?:\/\//i.test(rec.adImageUrl))) { targets.push({ id, status: 'already_ok' }); continue; }
+      targets.push({ id, status: 'pending', rec });
+    } catch (e) { targets.push({ id, status: 'error' }); }
+  }
+  const pending = targets.filter(t => t.status === 'pending');
+  if (!pending.length) return res.status(200).json({ company, results: targets.map(({ rec, ...r }) => r) });
+
+  // Pull the company's live LinkedIn ads once.
+  const pull = await fetchLinkedInAds({ company, limit: 24 });
+  const liveAds = (pull.ok ? pull.ads : []).filter(a => a.img);
+  if (!liveAds.length) {
+    pending.forEach(t => { t.status = 'no_live_ads'; });
+    return res.status(200).json({ company, pullReason: pull.reason || null, results: targets.map(({ rec, ...r }) => r) });
+  }
+
+  // Match + persist for each pending roast.
+  for (const t of pending) {
+    const rec = t.rec;
+    const recCopy = _bfNorm(rec.adCopy);
+    let match = null;
+    if (recCopy.length >= 20) {
+      // Text match: overlap on the first ~40 normalized chars in either direction.
+      const key = recCopy.slice(0, 40);
+      match = liveAds.find(a => { const ln = _bfNorm((a.headline || '') + (a.body || '')); return ln && (ln.includes(key) || recCopy.includes(ln.slice(0, 40))); });
+    }
+    // Unambiguous fallback: no usable copy but the company runs exactly one live creative.
+    if (!match && recCopy.length < 20 && liveAds.length === 1) match = liveAds[0];
+    if (!match) { t.status = 'no_match'; continue; }
+
+    const img = await _bfImage(match.img);
+    if (!img) { t.status = 'img_fetch_failed'; continue; }
+    try {
+      rec.adImageUrl = match.img;
+      if (img.b64.length < 700000) { rec.adScreenshot = img.b64; rec.adScreenshotType = img.type; }
+      else {
+        await redis.set(`roast:creative:${t.id}`, JSON.stringify({ b64: img.b64, type: img.type }), { ex: 60 * 60 * 24 * 365 });
+        rec.adCreativeKey = true; rec.adScreenshotType = img.type;
+      }
+      await redis.set(`roast:report:${t.id}`, JSON.stringify(rec), { ex: 60 * 60 * 24 * 365 });
+      // Reflect the creative in the roast:index summary so dashboards/board previews show it too.
+      try {
+        const list = await redis.lrange('roast:index', 0, 999);
+        for (let i = 0; i < list.length; i++) {
+          let s; try { s = typeof list[i] === 'string' ? JSON.parse(list[i]) : list[i]; } catch (e) { continue; }
+          if (s && s.reportId === t.id) { s.img = match.img; await redis.lset('roast:index', i, JSON.stringify(s)); break; }
+        }
+      } catch (e) { /* summary update is best-effort */ }
+      t.status = 'recovered';
+    } catch (e) { t.status = 'save_failed'; }
+  }
+  return res.status(200).json({ company, liveAds: liveAds.length, results: targets.map(({ rec, ...r }) => r) });
+}
+
 export default async function handler(req, res) {
   const action = (req.query?.action || '').trim();
 
@@ -613,6 +710,9 @@ export default async function handler(req, res) {
       case 'my-companies':
         if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
         return await handleMyCompanies(req, res);
+      case 'backfill-creatives':
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+        return await handleBackfillCreatives(req, res);
       case 'change-email':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleChangeEmailRequest(req, res);

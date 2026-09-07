@@ -231,7 +231,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false } = {}) {
 
 // --- LinkedIn (free, via Jina Reader) -------------------------------------------------
 // Pull a company's real LinkedIn ads (creative image + copy). Returns UNSCORED cards.
-async function fetchLinkedInAds({ company, limit = 12 } = {}) {
+export async function fetchLinkedInAds({ company, limit = 12 } = {}) {
   const q = (company || '').trim();
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
   const target = 'https://www.linkedin.com/ad-library/search?accountOwner=' + encodeURIComponent(q);
