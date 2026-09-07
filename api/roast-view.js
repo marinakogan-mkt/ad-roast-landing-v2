@@ -159,17 +159,26 @@ export default async function handler(req, res) {
       }
       if (rec && rec.adImageUrl && /^https?:\/\//i.test(rec.adImageUrl)) {
         // Proxy the hotlink server-side (licdn/googlesyndication block cross-site hotlinking, so a
-        // 302 to them renders blank); fetch it here and stream the bytes back.
-        try {
-          const r = await fetch(rec.adImageUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', 'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8' } });
-          if (r.ok) {
-            const ct = (r.headers.get('content-type') || 'image/jpeg').split(';')[0];
-            const buf = Buffer.from(await r.arrayBuffer());
-            res.setHeader('Content-Type', ct.startsWith('image/') ? ct : 'image/jpeg');
-            res.setHeader('Cache-Control', 'public, max-age=86400');
-            return res.status(200).send(buf);
-          }
-        } catch (e) { /* fall through to 404 */ }
+        // 302 to them renders blank); fetch it here and stream the bytes back. Two attempts: a plain
+        // fetch, then a retry with a LinkedIn Referer (some licdn assets 403 a naked fetch).
+        const _hdrs = [
+          { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', 'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8' },
+          { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', 'Accept': 'image/avif,image/webp,image/*,*/*;q=0.8', 'Referer': 'https://www.linkedin.com/', 'Sec-Fetch-Dest': 'image', 'Sec-Fetch-Mode': 'no-cors', 'Sec-Fetch-Site': 'cross-site' }
+        ];
+        for (let _a = 0; _a < _hdrs.length; _a++) {
+          try {
+            const r = await fetch(rec.adImageUrl, { headers: _hdrs[_a] });
+            if (r.ok) {
+              const ct = (r.headers.get('content-type') || 'image/jpeg').split(';')[0];
+              const buf = Buffer.from(await r.arrayBuffer());
+              if (buf.length > 0) {
+                res.setHeader('Content-Type', ct.startsWith('image/') ? ct : 'image/jpeg');
+                res.setHeader('Cache-Control', 'public, max-age=86400');
+                return res.status(200).send(buf);
+              }
+            }
+          } catch (e) { /* try next / fall through to 404 */ }
+        }
       }
       return res.status(404).end();
     } catch (e) { return res.status(404).end(); }

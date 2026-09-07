@@ -500,28 +500,36 @@ CASE — write ALL generated ad copy in SENTENCE CASE, never Title Case. Capital
   // falls back to a copy-only roast. Cap the payload so an oversized asset can't blow
   // the request up (the model accepts images comfortably under ~5MB).
   if (!effShot && typeof adImageUrl === 'string' && /^https?:\/\//i.test(adImageUrl.trim())) {
-    try {
-      const ic = new AbortController();
-      const it = setTimeout(() => ic.abort(), 9000);
-      const imgRes = await fetch(adImageUrl.trim(), {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'Accept': 'image/*,*/*;q=0.8' },
-        signal: ic.signal
-      });
-      clearTimeout(it);
-      const ct = (imgRes.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-      if (imgRes.ok && /^image\/(png|jpe?g|gif|webp)$/.test(ct)) {
-        const buf = Buffer.from(await imgRes.arrayBuffer());
-        if (buf.length > 0 && buf.length <= 4_500_000) {
-          effShot = buf.toString('base64');
-          effShotType = ct === 'image/jpg' ? 'image/jpeg' : ct;
-          console.log('[AdRoast v4] Attached live-ads creative from URL,', buf.length, 'bytes,', effShotType);
+    // Two attempts: a plain browser fetch, then a retry with a LinkedIn Referer
+    // (media.licdn.com occasionally 403/429s a naked fetch but serves fine with a
+    // same-origin referer). Whichever returns image bytes wins.
+    const _imgUrl = adImageUrl.trim();
+    const _attempts = [
+      { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'Accept': 'image/*,*/*;q=0.8' },
+      { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'Accept': 'image/avif,image/webp,image/png,image/*,*/*;q=0.8', 'Referer': 'https://www.linkedin.com/', 'Sec-Fetch-Dest': 'image', 'Sec-Fetch-Mode': 'no-cors', 'Sec-Fetch-Site': 'cross-site' }
+    ];
+    for (let _a = 0; _a < _attempts.length && !effShot; _a++) {
+      try {
+        const ic = new AbortController();
+        const it = setTimeout(() => ic.abort(), 9000);
+        const imgRes = await fetch(_imgUrl, { headers: _attempts[_a], signal: ic.signal });
+        clearTimeout(it);
+        const ct = (imgRes.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        if (imgRes.ok && /^image\/(png|jpe?g|gif|webp|avif)$/.test(ct)) {
+          const buf = Buffer.from(await imgRes.arrayBuffer());
+          if (buf.length > 0 && buf.length <= 4_500_000) {
+            effShot = buf.toString('base64');
+            effShotType = ct === 'image/jpg' ? 'image/jpeg' : ct;
+            console.log('[AdRoast v4] Attached live-ads creative from URL (attempt', _a + 1, '),', buf.length, 'bytes,', effShotType);
+          } else {
+            console.log('[AdRoast v4] Skipped live-ads creative (size', buf.length, 'bytes)');
+            break;
+          }
         } else {
-          console.log('[AdRoast v4] Skipped live-ads creative (size', buf.length, 'bytes)');
+          console.log('[AdRoast v4] Live-ads creative fetch attempt', _a + 1, 'not an image:', imgRes.status, ct);
         }
-      } else {
-        console.log('[AdRoast v4] Live-ads creative fetch not an image:', imgRes.status, ct);
-      }
-    } catch (e) { console.log('[AdRoast v4] Live-ads creative fetch failed:', e.message); }
+      } catch (e) { console.log('[AdRoast v4] Live-ads creative fetch attempt', _a + 1, 'failed:', e.message); }
+    }
   }
 
   const userPrompt = `Analyze this ad${hasAnyLandingContent ? ' AND its landing page' : ''} for ICP: "${icpDescription}"
@@ -681,6 +689,12 @@ Return the JSON object defined in the output contract. All fields required.`;
             /* Persist the ad creative so a shared/cold report shows the actual ad being
                roasted. Downscaled JPEG (~800px) is small; cap defensively so an oversized
                image never blows the Redis value limit (the roast still saves without it). */
+            // Always keep the source hotlink when we have one, even alongside base64:
+            // if the inline/keyed creative ever fails to render, roast-view can still
+            // proxy this URL (belt-and-suspenders so a card never goes blank).
+            if (adImageUrl && typeof adImageUrl === 'string' && /^https?:\/\//i.test(adImageUrl.trim())) {
+              record.adImageUrl = adImageUrl.trim();
+            }
             if (effShot && typeof effShot === 'string' && effShot.length < 700000) {
               record.adScreenshot = effShot;
               record.adScreenshotType = effShotType || 'image/jpeg';
