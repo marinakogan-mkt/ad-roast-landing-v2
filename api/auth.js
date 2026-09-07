@@ -644,6 +644,23 @@ async function handleBackfillCreatives(req, res) {
       targets.push({ id, status: 'pending', rec });
     } catch (e) { targets.push({ id, status: 'error' }); }
   }
+  // Reset mode: undo a previously-written (possibly wrong) creative so a roast falls back to no image.
+  if (req.query.reset === '1') {
+    for (const t of targets) {
+      if (!t.rec) continue;
+      const rec = t.rec;
+      delete rec.adScreenshot; delete rec.adScreenshotType; delete rec.adCreativeKey; delete rec.adImageUrl;
+      try { await redis.del(`roast:creative:${t.id}`); } catch (e) {}
+      try { await redis.set(`roast:report:${t.id}`, JSON.stringify(rec), { ex: 60 * 60 * 24 * 365 }); } catch (e) {}
+      try {
+        const list = await redis.lrange('roast:index', 0, 999);
+        for (let i = 0; i < list.length; i++) { let s; try { s = typeof list[i] === 'string' ? JSON.parse(list[i]) : list[i]; } catch (e) { continue; } if (s && s.reportId === t.id) { s.img = null; await redis.lset('roast:index', i, JSON.stringify(s)); break; } }
+      } catch (e) {}
+      t.status = 'reset';
+    }
+    return res.status(200).json({ company, results: targets.map(({ rec, ...r }) => r) });
+  }
+
   const pending = targets.filter(t => t.status === 'pending');
   if (!pending.length) return res.status(200).json({ company, results: targets.map(({ rec, ...r }) => r) });
 
@@ -665,16 +682,19 @@ async function handleBackfillCreatives(req, res) {
     const recWords = wordsOf(rec.adCopy);
     let match = null;
     if (recWords.size >= 2) {
-      // Rank live ads by shared distinctive words (>=4 chars) against the stored copy.
-      let best = null, bestShared = 0;
+      // The live ad must BE the roasted ad, not a topical cousin: rank by how much of the LIVE
+      // ad's own distinctive vocabulary is contained in the stored copy (ratio), not raw overlap.
+      // A different current ad shares only a few generic words; the same ad shares nearly all.
+      let best = null, bestRatio = 0, bestShared = 0;
       for (const a of liveAds) {
         const lw = wordsOf((a.head || '') + ' ' + (a.body || ''));
-        let shared = 0; recWords.forEach(w => { if (lw.has(w)) shared++; });
-        if (shared > bestShared) { bestShared = shared; best = a; }
+        if (lw.size < 4) continue; // too little text to judge identity
+        let shared = 0; lw.forEach(w => { if (recWords.has(w)) shared++; });
+        const ratio = shared / lw.size;
+        if (ratio > bestRatio) { bestRatio = ratio; bestShared = shared; best = a; }
       }
-      const need = Math.min(3, Math.max(2, Math.ceil(recWords.size * 0.4)));
-      if (best && bestShared >= need) match = best;
-      if (debug) t.dbg = { recWords: recWords.size, bestShared, need };
+      if (best && bestRatio >= 0.6 && bestShared >= 4) match = best;
+      if (debug) t.dbg = { recWords: recWords.size, bestShared, bestRatio: Math.round(bestRatio * 100) / 100 };
     }
     // Unambiguous fallback: no usable copy but the company runs exactly one live creative.
     if (!match && recWords.size < 2 && liveAds.length === 1) match = liveAds[0];
