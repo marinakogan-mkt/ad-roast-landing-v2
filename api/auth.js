@@ -724,6 +724,31 @@ async function handleBackfillCreatives(req, res) {
   return res.status(200).json({ company, liveAds: liveAds.length, results: targets.map(({ rec, ...r }) => r), debug: dbg });
 }
 
+// Remove roasts from the dashboard listing (roast:index) without destroying the report record
+// (so any shared /report/<id> link still resolves). Used to clear creative-less duplicate cards.
+async function handleRemoveRoasts(req, res) {
+  const email = await sessionRoastEmail(req);
+  if (!email) return res.status(401).json({ error: 'Not signed in' });
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const ids = (Array.isArray(body.ids) ? body.ids.map(String) : String(req.query.ids || '').split(',')).map(s => s.trim()).filter(Boolean);
+  if (!ids.length) return res.status(400).json({ error: 'ids required' });
+  const results = [];
+  let list;
+  try { list = await redis.lrange('roast:index', 0, 999); } catch (e) { return res.status(500).json({ error: 'index read failed' }); }
+  const idset = new Set(ids);
+  for (const raw of list) {
+    let s; try { s = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { continue; }
+    if (!s || !idset.has(s.reportId)) continue;
+    // Ownership: only remove the caller's own roasts.
+    if (String(s.email || '').toLowerCase() !== email.toLowerCase()) { results.push({ id: s.reportId, status: 'not_yours' }); idset.delete(s.reportId); continue; }
+    try { await redis.lrem('roast:index', 0, raw); results.push({ id: s.reportId, status: 'removed' }); }
+    catch (e) { results.push({ id: s.reportId, status: 'error' }); }
+    idset.delete(s.reportId);
+  }
+  for (const missing of idset) results.push({ id: missing, status: 'not_in_index' });
+  return res.status(200).json({ results });
+}
+
 export default async function handler(req, res) {
   const action = (req.query?.action || '').trim();
 
@@ -747,6 +772,9 @@ export default async function handler(req, res) {
       case 'backfill-creatives':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleBackfillCreatives(req, res);
+      case 'remove-roasts':
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+        return await handleRemoveRoasts(req, res);
       case 'change-email':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleChangeEmailRequest(req, res);
