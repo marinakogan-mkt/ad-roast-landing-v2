@@ -616,6 +616,9 @@ async function _bfImage(url) {
   return null;
 }
 function _bfNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+// Distinctive words (>=4 alnum chars) for fuzzy ad matching, minus common filler.
+const _BF_STOP = new Set(['with', 'your', 'that', 'this', 'from', 'have', 'more', 'they', 'them', 'what', 'when', 'were', 'been', 'their', 'about', 'would', 'there', 'which', 'these', 'other', 'into', 'than', 'then', 'also', 'here', 'just', 'like', 'over', 'only', 'most', 'some', 'time', 'team', 'help', 'free', 'code', 'security', 'company']);
+function _bfWords(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !_BF_STOP.has(w)); }
 
 // Recover missing ad creatives on OLD roasts: re-pull the company's live LinkedIn ads, match the
 // stored roast to a live creative (by headline/body), and persist the image onto the EXISTING report
@@ -647,23 +650,34 @@ async function handleBackfillCreatives(req, res) {
   // Pull the company's live LinkedIn ads once.
   const pull = await fetchLinkedInAds({ company, limit: 24 });
   const liveAds = (pull.ok ? pull.ads : []).filter(a => a.img);
+  const debug = req.query.debug === '1';
+  const dbg = debug ? { liveAds: liveAds.map(a => ({ head: (a.head || '').slice(0, 60), body: (a.body || '').slice(0, 80), img: !!a.img })) } : null;
   if (!liveAds.length) {
     pending.forEach(t => { t.status = 'no_live_ads'; });
-    return res.status(200).json({ company, pullReason: pull.reason || null, results: targets.map(({ rec, ...r }) => r) });
+    return res.status(200).json({ company, pullReason: pull.reason || null, results: targets.map(({ rec, ...r }) => r), debug: dbg });
   }
 
+  const wordsOf = (s) => { const set = new Set(); (_bfWords(s)).forEach(w => set.add(w)); return set; };
   // Match + persist for each pending roast.
   for (const t of pending) {
     const rec = t.rec;
     const recCopy = _bfNorm(rec.adCopy);
+    const recWords = wordsOf(rec.adCopy);
     let match = null;
-    if (recCopy.length >= 20) {
-      // Text match: overlap on the first ~40 normalized chars in either direction.
-      const key = recCopy.slice(0, 40);
-      match = liveAds.find(a => { const ln = _bfNorm((a.headline || '') + (a.body || '')); return ln && (ln.includes(key) || recCopy.includes(ln.slice(0, 40))); });
+    if (recWords.size >= 2) {
+      // Rank live ads by shared distinctive words (>=4 chars) against the stored copy.
+      let best = null, bestShared = 0;
+      for (const a of liveAds) {
+        const lw = wordsOf((a.head || '') + ' ' + (a.body || ''));
+        let shared = 0; recWords.forEach(w => { if (lw.has(w)) shared++; });
+        if (shared > bestShared) { bestShared = shared; best = a; }
+      }
+      const need = Math.min(3, Math.max(2, Math.ceil(recWords.size * 0.4)));
+      if (best && bestShared >= need) match = best;
+      if (debug) t.dbg = { recWords: recWords.size, bestShared, need };
     }
     // Unambiguous fallback: no usable copy but the company runs exactly one live creative.
-    if (!match && recCopy.length < 20 && liveAds.length === 1) match = liveAds[0];
+    if (!match && recWords.size < 2 && liveAds.length === 1) match = liveAds[0];
     if (!match) { t.status = 'no_match'; continue; }
 
     const img = await _bfImage(match.img);
@@ -687,7 +701,7 @@ async function handleBackfillCreatives(req, res) {
       t.status = 'recovered';
     } catch (e) { t.status = 'save_failed'; }
   }
-  return res.status(200).json({ company, liveAds: liveAds.length, results: targets.map(({ rec, ...r }) => r) });
+  return res.status(200).json({ company, liveAds: liveAds.length, results: targets.map(({ rec, ...r }) => r), debug: dbg });
 }
 
 export default async function handler(req, res) {
