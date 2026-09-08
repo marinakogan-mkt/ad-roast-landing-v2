@@ -242,7 +242,7 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
   // countries must be real ISO codes (not "ALL") and dateOption is required — matching the actor's
   // validated example. A spread of major B2B markets so we don't miss a company's ads by region.
-  const input = { searchTerms: [q], searchMode: 'accountOwner', countries: ['US', 'GB', 'DE', 'CA', 'AU', 'FR', 'NL', 'IE'], dateOption: 'last-year', maxResults: limit, fetchAdDetails: false };
+  const input = { searchTerms: [q], searchMode: 'accountOwner', countries: ['US'], dateOption: 'last-year', maxResults: 20, fetchAdDetails: false };
   try {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), 42000); // stay within the 60s function budget (Google runs in parallel, scoring after)
