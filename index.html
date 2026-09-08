@@ -1820,15 +1820,21 @@
                     <button onClick={() => { setIcpDraft(ICPeff || ''); setIcpEditing(true); }} className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold flex-none" style={{ color: '#0a66c2' }}>edit</button>
                   </div>
                 )}
-                {usingReal && real.fresh && (
-                  <div className="inline-flex items-center gap-2 rounded-lg flex-none" style={{ fontSize: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', padding: '7px 12px' }}
-                    title={'We re-pull your live ad list on each visit and only re-grade newly launched creatives. Last checked ' + relTime(real.fresh.checked) + '.'}>
-                    <span className="inline-block rounded-full flex-none" style={{ width: 7, height: 7, background: '#22c55e' }}></span>
-                    <span className="font-semibold">Live</span>
-                    <span style={{ color: '#4d7c5a' }}>· checked {relTime(real.fresh.checked)}</span>
-                    <button onClick={() => loadReal(siteInput || CO.domain || '', { refresh: true })} disabled={phase === 'loading'} className="ml-0.5 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold flex-none" style={{ color: '#15803d' }}>{phase === 'loading' ? 'refreshing…' : 'refresh'}</button>
+                {usingReal && real.fresh && (() => {
+                  // Stale = the live re-check couldn't reach the ad libraries, so we're showing the
+                  // last saved pull (amber) instead of erroring. Otherwise it's the current list (green).
+                  const _stale = !!real.fresh.stale;
+                  const _ts = real.fresh.checkedAt || real.fresh.checked;
+                  return (
+                  <div className="inline-flex items-center gap-2 rounded-lg flex-none" style={{ fontSize: 12, background: _stale ? '#fffbeb' : '#f0fdf4', border: '1px solid ' + (_stale ? '#fde68a' : '#bbf7d0'), color: _stale ? '#b45309' : '#15803d', padding: '7px 12px' }}
+                    title={_stale ? 'We couldn’t reach the ad libraries just now, so this is your last saved pull. Hit refresh to try again.' : 'Your saved live ads. We only re-check when you hit refresh, or about once a week — so it never re-pulls on every visit.'}>
+                    <span className="inline-block rounded-full flex-none" style={{ width: 7, height: 7, background: _stale ? '#f59e0b' : '#22c55e' }}></span>
+                    <span className="font-semibold">{_stale ? 'Last saved' : 'Live'}</span>
+                    <span style={{ color: _stale ? '#92722a' : '#4d7c5a' }}>· checked {relTime(_ts)}</span>
+                    <button onClick={() => loadReal(siteInput || CO.domain || '', { refresh: true })} disabled={phase === 'loading'} className="ml-0.5 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold flex-none" style={{ color: _stale ? '#b45309' : '#15803d' }}>{phase === 'loading' ? 'refreshing…' : 'refresh'}</button>
                   </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 

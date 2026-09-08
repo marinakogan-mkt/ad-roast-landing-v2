@@ -219,36 +219,50 @@ export default async function handler(req, res) {
     const pullKey = 'ads:pull:' + domKey;
     const wantScore = !!body.icp; // the board always sends the ICP; display-only calls don't
     const refresh = !!body.refresh;
+    // A company's live ads barely change day-to-day, and pulling them costs money/rate-limit (Jina).
+    // So we DON'T re-pull on every visit: we keep the last successful pull durably (30d) and SHOW it
+    // instantly. We only go live when the user hits Refresh, or the copy is older than a week (a soft
+    // weekly re-check). And if a live pull fails, we keep showing the last copy — never an error or a
+    // blank/sample board. `_checkedAt` on the cached object drives the "checked X ago" freshness.
+    const FRESH_MS = 7 * 24 * 60 * 60 * 1000; // re-check at most ~once a week on entry
+    const CACHE_TTL = 60 * 60 * 24 * 30;      // keep the last pull for 30 days (durable "last seen")
 
-    // Layer A: current creative list (cheap, cached ~90min unless Retry).
-    let pull = null, listCached = false;
-    if (_redis && domKey && !refresh) {
-      try {
-        const raw = await _redis.get(pullKey);
-        const c = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-        if (c && c.ads && c.ads.length) { pull = c; listCached = true; }
-      } catch (e) { /* miss -> pull */ }
+    // Load whatever we last saw for this company (any age).
+    let cachedCopy = null;
+    if (_redis && domKey) {
+      try { const raw = await _redis.get(pullKey); cachedCopy = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; } catch (e) {}
+      if (!(cachedCopy && cachedCopy.ads && cachedCopy.ads.length)) cachedCopy = null;
     }
-    if (!pull) {
-      // Pull WITHOUT the ICP so no scoring happens here — scoreAdsCached does the (token-optimized)
-      // scoring below. A failed/empty pull is returned as-is (nothing to cache or score).
+    const cacheAge = (cachedCopy && cachedCopy._checkedAt) ? (Date.now() - cachedCopy._checkedAt) : Infinity;
+    const cacheFresh = !!cachedCopy && cacheAge < FRESH_MS;
+
+    let pull = null, listCached = false, stale = false, lastChecked = null;
+    if (!refresh && cacheFresh) {
+      // Fresh enough (< a week): show the last seen instantly, no live pull.
+      pull = cachedCopy; listCached = true; lastChecked = cachedCopy._checkedAt;
+    } else {
+      // Go live: the user asked to refresh, or the copy is stale (>1 week), or we've never pulled.
       const r = await fetchAllAds({ company: body.company, domain: body.domain });
-      if (!(r && r.ok && r.ads && r.ads.length)) return res.status(200).json(r || { ok: false, ads: [] });
-      pull = r;
-      if (_redis && domKey) {
-        const liOk = r.notes && r.notes.linkedin === 'ok';
-        const ttl = liOk ? 60 * 90 : 60 * 3; // 90min once LinkedIn's in (surfaces add/remove); 3min retry otherwise
-        try { await _redis.set(pullKey, JSON.stringify(r), { ex: ttl }); } catch (e) {}
+      if (r && r.ok && r.ads && r.ads.length) {
+        r._checkedAt = Date.now();
+        pull = r; lastChecked = r._checkedAt;
+        if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(r), { ex: CACHE_TTL }); } catch (e) {} }
+      } else if (cachedCopy) {
+        // Live pull failed (LinkedIn/Jina unreachable) but we have a previous copy: SHOW IT, don't error.
+        pull = cachedCopy; listCached = true; stale = true; lastChecked = cachedCopy._checkedAt;
+      } else {
+        // Nothing cached and the pull failed — genuinely nothing to show yet.
+        return res.status(200).json(r || { ok: false, ads: [] });
       }
     }
 
     // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.
-    if (!wantScore) return res.status(200).json({ ...pull, _listCached: listCached });
-    const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: refresh });
+    if (!wantScore) return res.status(200).json({ ...pull, _listCached: listCached, _stale: stale, _checkedAt: lastChecked });
+    const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: refresh && !stale });
     return res.status(200).json({
       ...pull,
       ads: sc.ads,
-      fresh: { checked: Date.now(), listCached, count: pull.ads.length, scoredNew: sc.scoredNew, reused: sc.reused },
+      fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: pull.ads.length, scoredNew: sc.scoredNew, reused: sc.reused },
     });
   }
 
