@@ -1374,7 +1374,7 @@
       const openGrid = (p) => {
         setFP(p); setStage('grid');
         const dom = (real && real.co && real.co.domain) || '';
-        try { window.history.pushState({ libGrid: p }, '', dom ? ('/board/' + encodeURIComponent(dom) + '/' + p.toLowerCase()) : ('?library=1&p=' + encodeURIComponent(p))); } catch (e) {}
+        try { window.history.pushState({ libGrid: p }, '', dom ? ('/b/' + encodeURIComponent(dom) + '/' + p.toLowerCase()) : ('?library=1&p=' + encodeURIComponent(p))); } catch (e) {}
         window.scrollTo(0, 0);
       };
 
@@ -1442,7 +1442,7 @@
             // Silent demo: keep showing the static sample; only a real user's fetch surfaces an error.
             if (silent) { setPhase('idle'); setBootLoading(false); return; }
             setPhase('error');
-            setStatusMsg('Could not fetch your ads (' + ((res && res.reason) || 'error') + '). Try again.');
+            setStatusMsg('Your live ads are taking a moment to load. Give it a few seconds and hit retry.');
             return;
           }
           setEntryMode(false);
@@ -1457,7 +1457,7 @@
           if (!opts.keepView && !opts.refresh) { setStage('overview'); setGridPlat('all'); }
           setPhase('idle'); setBootLoading(false);
           // Clean, shareable URL for this company's board: /board/<domain>.
-          if (!silent) { try { const clean = '/board/' + encodeURIComponent(co.domain || siteRaw); if (window.location.pathname !== clean) window.history.pushState({ board: co.domain }, '', clean); } catch (e) {} }
+          if (!silent) { try { const clean = '/b/' + encodeURIComponent(co.domain || siteRaw); if (window.location.pathname !== clean) window.history.pushState({ board: co.domain }, '', clean); } catch (e) {} }
         } catch (e) { if (silent) { setPhase('idle'); setBootLoading(false); return; } setPhase('error'); setStatusMsg(String(e && e.message || e)); }
       };
 
@@ -1787,7 +1787,7 @@
                   const active = CO && CO.domain && co.domain && CO.domain.toLowerCase() === String(co.domain).toLowerCase();
                   return (
                     <button key={co.domain} title={co.name || co.domain}
-                      onClick={() => { const s = co.site || co.domain; const c = boardCacheRef.current[String(s).toLowerCase()] || boardCacheRef.current[String(co.domain).toLowerCase()]; setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setPhase('idle'); /* keep the current platform view (Google/LinkedIn/all) when switching companies */ try { window.history.pushState({ board: co.domain }, '', '/board/' + encodeURIComponent(co.domain)); } catch (e) {} window.scrollTo(0, 0); } else loadReal(s, { keepView: true }); }}
+                      onClick={() => { const s = co.site || co.domain; const c = boardCacheRef.current[String(s).toLowerCase()] || boardCacheRef.current[String(co.domain).toLowerCase()]; setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setPhase('idle'); /* keep the current platform view (Google/LinkedIn/all) when switching companies */ try { window.history.pushState({ board: co.domain }, '', '/b/' + encodeURIComponent(co.domain)); } catch (e) {} window.scrollTo(0, 0); } else loadReal(s, { keepView: true }); }}
                       className="w-full flex items-center rounded-lg transition-colors bg-transparent border-none cursor-pointer" style={{ padding: railOpen ? '7px 10px' : '7px 0', gap: 9, justifyContent: railOpen ? 'flex-start' : 'center', background: active ? '#eef4fb' : 'transparent' }}>
                       <BrandLogo domain={co.domain} name={co.name} initial={String(co.name || co.domain || '?').charAt(0).toUpperCase()} color={active ? '#0a66c2' : '#94a3b8'} size={24} radius={6} />
                       {railOpen && <span className="truncate font-semibold" style={{ fontSize: 13, color: active ? '#0a66c2' : '#374151' }}>{co.name || co.domain}</span>}
@@ -1866,7 +1866,7 @@
                     <span className="inline-block rounded-full flex-none" style={{ width: 7, height: 7, background: _stale ? '#f59e0b' : '#22c55e' }}></span>
                     <span className="font-semibold">{_stale ? 'Last saved' : 'Live'}</span>
                     <span style={{ color: _stale ? '#92722a' : '#4d7c5a' }}>· checked {relTime(_ts)}</span>
-                    <button onClick={() => loadReal(siteInput || CO.domain || '', { refresh: true })} disabled={phase === 'loading'} className="ml-0.5 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold flex-none" style={{ color: _stale ? '#b45309' : '#15803d' }}>{phase === 'loading' ? 'refreshing…' : 'refresh'}</button>
+                    <button onClick={() => loadReal(siteInput || CO.domain || '', (real && real.co && real.icp != null) ? { only: 'linkedin' } : { refresh: true })} disabled={phase === 'loading'} className="ml-0.5 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold flex-none" style={{ color: _stale ? '#b45309' : '#15803d' }} title="Re-checks your LinkedIn ads (the live source). Google is cached and rarely changes.">{phase === 'loading' ? 'refreshing…' : 'refresh'}</button>
                   </div>
                   );
                 })()}
@@ -1882,8 +1882,8 @@
                 <div className="text-gray-400" style={{ fontSize: 12.5, fontFamily: 'monospace' }}>{CO.domain}</div>
                 {phase === 'error' ? (
                   <div className="mt-5">
-                    <div className="text-gray-700 font-semibold" style={{ fontSize: 14 }}>We couldn't load {CO.name}'s live ads right now</div>
-                    <div className="text-gray-400 mt-1 mx-auto" style={{ fontSize: 12.5, maxWidth: 340, lineHeight: 1.45 }}>A temporary fetch limit on our side, not your account. Give it a moment and retry.</div>
+                    <div className="text-gray-700 font-semibold" style={{ fontSize: 14 }}>{CO.name}'s live ads are taking a moment</div>
+                    <div className="text-gray-400 mt-1 mx-auto" style={{ fontSize: 12.5, maxWidth: 360, lineHeight: 1.45 }}>The ad libraries limit how fast they can be read. Give it a few seconds and hit retry, nothing's wrong with your account.</div>
                     <button onClick={() => loadReal(siteInput || CO.domain || '', { refresh: true })} className="mt-4 font-bold rounded-lg cursor-pointer" style={{ fontSize: 13, padding: '9px 18px', border: '1.5px solid #0a66c2', color: '#0a66c2', background: '#fff' }}>Retry &rarr;</button>
                   </div>
                 ) : (
@@ -1980,13 +1980,13 @@
                         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                           <PlatLogo plat={p} size={18} />
                           <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{p}</span>
-                          <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>Retry needed</span>
+                          <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>Taking a moment</span>
                         </div>
                         <div className="grid place-items-center px-4" style={{ height: 250, background: '#fafbfc' }}>
                           <div className="text-center" style={{ maxWidth: 250 }}>
                             <Icon name="rotateCcw" className="w-6 h-6 mx-auto mb-2" style={{ color: '#94a3b8' }} />
-                            <div className="text-gray-700 font-semibold" style={{ fontSize: 12.5 }}>We couldn't reach {p} just now</div>
-                            <div className="text-gray-400" style={{ fontSize: 11.5, marginTop: 3, lineHeight: 1.45 }}>A temporary fetch limit on our side, not your account. Give it a moment and retry.</div>
+                            <div className="text-gray-700 font-semibold" style={{ fontSize: 12.5 }}>{p} ads are taking a moment</div>
+                            <div className="text-gray-400" style={{ fontSize: 11.5, marginTop: 3, lineHeight: 1.45 }}>{p}'s ad library limits how fast it can be read. Give it a few seconds and retry.</div>
                           </div>
                         </div>
                         <div className="px-4 py-3">
@@ -2327,7 +2327,7 @@
         if (!v) { setHeroErr('Enter your website to see your live ads.'); return; }
         if (!isValidUrl(v)) { setHeroErr('That does not look like a website. Try yourcompany.com'); return; }
         setHeroErr('');
-        try { const dom = String(v).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, ''); window.history.pushState({}, '', '/board/' + encodeURIComponent(dom || v)); } catch (e) {}
+        try { const dom = String(v).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, ''); window.history.pushState({}, '', '/b/' + encodeURIComponent(dom || v)); } catch (e) {}
         try { window.scrollTo(0, 0); } catch (e) {}
         setView('ad-library');
       };
@@ -2617,7 +2617,7 @@
         // Internal roasts list (admin): /?roasts=1
         if (params.get('roasts') === '1') { setView('roasts-list'); return; }
         // Ad Library board: clean path /board[/<domain>[/<platform>]] (or legacy ?library=1).
-        if (window.location.pathname === '/board' || window.location.pathname.indexOf('/board/') === 0 || params.get('library') === '1') { setView('ad-library'); return; }
+        if (window.location.pathname === '/board' || window.location.pathname === '/b' || window.location.pathname.indexOf('/board/') === 0 || window.location.pathname.indexOf('/b/') === 0 || params.get('library') === '1') { setView('ad-library'); return; }
         // Clean overlay URLs so they are copyable and Back-able (Marina): /dashboard, /account.
         // The legacy ?dash=1 / ?account=1 links still work by normalizing to the clean path.
         const path = window.location.pathname;
@@ -2960,7 +2960,7 @@
                clean app path (/board, /dashboard, /account): the view is transiently 'landing' on a
                deep link before the routing effect switches it, and resetting to '/' would break it. */
             const p = window.location.pathname;
-            const isAppPath = p === '/board' || p.indexOf('/board/') === 0 || p.indexOf('/report/') === 0 || p === '/dashboard' || p === '/account';
+            const isAppPath = p === '/board' || p === '/b' || p.indexOf('/board/') === 0 || p.indexOf('/b/') === 0 || p.indexOf('/report/') === 0 || p === '/dashboard' || p === '/account';
             const hasReportParam = /[?&](id|synth|payment)=/.test(window.location.search);
             if (!hasReportParam && !isAppPath) target = '/';
           }
@@ -3031,7 +3031,7 @@
           .then(d => {
             const co = d && d.companies && d.companies[0];
             if (co && (co.domain || co.site) && viewRef.current === 'landing' && window.location.pathname === '/' && !window.location.search) {
-              try { window.history.replaceState({}, '', '/board/' + encodeURIComponent(co.domain || co.site)); } catch (e) {}
+              try { window.history.replaceState({}, '', '/b/' + encodeURIComponent(co.domain || co.site)); } catch (e) {}
               setView('ad-library');
             }
           })
