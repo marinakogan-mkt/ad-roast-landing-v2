@@ -242,7 +242,10 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
   // countries must be real ISO codes (not "ALL") and dateOption is required — matching the actor's
   // validated example. A spread of major B2B markets so we don't miss a company's ads by region.
-  const input = { searchTerms: [q], searchMode: 'accountOwner', countries: ['US'], dateOption: 'last-year', maxResults: 20, fetchAdDetails: false };
+  // Force RESIDENTIAL proxies — datacenter proxies (the default/free) get blocked by LinkedIn's
+  // Cloudflare, which is exactly why the actor's runs were failing. Residential IPs get through, and
+  // a LinkedIn scrape is small (~MBs) so it stays within Apify's free monthly credits.
+  const input = { searchTerms: [q], searchMode: 'accountOwner', countries: ['US'], dateOption: 'last-year', maxResults: 20, fetchAdDetails: false, proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'] } };
   try {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), 30000); // cap wasted time when LinkedIn blocks the actor's proxies; falls back to Jina after
@@ -250,7 +253,13 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal,
     });
     clearTimeout(t);
-    if (!r.ok) return { ok: false, reason: 'apify_' + r.status, ads: [] };
+    if (!r.ok) {
+      let b = ''; try { b = await r.text(); } catch (e) {}
+      const m = b.match(/run ID: (\w+)/);
+      let logSnip = '';
+      if (m) { try { const lr = await fetch('https://api.apify.com/v2/actor-runs/' + m[1] + '/log?token=' + encodeURIComponent(token)); if (lr.ok) logSnip = (await lr.text()).replace(/\s+/g, ' ').slice(-220); } catch (e) {} }
+      return { ok: false, reason: 'apify_' + r.status + ':' + (logSnip || b.replace(/\s+/g, ' ').slice(0, 100)), ads: [] };
+    }
     const items = await r.json();
     if (!Array.isArray(items) || !items.length) return { ok: false, reason: 'apify_no_ads', ads: [] };
     // Field names vary across actor versions, so read each defensively.
