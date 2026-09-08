@@ -2383,6 +2383,7 @@
       const [baTab, setBaTab] = useState(0);
       const [navOpen, setNavOpen] = useState(false);
       const [acctMenuOpen, setAcctMenuOpen] = useState(false);   // account dropdown (kebab) in the header
+      const [authMenuOpen, setAuthMenuOpen] = useState(false);   // logged-out sign in / sign up dropdown in the header
       const [showMyRoasts, setShowMyRoasts] = useState(false);   // "My roasted ads" dashboard overlay
       const [showMyAccount, setShowMyAccount] = useState(false); // "My account" settings overlay
       // API & MCP: the account's personal API key (for scripts + the AdRoast MCP server). Lazily
@@ -3907,7 +3908,31 @@
                   )}
                 </div>
               )}
+              {/* Logged-out: a profile circle that opens Sign in / Create account (desktop). */}
+              {!(roastSession && roastSession.email) && !(portalAcct && portalAcct.email) && (
+                <div className="relative pl-3 ml-1 border-l border-gray-200">
+                  <button onClick={() => setAuthMenuOpen(o => !o)} className="flex items-center cursor-pointer bg-transparent border-none p-0" aria-label="Sign in or create an account">
+                    <span className="grid place-items-center rounded-full flex-none" style={{ width: 30, height: 30, background: '#eef2f7', border: '1px solid #dbe3ec' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 4-6.5 8-6.5s8 2.5 8 6.5" /></svg>
+                    </span>
+                  </button>
+                  {authMenuOpen && (
+                    <>
+                      <div className="fixed inset-0" style={{ zIndex: 40 }} onClick={() => setAuthMenuOpen(false)} />
+                      <div className="absolute right-0 rounded-2xl border bg-white overflow-hidden" style={{ top: '140%', zIndex: 50, borderColor: '#e8ecf1', width: 214, boxShadow: '0 14px 38px rgba(11,15,26,.18)' }}>
+                        <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">Your account</div>
+                        <button onClick={() => { setAuthMenuOpen(false); setShowSignupGate(true); }} className="w-full text-left cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '10px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}>Sign in</button>
+                        <button onClick={() => { setAuthMenuOpen(false); setShowSignupGate(true); }} className="w-full text-left cursor-pointer bg-transparent border-none border-t border-gray-100 hover:bg-gray-50 transition-colors" style={{ padding: '10px 16px', fontSize: 13.5, fontWeight: 700, color: '#0a66c2' }}>Create free account</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </nav>
+            {/* Logged-out: always-visible Sign in on mobile (next to the hamburger). */}
+            {!(roastSession && roastSession.email) && !(portalAcct && portalAcct.email) && (
+              <button onClick={() => setShowSignupGate(true)} className="sm:hidden mr-1 rounded-full font-semibold cursor-pointer" style={{ fontSize: 13, padding: '6px 14px', color: '#0a66c2', background: '#eef4fb', border: '1px solid #cfe1f5' }}>Sign in</button>
+            )}
             <button onClick={() => setNavOpen(o => !o)} className="sm:hidden bg-transparent border-none cursor-pointer p-1.5" aria-label="Menu">
               <span style={{ display: 'block', width: 20, height: 2, background: '#334155', margin: '4px 0', borderRadius: 2 }} />
               <span style={{ display: 'block', width: 20, height: 2, background: '#334155', margin: '4px 0', borderRadius: 2 }} />
