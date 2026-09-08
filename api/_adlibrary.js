@@ -250,7 +250,13 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal,
     });
     clearTimeout(t);
-    if (!r.ok) { let b = ''; try { b = (await r.text()).replace(/\s+/g, ' ').slice(0, 180); } catch (e) {} return { ok: false, reason: 'apify_' + r.status + ':' + b, ads: [] }; }
+    if (!r.ok) {
+      let b = ''; try { b = await r.text(); } catch (e) {}
+      const m = b.match(/run ID: (\w+)/);
+      let logSnip = '';
+      if (m) { try { const lr = await fetch('https://api.apify.com/v2/actor-runs/' + m[1] + '/log?token=' + encodeURIComponent(token)); if (lr.ok) logSnip = (await lr.text()).replace(/\s+/g, ' ').slice(-260); } catch (e) {} }
+      return { ok: false, reason: 'apify_' + r.status + ':' + (logSnip || b.replace(/\s+/g, ' ').slice(0, 120)), ads: [] };
+    }
     const items = await r.json();
     if (!Array.isArray(items) || !items.length) return { ok: false, reason: 'apify_no_ads', ads: [] };
     // Field names vary across actor versions, so read each defensively.
