@@ -749,6 +749,25 @@ async function handleRemoveRoasts(req, res) {
   return res.status(200).json({ results });
 }
 
+// Repair the per-account company roster hash (roast:cos): correct a company's cached name/site or
+// delete a stray entry. Session-gated to the caller's own roster.
+async function handleFixCos(req, res) {
+  const email = await sessionRoastEmail(req);
+  if (!email) return res.status(401).json({ error: 'Not signed in' });
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const key = `roast:cos:${email}`;
+  const dels = Array.isArray(body.del) ? body.del : [];
+  const sets = Array.isArray(body.set) ? body.set : [];
+  const results = { deleted: [], set: [] };
+  for (const d of dels) { if (d) { try { await redis.hdel(key, String(d)); results.deleted.push(String(d)); } catch (e) {} } }
+  for (const s of sets) {
+    if (s && s.domain) {
+      try { await redis.hset(key, { [String(s.domain)]: JSON.stringify({ domain: String(s.domain), name: s.name || String(s.domain), site: s.site || String(s.domain), ts: Date.now() }) }); results.set.push(String(s.domain)); } catch (e) {}
+    }
+  }
+  return res.status(200).json(results);
+}
+
 export default async function handler(req, res) {
   const action = (req.query?.action || '').trim();
 
@@ -775,6 +794,9 @@ export default async function handler(req, res) {
       case 'remove-roasts':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleRemoveRoasts(req, res);
+      case 'fix-cos':
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+        return await handleFixCos(req, res);
       case 'change-email':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleChangeEmailRequest(req, res);
