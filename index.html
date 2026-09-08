@@ -1374,11 +1374,17 @@
       const openGrid = (p) => {
         setFP(p); setStage('grid');
         const dom = (real && real.co && real.co.domain) || '';
-        try { window.history.pushState({ libGrid: p }, '', dom ? ('/b/' + encodeURIComponent(dom) + '/' + p.toLowerCase()) : ('?library=1&p=' + encodeURIComponent(p))); } catch (e) {}
+        try { window.history.pushState({ libGrid: p }, '', dom ? ('/b/' + encodeURIComponent(shortDom(dom)) + '/' + p.toLowerCase()) : ('?library=1&p=' + encodeURIComponent(p))); } catch (e) {}
         window.scrollTo(0, 0);
       };
 
       const hostOf = (u) => { try { return new URL(/^https?:\/\//.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
+      // Shorten a domain for the shareable board URL: drop www + a trailing ".com" (the common case)
+      // so /b/claroty.com becomes /b/claroty. Non-.com TLDs (.dev/.io/.ai) are kept because they can't
+      // be guessed back. expandDom reverses it: a dot-less slug gets ".com", anything with a dot is a
+      // full domain already. Lossless round-trip.
+      const shortDom = (d) => { try { return String(d || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, '').replace(/\.com$/i, ''); } catch (e) { return d; } };
+      const expandDom = (s) => { s = String(s || '').trim().replace(/^www\./, ''); return s.indexOf('.') === -1 ? (s + '.com') : s; };
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
       /* Route every creative through our own origin so ad-blockers (which block the raw
          googlesyndication.com / licdn.com hosts by name) can't make them vanish. Only for
@@ -1457,7 +1463,7 @@
           if (!opts.keepView && !opts.refresh) { setStage('overview'); setGridPlat('all'); }
           setPhase('idle'); setBootLoading(false);
           // Clean, shareable URL for this company's board: /board/<domain>.
-          if (!silent) { try { const clean = '/b/' + encodeURIComponent(co.domain || siteRaw); if (window.location.pathname !== clean) window.history.pushState({ board: co.domain }, '', clean); } catch (e) {} }
+          if (!silent) { try { const clean = '/b/' + encodeURIComponent(shortDom(co.domain || siteRaw)); if (window.location.pathname !== clean) window.history.pushState({ board: co.domain }, '', clean); } catch (e) {} }
         } catch (e) { if (silent) { setPhase('idle'); setBootLoading(false); return; } setPhase('error'); setStatusMsg(String(e && e.message || e)); }
       };
 
@@ -1465,7 +1471,8 @@
         try {
           // Clean path first: /board/<domain>[/<platform>]. Falls back to the legacy ?site= query.
           const bm = window.location.pathname.match(/^\/(?:board|b)\/([^\/]+)(?:\/([^\/]+))?/);
-          const s = (bm && decodeURIComponent(bm[1])) || new URLSearchParams(window.location.search).get('site');
+          // Path slug is shortened (/b/claroty -> claroty.com); the ?site= fallback is already a full site.
+          const s = (bm && expandDom(decodeURIComponent(bm[1]))) || new URLSearchParams(window.location.search).get('site');
           const pseg = bm && bm[2];
           if (s && s !== 'board' && s !== 'b') {
             setSiteInput(s);
@@ -1787,7 +1794,7 @@
                   const active = CO && CO.domain && co.domain && CO.domain.toLowerCase() === String(co.domain).toLowerCase();
                   return (
                     <button key={co.domain} title={co.name || co.domain}
-                      onClick={() => { const s = co.site || co.domain; const c = boardCacheRef.current[String(s).toLowerCase()] || boardCacheRef.current[String(co.domain).toLowerCase()]; setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setPhase('idle'); /* keep the current platform view (Google/LinkedIn/all) when switching companies */ try { window.history.pushState({ board: co.domain }, '', '/b/' + encodeURIComponent(co.domain)); } catch (e) {} window.scrollTo(0, 0); } else loadReal(s, { keepView: true }); }}
+                      onClick={() => { const s = co.site || co.domain; const c = boardCacheRef.current[String(s).toLowerCase()] || boardCacheRef.current[String(co.domain).toLowerCase()]; setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setPhase('idle'); /* keep the current platform view (Google/LinkedIn/all) when switching companies */ try { window.history.pushState({ board: co.domain }, '', '/b/' + encodeURIComponent(shortDom(co.domain))); } catch (e) {} window.scrollTo(0, 0); } else loadReal(s, { keepView: true }); }}
                       className="w-full flex items-center rounded-lg transition-colors bg-transparent border-none cursor-pointer" style={{ padding: railOpen ? '7px 10px' : '7px 0', gap: 9, justifyContent: railOpen ? 'flex-start' : 'center', background: active ? '#eef4fb' : 'transparent' }}>
                       <BrandLogo domain={co.domain} name={co.name} initial={String(co.name || co.domain || '?').charAt(0).toUpperCase()} color={active ? '#0a66c2' : '#94a3b8'} size={24} radius={6} />
                       {railOpen && <span className="truncate font-semibold" style={{ fontSize: 13, color: active ? '#0a66c2' : '#374151' }}>{co.name || co.domain}</span>}
@@ -2327,7 +2334,7 @@
         if (!v) { setHeroErr('Enter your website to see your live ads.'); return; }
         if (!isValidUrl(v)) { setHeroErr('That does not look like a website. Try yourcompany.com'); return; }
         setHeroErr('');
-        try { const dom = String(v).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, ''); window.history.pushState({}, '', '/b/' + encodeURIComponent(dom || v)); } catch (e) {}
+        try { const dom = String(v).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, ''); window.history.pushState({}, '', '/b/' + encodeURIComponent(shortDom(dom || v))); } catch (e) {}
         try { window.scrollTo(0, 0); } catch (e) {}
         setView('ad-library');
       };
@@ -3031,7 +3038,7 @@
           .then(d => {
             const co = d && d.companies && d.companies[0];
             if (co && (co.domain || co.site) && viewRef.current === 'landing' && window.location.pathname === '/' && !window.location.search) {
-              try { window.history.replaceState({}, '', '/b/' + encodeURIComponent(co.domain || co.site)); } catch (e) {}
+              try { window.history.replaceState({}, '', '/b/' + encodeURIComponent(shortDom(co.domain || co.site))); } catch (e) {}
               setView('ad-library');
             }
           })
