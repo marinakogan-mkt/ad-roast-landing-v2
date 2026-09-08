@@ -231,9 +231,52 @@ export async function scoreAdsCached(ads, icp, redis, { force = false } = {}) {
 
 // --- LinkedIn (free, via Jina Reader) -------------------------------------------------
 // Pull a company's real LinkedIn ads (creative image + copy). Returns UNSCORED cards.
+// PRIMARY LinkedIn source: the Apify public LinkedIn Ad Library actor. Unlike Jina's anonymous pool
+// (shared IP rate-limit + fingerprinting) this is reliable, needs no login, and is cheap-per-ad
+// ($0.0015/ad, capped by maxResults). Needs APIFY_TOKEN. Returns our normalized ad shape, or a
+// reason so fetchLinkedInAds can fall back to Jina.
+async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
+  const token = process.env.APIFY_TOKEN;
+  if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
+  const q = (company || '').trim();
+  if (!q) return { ok: false, reason: 'no_company', ads: [] };
+  const input = { searchTerms: [q], searchMode: 'accountOwner', countries: ['ALL'], maxResults: limit, fetchAdDetails: false };
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 42000); // stay within the 60s function budget (Google runs in parallel, scoring after)
+    const r = await fetch('https://api.apify.com/v2/acts/khadinakbar~linkedin-ads-scraper/run-sync-get-dataset-items?token=' + encodeURIComponent(token), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal,
+    });
+    clearTimeout(t);
+    if (!r.ok) return { ok: false, reason: 'apify_' + r.status, ads: [] };
+    const items = await r.json();
+    if (!Array.isArray(items) || !items.length) return { ok: false, reason: 'apify_no_ads', ads: [] };
+    // Field names vary across actor versions, so read each defensively.
+    const pick = (o, keys) => { for (const k of keys) { if (o && o[k] != null && o[k] !== '') return o[k]; } return null; };
+    const ads = items.map(it => {
+      const cr = it.creative || it;
+      const img = pick(it, ['imageUrl', 'image', 'imageURL', 'creativeImageUrl', 'creativeImage', 'thumbnailUrl']) || pick(cr, ['imageUrl', 'image', 'imageURL']);
+      const head = pick(it, ['headline', 'title', 'head']) || pick(cr, ['headline', 'title']) || '';
+      const body = pick(it, ['copy', 'body', 'text', 'description', 'commentary']) || pick(cr, ['copy', 'body', 'text']) || '';
+      const adId = pick(it, ['adId', 'id', 'adLibraryId']) || (it.url ? (String(it.url).match(/(\d{6,})/) || [])[1] : null);
+      const detailUrl = pick(it, ['url', 'adUrl', 'detailUrl', 'sourceUrl']) || (adId ? 'https://www.linkedin.com/ad-library/detail/' + adId : null);
+      const advertiser = pick(it, ['advertiserName', 'advertiser', 'payerName', 'accountName']) || null;
+      return { plat: 'LinkedIn', head: (head || (body || '').slice(0, 80) || '(untitled ad)'), body: body || '', img, cta: null, ctaUrl: null, dom: null, advertiser, detailUrl, adId };
+    }).filter(a => a.img && /^https?:\/\//i.test(String(a.img))).slice(0, limit);
+    if (!ads.length) return { ok: false, reason: 'apify_no_creatives', ads: [] };
+    return { ok: true, ads, via: 'apify' };
+  } catch (e) { return { ok: false, reason: 'apify_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
+}
+
 export async function fetchLinkedInAds({ company, limit = 12 } = {}) {
   const q = (company || '').trim();
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
+  // Try Apify first (reliable, no rate-limit fingerprint); fall back to Jina's anon pool if it's not
+  // configured or comes back empty.
+  if (process.env.APIFY_TOKEN) {
+    const ap = await fetchLinkedInAdsViaApify({ company: q, limit });
+    if (ap.ok && ap.ads && ap.ads.length) return ap;
+  }
   const target = 'https://www.linkedin.com/ad-library/search?accountOwner=' + encodeURIComponent(q);
   // A JINA_API_KEY lifts the anonymous rate limit. BUT a depleted/invalid key returns 401/402/403
   // and would make LinkedIn fail HARDER than no key at all — so if a keyed attempt hits one of
