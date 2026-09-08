@@ -2853,10 +2853,26 @@
          localStorage session; a transient failure keeps the cached one rather than signing you out. */
       useEffect(() => {
         fetch('/api/auth?action=me', { credentials: 'same-origin' })
-          .then(r => r.ok ? r.json() : null)
-          .then(d => {
+          .then(async r => ({ status: r.status, d: await r.json().catch(() => null) }))
+          .then(({ status, d }) => {
             if (d && d.session && d.session.mode === 'roast') {
               setRoastSession({ email: d.session.email, plan: d.plan || 'free', tokens: (typeof d.tokens === 'number' ? d.tokens : 0), roastCount: d.roastCount || 0, freeAvailable: !!d.freeAvailable });
+              return;
+            }
+            /* Only a DEFINITIVE auth answer (200 without a session, or 401) means signed-out; a 5xx
+               or network error keeps the optimistic session so a transient blip doesn't log you out. */
+            if (status === 200 || status === 401) {
+              try { localStorage.removeItem('adroast_session'); } catch (e) {}
+              setRoastSession(null);
+              /* Private pages must not render for a logged-out visitor. Instead of showing an empty
+                 "My roasted ads" (which reads like a public page), send them to sign in. */
+              const p = (window.location.pathname || '').replace(/\/+$/, '');
+              if (p === '/dashboard' || p === '/account') {
+                setShowMyRoasts(false); setShowMyAccount(false);
+                try { window.history.replaceState({}, '', '/'); } catch (e) {}
+                setView('landing');
+                setShowSignupGate(true);
+              }
             }
           })
           .catch(() => {});
