@@ -236,6 +236,26 @@ export default async function handler(req, res) {
     const cacheAge = (cachedCopy && cachedCopy._checkedAt) ? (Date.now() - cachedCopy._checkedAt) : Infinity;
     const cacheFresh = !!cachedCopy && cacheAge < FRESH_MS;
 
+    // LinkedIn-only retry: Google and the ICP are already done, so "Retry LinkedIn" should re-pull ONLY
+    // LinkedIn and merge it with the cached Google/Meta — not redo everything. Needs a cached copy to
+    // merge into; without one we fall through to a normal full pull.
+    if (refresh && body.only === 'linkedin' && cachedCopy) {
+      const liPull = await fetchLinkedInAds({ company: body.company, limit: 12 }).catch(() => ({ ok: false, ads: [] }));
+      const gotLi = !!(liPull.ok && liPull.ads && liPull.ads.length);
+      const nonLi = (cachedCopy.ads || []).filter(a => (a.plat || '') !== 'LinkedIn');
+      const liAds = gotLi ? liPull.ads : (cachedCopy.ads || []).filter(a => (a.plat || '') === 'LinkedIn'); // keep last-seen if still blocked
+      const merged = {
+        ok: true, ads: [...liAds, ...nonLi],
+        sources: { ...(cachedCopy.sources || {}), linkedin: liAds.length },
+        notes: { ...(cachedCopy.notes || {}), linkedin: gotLi ? 'ok' : (liPull.reason || 'no_ads'), linkedin_apify: liPull._apify || null },
+        _checkedAt: Date.now(),
+      };
+      const scM = await scoreAdsCached(merged.ads, body.icp, _redis, { force: false });
+      merged.ads = scM.ads;
+      if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(merged), { ex: CACHE_TTL }); } catch (e) {} }
+      return res.status(200).json({ ...merged, fresh: { checked: Date.now(), checkedAt: merged._checkedAt, stale: false, listCached: false, count: merged.ads.length, scoredNew: scM.scoredNew, reused: scM.reused } });
+    }
+
     let pull = null, listCached = false, stale = false, lastChecked = null;
     if (!refresh && cacheFresh) {
       // Fresh enough (< a week): show the last seen instantly, no live pull.

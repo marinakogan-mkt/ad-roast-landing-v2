@@ -1362,7 +1362,7 @@
           // board URL at "/board/<domain>", so a grid is /board/<domain>/<platform>. Back from a grid
           // drops the platform segment and returns to the overview.
           const PN = { linkedin: 'LinkedIn', google: 'Google', meta: 'Meta' };
-          const m = window.location.pathname.match(/^\/board\/[^\/]+\/([^\/]+)/);
+          const m = window.location.pathname.match(/^\/(?:board|b)\/[^\/]+\/([^\/]+)/);
           const p = m ? PN[m[1].toLowerCase()] : (new URLSearchParams(window.location.search).get('p'));
           if (p && ['LinkedIn', 'Google', 'Meta'].indexOf(p) !== -1) { setFP(p); setStage('grid'); }
           else { setStage('overview'); setFP('all'); }
@@ -1411,6 +1411,22 @@
       const loadReal = async (s, opts = {}) => {
         const siteRaw = (s || '').trim();
         if (!siteRaw) return;
+        // LinkedIn-only retry: Google + the ICP are already loaded, so re-pull ONLY LinkedIn and merge,
+        // instead of redoing the whole detection + pull. Reuses the current company + ICP.
+        if (opts.only === 'linkedin' && real && real.co && real.icp != null) {
+          setPhase('loading'); setStatusMsg('Re-checking your LinkedIn ads…');
+          try {
+            const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: real.co.name, domain: real.co.domain, icp: real.icp, refresh: true, only: 'linkedin' }) }).then(r => r.json()).catch(() => ({}));
+            if (res && res.ok && Array.isArray(res.ads)) {
+              const cleanAds = res.ads.filter(a => { const t = String(a.head || a.title || '').trim().toLowerCase(); return t !== 'blank ad' && t !== '(untitled ad)' && t !== 'untitled ad' && t.indexOf('broken ad') === -1 && t.indexOf('placeholder') === -1; });
+              const realObj = { ...real, ads: cleanAds, notes: res.notes || real.notes || {}, fresh: res.fresh || null };
+              try { boardCacheRef.current[String(real.co.domain).toLowerCase()] = realObj; } catch (e) {}
+              setReal(realObj);
+            }
+          } catch (e) {}
+          setPhase('idle');
+          return;
+        }
         // silent (background demo autoload): don't surface spinners/errors over the sample.
         const silent = !!opts.silent;
         if (!silent) { setPhase('loading'); setReal(null); setBootLoading(false); const h = hostOf(siteRaw); setLoadingCo({ name: h, domain: h, initial: (h || '?').charAt(0).toUpperCase(), color: '#334155' }); }
@@ -1448,10 +1464,10 @@
       useEffect(() => {
         try {
           // Clean path first: /board/<domain>[/<platform>]. Falls back to the legacy ?site= query.
-          const bm = window.location.pathname.match(/^\/board\/([^\/]+)(?:\/([^\/]+))?/);
+          const bm = window.location.pathname.match(/^\/(?:board|b)\/([^\/]+)(?:\/([^\/]+))?/);
           const s = (bm && decodeURIComponent(bm[1])) || new URLSearchParams(window.location.search).get('site');
           const pseg = bm && bm[2];
-          if (s && s !== 'board') {
+          if (s && s !== 'board' && s !== 'b') {
             setSiteInput(s);
             if (pseg) { const PN = { linkedin: 'LinkedIn', google: 'Google', meta: 'Meta' }; const p = PN[pseg.toLowerCase()]; if (p) { setFP(p); setStage('grid'); } }
             loadReal(s);
@@ -1974,7 +1990,7 @@
                           </div>
                         </div>
                         <div className="px-4 py-3">
-                          <button onClick={() => loadReal(siteInput || (CO && CO.domain) || '', { refresh: true })} disabled={phase === 'loading'} className="w-full font-bold rounded-lg transition-colors hover:bg-blue-50" style={{ fontSize: 13, padding: '9px', border: '1.5px solid #0a66c2', color: '#0a66c2', background: '#fff' }}>{phase === 'loading' ? 'Retrying…' : 'Retry ' + p + ' →'}</button>
+                          <button onClick={() => loadReal(siteInput || (CO && CO.domain) || '', (real && p === 'LinkedIn') ? { only: 'linkedin' } : { refresh: true })} disabled={phase === 'loading'} className="w-full font-bold rounded-lg transition-colors hover:bg-blue-50" style={{ fontSize: 13, padding: '9px', border: '1.5px solid #0a66c2', color: '#0a66c2', background: '#fff' }}>{phase === 'loading' ? 'Retrying…' : 'Retry ' + p + ' →'}</button>
                         </div>
                       </div>
                     );

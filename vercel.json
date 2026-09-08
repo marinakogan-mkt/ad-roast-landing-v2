@@ -8,6 +8,8 @@
     { "source": "/account", "destination": "/index.html" },
     { "source": "/board", "destination": "/index.html" },
     { "source": "/board/(.*)", "destination": "/index.html" },
+    { "source": "/b", "destination": "/index.html" },
+    { "source": "/b/(.*)", "destination": "/index.html" },
     { "source": "/report/(.*)", "destination": "/index.html" },
     { "source": "/api/mcp", "destination": "/api/icp?mcp=1" }
   ],
