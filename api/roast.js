@@ -469,6 +469,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ needsLanding: true, landingStatus, landingUrl: (landingUrl || '').trim() });
   }
 
+  // ICP gate (product rule, same spirit as the landing gate): if we could extract an accurate buyer,
+  // proceed. But if the site couldn't be read well enough to detect one (icp.js returns an "Unknown
+  // B2B buyer" placeholder, or it's empty/too thin), DON'T score the ad against a guess -> stop and
+  // ask for the buyer first. The caller proceeds with a real ICP (allowWeakIcp:true once confirmed).
+  const _icp = (icpDescription || '').trim();
+  const _icpWeak = !_icp || _icp.length < 15 || /unknown b2b buyer|page content insufficient|insufficient (page )?content|could ?n'?t (read|determine|detect)|no (clear )?(icp|buyer)/i.test(_icp);
+  if (_icpWeak && !body.allowWeakIcp && !isAdvancedAudit) {
+    return res.status(200).json({ needsIcp: true, icpReason: _icp ? 'weak' : 'missing', website: website || '', icpDescription: _icp });
+  }
+
   const systemPrompt = `You are AdRoast, a brutally honest ad and landing-page analyst for SaaS founders.
 
 Job: (1) judge whether the AD speaks to the user's stated ICP; (2) if landing-page content is provided, analyze the LANDING PAGE for conversion issues; (3) if both exist, find the MESSAGING MISMATCH between them.
