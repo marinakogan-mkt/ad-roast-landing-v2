@@ -273,9 +273,11 @@ export async function fetchLinkedInAds({ company, limit = 12 } = {}) {
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
   // Try Apify first (reliable, no rate-limit fingerprint); fall back to Jina's anon pool if it's not
   // configured or comes back empty.
+  let apifyReason = process.env.APIFY_TOKEN ? 'apify_not_run' : 'apify_no_token';
   if (process.env.APIFY_TOKEN) {
     const ap = await fetchLinkedInAdsViaApify({ company: q, limit });
-    if (ap.ok && ap.ads && ap.ads.length) return ap;
+    if (ap.ok && ap.ads && ap.ads.length) return { ...ap, _apify: 'ok' };
+    apifyReason = ap.reason || 'apify_empty';
   }
   const target = 'https://www.linkedin.com/ad-library/search?accountOwner=' + encodeURIComponent(q);
   // A JINA_API_KEY lifts the anonymous rate limit. BUT a depleted/invalid key returns 401/402/403
@@ -313,11 +315,11 @@ export async function fetchLinkedInAds({ company, limit = 12 } = {}) {
       // Only keep ads that carry a real creative image — every board card must show a real
       // creative, never a text-only placeholder tile.
       const ads = parseAdCards(html, q).filter(a => a.img).slice(0, limit);
-      if (ads.length) return { ok: true, ads };
+      if (ads.length) return { ok: true, ads, _apify: apifyReason };
       lastReason = 'no_ads';
     } catch (e) { lastReason = String(e && e.message || e); }
   }
-  return { ok: false, reason: lastReason, ads: [] };
+  return { ok: false, reason: lastReason, ads: [], _apify: apifyReason };
 }
 
 // --- Google (free, via Ads Transparency Center RPC) -----------------------------------
@@ -478,6 +480,7 @@ export async function fetchAllAds({ company, domain, icp, limit = 36 } = {}) {
   // another source succeeded, so the UI can tell "none running" from "we couldn't fetch it".
   const notes = {
     linkedin: (li.ads && li.ads.length) ? 'ok' : (li.reason || 'no_ads'),
+    linkedin_apify: li._apify || null, // debug: why Apify was/wasn't used for LinkedIn
     google: (gg.ads && gg.ads.length) ? 'ok' : (gg.reason || 'no_ads'),
     meta: (mt.ads && mt.ads.length) ? 'ok' : (mt.reason || 'no_ads'),
   };
