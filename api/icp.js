@@ -25,7 +25,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, scoreAdsCached } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchLinkedInAds, scoreAdsCached } from './_adlibrary.js';
 
 // The Ad Library fetch renders a page via Jina and runs a quick Haiku score, so allow headroom.
 export const config = { maxDuration: 60 };
