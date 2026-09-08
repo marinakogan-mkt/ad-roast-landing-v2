@@ -240,7 +240,9 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
   const q = (company || '').trim();
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
-  const input = { searchTerms: [q], searchMode: 'accountOwner', countries: ['ALL'], maxResults: limit, fetchAdDetails: false };
+  // countries must be real ISO codes (not "ALL") and dateOption is required — matching the actor's
+  // validated example. A spread of major B2B markets so we don't miss a company's ads by region.
+  const input = { searchTerms: [q], searchMode: 'accountOwner', countries: ['US', 'GB', 'DE', 'CA', 'AU', 'FR', 'NL', 'IE'], dateOption: 'last-year', maxResults: limit, fetchAdDetails: false };
   try {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), 42000); // stay within the 60s function budget (Google runs in parallel, scoring after)
@@ -262,9 +264,14 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
       const detailUrl = pick(it, ['url', 'adUrl', 'detailUrl', 'sourceUrl']) || (adId ? 'https://www.linkedin.com/ad-library/detail/' + adId : null);
       const advertiser = pick(it, ['advertiserName', 'advertiser', 'payerName', 'accountName']) || null;
       return { plat: 'LinkedIn', head: (head || (body || '').slice(0, 80) || '(untitled ad)'), body: body || '', img, cta: null, ctaUrl: null, dom: null, advertiser, detailUrl, adId };
-    }).filter(a => a.img && /^https?:\/\//i.test(String(a.img))).slice(0, limit);
-    if (!ads.length) return { ok: false, reason: 'apify_no_creatives', ads: [] };
-    return { ok: true, ads, via: 'apify' };
+    }).filter(a => a.img && /^https?:\/\//i.test(String(a.img)));
+    // Same ad often repeats across countries — keep one per creative/id.
+    const seen = new Set();
+    const uniq = [];
+    for (const a of ads) { const k = a.adId || String(a.img).split('?')[0]; if (seen.has(k)) continue; seen.add(k); uniq.push(a); }
+    const out = uniq.slice(0, limit);
+    if (!out.length) return { ok: false, reason: 'apify_no_creatives', ads: [] };
+    return { ok: true, ads: out, via: 'apify' };
   } catch (e) { return { ok: false, reason: 'apify_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
 }
 
