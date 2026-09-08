@@ -2250,6 +2250,8 @@
       const [companyName, setCompanyName] = useState(''); // advertiser name from ICP auto-detect, shown atop the roast
       const [adLink, setAdLink] = useState(''); // the ad-library URL being roasted, shown in the "what's being roasted" showcase
       const [lpCopyInput, setLpCopyInput] = useState(''); // manual landing-page copy when the auto-scrape couldn't read the page
+      const [landingGate, setLandingGate] = useState(null); // { status:'unreadable'|'missing', url } when the roast stopped to ask for a readable landing
+      const pendingRoastRef = React.useRef(null); // the exact payload of the in-flight roast, so the landing gate can resubmit it (preserving the creative) with a fixed landing / copy / ad-only opt-in
       const [icpTags, setIcpTags] = useState([]);
       const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
       // Front door: a website is all we need. Route into the Live Ads board (?library=1&site=),
@@ -2608,6 +2610,7 @@
                 return;
               }
               setView('processing');
+              pendingRoastRef.current = payload;
               fetch('/api/roast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) })
                 .then(r => r.json())
                 .then(data => { if (data && !data.error) applyRoastResult(data); else { setError((data && data.error) || 'Roast failed'); setView('ad-library'); } })
@@ -2694,6 +2697,7 @@
             setOfferDetail(pending.payload.offerDetail || '');
             setInputs(pending.inputs || { url: '', copy: '', visual: '', adScreenshot: null, adScreenshotPreview: null });
             setView('processing');
+            pendingRoastRef.current = pending.payload;
             fetch('/api/roast', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -3251,6 +3255,16 @@
          full=true means a token was spent and the roast is shown in full; full=false
          means the account is out of tokens, so we blur it and sell a plan. */
       const applyRoastResult = (data) => {
+        /* Landing-page gate: the server refused to fabricate an ad<->landing match from a page it
+           couldn't read. Don't show a (falsely bad) result: open the gate to fix the landing URL,
+           paste its copy, or explicitly roast the ad only. Covers every roast path (guided, board,
+           post-signin) since they all funnel through here. */
+        if (data && data.needsLanding) {
+          setLandingGate({ status: data.landingStatus || 'missing', url: data.landingUrl || '' });
+          setView('landing-gate');
+          setLoading(false);
+          return;
+        }
         setResult(data);
         setIsSharedView(false); // a freshly generated roast is the viewer's own, not a shared link
         notifyRoastToMarina(data); // email Marina every roast, regardless of LinkedIn opt-in
@@ -3272,8 +3286,30 @@
         if (data && data._reportId) { setCurrentReportId(data._reportId); try { window.history.pushState({ report: data._reportId }, '', '/report/' + encodeURIComponent(data._reportId)); } catch (e) {} }
       };
 
-      const generate = async (extraLandingCopy, forceFresh) => {
-        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: (typeof extraLandingCopy === 'string' ? extraLandingCopy : ''), adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '', adUrl: (isValidUrl(inputs.copy) ? inputs.copy.trim() : ''), forceFresh: !!forceFresh };
+      /* Re-run the roast that stopped at the landing gate, preserving its ORIGINAL payload (creative,
+         ad copy, ICP, source, ad-library origin) and applying the gate's fix: a corrected landing
+         URL, pasted landing copy, or an explicit ad-only opt-in. Reuses the exact payload so a
+         board roast keeps its creative instead of losing it through the guided form's state. */
+      const resubmitRoast = async (over) => {
+        const base = pendingRoastRef.current;
+        if (!base) { setLandingGate(null); return; }
+        const payload = { ...base,
+          landingUrl: (over && typeof over.landingUrl === 'string') ? over.landingUrl : base.landingUrl,
+          landingCopy: (over && typeof over.landingCopy === 'string' && over.landingCopy.trim()) ? over.landingCopy : (base.landingCopy || ''),
+          allowNoLanding: !!(over && over.allowNoLanding),
+        };
+        pendingRoastRef.current = payload;
+        setLandingGate(null); setError(null); setLoading(true); setView('processing');
+        try {
+          const res = await fetch('/api/roast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'API error');
+          applyRoastResult(data);
+        } catch (err) { setError(err.message); setView('guided'); setLoading(false); }
+      };
+
+      const generate = async (extraLandingCopy, forceFresh, opts) => {
+        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: (typeof extraLandingCopy === 'string' ? extraLandingCopy : ''), adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '', adUrl: (isValidUrl(inputs.copy) ? inputs.copy.trim() : ''), forceFresh: !!forceFresh, allowNoLanding: !!(opts && opts.allowNoLanding) };
         setAdLink(payload.adUrl || '');
 
         /* Monetization 2b: require a roast-tool account before running the roast.
@@ -3287,6 +3323,7 @@
         }
 
         setError(null); setLoading(true); setView('processing');
+        pendingRoastRef.current = payload;
         try {
           const res = await fetch('/api/roast', {
             method: 'POST',
@@ -3994,6 +4031,48 @@
       /* Internal admin roasts list (/?roasts=1). */
       if (view === 'roasts-list') return <RoastsListView />;
       if (view === 'ad-library') return <AdLibraryView />;
+
+      /* Landing-page gate: the roast stopped because we couldn't read a landing page (or none was
+         given). Ask for it BEFORE showing any scores, so we never present a false "bad match" that
+         is really just a missing page. The ad itself is fine — this is a read miss, not a verdict. */
+      if (view === 'landing-gate' && landingGate) {
+        const _lgHost = (u) => { try { return new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return (u || '').trim(); } };
+        const _lgUnreadable = landingGate.status === 'unreadable';
+        const _lgUrl0 = landingGate.url || '';
+        return (
+          <div className="min-h-screen grid place-items-center px-4" style={{ background: '#f6f8fb' }}>
+            <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-lg p-6 sm:p-8" style={{ boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 12px 32px rgba(11,15,26,.08)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: '#fff7ed', border: '1px solid #fed7aa' }}><Icon name="alertCircle" className="w-4 h-4" style={{ color: '#b45309' }} /></span>
+                <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#b45309' }}>One thing first</span>
+              </div>
+              <h1 className="text-xl font-bold text-gray-900 mb-1.5">{_lgUnreadable ? `We couldn't read ${_lgHost(_lgUrl0) || 'your landing page'}` : 'This ad needs a landing page'}</h1>
+              <p className="text-sm text-gray-500 mb-5" style={{ lineHeight: 1.5 }}>
+                {_lgUnreadable
+                  ? 'The page opened empty (it may be JS-rendered or blocking bots), so we can’t score how well it matches the ad. Confirm the exact page the ad clicks to, or paste its copy. '
+                  : 'Add the exact page this ad sends clicks to so we can score how well the two match. '}
+                <span className="font-semibold text-gray-700">This isn’t a problem with your ad</span> — we just won’t invent a match score from a page we couldn’t read.
+              </p>
+
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Landing page URL</label>
+              <div className="flex gap-2 mb-4">
+                <input id="lg-url" defaultValue={_lgUrl0} placeholder="https://yourcompany.com/the-page" className="flex-1 px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 text-gray-900" />
+                <button onClick={() => { const v = (document.getElementById('lg-url') || {}).value || ''; if (isValidUrl(v)) { setInputs(prev => ({ ...prev, url: v.trim() })); resubmitRoast({ landingUrl: v.trim() }); } }} className="px-4 py-2.5 rounded-xl font-semibold text-sm text-white border-none cursor-pointer whitespace-nowrap" style={{ background: '#0a66c2' }}>Roast this page</button>
+              </div>
+
+              <div className="flex items-center gap-3 my-4"><div className="flex-1 h-px bg-gray-200" /><span className="text-xs text-gray-400 font-medium">or paste the copy</span><div className="flex-1 h-px bg-gray-200" /></div>
+
+              <textarea value={lpCopyInput} onChange={e => setLpCopyInput(e.target.value)} placeholder="Paste the landing page headline, subhead, and main body copy…" className="w-full h-24 px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 text-gray-900 resize-none mb-2" />
+              <button onClick={() => { const v = lpCopyInput.trim(); if (v.length > 20) resubmitRoast({ landingCopy: v }); }} disabled={lpCopyInput.trim().length <= 20} className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm border-none ${lpCopyInput.trim().length > 20 ? 'text-white cursor-pointer' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`} style={lpCopyInput.trim().length > 20 ? { background: '#0a66c2' } : {}}><Icon name="sparkles" className="w-4 h-4" /> Score with this copy</button>
+
+              <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                <button onClick={() => { setLandingGate(null); setView(pendingRoastRef.current && pendingRoastRef.current.source === 'ad-library' ? 'ad-library' : 'guided'); }} className="text-sm font-semibold text-gray-400 hover:text-gray-700 bg-transparent border-none cursor-pointer">&larr; Back</button>
+                <button onClick={() => resubmitRoast({ allowNoLanding: true })} className="text-sm font-semibold bg-transparent border-none cursor-pointer" style={{ color: '#6b7280' }} title="We'll roast the ad and skip the landing & match (they won't be scored).">No landing page? Roast the ad only &rarr;</button>
+              </div>
+            </div>
+          </div>
+        );
+      }
 
       /* Private-audit sign-in gate: takes over the page when a non-signed-in
          viewer follows a portal-private audit link (e.g. an Aikido ?id=…). */

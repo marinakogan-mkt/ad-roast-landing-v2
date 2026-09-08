@@ -434,11 +434,40 @@ export default async function handler(req, res) {
     }
   }
 
+  // Fallback: real landing pages often block a naive server fetch (Cloudflare / JS-rendered SPA).
+  // Before concluding the page is unreadable (and gating the roast), try Jina Reader, which renders
+  // the page server-side. Only when THIS also comes back empty do we treat the landing as unreadable.
+  if (!landingPageContent && landingUrl?.trim()) {
+    try {
+      const jc = new AbortController();
+      const jt = setTimeout(() => jc.abort(), 12000);
+      const jh = { 'X-Return-Format': 'text', 'X-Timeout': '15' };
+      if (process.env.JINA_API_KEY) jh['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
+      const jr = await fetch('https://r.jina.ai/' + landingUrl.trim(), { headers: jh, signal: jc.signal });
+      clearTimeout(jt);
+      if (jr.ok) {
+        const jtext = ((await jr.text()) || '').replace(/\s+/g, ' ').trim().slice(0, 3500);
+        if (jtext && jtext.length > 120) { landingPageContent = jtext; meta.landingScraped = true; meta.landingViaJina = true; delete meta.landingScrapeError; }
+      }
+    } catch (e) { /* leave landingPageContent empty -> the gate will ask the user for the landing */ }
+  }
+
   const hasAnyLandingContent = !!(landingPageContent || landingCopy?.trim());
   // Flags the client uses to explain a 0 LP score: URL given but unreadable
   // (JS-rendered / bot-blocked) vs no URL at all vs copy pasted manually.
   meta.landingUrlProvided = !!(landingUrl && landingUrl.trim());
   meta.landingCopyProvided = !!(landingCopy && landingCopy.trim());
+
+  // Landing-page gate (product rule): NEVER fabricate a bad ad<->landing match from a landing we
+  // couldn't read. 'unreadable' = a URL was given but came back empty/JS-rendered/bot-blocked;
+  // 'missing' = no landing at all. In either case, stop BEFORE the roast and ask the caller for the
+  // landing (fix the URL or paste its copy), instead of returning a roast whose match/landing read
+  // as "bad" when the real reason is that there was no page to read. The caller can proceed ad-only
+  // with allowNoLanding:true, and then the match/landing sections are marked "not scored", never bad.
+  const landingStatus = hasAnyLandingContent ? 'ok' : (meta.landingUrlProvided ? 'unreadable' : 'missing');
+  if (landingStatus !== 'ok' && !body.allowNoLanding && !isAdvancedAudit) {
+    return res.status(200).json({ needsLanding: true, landingStatus, landingUrl: (landingUrl || '').trim() });
+  }
 
   const systemPrompt = `You are AdRoast, a brutally honest ad and landing-page analyst for SaaS founders.
 
@@ -658,6 +687,9 @@ Return the JSON object defined in the output contract. All fields required.`;
         // Add meta for frontend debugging
         parsed._meta = meta;
         parsed._version = API_VERSION;
+        // How the landing read went, so the report shows the match as "not scored" (never "bad")
+        // when there was no readable page. 'ok' | 'unreadable' | 'missing' (ad-only opt-in).
+        parsed.landingStatus = landingStatus;
 
         /* Token consume + entitlement. We only reach here when `entitled` was true
            at the gate above (account has tokens, or Redis was down and we failed
@@ -685,7 +717,7 @@ Return the JSON object defined in the output contract. All fields required.`;
             parsed._reportId = reportId;
             const { _entitlement, _meta, ...cleanResult } = parsed; // don't persist per-request entitlement/debug
             const ts = Date.now();
-            const record = { result: cleanResult, icp: icpDescription || '', platform: platform || '', offerType: offerType || '', offerDetail: offerDetail || '', company: company || '', website: website || '', landingUrl: landingUrl || '', adUrl: adUrl || '', adCopy: adCopy || '', visualDescription: visualDescription || '', email: acctEmail, ts };
+            const record = { result: cleanResult, icp: icpDescription || '', platform: platform || '', offerType: offerType || '', offerDetail: offerDetail || '', company: company || '', website: website || '', landingUrl: landingUrl || '', adUrl: adUrl || '', adCopy: adCopy || '', visualDescription: visualDescription || '', email: acctEmail, ts, landingStatus };
             /* Persist the ad creative so a shared/cold report shows the actual ad being
                roasted. Downscaled JPEG (~800px) is small; cap defensively so an oversized
                image never blows the Redis value limit (the roast still saves without it). */
@@ -712,7 +744,7 @@ Return the JSON object defined in the output contract. All fields required.`;
               record.adImageUrl = adImageUrl;
             }
             await _redis.set(`roast:report:${reportId}`, JSON.stringify(record), { ex: 60 * 60 * 24 * 90 });
-            const summary = { reportId, ts, email: acctEmail, platform: platform || '', company: company || '', website: website || '', domain: _companyKey || '', adUrl: adUrl || '', icp: (icpDescription || '').slice(0, 160), adScore: parsed.overall_score ?? null, lpScore: parsed.landing_page_roast?.overall_score ?? null, matchScore: parsed.ad_landing_mismatch?.alignment_score ?? null, img: (adImageUrl && typeof adImageUrl === 'string') ? adImageUrl : null };
+            const summary = { reportId, ts, email: acctEmail, platform: platform || '', company: company || '', website: website || '', domain: _companyKey || '', adUrl: adUrl || '', icp: (icpDescription || '').slice(0, 160), adScore: parsed.overall_score ?? null, lpScore: parsed.landing_page_roast?.overall_score ?? null, matchScore: parsed.ad_landing_mismatch?.alignment_score ?? null, landingStatus, img: (adImageUrl && typeof adImageUrl === 'string') ? adImageUrl : null };
             await _redis.lpush('roast:index', JSON.stringify(summary));
             await _redis.ltrim('roast:index', 0, 999); // keep the most recent 1000
             /* Per-account company roster (powers the sidebar + logged-in landing): one hash field
