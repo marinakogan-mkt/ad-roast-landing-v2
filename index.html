@@ -2870,8 +2870,7 @@
               if (p === '/dashboard' || p === '/account') {
                 setShowMyRoasts(false); setShowMyAccount(false);
                 try { window.history.replaceState({}, '', '/'); } catch (e) {}
-                setView('landing');
-                setShowSignupGate(true);
+                setView('signin-required'); // dedicated full-page sign-in (deterministic, no modal race)
               }
             }
           })
@@ -4162,6 +4161,49 @@
               <p className="text-xs text-gray-400 mt-4">Need access? Contact Marina.</p>
             </div>
           </main>
+        </div>
+      );
+
+      /* Sign-in required: a logged-out visitor hit a PRIVATE page (/dashboard, /account). We never
+         render their (empty) dashboard - it must not read as a public page - so we send them here to
+         sign in. Full page, not a modal, so it can't be raced away by mount effects. */
+      if (view === 'signin-required') return (
+        <div className="min-h-screen grid place-items-center px-4" style={{ background: '#f6f8fb' }}>
+          <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-sm p-6 sm:p-7 text-center" style={{ boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 12px 32px rgba(11,15,26,.08)' }}>
+            <div className="flex items-center justify-center gap-2 mb-4"><img src={ADROAST_LOGO} alt="AdRoast" className="w-9 h-9 rounded" /><span className="text-xl text-gray-800 font-semibold">AdRoast</span></div>
+            <h1 className="text-lg font-bold text-gray-900 mb-1">Sign in to see your roasts</h1>
+            <p className="text-sm text-gray-500 mb-5">Your roasted ads are private to your account. Sign in to open your dashboard.</p>
+            {signup.sent ? (
+              <div className="py-3">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style={{ background: '#dcfce7' }}><Icon name="check" className="w-6 h-6 text-green-600" /></div>
+                <p className="text-sm text-gray-800 font-medium mb-1">Check your inbox</p>
+                <p className="text-xs text-gray-500">We sent a sign-in link to {signupEmail}.</p>
+              </div>
+            ) : (
+              <div>
+                <a href="/api/auth?action=google-start&mode=roast" className="w-full py-2.5 rounded-full font-semibold text-sm flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-700 bg-white hover:bg-gray-50 transition-colors no-underline">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                  Continue with Google
+                </a>
+                <div className="flex items-center gap-3 my-4"><div className="flex-1 h-px bg-gray-200" /><span className="text-xs text-gray-400">or</span><div className="flex-1 h-px bg-gray-200" /></div>
+                <input type="email" placeholder="you@company.com" value={signupEmail} onChange={(e) => { setSignupEmail(e.target.value); setSignup(s => ({ ...s, err: null })); }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mb-2" />
+                {signup.err && <p className="text-red-500 text-xs mb-2">{signup.err}</p>}
+                <button onClick={async () => {
+                  if (!signupEmail || !signupEmail.includes('@')) { setSignup(s => ({ ...s, err: 'Enter a valid email' })); return; }
+                  setSignup({ loading: true, sent: false, err: null });
+                  try {
+                    const res = await fetch('/api/auth?action=roast-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: signupEmail }) });
+                    const data = await res.json().catch(() => ({}));
+                    if (res.ok && data.success) setSignup({ loading: false, sent: true, err: null });
+                    else setSignup({ loading: false, sent: false, err: data.error || 'Could not send the link. Try Google instead.' });
+                  } catch (e) { setSignup({ loading: false, sent: false, err: 'Something went wrong. Try again.' }); }
+                }} disabled={signup.loading} style={{ backgroundColor: '#0a66c2', color: 'white' }} className="w-full py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
+                  {signup.loading ? 'Sending…' : 'Email me a sign-in link'}
+                </button>
+              </div>
+            )}
+            <div className="mt-5 pt-4 border-t border-gray-100"><a href="/?home=1" className="text-sm font-semibold text-gray-400 hover:text-gray-700 no-underline">&larr; Back to home</a></div>
+          </div>
         </div>
       );
 
