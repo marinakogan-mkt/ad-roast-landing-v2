@@ -245,18 +245,12 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
   const input = { searchTerms: [q], searchMode: 'accountOwner', countries: ['US'], dateOption: 'last-year', maxResults: 20, fetchAdDetails: false };
   try {
     const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 42000); // stay within the 60s function budget (Google runs in parallel, scoring after)
+    const t = setTimeout(() => c.abort(), 30000); // cap wasted time when LinkedIn blocks the actor's proxies; falls back to Jina after
     const r = await fetch('https://api.apify.com/v2/acts/khadinakbar~linkedin-ads-scraper/run-sync-get-dataset-items?token=' + encodeURIComponent(token), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal,
     });
     clearTimeout(t);
-    if (!r.ok) {
-      let b = ''; try { b = await r.text(); } catch (e) {}
-      const m = b.match(/run ID: (\w+)/);
-      let logSnip = '';
-      if (m) { try { const lr = await fetch('https://api.apify.com/v2/actor-runs/' + m[1] + '/log?token=' + encodeURIComponent(token)); if (lr.ok) logSnip = (await lr.text()).replace(/\s+/g, ' ').slice(-260); } catch (e) {} }
-      return { ok: false, reason: 'apify_' + r.status + ':' + (logSnip || b.replace(/\s+/g, ' ').slice(0, 120)), ads: [] };
-    }
+    if (!r.ok) return { ok: false, reason: 'apify_' + r.status, ads: [] };
     const items = await r.json();
     if (!Array.isArray(items) || !items.length) return { ok: false, reason: 'apify_no_ads', ads: [] };
     // Field names vary across actor versions, so read each defensively.
