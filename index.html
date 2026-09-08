@@ -2339,6 +2339,7 @@
       const [offerDetail, setOfferDetail] = useState(''); // free text when offerType === 'other'
       const [icp, setIcp] = useState('');
       const [heroErr, setHeroErr] = useState('');
+      const [heroSite, setHeroSite] = useState(''); // the hero "enter your website" field - kept SEPARATE from inputs.copy (the ad copy) so a pasted ad never leaks into the website box and vice-versa
       const [icpAuto, setIcpAuto] = useState({ loading: false, err: '', done: false });
       const [siteUrl, setSiteUrl] = useState('');
       const siteUrlRef = React.useRef(null); // focus this when the ad page can't be read, so the user types the advertiser's site
@@ -2354,7 +2355,7 @@
       // Front door: a website is all we need. Route into the Live Ads board (?library=1&site=),
       // which detects the ICP, pulls every live ad, and scores each against the buyer.
       const goToLiveAds = () => {
-        const v = (inputs.copy || '').trim();
+        const v = (heroSite || '').trim();
         if (!v) { setHeroErr('Enter your website to see your live ads.'); return; }
         if (!isValidUrl(v)) { setHeroErr('That does not look like a website. Try yourcompany.com'); return; }
         setHeroErr('');
@@ -2399,13 +2400,22 @@
           // When the ad page was unreadable the advertiser comes back blank.
           const couldntId = !data.company && !data.website;
           if (couldntId) {
-            /* Blocked ad link: show NOTHING pre-filled. A generic filler ICP reads as
-               "detected" and makes the tool look broken (or worse, roasts against an
-               invented ICP). Clear every field and gate on the user typing the
-               advertiser's real website, which scrapes cleanly. */
-            setIcp(''); setIcpTags([]); setCompanyName('');
-            setIcpAuto({ loading: false, err: "Type the advertiser's website below and press Enter, we'll detect everything from it.", done: true });
-            setTimeout(() => { try { siteUrlRef.current && siteUrlRef.current.focus(); } catch (e) {} }, 60);
+            /* The Ad Library page was bot-blocked. NEVER throw away a buyer we already
+               have (detected earlier this session, e.g. from the board's buyer-fit, or
+               saved from a prior roast) - keep it and move on. Only when we truly have
+               nothing do we ask for the one thing that reads cleanly: the advertiser's
+               own website. And we ask, we never blame ourselves for it. */
+            const known = (icp && icp.trim()) || (saved && saved.icp) || (companyName && companyName.trim());
+            if (known) {
+              if ((!icp || !icp.trim()) && saved && saved.icp) setIcp(saved.icp);
+              if ((!siteUrl || !siteUrl.trim()) && saved && saved.siteUrl) setSiteUrl(saved.siteUrl);
+              if ((!companyName || !companyName.trim()) && saved && saved.company) setCompanyName(saved.company);
+              setIcpAuto({ loading: false, err: '', done: true });
+            } else {
+              setIcp(''); setIcpTags([]); setCompanyName('');
+              setIcpAuto({ loading: false, err: "Paste the advertiser's website below and press Enter, we'll pull the buyer and everything else from it.", done: true });
+              setTimeout(() => { try { siteUrlRef.current && siteUrlRef.current.focus(); } catch (e) {} }, 60);
+            }
           } else {
             if (data.icp_text) setIcp(data.icp_text);
             if (data.website) setSiteUrl(data.website);
@@ -2419,8 +2429,11 @@
             if (saved.siteUrl) setSiteUrl(saved.siteUrl);
             if (saved.company) setCompanyName(saved.company);
             setIcpAuto({ loading: false, err: '', done: true });
+          } else if (icp && icp.trim()) {
+            /* Network hiccup but we already have a buyer - keep it, don't nag. */
+            setIcpAuto({ loading: false, err: '', done: true });
           } else {
-            setIcpAuto({ loading: false, err: "We couldn't auto-detect from your ad. Fill these in below.", done: true });
+            setIcpAuto({ loading: false, err: "Paste the advertiser's website below and press Enter, we'll pull everything from it.", done: true });
           }
         }
       };
@@ -4193,9 +4206,9 @@
                 <span className="inline-flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: '#eff6ff', border: '1px solid #bfdbfe' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} /></span>
                 <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#0a66c2' }}>Who's this ad for?</span>
               </div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1.5">We couldn't read your buyer from {_igSite}</h1>
+              <h1 className="text-xl font-bold text-gray-900 mb-1.5">Who should this ad be winning?</h1>
               <p className="text-sm text-gray-500 mb-5" style={{ lineHeight: 1.5 }}>
-                {_igSite} came back too thin to detect who this ad should target (it may be blocking us). We won't score the ad against a guess — <span className="font-semibold text-gray-700">that would rank a good ad as off-target when it isn't.</span> Tell us your ideal customer and we'll score it against the right buyer.
+                {_igSite} didn't give us enough to pin the exact buyer this ad targets. We won't score it against a guess — <span className="font-semibold text-gray-700">that would rank a good ad as off-target when it isn't.</span> Tell us your ideal customer and we'll score it against the right buyer.
               </p>
               <label className="block text-xs font-semibold text-gray-500 mb-1">Your ideal customer (ICP)</label>
               <textarea value={icpGateInput} onChange={e => setIcpGateInput(e.target.value)} placeholder="e.g. AppSec leaders & security engineers at Series B+ SaaS, $20K+/mo ad spend" className="w-full h-24 px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 text-gray-900 resize-none mb-2" />
@@ -4497,8 +4510,8 @@
                     id="hero-site"
                     type="text"
                     placeholder="Enter your website, e.g. yourcompany.com"
-                    value={inputs.copy}
-                    onChange={(e) => { setInputs(p => ({...p, copy: e.target.value})); if (heroErr) setHeroErr(''); }}
+                    value={heroSite}
+                    onChange={(e) => { setHeroSite(e.target.value); if (heroErr) setHeroErr(''); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); goToLiveAds(); } }}
                     className="flex-1 px-5 py-4 sm:py-2 bg-white border rounded-full text-base sm:text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm field-bloom"
                     style={{ borderColor: heroErr ? '#dc2626' : '#e8e8f0' }}
@@ -5436,7 +5449,7 @@
         if (!guidedHadCopyAtStart) {
           steps.push({ id: 'adCopy', q: 'Paste your ad copy', valid: () => (inputs.copy?.trim().length > 0) || inputs.adScreenshot });
         }
-        steps.push({ id: 'review', q: icpAuto.err ? "We couldn't read this ad link" : "Here's what we found", hint: icpAuto.err ? "LinkedIn and Meta block automated reads. Add the advertiser's website below and we'll detect everything from it." : "Pulled from your Ad Library link. Edit anything that's off.", valid: () => icp?.trim().length > 0 });
+        steps.push({ id: 'review', q: icpAuto.err ? "One quick thing: the advertiser's website" : "Here's what we found", hint: icpAuto.err ? "Ad Library pages (LinkedIn, Meta) block automated reads, so we pull the buyer from the advertiser's own site instead. Add it below and we'll detect everything." : "Pulled from your Ad Library link. Edit anything that's off.", valid: () => icp?.trim().length > 0 });
         steps.push({ id: 'offer', q: 'What type of offer is this?', valid: () => !!offerType && (offerType !== 'other' || offerDetail.trim().length > 2) });
         steps.push({ id: 'lpUrl', q: "What's the landing page this ad points to?", hint: "The exact page your pasted ad sends clicks to. We'll pull all the copy from it.", valid: () => !inputs.url?.trim() || isValidUrl(inputs.url) });
         const stepIdx = Math.min(guidedStep, steps.length - 1);
@@ -5601,14 +5614,59 @@
             {/* Monetization 2b - sign-up gate: shown when the wizard finishes but no
                 roast account exists yet. Google or magic-link; the pending roast was
                 already stashed in localStorage and resumes after ?signedin=1. */}
-            {showSignupGate && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4" onClick={() => setShowSignupGate(false)}>
-                <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+            {showSignupGate && (() => {
+              /* Preview of the exact roast that's queued, so the gate carries the urgency of
+                 what they're about to unlock instead of reading as a bare sign-in wall. Built
+                 only from what we already know at this point (company, the ad, the buyer) -
+                 no invented scores. */
+              const _gd = String(siteUrl || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, '');
+              const _gAdCopy = (inputs.copy || '').trim();
+              const _gAdSnippet = _gAdCopy && !isValidUrl(_gAdCopy) ? (_gAdCopy.length > 150 ? _gAdCopy.slice(0, 150).replace(/\s+\S*$/, '') + '…' : _gAdCopy) : '';
+              const _gIcp = (icp || '').trim();
+              const _gIcpSnippet = _gIcp ? (_gIcp.length > 120 ? _gIcp.slice(0, 120).replace(/\s+\S*$/, '') + '…' : _gIcp) : '';
+              const _gHasPreview = !!(companyName || _gd || _gAdSnippet || inputs.adScreenshotPreview || _gIcpSnippet);
+              return (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4" style={{ backdropFilter: 'blur(3px)' }} onClick={() => setShowSignupGate(false)}>
+                <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-lg font-semibold text-gray-900">Your first roast is on us</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Your roast is ready</h3>
                     <button onClick={() => setShowSignupGate(false)} className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer"><Icon name="x" className="w-5 h-5" /></button>
                   </div>
-                  <p className="text-sm text-gray-500 mb-5">Create a free account to see your full roast. One free full report, no card required.</p>
+                  <p className="text-sm text-gray-500 mb-4">Create a free account to see the full breakdown. One free report, no card required.</p>
+
+                  {_gHasPreview && (
+                    <div className="rounded-xl border border-gray-200 overflow-hidden mb-5" style={{ background: '#fbfcfe' }}>
+                      {(companyName || _gd) && (
+                        <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-gray-100">
+                          {_gd && <BrandLogo domain={_gd} name={companyName} initial={String(companyName || _gd || '?').charAt(0).toUpperCase()} color="#94a3b8" size={26} radius={6} />}
+                          <div className="min-w-0">
+                            <div className="text-[13px] font-bold text-gray-900 truncate leading-tight">{companyName || _gd}</div>
+                            <div className="text-[11px] text-gray-400 leading-tight">Ad we're about to roast</div>
+                          </div>
+                        </div>
+                      )}
+                      {inputs.adScreenshotPreview && (
+                        <div className="px-3.5 pt-3"><div className="h-28 rounded-lg overflow-hidden bg-gray-50 border border-gray-100"><img src={inputs.adScreenshotPreview} alt="Your ad" className="w-full h-full object-contain" /></div></div>
+                      )}
+                      {_gAdSnippet && (
+                        <div className="px-3.5 py-3"><p className="text-[13px] text-gray-700 italic" style={{ lineHeight: 1.5 }}>&ldquo;{_gAdSnippet}&rdquo;</p></div>
+                      )}
+                      {_gIcpSnippet && (
+                        <div className="px-3.5 pb-3 pt-0.5 flex items-start gap-1.5">
+                          <Icon name="target" className="w-3.5 h-3.5 mt-0.5 flex-none" style={{ color: '#0a66c2' }} />
+                          <span className="text-[12px] text-gray-500" style={{ lineHeight: 1.45 }}><span className="font-semibold text-gray-600">Buyer:</span> {_gIcpSnippet}</span>
+                        </div>
+                      )}
+                      <div className="px-3.5 py-2.5 border-t border-gray-100" style={{ background: '#fff' }}>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-1.5">Your full roast scores</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {['Buyer fit', 'Hook', 'Clarity', 'Ad → landing match', 'Ranked fixes'].map(t => (
+                            <span key={t} className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#eef4fb', color: '#0a66c2' }}>{t}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {signup.sent ? (
                     <div className="text-center py-4">
@@ -5642,7 +5700,8 @@
                   )}
                 </div>
               </div>
-            )}
+              );
+            })()}
           </div>
         );
       }
@@ -6182,8 +6241,8 @@
                   <div className="flex items-start gap-3">
                     <span className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#fffbeb' }}><Icon name="alertCircle" className="w-5 h-5" style={{ color: '#d97706' }} /></span>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 mb-1">We couldn't read {(_host(inputs.url) || 'your landing page')} automatically</h3>
-                      <p className="text-sm text-gray-600 mb-3" style={{ lineHeight: 1.55 }}>The page loads its content with JavaScript or blocks bots, so we couldn't score it, that's why the landing scores are blank. Paste your landing page copy below and we'll score it and check the ad ↔ page match.</p>
+                      <h3 className="font-bold text-gray-900 mb-1">Paste {(_host(inputs.url) || 'your landing page')}'s copy to score it</h3>
+                      <p className="text-sm text-gray-600 mb-3" style={{ lineHeight: 1.55 }}>This page renders its content with JavaScript (or blocks automated readers), so the landing scores are blank for now. Drop the headline, subhead, and main copy below and we'll score it and check the ad ↔ page match.</p>
                       <textarea value={lpCopyInput} onChange={e => setLpCopyInput(e.target.value)} placeholder="Paste your landing page headline, subhead, and main body copy…" className="w-full h-28 px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 text-gray-900 resize-none" />
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <button onClick={() => { const v = lpCopyInput.trim(); if (v.length > 20) generate(v); }} disabled={lpCopyInput.trim().length <= 20} style={lpCopyInput.trim().length > 20 ? { backgroundColor: '#0a66c2', color: '#fff' } : {}} className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm border-none ${lpCopyInput.trim().length > 20 ? 'hover:opacity-90 cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}><Icon name="sparkles" className="w-4 h-4" /> Score my landing page</button>
