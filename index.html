@@ -3921,8 +3921,8 @@
                       <div className="fixed inset-0" style={{ zIndex: 40 }} onClick={() => setAuthMenuOpen(false)} />
                       <div className="absolute right-0 rounded-2xl border bg-white overflow-hidden" style={{ top: '140%', zIndex: 50, borderColor: '#e8ecf1', width: 214, boxShadow: '0 14px 38px rgba(11,15,26,.18)' }}>
                         <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">Your account</div>
-                        <button onClick={() => { setAuthMenuOpen(false); setShowSignupGate(true); }} className="w-full text-left cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '10px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}>Sign in</button>
-                        <button onClick={() => { setAuthMenuOpen(false); setShowSignupGate(true); }} className="w-full text-left cursor-pointer bg-transparent border-none border-t border-gray-100 hover:bg-gray-50 transition-colors" style={{ padding: '10px 16px', fontSize: 13.5, fontWeight: 700, color: '#0a66c2' }}>Create free account</button>
+                        <button onClick={() => { setAuthMenuOpen(false); setView('signin-required'); }} className="w-full text-left cursor-pointer bg-transparent border-none hover:bg-gray-50 transition-colors" style={{ padding: '10px 16px', fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}>Sign in</button>
+                        <button onClick={() => { setAuthMenuOpen(false); setView('signin-required'); }} className="w-full text-left cursor-pointer bg-transparent border-none border-t border-gray-100 hover:bg-gray-50 transition-colors" style={{ padding: '10px 16px', fontSize: 13.5, fontWeight: 700, color: '#0a66c2' }}>Create free account</button>
                       </div>
                     </>
                   )}
@@ -3931,7 +3931,7 @@
             </nav>
             {/* Logged-out: always-visible Sign in on mobile (next to the hamburger). */}
             {!(roastSession && roastSession.email) && !(portalAcct && portalAcct.email) && (
-              <button onClick={() => setShowSignupGate(true)} className="sm:hidden mr-1 rounded-full font-semibold cursor-pointer" style={{ fontSize: 13, padding: '6px 14px', color: '#0a66c2', background: '#eef4fb', border: '1px solid #cfe1f5' }}>Sign in</button>
+              <button onClick={() => setView('signin-required')} className="sm:hidden mr-1 rounded-full font-semibold cursor-pointer" style={{ fontSize: 13, padding: '6px 14px', color: '#0a66c2', background: '#eef4fb', border: '1px solid #cfe1f5' }}>Sign in</button>
             )}
             <button onClick={() => setNavOpen(o => !o)} className="sm:hidden bg-transparent border-none cursor-pointer p-1.5" aria-label="Menu">
               <span style={{ display: 'block', width: 20, height: 2, background: '#334155', margin: '4px 0', borderRadius: 2 }} />
