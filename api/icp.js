@@ -244,6 +244,22 @@ export default async function handler(req, res) {
       // Go live: the user asked to refresh, or the copy is stale (>1 week), or we've never pulled.
       const r = await fetchAllAds({ company: body.company, domain: body.domain });
       if (r && r.ok && r.ads && r.ads.length) {
+        // Preserve last-seen ads PER PLATFORM: a pull that got Google but not LinkedIn (LinkedIn
+        // flaky this run) must not wipe the LinkedIn ads we already had — otherwise the LinkedIn card
+        // would flip back to an error. Carry forward each platform we lost from the previous copy.
+        if (cachedCopy && Array.isArray(cachedCopy.ads)) {
+          for (const plat of ['LinkedIn', 'Google']) {
+            const gotNow = r.ads.some(a => (a.plat || '') === plat);
+            if (!gotNow) {
+              const prev = cachedCopy.ads.filter(a => (a.plat || '') === plat);
+              if (prev.length) {
+                r.ads = r.ads.concat(prev);
+                r.sources = { ...(r.sources || {}), [plat.toLowerCase()]: prev.length };
+                r.notes = { ...(r.notes || {}), [plat.toLowerCase()]: 'ok' }; // show the last seen, not an error
+              }
+            }
+          }
+        }
         r._checkedAt = Date.now();
         pull = r; lastChecked = r._checkedAt;
         if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(r), { ex: CACHE_TTL }); } catch (e) {} }
