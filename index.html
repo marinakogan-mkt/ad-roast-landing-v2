@@ -1432,11 +1432,13 @@
           setEntryMode(false);
           // Drop content-less display ads (the scorer labels a creative with no readable copy
           // "Blank ad"); they render as an empty box and read as broken.
-          const cleanAds = (res.ads || []).filter(a => { const t = String(a.head || a.title || '').trim().toLowerCase(); return t !== 'blank ad' && t !== '(untitled ad)' && t !== 'untitled ad'; });
+          const cleanAds = (res.ads || []).filter(a => { const t = String(a.head || a.title || '').trim().toLowerCase(); return t !== 'blank ad' && t !== '(untitled ad)' && t !== 'untitled ad' && t !== 'broken ad placeholder' && t.indexOf('broken ad') === -1 && t.indexOf('placeholder') === -1; });
           const realObj = { co, icp: icpText, ads: cleanAds, notes: res.notes || {}, fresh: res.fresh || null };
           try { boardCacheRef.current[siteRaw.toLowerCase()] = realObj; if (co.domain) boardCacheRef.current[String(co.domain).toLowerCase()] = realObj; } catch (e) {}
           setReal(realObj);
-          setStage('overview'); setGridPlat('all');
+          // Keep the platform view when switching companies or refreshing (stay on Google/LinkedIn/all);
+          // only a fresh first entry resets to the all-platforms overview.
+          if (!opts.keepView && !opts.refresh) { setStage('overview'); setGridPlat('all'); }
           setPhase('idle'); setBootLoading(false);
           // Clean, shareable URL for this company's board: /board/<domain>.
           if (!silent) { try { const clean = '/board/' + encodeURIComponent(co.domain || siteRaw); if (window.location.pathname !== clean) window.history.pushState({ board: co.domain }, '', clean); } catch (e) {} }
@@ -1769,7 +1771,7 @@
                   const active = CO && CO.domain && co.domain && CO.domain.toLowerCase() === String(co.domain).toLowerCase();
                   return (
                     <button key={co.domain} title={co.name || co.domain}
-                      onClick={() => { const s = co.site || co.domain; const c = boardCacheRef.current[String(s).toLowerCase()] || boardCacheRef.current[String(co.domain).toLowerCase()]; setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setStage('overview'); setFP('all'); setPhase('idle'); try { window.history.pushState({ board: co.domain }, '', '/board/' + encodeURIComponent(co.domain)); } catch (e) {} window.scrollTo(0, 0); } else loadReal(s); }}
+                      onClick={() => { const s = co.site || co.domain; const c = boardCacheRef.current[String(s).toLowerCase()] || boardCacheRef.current[String(co.domain).toLowerCase()]; setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setPhase('idle'); /* keep the current platform view (Google/LinkedIn/all) when switching companies */ try { window.history.pushState({ board: co.domain }, '', '/board/' + encodeURIComponent(co.domain)); } catch (e) {} window.scrollTo(0, 0); } else loadReal(s, { keepView: true }); }}
                       className="w-full flex items-center rounded-lg transition-colors bg-transparent border-none cursor-pointer" style={{ padding: railOpen ? '7px 10px' : '7px 0', gap: 9, justifyContent: railOpen ? 'flex-start' : 'center', background: active ? '#eef4fb' : 'transparent' }}>
                       <BrandLogo domain={co.domain} name={co.name} initial={String(co.name || co.domain || '?').charAt(0).toUpperCase()} color={active ? '#0a66c2' : '#94a3b8'} size={24} radius={6} />
                       {railOpen && <span className="truncate font-semibold" style={{ fontSize: 13, color: active ? '#0a66c2' : '#374151' }}>{co.name || co.domain}</span>}
@@ -1818,7 +1820,7 @@
                   </button>
                 </div>
                 {phase === 'loading' && <div className="flex items-center gap-2.5 text-sm text-gray-600 mt-3"><span className="inline-block w-4 h-4 rounded-full border-2 border-blue-200 animate-spin" style={{ borderTopColor: '#0a66c2' }}></span>{statusMsg}</div>}
-                {phase === 'error' && <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mt-3" style={{ maxWidth: 480 }}>{statusMsg}</div>}
+                {phase === 'error' && !attemptedReal && <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mt-3" style={{ maxWidth: 480 }}>{statusMsg}</div>}
                 {usingReal && real.ads.length === 0 && phase !== 'loading' && <div className="text-sm text-gray-500 mt-3">No live ads found for <b>{CO.name}</b> on LinkedIn or Google. Try the exact company name, or a site that runs ads on those platforms.</div>}
               </div>
             ) : (
@@ -2102,7 +2104,7 @@
             </>)}
             </>)}
 
-            <p className="text-gray-400 mt-8" style={{ fontSize: 12.5, maxWidth: '70ch' }}>{usingReal ? 'Real live ads pulled from the LinkedIn Ad Library and Google Ads Transparency Center. Meta is coming next.' : 'Sample data for the preview. Enter a website above to pull that company’s real live ads.'}</p>
+            {(usingReal || !attemptedReal) && <p className="text-gray-400 mt-8" style={{ fontSize: 12.5, maxWidth: '70ch' }}>{usingReal ? 'Real live ads pulled from the LinkedIn Ad Library and Google Ads Transparency Center. Meta is coming next.' : 'Sample data for the preview. Enter a website above to pull that company’s real live ads.'}</p>}
           </main>
 
           {/* "Coming soon" detail for a platform we don't pull yet (e.g. Meta): clickable, not a
@@ -4163,23 +4165,35 @@
          given). Ask for it BEFORE showing any scores, so we never present a false "bad match" that
          is really just a missing page. The ad itself is fine — this is a read miss, not a verdict. */
       if (view === 'landing-gate' && landingGate) {
-        const _lgHost = (u) => { try { return new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return (u || '').trim(); } };
-        const _lgUnreadable = landingGate.status === 'unreadable';
         const _lgUrl0 = landingGate.url || '';
+        const _lgAd = pendingRoastRef.current || {};
+        const _lgProxy = (u) => { try { return '/api/icp?p=' + btoa(u).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) { return '/api/icp?img=' + encodeURIComponent(u); } };
+        const _lgImg = _lgAd.adImageUrl && /^https?:\/\//i.test(_lgAd.adImageUrl) ? _lgProxy(_lgAd.adImageUrl) : null;
+        const _lgHead = (_lgAd.adCopy || '').split('\n')[0].slice(0, 90);
         return (
-          <div className="min-h-screen grid place-items-center px-4" style={{ background: '#f6f8fb' }}>
+          <div className="min-h-screen grid place-items-center px-4 py-8" style={{ background: '#f6f8fb' }}>
             <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-lg p-6 sm:p-8" style={{ boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 12px 32px rgba(11,15,26,.08)' }}>
               <div className="flex items-center gap-2 mb-1">
-                <span className="inline-flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: '#fff7ed', border: '1px solid #fed7aa' }}><Icon name="alertCircle" className="w-4 h-4" style={{ color: '#b45309' }} /></span>
-                <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#b45309' }}>One thing first</span>
+                <span className="inline-flex items-center justify-center rounded-full" style={{ width: 34, height: 34, background: '#eff6ff', border: '1px solid #bfdbfe' }}><Icon name="target" className="w-4 h-4" style={{ color: '#0a66c2' }} /></span>
+                <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#0a66c2' }}>One more thing</span>
               </div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1.5">{_lgUnreadable ? `We couldn't read ${_lgHost(_lgUrl0) || 'your landing page'}` : 'This ad needs a landing page'}</h1>
-              <p className="text-sm text-gray-500 mb-5" style={{ lineHeight: 1.5 }}>
-                {_lgUnreadable
-                  ? 'The page opened empty (it may be JS-rendered or blocking bots), so we can’t score how well it matches the ad. Confirm the exact page the ad clicks to, or paste its copy. '
-                  : 'Add the exact page this ad sends clicks to so we can score how well the two match. '}
-                <span className="font-semibold text-gray-700">This isn’t a problem with your ad</span> — we just won’t invent a match score from a page we couldn’t read.
+              <h1 className="text-xl font-bold text-gray-900 mb-1.5">Where does this ad send people?</h1>
+              <p className="text-sm text-gray-500 mb-4" style={{ lineHeight: 1.5 }}>
+                We roast the ad <span className="font-semibold text-gray-700">and</span> the page it clicks to, then score how well they match. The ad library didn’t hand us this ad’s link, so tell us the page it sends people to.
               </p>
+
+              {/* Show the ad we're roasting so it's clear which one needs its landing. */}
+              {(_lgImg || _lgHead) && (
+                <div className="flex items-center gap-3 rounded-xl border border-gray-200 p-2.5 mb-4" style={{ background: '#fafbfc' }}>
+                  {_lgImg
+                    ? <img src={_lgImg} alt="ad creative" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, flex: 'none' }} onError={e => { e.target.style.display = 'none'; }} />
+                    : <span className="grid place-items-center flex-none" style={{ width: 56, height: 56, borderRadius: 8, background: '#eef2f7' }}><Icon name="flame" className="w-5 h-5" style={{ color: '#94a3b8' }} /></span>}
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400">This ad</div>
+                    <div className="text-sm font-semibold text-gray-800 truncate">{_lgHead || (_lgAd.company ? _lgAd.company + ' ad' : 'Your ad')}</div>
+                  </div>
+                </div>
+              )}
 
               <label className="block text-xs font-semibold text-gray-500 mb-1">Landing page URL</label>
               <div className="flex gap-2 mb-4">
