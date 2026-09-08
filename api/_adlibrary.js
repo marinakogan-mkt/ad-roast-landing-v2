@@ -253,13 +253,7 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal,
     });
     clearTimeout(t);
-    if (!r.ok) {
-      let b = ''; try { b = await r.text(); } catch (e) {}
-      const m = b.match(/run ID: (\w+)/);
-      let logSnip = '';
-      if (m) { try { const lr = await fetch('https://api.apify.com/v2/actor-runs/' + m[1] + '/log?token=' + encodeURIComponent(token)); if (lr.ok) logSnip = (await lr.text()).replace(/\s+/g, ' ').slice(-220); } catch (e) {} }
-      return { ok: false, reason: 'apify_' + r.status + ':' + (logSnip || b.replace(/\s+/g, ' ').slice(0, 100)), ads: [] };
-    }
+    if (!r.ok) return { ok: false, reason: 'apify_' + r.status, ads: [] };
     const items = await r.json();
     if (!Array.isArray(items) || !items.length) return { ok: false, reason: 'apify_no_ads', ads: [] };
     // Field names vary across actor versions, so read each defensively.
@@ -289,8 +283,12 @@ export async function fetchLinkedInAds({ company, limit = 12 } = {}) {
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
   // Try Apify first (reliable, no rate-limit fingerprint); fall back to Jina's anon pool if it's not
   // configured or comes back empty.
-  let apifyReason = process.env.APIFY_TOKEN ? 'apify_not_run' : 'apify_no_token';
-  if (process.env.APIFY_TOKEN) {
+  // Apify is wired up (fetchLinkedInAdsViaApify), but the khadinakbar actor is currently broken —
+  // even with residential proxies it fails at page 0 ("LinkedIn search requests failed"), so calling
+  // it only adds ~18s of latency for nothing. Gate it behind APIFY_LINKEDIN=1 so it's trivial to
+  // re-enable once a WORKING actor is found (just set the env var), without slowing pulls today.
+  let apifyReason = process.env.APIFY_TOKEN ? (process.env.APIFY_LINKEDIN === '1' ? 'apify_not_run' : 'apify_disabled') : 'apify_no_token';
+  if (process.env.APIFY_TOKEN && process.env.APIFY_LINKEDIN === '1') {
     const ap = await fetchLinkedInAdsViaApify({ company: q, limit });
     if (ap.ok && ap.ads && ap.ads.length) return { ...ap, _apify: 'ok' };
     apifyReason = ap.reason || 'apify_empty';
