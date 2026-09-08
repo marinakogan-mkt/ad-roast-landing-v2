@@ -52,17 +52,24 @@ function normalizeUrl(input) {
    return its clean readable text. This is why sublime.security etc. now resolve a real ICP instead
    of "page content insufficient". */
 async function fetchSiteViaJina(url) {
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), 13000);
-  try {
-    const headers = { 'X-Return-Format': 'text', 'X-Timeout': '15' };
-    if (process.env.JINA_API_KEY) headers['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
-    const r = await fetch('https://r.jina.ai/' + url, { headers, signal: c.signal });
-    if (!r.ok) return null;
-    const text = (await r.text()).replace(/\s+/g, ' ').trim().slice(0, 10000);
-    if (text.length < 40) return null;
-    return { title: '', desc: '', body: text, blocked: false };
-  } catch (e) { return null; } finally { clearTimeout(t); }
+  const attempt = async (useKey) => {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 13000);
+    try {
+      const headers = { 'X-Return-Format': 'text', 'X-Timeout': '15' };
+      if (useKey && process.env.JINA_API_KEY) headers['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
+      const r = await fetch('https://r.jina.ai/' + url, { headers, signal: c.signal });
+      if (!r.ok) return { ok: false, status: r.status };
+      const text = (await r.text()).replace(/\s+/g, ' ').trim().slice(0, 10000);
+      if (text.length < 40) return { ok: false, status: 0 };
+      return { ok: true, body: text };
+    } catch (e) { return { ok: false, status: -1 }; } finally { clearTimeout(t); }
+  };
+  const hasKey = !!process.env.JINA_API_KEY;
+  let res = await attempt(hasKey);
+  // A depleted/invalid key (402/401/403) must never be worse than no key: retry anonymously.
+  if (!res.ok && hasKey && (res.status === 402 || res.status === 401 || res.status === 403)) res = await attempt(false);
+  return res.ok ? { title: '', desc: '', body: res.body, blocked: false } : null;
 }
 
 async function fetchSite(url) {

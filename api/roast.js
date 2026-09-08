@@ -438,18 +438,24 @@ export default async function handler(req, res) {
   // Before concluding the page is unreadable (and gating the roast), try Jina Reader, which renders
   // the page server-side. Only when THIS also comes back empty do we treat the landing as unreadable.
   if (!landingPageContent && landingUrl?.trim()) {
-    try {
+    // Try keyed first; if a depleted/invalid key hits 402/401/403, retry anonymously (a bad key must
+    // never be worse than no key).
+    const jinaTry = async (useKey) => {
       const jc = new AbortController();
       const jt = setTimeout(() => jc.abort(), 12000);
-      const jh = { 'X-Return-Format': 'text', 'X-Timeout': '15' };
-      if (process.env.JINA_API_KEY) jh['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
-      const jr = await fetch('https://r.jina.ai/' + landingUrl.trim(), { headers: jh, signal: jc.signal });
-      clearTimeout(jt);
-      if (jr.ok) {
+      try {
+        const jh = { 'X-Return-Format': 'text', 'X-Timeout': '15' };
+        if (useKey && process.env.JINA_API_KEY) jh['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
+        const jr = await fetch('https://r.jina.ai/' + landingUrl.trim(), { headers: jh, signal: jc.signal });
+        if (!jr.ok) return { ok: false, status: jr.status };
         const jtext = ((await jr.text()) || '').replace(/\s+/g, ' ').trim().slice(0, 3500);
-        if (jtext && jtext.length > 120) { landingPageContent = jtext; meta.landingScraped = true; meta.landingViaJina = true; delete meta.landingScrapeError; }
-      }
-    } catch (e) { /* leave landingPageContent empty -> the gate will ask the user for the landing */ }
+        return (jtext && jtext.length > 120) ? { ok: true, text: jtext } : { ok: false, status: 0 };
+      } catch (e) { return { ok: false, status: -1 }; } finally { clearTimeout(jt); }
+    };
+    const hasKey = !!process.env.JINA_API_KEY;
+    let jres = await jinaTry(hasKey);
+    if (!jres.ok && hasKey && (jres.status === 402 || jres.status === 401 || jres.status === 403)) jres = await jinaTry(false);
+    if (jres.ok) { landingPageContent = jres.text; meta.landingScraped = true; meta.landingViaJina = true; delete meta.landingScrapeError; }
   }
 
   const hasAnyLandingContent = !!(landingPageContent || landingCopy?.trim());
