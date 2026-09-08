@@ -250,7 +250,7 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal,
     });
     clearTimeout(t);
-    if (!r.ok) return { ok: false, reason: 'apify_' + r.status, ads: [] };
+    if (!r.ok) { let b = ''; try { b = (await r.text()).replace(/\s+/g, ' ').slice(0, 180); } catch (e) {} return { ok: false, reason: 'apify_' + r.status + ':' + b, ads: [] }; }
     const items = await r.json();
     if (!Array.isArray(items) || !items.length) return { ok: false, reason: 'apify_no_ads', ads: [] };
     // Field names vary across actor versions, so read each defensively.
