@@ -246,7 +246,12 @@ export async function fetchLinkedInAds({ company, limit = 12 } = {}) {
   // Attempt 1: Jina's browser engine, which gets past LinkedIn's Cloudflare far more often.
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, 600));
-    const h = { 'X-Return-Format': 'html', 'X-Timeout': '20' };
+    // Jina bills per OUTPUT token, so strip the heavy non-content before it counts: scripts, styles,
+    // svg, iframes. These are the bulk of a LinkedIn page's weight and CANNOT contain an ad card
+    // (whose detail-anchor + data-delayed-url creative is real DOM), so parseAdCards is unaffected
+    // while the returned payload — and the token cost per read — drops sharply. (Deliberately does
+    // NOT strip nav/header/footer/aside: tiny extra savings, small risk of eating a card, not worth it.)
+    const h = { 'X-Return-Format': 'html', 'X-Timeout': '20', 'X-Remove-Selector': 'script,style,noscript,svg,iframe' };
     if (useKey) h['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
     const lastTry = attempt === 1;
     if (lastTry) h['X-Engine'] = 'browser';
