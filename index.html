@@ -1538,7 +1538,7 @@
         const landing = (landingOverride || a.ctaUrl || '').trim();
         try {
           localStorage.setItem('adroast_library_roast', JSON.stringify({
-            ad: { plat: a.plat, head: a.head || '', body: a.body || '', img: a.img || null, detailUrl: a.detailUrl || '', ctaUrl: landing, dom: a.dom || '' },
+            ad: { plat: a.plat, head: a.head || '', body: a.body || '', img: a.img || null, detailUrl: a.detailUrl || '', ctaUrl: landing, dom: a.dom || '', score: (typeof a.score === 'number' ? a.score : null) },
             co: { name: (co && co.name) || '', domain: (co && co.domain) || '' },
             icp: icpText || ''
           }));
@@ -2480,6 +2480,7 @@
       useEffect(() => { try { if (roastSession && roastSession.email) localStorage.setItem('adroast_session', JSON.stringify({ email: roastSession.email, plan: roastSession.plan, tokens: roastSession.tokens })); } catch (e) {} }, [roastSession]);
       /* Sign-up gate shown between the wizard's last step and the roast running. */
       const [showSignupGate, setShowSignupGate] = useState(false);
+      const [gateAd, setGateAd] = useState(null); // when the roast came from the board, the chosen ad's {img, plat, score, head} - so the sign-up gate shows the real creative + buyer-fit number + verdict, exactly like the "Roast this ad?" card. null for the manual paste flow (falls back to the copy/ICP preview).
       const [signupEmail, setSignupEmail] = useState('');
       const [signup, setSignup] = useState({ loading: false, sent: false, err: null });
       /* Friendly message when a magic sign-in link fails (expired / already used). */
@@ -2707,6 +2708,7 @@
           setCompanyName(payload.company); setSiteUrl(payload.website);
           setInputs(prev => ({ ...prev, copy: adText }));
           setAdLink(payload.adUrl || '');
+          setGateAd({ img: a.img || null, plat: a.plat || '', score: (typeof a.score === 'number' ? a.score : null), head: a.head || '' });
           fetch('/api/auth?action=me', { credentials: 'same-origin' })
             .then(r => r.ok ? r.json() : null)
             .then(d => {
@@ -5624,7 +5626,14 @@
               const _gAdSnippet = _gAdCopy && !isValidUrl(_gAdCopy) ? (_gAdCopy.length > 150 ? _gAdCopy.slice(0, 150).replace(/\s+\S*$/, '') + '…' : _gAdCopy) : '';
               const _gIcp = (icp || '').trim();
               const _gIcpSnippet = _gIcp ? (_gIcp.length > 120 ? _gIcp.slice(0, 120).replace(/\s+\S*$/, '') + '…' : _gIcp) : '';
-              const _gHasPreview = !!(companyName || _gd || _gAdSnippet || inputs.adScreenshotPreview || _gIcpSnippet);
+              // When the roast came from the board (gateAd), carry the REAL creative + buyer-fit
+              // number + verdict into the gate - that's the urgency Marina wants, and it already
+              // exists pre-sign-in on the board. Manual paste flow has no gateAd (score chips only).
+              const _gCreative = (gateAd && gateAd.img) ? IMG(gateAd.img) : (inputs.adScreenshotPreview || '');
+              const _gScore = (gateAd && typeof gateAd.score === 'number') ? gateAd.score : null;
+              const _gSev = _gScore != null ? SEV(_gScore) : null;
+              const _gPlat = (gateAd && gateAd.plat) ? gateAd.plat : '';
+              const _gHasPreview = !!(companyName || _gd || _gAdSnippet || _gCreative || _gIcpSnippet || _gScore != null);
               return (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4" style={{ backdropFilter: 'blur(3px)' }} onClick={() => setShowSignupGate(false)}>
                 <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
@@ -5645,8 +5654,15 @@
                           </div>
                         </div>
                       )}
-                      {inputs.adScreenshotPreview && (
-                        <div className="px-3.5 pt-3"><div className="h-28 rounded-lg overflow-hidden bg-gray-50 border border-gray-100"><img src={inputs.adScreenshotPreview} alt="Your ad" className="w-full h-full object-contain" /></div></div>
+                      {_gCreative && (
+                        <div className="px-3.5 pt-3"><div className="rounded-lg overflow-hidden bg-gray-50 border border-gray-100"><img src={_gCreative} alt="Your ad" style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 180, objectFit: 'contain' }} /></div></div>
+                      )}
+                      {(_gPlat || _gScore != null) && (
+                        <div className="px-3.5 pt-2.5 flex items-center gap-2">
+                          {_gPlat && <span className="inline-flex items-center gap-1.5 font-semibold rounded-md" style={{ fontSize: 11, padding: '3px 8px', background: '#fff', border: '1px solid #e5e7eb', color: '#374151' }}><PlatLogo plat={_gPlat} size={13} />{_gPlat}</span>}
+                          {_gSev && <span className="inline-flex items-center gap-1.5 font-bold rounded-full" style={{ fontSize: 10, padding: '3px 8px', color: _gSev.c, background: _gSev.bg, border: '1px solid ' + _gSev.bd }}><span style={{ width: 5, height: 5, borderRadius: 99, background: _gSev.c }} />{_gSev.label}</span>}
+                          {_gScore != null && <span className="ml-auto inline-flex items-baseline gap-1 rounded-full font-bold" style={{ padding: '3px 10px', background: _gSev.bg, border: '1px solid ' + _gSev.bd, color: _gSev.c }}><span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', alignSelf: 'center' }}>Buyer fit</span><span style={{ fontSize: 13, fontWeight: 800 }}>{_gScore}</span><span style={{ fontSize: 10, fontWeight: 700, opacity: 0.7 }}>/10</span></span>}
+                        </div>
                       )}
                       {_gAdSnippet && (
                         <div className="px-3.5 py-3"><p className="text-[13px] text-gray-700 italic" style={{ lineHeight: 1.5 }}>&ldquo;{_gAdSnippet}&rdquo;</p></div>
