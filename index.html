@@ -1308,6 +1308,32 @@
       const [acctOpen, setAcctOpen] = useState(false); // board header account dropdown
       const [entryMode, setEntryMode] = useState(false); // force the "enter a website" form (New / change company)
       const boardCacheRef = React.useRef({}); // domain -> last-loaded board, so re-clicking a company is instant (no re-pull)
+      // Session-level board cache: the in-memory ref above is lost on any full reload (roasting an ad
+      // does window.location.href='/?libroast=1', reopening a /b/<co> link, refreshing the tab). Mirror
+      // it into sessionStorage so a board loaded once this session re-opens INSTANTLY - no re-pull -
+      // whether you switch companies in the sidebar or land back via a URL. (Marina: "una vez que esta
+      // cargado el board no hace falta pull cada vez que entre".) Cleared when the browser session ends;
+      // a stale board can still be force-refreshed with the header "refresh" chip.
+      const BOARD_CACHE_TTL = 30 * 60 * 1000; // 30 min: stays instant across a work session, refreshes eventually
+      const _ck = (k) => String(k || '').toLowerCase();
+      const cachePut = (keys, obj) => {
+        const rec = { ...obj, _ts: Date.now() };
+        (keys || []).filter(Boolean).forEach(k => { boardCacheRef.current[_ck(k)] = rec; });
+        try {
+          const store = JSON.parse(sessionStorage.getItem('adroast_board_cache') || '{}');
+          (keys || []).filter(Boolean).forEach(k => { store[_ck(k)] = rec; });
+          sessionStorage.setItem('adroast_board_cache', JSON.stringify(store));
+        } catch (e) { /* quota/private-mode: in-memory ref still holds it this session */ }
+      };
+      const cacheGet = (...keys) => {
+        for (const k of keys.filter(Boolean)) {
+          const kn = _ck(k);
+          let rec = boardCacheRef.current[kn];
+          if (!rec) { try { const store = JSON.parse(sessionStorage.getItem('adroast_board_cache') || '{}'); rec = store[kn]; if (rec) boardCacheRef.current[kn] = rec; } catch (e) {} }
+          if (rec && rec.co && Array.isArray(rec.ads) && (!rec._ts || (Date.now() - rec._ts) < BOARD_CACHE_TTL)) return rec;
+        }
+        return null;
+      };
       const [loadingCo, setLoadingCo] = useState(null); // the company being pulled, so the header shows it (not the sample)
       // Map of creatives this account has already roasted (normalized image URL -> reportId), so the
       // board can mark them "already roasted -> View" instead of implying a fresh (billable) roast.
@@ -1350,7 +1376,7 @@
       const toggleHidden = (dom) => setHiddenCos(prev => { const n = new Set(prev); const k = String(dom || '').toLowerCase(); if (!k) return prev; if (n.has(k)) n.delete(k); else n.add(k); return n; });
       const visibleCos = React.useMemo(() => sortedCos.filter(c => !hiddenCos.has(String(c.domain || '').toLowerCase())), [sortedCos, hiddenCos]);
       const hiddenList = React.useMemo(() => sortedCos.filter(c => hiddenCos.has(String(c.domain || '').toLowerCase())), [sortedCos, hiddenCos]);
-      const openCo = (co) => { const s = co.site || co.domain; const c = boardCacheRef.current[String(s).toLowerCase()] || boardCacheRef.current[String(co.domain).toLowerCase()]; setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setPhase('idle'); /* keep the current platform view (Google/LinkedIn/all) when switching companies */ try { window.history.pushState({ board: co.domain }, '', '/b/' + encodeURIComponent(shortDom(co.domain))); } catch (e) {} window.scrollTo(0, 0); } else loadReal(s, { keepView: true }); };
+      const openCo = (co) => { const s = co.site || co.domain; const c = cacheGet(s, co.domain); setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setPhase('idle'); /* keep the current platform view (Google/LinkedIn/all) when switching companies */ try { window.history.pushState({ board: co.domain }, '', '/b/' + encodeURIComponent(shortDom(co.domain))); } catch (e) {} window.scrollTo(0, 0); } else loadReal(s, { keepView: true }); };
       const coRow = (co, isHiddenRow) => {
         const active = CO && CO.domain && co.domain && CO.domain.toLowerCase() === String(co.domain).toLowerCase();
         return (
@@ -1454,7 +1480,7 @@
             if (res && res.ok && Array.isArray(res.ads)) {
               const cleanAds = res.ads.filter(a => { const t = String(a.head || a.title || '').trim().toLowerCase(); return t !== 'blank ad' && t !== '(untitled ad)' && t !== 'untitled ad' && t.indexOf('broken ad') === -1 && t.indexOf('placeholder') === -1; });
               const realObj = { ...real, ads: cleanAds, notes: res.notes || real.notes || {}, fresh: res.fresh || null };
-              try { boardCacheRef.current[String(real.co.domain).toLowerCase()] = realObj; } catch (e) {}
+              cachePut([real.co.domain, siteInput], realObj);
               setReal(realObj);
             }
           } catch (e) {}
@@ -1484,7 +1510,7 @@
           // "Blank ad"); they render as an empty box and read as broken.
           const cleanAds = (res.ads || []).filter(a => { const t = String(a.head || a.title || '').trim().toLowerCase(); return t !== 'blank ad' && t !== '(untitled ad)' && t !== 'untitled ad' && t !== 'broken ad placeholder' && t.indexOf('broken ad') === -1 && t.indexOf('placeholder') === -1; });
           const realObj = { co, icp: icpText, ads: cleanAds, notes: res.notes || {}, fresh: res.fresh || null };
-          try { boardCacheRef.current[siteRaw.toLowerCase()] = realObj; if (co.domain) boardCacheRef.current[String(co.domain).toLowerCase()] = realObj; } catch (e) {}
+          cachePut([siteRaw, co.domain], realObj);
           setReal(realObj);
           // Keep the platform view when switching companies or refreshing (stay on Google/LinkedIn/all);
           // only a fresh first entry resets to the all-platforms overview.
@@ -1505,7 +1531,12 @@
           if (s && s !== 'board' && s !== 'b') {
             setSiteInput(s);
             if (pseg) { const PN = { linkedin: 'LinkedIn', google: 'Google', meta: 'Meta' }; const p = PN[pseg.toLowerCase()]; if (p) { setFP(p); setStage('grid'); } }
-            loadReal(s);
+            // Serve a board loaded earlier this session INSTANTLY (survives the reload that a roast
+            // handoff / reopened /b link causes) instead of re-pulling. Force-refresh stays available
+            // via the header chip. Only pull when there's no fresh cached copy.
+            const cached = cacheGet(s, hostOf(s));
+            if (cached) { setReal(cached); setPhase('idle'); setBootLoading(false); }
+            else loadReal(s);
             return;
           }
         } catch (e) {}
@@ -3537,6 +3568,18 @@
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'API error');
+          /* Los dos portones tambien aplican aca. Este camino no pasa por
+             applyRoastResult, asi que sin esto un audit avanzado sin landing
+             legible mostraba una pantalla de resultados vacia en vez de pedir
+             la pagina. */
+          if (data && data.needsLanding) {
+            setLandingGate({ status: data.landingStatus || 'missing', url: data.landingUrl || '' });
+            setView('landing-gate'); setLoading(false); return;
+          }
+          if (data && data.needsIcp) {
+            setIcpGate({ reason: data.icpReason || 'missing', website: data.website || '', icp: data.icpDescription || '' });
+            setView('icp-gate'); setLoading(false); return;
+          }
           setResult(data); setView('results');
         } catch (err) { setError(err.message); setView('admin-builder'); }
         setLoading(false);
