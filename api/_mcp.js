@@ -110,6 +110,23 @@ async function callTool(name, args, key) {
     const r = await fetch(`${ORIGIN}/api/roast`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key }, body: JSON.stringify(payload) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error((d && d.error) || 'Roast failed');
+    // The landing and ICP gates in api/roast.js answer 200 with needsLanding /
+    // needsIcp instead of a roast: there was no page to read, or no buyer we could
+    // detect. Surface that as an ASK. Falling through returned an empty roast
+    // (null score, no issues) that read like a result, and the caller's next move
+    // was to roast the homepage instead, which judges a page the ad never used.
+    if (d && d.needsLanding) {
+      return { needs_input: 'landing_page', landing_status: d.landingStatus || 'missing',
+               landing_url: d.landingUrl || args.landing_url || '',
+               message: d.landingStatus === 'unreadable'
+                 ? "The landing page was given but could not be read (bot-blocked or JS-rendered). Pass a reachable landing_url, or paste its copy. Do NOT substitute the homepage: it is not necessarily the page this ad pointed at."
+                 : "No landing page for this ad. Ask the user for the ad's landing_url. Do NOT substitute the homepage." };
+    }
+    if (d && d.needsIcp) {
+      return { needs_input: 'icp', icp_reason: d.icpReason || 'missing',
+               website: d.website || args.website || '',
+               message: "The buyer could not be detected from the site, so the ad has nothing to be scored against. Ask the user who this sells to and pass it as icp. Do NOT guess." };
+    }
     const ent = d._entitlement || {};
     if (ent.full === false) return { locked: true, message: "This roast is gated because the account is out of free roasts. Top up at adroast.in or roast the account's worst ad free from the board.", overall_score: d.overall_score ?? null };
     return {

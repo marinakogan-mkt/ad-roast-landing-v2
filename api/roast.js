@@ -471,7 +471,10 @@ export default async function handler(req, res) {
   // as "bad" when the real reason is that there was no page to read. The caller can proceed ad-only
   // with allowNoLanding:true, and then the match/landing sections are marked "not scored", never bad.
   const landingStatus = hasAnyLandingContent ? 'ok' : (meta.landingUrlProvided ? 'unreadable' : 'missing');
-  if (landingStatus !== 'ok' && !body.allowNoLanding && !isAdvancedAudit) {
+  // Marina 2026-09-09: el audit avanzado tambien pregunta. Antes lo salteaba, asi
+  // que la unica ruta que seguia puntuando contra una pagina no leida o un
+  // comprador adivinado era justo la de varias variantes a la vez.
+  if (landingStatus !== 'ok' && !body.allowNoLanding) {
     return res.status(200).json({ needsLanding: true, landingStatus, landingUrl: (landingUrl || '').trim() });
   }
 
@@ -481,7 +484,7 @@ export default async function handler(req, res) {
   // ask for the buyer first. The caller proceeds with a real ICP (allowWeakIcp:true once confirmed).
   const _icp = (icpDescription || '').trim();
   const _icpWeak = !_icp || _icp.length < 15 || /unknown b2b buyer|page content insufficient|insufficient (page )?content|could ?n'?t (read|determine|detect)|no (clear )?(icp|buyer)/i.test(_icp);
-  if (_icpWeak && !body.allowWeakIcp && !isAdvancedAudit) {
+  if (_icpWeak && !body.allowWeakIcp) {
     return res.status(200).json({ needsIcp: true, icpReason: _icp ? 'weak' : 'missing', website: website || '', icpDescription: _icp });
   }
 
