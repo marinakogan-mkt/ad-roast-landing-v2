@@ -1769,7 +1769,10 @@
                   <button key={i} onMouseEnter={() => setSpecHi(i)} onMouseLeave={() => setSpecHi(null)} onFocus={() => setSpecHi(i)} onClick={() => setSel(a)}
                     className="absolute bg-transparent border-none p-0 cursor-pointer" title={(a.head || 'ad') + ' — ' + a.score + '/10'}
                     style={{ left: nodeX[i] + '%', top: 0, height: 68, width: 26, transform: 'translateX(-50%)', zIndex: on ? 6 : (isWorst ? 4 : 2) }}>
-                    {isWorst && <span className="absolute left-1/2 whitespace-nowrap inline-flex items-center gap-0.5" style={{ transform: 'translateX(-50%)', top: 0, fontSize: 9, fontWeight: 800, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.04em' }}><Icon name="flame" className="w-2.5 h-2.5" />Start here</span>}
+                    {/* Redundant with the big START HERE badge in the preview card above, and it
+                        clips at the mobile scroller's right edge when the worst dot sits mid-track,
+                        so it shows on desktop (track fits, no scroll) but is hidden on mobile. */}
+                    {isWorst && <span className="absolute left-1/2 whitespace-nowrap hidden sm:inline-flex items-center gap-0.5" style={{ transform: 'translateX(-50%)', top: 0, fontSize: 9, fontWeight: 800, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.04em' }}><Icon name="flame" className="w-2.5 h-2.5" />Start here</span>}
                     <span className="absolute rounded-full" style={{ left: '50%', top: 35, width: d, height: d, transform: 'translate(-50%,-50%)', background: col, border: '2.5px solid #fff', boxShadow: on ? '0 6px 16px ' + col + '66' : '0 1px 5px rgba(11,15,26,.28)', transition: 'width .16s ease, height .16s ease' }} />
                     <span className="absolute left-1/2 whitespace-nowrap" style={{ transform: 'translateX(-50%)', top: 48, fontSize: 10, fontWeight: 800, color: col, opacity: on ? 1 : 0, transition: 'opacity .16s ease' }}>{a.score}/10</span>
                   </button>
