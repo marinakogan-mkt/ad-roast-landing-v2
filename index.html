@@ -1731,22 +1731,27 @@
                   </span>
                 )}
               </div>
-            {/* Live preview of the active (hovered, else worst) ad: the real creative, up close. */}
-            <div className="flex items-center gap-3.5 rounded-xl border mt-4" style={{ borderColor: '#eef1f6', background: '#fafbfc', padding: 12 }}>
-              <div className="flex-none grid place-items-center rounded-lg overflow-hidden" style={{ width: 74, height: 74, background: '#f1f5f9', border: '2px solid ' + scoreCol(active.score) }}>
+            {/* Live preview of the active (hovered, else worst) ad: the real creative, up close.
+                On mobile the row can't fit image + text + button side by side, so the button
+                drops to a full-width bar below (sm:hidden / hidden sm:inline-flex swap). */}
+            <div className="rounded-xl border mt-4" style={{ borderColor: '#eef1f6', background: '#fafbfc', padding: 12 }}>
+             <div className="flex items-center gap-3">
+              <div className="flex-none grid place-items-center rounded-lg overflow-hidden" style={{ width: 64, height: 64, background: '#f1f5f9', border: '2px solid ' + scoreCol(active.score) }}>
                 <img src={IMG(active.img)} alt={active.head || 'creative'} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }} />
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {aFree && <span className="inline-flex items-center gap-1 font-bold uppercase" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#fff', background: '#dc2626', padding: '2px 7px', borderRadius: 5 }}><Icon name="flame" className="w-2.5 h-2.5" />Start here</span>}
-                  {allPlat && active.plat && <span className="inline-flex items-center gap-1 font-semibold text-gray-600" style={{ fontSize: 11 }}><PlatLogo plat={active.plat} size={13} />{active.plat}</span>}
-                  <span className="inline-flex items-center rounded-full font-bold" style={{ fontSize: 10.5, color: SEV(active.score).c, background: SEV(active.score).bg, border: '1px solid ' + SEV(active.score).bd, padding: '2px 8px' }}>{SEV(active.score).label}</span>
-                  <span className="font-bold text-gray-500" style={{ fontSize: 12 }}>Fit {active.score}/10</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {aFree && <span className="inline-flex items-center gap-1 font-bold uppercase" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#fff', background: '#dc2626', padding: '2px 7px', borderRadius: 5, whiteSpace: 'nowrap' }}><Icon name="flame" className="w-2.5 h-2.5" />Start here</span>}
+                  {allPlat && active.plat && <span className="inline-flex items-center gap-1 font-semibold text-gray-600" style={{ fontSize: 11, whiteSpace: 'nowrap' }}><PlatLogo plat={active.plat} size={13} />{active.plat}</span>}
+                  <span className="inline-flex items-center rounded-full font-bold" style={{ fontSize: 10.5, color: SEV(active.score).c, background: SEV(active.score).bg, border: '1px solid ' + SEV(active.score).bd, padding: '2px 8px', whiteSpace: 'nowrap' }}>{SEV(active.score).label}</span>
+                  <span className="font-bold text-gray-500" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>Fit {active.score}/10</span>
                 </div>
                 <div className="text-gray-800 truncate" style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>{active.head || active.title || active.body || (active.dom ? active.dom + ' display ad' : 'Untitled ad')}</div>
                 <div className="text-gray-500 truncate" style={{ fontSize: 12.5, marginTop: 1 }}>{active.fix || active.verdict || active.body || ''}</div>
               </div>
-              <button onClick={() => setSel(active)} className="flex-none font-bold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ fontSize: 12.5, padding: '9px 13px', background: '#0a66c2', whiteSpace: 'nowrap' }}>Roast this ad →</button>
+              <button onClick={() => setSel(active)} className="hidden sm:inline-flex items-center flex-none font-bold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ fontSize: 12.5, padding: '9px 13px', background: '#0a66c2', whiteSpace: 'nowrap' }}>Roast this ad →</button>
+             </div>
+             <button onClick={() => setSel(active)} className="sm:hidden w-full font-bold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ fontSize: 13, padding: '10px 13px', background: '#0a66c2', marginTop: 10 }}>Roast this ad →</button>
             </div>
             {/* The track: clean dots ordered worst -> best (rank-based, no tiny creatives, those
                 read as weird thumbnails). The real creative shows only in the preview above on hover. */}
