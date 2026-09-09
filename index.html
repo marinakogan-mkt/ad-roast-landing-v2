@@ -1563,12 +1563,13 @@
       // flash in the board until LinkedIn finishes ~20s later. Render clean loading state
       // instead of the sample until `real` lands.
       const pulling = !real && (bootLoading || phase === 'loading');
-      // Seed the landing field when an ad is picked: auto-fill the ad's resolved landing if we have
-      // one, otherwise pre-fill the company homepage so the user can paste the exact landing.
+      // Seed the landing field when an ad is picked: ONLY with the ad's real resolved landing.
+      // If the ad library didn't expose one (common on LinkedIn), leave it EMPTY - never assume
+      // the homepage. The user must add the exact page, or we don't roast (Marina: don't roast
+      // without an LP and don't guess the homepage).
       React.useEffect(() => {
         if (!sel) return;
-        const dom = (CO && CO.domain) ? String(CO.domain).replace(/^https?:\/\//, '').replace(/\/.*$/, '') : '';
-        setLandingInput(sel.ctaUrl || (dom ? 'https://' + dom : ''));
+        setLandingInput(sel.ctaUrl || '');
       }, [sel]);
       // How many ads are off-target for the ICP (score <= 6). This is the headline number a
       // first-timer actually cares about: how many ads are working against them right now.
@@ -2691,7 +2692,7 @@
             offerType: 'other',
             offerDetail: 'Unknown funnel stage. Infer whether this ad is a booked-demo, free-trial/self-serve, or content/lead-magnet offer from the creative and landing page, then calibrate the CTA-friction scoring and the recommended pre-set button to THAT stage. Do not assume a demo by default.',
             icpDescription: stash.icp || '',
-            landingUrl: a.ctaUrl || (co.domain ? 'https://' + String(co.domain).replace(/^https?:\/\//, '') : ''),
+            landingUrl: a.ctaUrl || '', // never assume the homepage; the modal already required a real LP, and if somehow empty the server gates with needsLanding
             adCopy: adText,
             visualDescription: '',
             landingCopy: '',
