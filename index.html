@@ -5629,7 +5629,8 @@
               // When the roast came from the board (gateAd), carry the REAL creative + buyer-fit
               // number + verdict into the gate - that's the urgency Marina wants, and it already
               // exists pre-sign-in on the board. Manual paste flow has no gateAd (score chips only).
-              const _gCreative = (gateAd && gateAd.img) ? IMG(gateAd.img) : (inputs.adScreenshotPreview || '');
+              const _proxyImg = (u) => { if (!u || !/^https?:\/\//.test(u)) return u || ''; try { return '/api/icp?p=' + btoa(u).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch (e) { return '/api/icp?img=' + encodeURIComponent(u); } };
+              const _gCreative = (gateAd && gateAd.img) ? _proxyImg(gateAd.img) : (inputs.adScreenshotPreview || '');
               const _gScore = (gateAd && typeof gateAd.score === 'number') ? gateAd.score : null;
               const _gSev = _gScore != null ? SEV(_gScore) : null;
               const _gPlat = (gateAd && gateAd.plat) ? gateAd.plat : '';
