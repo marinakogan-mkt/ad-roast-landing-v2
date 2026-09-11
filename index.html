@@ -1865,7 +1865,7 @@
               )}
               {/* Search box: only worth showing once the list is long enough to hunt through. Filters
                   by name or domain; the × clears it. Hidden when the rail is collapsed. */}
-              {railOpen && railCos.length > 5 && (
+              {railOpen && railCos.length > 3 && (
                 <div className="px-2 pb-1.5">
                   <div className="relative">
                     <Icon name="search" className="w-3.5 h-3.5 absolute" style={{ left: 9, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} />
