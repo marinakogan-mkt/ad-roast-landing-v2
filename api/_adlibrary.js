@@ -14,7 +14,12 @@
 // Called from api/icp.js (action: 'ads-fetch') so we add no new function. Synchronous:
 // one fetch + parse + score, no polling.
 
-const SCORE_MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
+// Sonnet 4.6 (not Haiku): it reads non-English creative copy and judges buyer-fit far more
+// accurately, and unlike Sonnet 5 it still accepts temperature (kept at 0 for determinism).
+// Token cost is bounded HARD by scoreAdsCached: only creatives NOT already in the 30-day cache
+// are sent to the model, so a re-scored board pays Sonnet vision only for new/changed ads.
+// NOTE: if ANTHROPIC_ICP_MODEL is set in the env it overrides this; unset it to use Sonnet 4.6.
+const SCORE_MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 
 function decodeHtml(s) {
   return (s || '')
@@ -76,7 +81,7 @@ function parseAdCards(html, company) {
   }));
 }
 
-// One cheap Haiku call scores the whole set: 1-10 fit-to-ICP + one-line verdict + a fix.
+// One Sonnet 4.6 vision call scores the whole set: 1-10 fit-to-ICP + one-line verdict + a fix.
 // Multimodal: each ad contributes a text line AND (capped) its creative image, because the
 // copy that sells the ad usually lives ON the creative, and Google image ads carry no
 // separate text at all. Images are passed as URL sources (Anthropic fetches them), so we
@@ -150,7 +155,11 @@ No markdown. Never use em dashes or en dashes; use commas or periods.`;
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       // temperature 0: the SAME ads must score the SAME way run to run. Default temp made the
       // board swing (e.g. Google avg 1.1 one run, 7.7 the next) — pure sampling noise, not signal.
-      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 1600, temperature: 0, system: sys, messages: [{ role: 'user', content }] }),
+      // Sonnet 4.6 accepts temperature (Sonnet 5 rejects it), so determinism is preserved.
+      // max_tokens 2000: headroom for up to 14 terse JSON rows. A truncated output fails the JSON
+      // parse and wastes the WHOLE call (incl. the expensive vision input), so the cap sits just
+      // above real need rather than at it. Billing is by actual output, so the cap is not a cost.
+      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 2000, temperature: 0, system: sys, messages: [{ role: 'user', content }] }),
     });
     const d = await r.json();
     const txt = d.content?.[0]?.text || '';
