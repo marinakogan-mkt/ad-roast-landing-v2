@@ -146,6 +146,8 @@ SCORING SCALE (calibrate consistently, the SAME ad must always land on the same 
 9-10 = best-in-class (sharp hook, strong proof, unmistakable CTA).
 An image-only ad with a readable value proposition is NOT a 1: judge the copy shown on the creative. Only score 1-2 when the ad is genuinely broken or badly mismatched to the ICP.
 
+BLANK / EMPTY CREATIVE: if a creative is a blank or collapsed ad slot with NO visible content (a solid or empty image, no text, no logo, no offer), do NOT invent content or a verdict for it. Set title EXACTLY to "Blank ad", score 1, verdict "Empty ad slot, nothing to show." These are filtered out of the board, so a clean canonical title matters.
+
 LOCALIZATION: ads may be localized on purpose, written in another language and aimed at a specific country. That is deliberate, not a defect. Do NOT lower the score for the language or the geo. Read and translate the ad, then judge how well it speaks to the SAME buyer ROLE in its own market. Never make the verdict or fix about the ad being in another language or region-specific, and never say "no ICP signal" or "unclear buyer" when the signal is simply expressed in that language. Judge substance only: hook, clarity, proof, CTA, value for its intended local buyer.
 
 No markdown. Never use em dashes or en dashes; use commas or periods.`;

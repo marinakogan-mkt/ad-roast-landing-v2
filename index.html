@@ -1499,8 +1499,18 @@
 
       // Enter a website -> detect company + ICP, then pull the company's real live ads
       // (with creative images) from the LinkedIn Ad Library via /api/ads (Apify).
-      // Drop content-less display ads (the scorer labels a creative with no readable copy "Blank ad").
-      const _cleanBoardAds = (ads) => (ads || []).filter(a => { const t = String(a.head || a.title || '').trim().toLowerCase(); return t !== 'blank ad' && t !== '(untitled ad)' && t !== 'untitled ad' && t !== 'broken ad placeholder' && t.indexOf('broken ad') === -1 && t.indexOf('placeholder') === -1; });
+      // Drop content-less / empty ad slots so they never render as a blank box with a "1". The scorer
+      // reliably detects them but names them freely ("Blank ad", "Blank Collapsed Ad Unit", "Empty ad
+      // unit", "No content..."), so match the pattern, not one exact phrase. Catches already-cached
+      // blanks too, so no re-score is needed.
+      const _isBlankAd = (a) => {
+        const t = String(a.head || a.title || '').trim().toLowerCase();
+        if (!t) return false;
+        return /\b(blank|empty|collapsed)\b[\s\S]*\b(ad|unit|slot|creative)\b/.test(t)
+          || t.indexOf('no content') !== -1 || t.indexOf('broken ad') !== -1 || t.indexOf('placeholder') !== -1
+          || t === 'blank ad' || t === '(untitled ad)' || t === 'untitled ad';
+      };
+      const _cleanBoardAds = (ads) => (ads || []).filter(a => !_isBlankAd(a));
       // Progressive scoring: the server scores at most a few new creatives per call (so one call never
       // blows Vercel's 60s limit). If the response says creatives are still `pending`, re-call ads-fetch
       // (the list is cached now, so no pull) to score the next batch and update the board, until done.
@@ -1529,7 +1539,7 @@
           try {
             const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: real.co.name, domain: real.co.domain, icp: real.icp, refresh: true, only: 'linkedin' }) }).then(r => r.json()).catch(() => ({}));
             if (res && res.ok && Array.isArray(res.ads)) {
-              const cleanAds = res.ads.filter(a => { const t = String(a.head || a.title || '').trim().toLowerCase(); return t !== 'blank ad' && t !== '(untitled ad)' && t !== 'untitled ad' && t.indexOf('broken ad') === -1 && t.indexOf('placeholder') === -1; });
+              const cleanAds = _cleanBoardAds(res.ads);
               const realObj = { ...real, ads: cleanAds, notes: res.notes || real.notes || {}, fresh: res.fresh || null };
               cachePut([real.co.domain, siteInput], realObj);
               setReal(realObj);
@@ -1557,9 +1567,7 @@
             return;
           }
           setEntryMode(false);
-          // Drop content-less display ads (the scorer labels a creative with no readable copy
-          // "Blank ad"); they render as an empty box and read as broken.
-          const cleanAds = (res.ads || []).filter(a => { const t = String(a.head || a.title || '').trim().toLowerCase(); return t !== 'blank ad' && t !== '(untitled ad)' && t !== 'untitled ad' && t !== 'broken ad placeholder' && t.indexOf('broken ad') === -1 && t.indexOf('placeholder') === -1; });
+          const cleanAds = _cleanBoardAds(res.ads);
           const realObj = { co, icp: icpText, ads: cleanAds, notes: res.notes || {}, fresh: res.fresh || null };
           cachePut([siteRaw, co.domain], realObj);
           setReal(realObj);
