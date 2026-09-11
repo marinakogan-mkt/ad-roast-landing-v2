@@ -675,6 +675,26 @@ Return the JSON object defined in the output contract. All fields required.`;
           };
         }
         
+        // Sin landing NO se inventa nada sobre la landing. El modelo llena el esquema
+        // igual aunque el prompt le pida score 0: devuelve disconnects, verdict y
+        // top_issues sobre una pagina que nadie leyo, y la UI los dibuja como
+        // "mismatch" en rojo con la barra en cero. Eso es una metrica falsa, no un
+        // hallazgo. Marina 2026-09-09: cuando hay un hueco, se pide llenarlo, no se
+        // rellena con una nota inventada. Se borra aca, del lado del servidor, para
+        // que ninguna vista pueda mostrarlo.
+        if (!hasAnyLandingContent) {
+          const lp = parsed.landing_page_roast;
+          lp.overall_score = 0; lp.headline_score = 0; lp.value_prop_score = 0;
+          lp.cta_score = 0; lp.trust_score = 0;
+          lp.headline_feedback = 'No landing page was read, so it was not scored.';
+          lp.value_prop_feedback = ''; lp.cta_feedback = ''; lp.trust_feedback = '';
+          lp.top_issues = []; lp.quick_wins = [];
+          const mm = parsed.ad_landing_mismatch;
+          mm.alignment_score = 0;
+          mm.verdict = 'Not scored: no landing page was read for this ad.';
+          mm.disconnects = []; mm.message_match_issues = '';
+        }
+
         // FIX: If we HAVE landing content but LLM returned 0 scores, force minimum of 1
         // This is the main bug — LLM sometimes returns 0 even when content exists
         if (hasAnyLandingContent) {
