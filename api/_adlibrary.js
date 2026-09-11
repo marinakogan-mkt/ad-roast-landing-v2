@@ -148,6 +148,8 @@ An image-only ad with a readable value proposition is NOT a 1: judge the copy sh
 
 BLANK / EMPTY CREATIVE: if a creative is a blank or collapsed ad slot with NO visible content (a solid or empty image, no text, no logo, no offer), do NOT invent content or a verdict for it. Set title EXACTLY to "Blank ad", score 1, verdict "Empty ad slot, nothing to show." These are filtered out of the board, so a clean canonical title matters.
 
+BRAND / NON-DEMAND-GEN: some ads are NOT trying to sell the product to a buyer: employer branding, company culture, life-at-company, hiring or recruiting, team or award celebrations, event recaps, CSR. These are brand or talent plays, not demand-gen, and that is by design. Do NOT score them 1-2 as "wrong buyer" or "no ICP signal" just because they do not pitch the buyer. Judge them as brand content: a coherent brand or culture post lands around 5. The verdict must NAME it a brand or culture post (not a demand-gen ad) so it is never flagged as the "fix this first". Only a genuine demand-gen ad (offering the product, a demo, trial, or download) that misses the buyer earns a 1-3.
+
 LOCALIZATION: ads may be localized on purpose, written in another language and aimed at a specific country. That is deliberate, not a defect. Do NOT lower the score for the language or the geo. Read and translate the ad, then judge how well it speaks to the SAME buyer ROLE in its own market. Never make the verdict or fix about the ad being in another language or region-specific, and never say "no ICP signal" or "unclear buyer" when the signal is simply expressed in that language. Judge substance only: hook, clarity, proof, CTA, value for its intended local buyer.
 
 No markdown. Never use em dashes or en dashes; use commas or periods.`;
@@ -210,7 +212,10 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0, pending: 0 };
   if (!redis) { const scored = await scoreAds(ads, icp); return { ads: scored, scoredNew: ads.length, reused: 0, pending: 0 }; }
   const ih = icpHash(icp);
-  const keyOf = (a) => 'adscore:' + ih + ':' + creativeSig(a);
+  // Namespace bumped to v2 on 2026-09-12 to invalidate scores made before the localization / blank /
+  // brand-vs-demand-gen scoring rules, so existing boards re-score under the fixed prompt. Batched
+  // scoring keeps that re-score under the 60s limit; it is a one-time cost per board on next load.
+  const keyOf = (a) => 'adscore:v2:' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
