@@ -213,8 +213,10 @@ export default async function handler(req, res) {
        scored to the model; unchanged ones reuse their cached score (0 tokens), removed ones are
        just gone. So refreshing the list is nearly free even though the list itself is current.
 
-       refresh:true (the 'change'/Retry buttons) bypasses BOTH layers: re-pull the list AND
-       re-score every creative from scratch. */
+       refresh:true (the 'change'/Retry buttons) bypasses Layer A only: it re-pulls the LIST so
+       added/paused ads surface, but scoring stays incremental (only new creatives are scored, old
+       ones keep their cached score). A full re-score from scratch would blow Vercel's 60s limit with
+       the Sonnet scorer, so it is never forced; a changed ICP re-scores on its own via the icpHash. */
     const domKey = String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
     const pullKey = 'ads:pull:' + domKey;
     const wantScore = !!body.icp; // the board always sends the ICP; display-only calls don't
@@ -293,8 +295,13 @@ export default async function handler(req, res) {
     }
 
     // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.
+    // ALWAYS incremental (force:false), even on Refresh. Refresh re-pulls the LIST (so added ads get
+    // scored and paused ones drop off), but it must NOT re-score every creative from scratch: with the
+    // Sonnet scorer + 20 ads that one call blows Vercel's 60s limit, the function is killed, nothing is
+    // saved and the user sees an error. Keeping the old scores and scoring only what's new stays well
+    // under the limit. (A changed ICP still re-scores everything on its own, via the icpHash in the key.)
     if (!wantScore) return res.status(200).json({ ...pull, _listCached: listCached, _stale: stale, _checkedAt: lastChecked });
-    const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: refresh && !stale });
+    const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: false });
     return res.status(200).json({
       ...pull,
       ads: sc.ads,
