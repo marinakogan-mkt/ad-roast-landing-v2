@@ -1322,6 +1322,7 @@
       const [acctOpen, setAcctOpen] = useState(false); // board header account dropdown
       const [entryMode, setEntryMode] = useState(false); // force the "enter a website" form (New / change company)
       const boardCacheRef = React.useRef({}); // domain -> last-loaded board, so re-clicking a company is instant (no re-pull)
+      const loadSeqRef = React.useRef(0); // bumps on every loadReal; the progressive scorer stops if the user moved on
       // Session-level board cache: the in-memory ref above is lost on any full reload (roasting an ad
       // does window.location.href='/?libroast=1', reopening a /b/<co> link, refreshing the tab). Mirror
       // it into sessionStorage so a board loaded once this session re-opens INSTANTLY - no re-pull -
@@ -1498,9 +1499,29 @@
 
       // Enter a website -> detect company + ICP, then pull the company's real live ads
       // (with creative images) from the LinkedIn Ad Library via /api/ads (Apify).
+      // Drop content-less display ads (the scorer labels a creative with no readable copy "Blank ad").
+      const _cleanBoardAds = (ads) => (ads || []).filter(a => { const t = String(a.head || a.title || '').trim().toLowerCase(); return t !== 'blank ad' && t !== '(untitled ad)' && t !== 'untitled ad' && t !== 'broken ad placeholder' && t.indexOf('broken ad') === -1 && t.indexOf('placeholder') === -1; });
+      // Progressive scoring: the server scores at most a few new creatives per call (so one call never
+      // blows Vercel's 60s limit). If the response says creatives are still `pending`, re-call ads-fetch
+      // (the list is cached now, so no pull) to score the next batch and update the board, until done.
+      // Guarded by loadSeqRef so it stops the moment the user opens a different company.
+      const scoreRemaining = async (co, icpText, siteRaw, mySeq, pending) => {
+        let tries = 0;
+        while (pending > 0 && tries < 12 && loadSeqRef.current === mySeq) {
+          tries++;
+          const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: co.name, domain: co.domain, icp: icpText }) }).then(r => r.json()).catch(() => null);
+          if (loadSeqRef.current !== mySeq) return;
+          if (!res || !res.ok || !Array.isArray(res.ads)) break;
+          const realObj = { co, icp: icpText, ads: _cleanBoardAds(res.ads), notes: res.notes || {}, fresh: res.fresh || null };
+          cachePut([siteRaw, co.domain], realObj);
+          setReal(realObj);
+          pending = (res.fresh && res.fresh.pending) || 0;
+        }
+      };
       const loadReal = async (s, opts = {}) => {
         const siteRaw = (s || '').trim();
         if (!siteRaw) return;
+        const mySeq = ++loadSeqRef.current; // this load supersedes any in-flight progressive scoring
         // LinkedIn-only retry: Google + the ICP are already loaded, so re-pull ONLY LinkedIn and merge,
         // instead of redoing the whole detection + pull. Reuses the current company + ICP.
         if (opts.only === 'linkedin' && real && real.co && real.icp != null) {
@@ -1546,6 +1567,9 @@
           // only a fresh first entry resets to the all-platforms overview.
           if (!opts.keepView && !opts.refresh) { setStage('overview'); setGridPlat('all'); }
           setPhase('idle'); setBootLoading(false);
+          // Score the rest in the background (the server capped this call so it never hit 60s); the
+          // board is already up, unscored ads fill in over the next few calls. Not awaited.
+          if (!silent && res.fresh && res.fresh.pending > 0) scoreRemaining(co, icpText, siteRaw, mySeq, res.fresh.pending);
           // Clean, shareable URL for this company's board: /board/<domain>.
           if (!silent) { try { const clean = '/b/' + encodeURIComponent(shortDom(co.domain || siteRaw)); if (window.location.pathname !== clean) window.history.pushState({ board: co.domain }, '', clean); } catch (e) {} }
         } catch (e) { if (silent) { setPhase('idle'); setBootLoading(false); return; } setPhase('error'); setStatusMsg(String(e && e.message || e)); }

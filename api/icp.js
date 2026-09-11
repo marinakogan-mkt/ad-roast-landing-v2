@@ -252,10 +252,10 @@ export default async function handler(req, res) {
         notes: { ...(cachedCopy.notes || {}), linkedin: gotLi ? 'ok' : (liPull.reason || 'no_ads'), linkedin_apify: liPull._apify || null },
         _checkedAt: Date.now(),
       };
-      const scM = await scoreAdsCached(merged.ads, body.icp, _redis, { force: false });
+      const scM = await scoreAdsCached(merged.ads, body.icp, _redis, { force: false, limit: 3 });
       merged.ads = scM.ads;
       if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(merged), { ex: CACHE_TTL }); } catch (e) {} }
-      return res.status(200).json({ ...merged, fresh: { checked: Date.now(), checkedAt: merged._checkedAt, stale: false, listCached: false, count: merged.ads.length, scoredNew: scM.scoredNew, reused: scM.reused } });
+      return res.status(200).json({ ...merged, fresh: { checked: Date.now(), checkedAt: merged._checkedAt, stale: false, listCached: false, count: merged.ads.length, scoredNew: scM.scoredNew, reused: scM.reused, pending: scM.pending } });
     }
 
     let pull = null, listCached = false, stale = false, lastChecked = null;
@@ -301,11 +301,16 @@ export default async function handler(req, res) {
     // saved and the user sees an error. Keeping the old scores and scoring only what's new stays well
     // under the limit. (A changed ICP still re-scores everything on its own, via the icpHash in the key.)
     if (!wantScore) return res.status(200).json({ ...pull, _listCached: listCached, _stale: stale, _checkedAt: lastChecked });
-    const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: false });
+    // Cap new scoring per call so pull + Sonnet vision fits Vercel's 60s limit on a big fresh board.
+    // `fresh.pending` tells the client how many creatives are still unscored; it re-calls ads-fetch
+    // (list now cached, so no pull) to score the next batch until pending hits 0.
+    // Fewer per call when this call also did the pull (~30s of the budget); more when the list was
+    // served from cache (no pull, so almost the whole 60s is free for scoring).
+    const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: false, limit: listCached ? 8 : 3 });
     return res.status(200).json({
       ...pull,
       ads: sc.ads,
-      fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: pull.ads.length, scoredNew: sc.scoredNew, reused: sc.reused },
+      fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: pull.ads.length, scoredNew: sc.scoredNew, reused: sc.reused, pending: sc.pending },
     });
   }
 

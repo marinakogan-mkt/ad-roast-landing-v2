@@ -204,9 +204,9 @@ function icpHash(icp) {
 // Score a pulled ad list, reusing per-creative cached scores and only calling the model on the
 // creatives we haven't scored yet. `force` (the Retry button) bypasses the reuse and re-scores all.
 // Returns { ads, scoredNew, reused }. If redis is unavailable it just scores everything (old path).
-export async function scoreAdsCached(ads, icp, redis, { force = false } = {}) {
-  if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0 };
-  if (!redis) { const scored = await scoreAds(ads, icp); return { ads: scored, scoredNew: ads.length, reused: 0 }; }
+export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0 } = {}) {
+  if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0, pending: 0 };
+  if (!redis) { const scored = await scoreAds(ads, icp); return { ads: scored, scoredNew: ads.length, reused: 0, pending: 0 }; }
   const ih = icpHash(icp);
   const keyOf = (a) => 'adscore:' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
@@ -221,9 +221,14 @@ export async function scoreAdsCached(ads, icp, redis, { force = false } = {}) {
     } catch (e) { /* miss -> score all */ }
   }
   const need = ads.filter(a => !cachedBySig[creativeSig(a)]);
+  // Bound how many NEW creatives we score in one call: scoreAds is a Sonnet vision call, and the
+  // pull + scoring must fit Vercel's 60s function limit. On a big FRESH board that one call 504s, so
+  // we score at most `limit` per request and report `pending`; the client re-calls to score the rest
+  // (the list is cached by then, so those calls skip the pull). limit 0 = no cap (score everything).
+  const toScore = (limit > 0 && need.length > limit) ? need.slice(0, limit) : need;
   const freshBySig = {};
-  if (need.length) {
-    const scored = await scoreAds(need, icp);
+  if (toScore.length) {
+    const scored = await scoreAds(toScore, icp);
     const writes = [];
     for (const a of scored) {
       if (typeof a.score !== 'number') continue;
@@ -237,7 +242,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false } = {}) {
     const o = cachedBySig[creativeSig(a)] || freshBySig[creativeSig(a)];
     return o ? { ...a, score: o.score, verdict: o.verdict, fix: o.fix, title: o.title || a.title || null, head: a.head || o.title || '' } : a;
   });
-  return { ads: out, scoredNew: need.length, reused: Object.keys(cachedBySig).length };
+  return { ads: out, scoredNew: toScore.length, reused: Object.keys(cachedBySig).length, pending: need.length - toScore.length };
 }
 
 // --- LinkedIn (free, via Jina Reader) -------------------------------------------------
