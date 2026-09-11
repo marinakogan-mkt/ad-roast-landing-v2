@@ -503,6 +503,7 @@ CRITICAL RULES:
 - Landing-page content provided -> landing_page_roast and ad_landing_mismatch scores are real 1-10 (never 0 or null). No landing content -> set those scores to 0.
 - NEVER state what you cannot do. No capability disclaimers ("can't assess visuals", "without seeing the screenshot", "no visual provided", etc.). If you can't analyze something, skip it silently. The user sees only confident findings.
 - PUNCTUATION: no em dashes or en dashes in any field. Use commas, colons, periods, or parentheses.
+- LOCALIZATION: an ad may be localized on purpose, written in another language and aimed at a specific country. That is deliberate, not a flaw. Do NOT lower the buyer-fit judgment for the language or the geo. Read and translate the ad, then judge fit to the SAME buyer role in its own market. Never make an issue, verdict, or fix about the ad being in another language or region-specific, and never claim it lacks ICP signal or a clear buyer when the signal is simply expressed in that language. Judge substance only: hook, clarity, proof, CTA, value for its intended local buyer.
 
 PLATFORM TRUST-SIGNAL RULES:
 - Google Search RSAs and all Google extensions (sitelinks, callouts, structured snippets, seller ratings) are TEXT-ONLY: they never render customer logos, vendor/certification/security/compliance badges (SOC 2, ISO 27001, G2), or screenshots inside the ad.
