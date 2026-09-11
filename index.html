@@ -1510,7 +1510,13 @@
           || t.indexOf('no content') !== -1 || t.indexOf('broken ad') !== -1 || t.indexOf('placeholder') !== -1
           || t === 'blank ad' || t === '(untitled ad)' || t === 'untitled ad';
       };
-      const _cleanBoardAds = (ads) => (ads || []).filter(a => !_isBlankAd(a));
+      // Brand / non-demand-gen posts (employer branding, company culture, hiring, event recaps,
+      // thought-leadership with no offer) are not what a demand-gen ad audit is about. The scorer
+      // floors them at 5 and names them canonically ("... not a demand-gen ad"), so keep them off
+      // the board entirely - otherwise one of them can be the lowest and lead as the "fix first",
+      // and a CMO dismisses the whole board. Detected off the verdict, so it needs the ad scored.
+      const _isBrandAd = (a) => /\bnot a (direct )?demand[\s-]?gen\b|\bbrand \/ culture post\b|\bbrand or culture post\b/i.test(String(a && a.verdict || ''));
+      const _cleanBoardAds = (ads) => (ads || []).filter(a => !_isBlankAd(a) && !_isBrandAd(a));
       // Progressive scoring: the server scores at most a few new creatives per call (so one call never
       // blows Vercel's 60s limit). If the response says creatives are still `pending`, re-call ads-fetch
       // (the list is cached now, so no pull) to score the next batch and update the board, until done.
