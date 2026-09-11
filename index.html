@@ -1294,6 +1294,10 @@
     // front-door pushState threw a swallowed ReferenceError and every website fell back to the sample.
     const shortDom = (d) => { try { return String(d || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[\/?#].*$/, '').replace(/\.com$/i, ''); } catch (e) { return d; } };
     const expandDom = (s) => { s = String(s || '').trim().replace(/^www\./, ''); return s.indexOf('.') === -1 ? (s + '.com') : s; };
+    // A real website (has a dot + TLD, no spaces). MODULE SCOPE so both AdLibraryView (sidebar
+    // search) and AdRoastApp (hero) can gate on it: the board needs a DOMAIN, not a bare name, or
+    // Google + the logo come back empty (a name like "Omni Convert" only ever resolves LinkedIn).
+    const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
 
     function AdLibraryView() {
       const [modalHead, setModalHead] = useState(null);
@@ -1399,9 +1403,12 @@
         const q = railQuery.trim();
         if (!q) return;
         const hit = visibleCos[0] || hiddenList[0];
-        setRailQuery('');
-        if (hit) { openCo(hit); return; }
-        setEntryMode(false);
+        if (hit) { setRailQuery(''); openCo(hit); return; }
+        // No existing match: this opens a NEW company's board (the dashboard, not a roast), which
+        // needs the FULL WEBSITE. A bare name like "Omni Convert" only resolves LinkedIn and leaves
+        // Google empty + no logo, so require a real domain; the inline hint below asks for it.
+        if (!isValidUrl(q)) return;
+        setRailQuery(''); setEntryMode(false);
         loadReal(q, { keepView: true });
         window.scrollTo(0, 0);
       };
@@ -1889,7 +1896,7 @@
                     <Icon name="search" className="w-3.5 h-3.5 absolute" style={{ left: 9, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} />
                     <input value={railQuery} onChange={(e) => setRailQuery(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); openFromSearch(); } }}
-                      placeholder="Search or roast a website" aria-label="Search or roast a website"
+                      placeholder="Search or add a website" aria-label="Search or add a website"
                       className="w-full bg-white border rounded-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 text-gray-900"
                       style={{ fontSize: 12.5, padding: '6px 24px 6px 28px', borderColor: '#e5e7eb' }} />
                     {railQuery && <button onClick={() => setRailQuery('')} title="Clear search" aria-label="Clear search" className="absolute bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-700" style={{ right: 5, top: '50%', transform: 'translateY(-50%)', fontSize: 15, lineHeight: 1, padding: 3 }}>×</button>}
@@ -1906,11 +1913,15 @@
                 )}
                 {railOpen && railQuery.trim() && visibleCos.length === 0 && hiddenList.length === 0 && (
                   <div className="px-2 py-2.5">
-                    <div className="text-gray-400 mb-1.5" style={{ fontSize: 11.5 }}>Not in your list yet.</div>
-                    <button onClick={openFromSearch} title={'Roast ' + railQuery.trim()} className="w-full flex items-center gap-1.5 rounded-lg font-semibold text-white hover:opacity-90 transition-opacity" style={{ padding: '7px 10px', fontSize: 12.5, background: '#0a66c2', border: 'none', cursor: 'pointer' }}>
-                      <Icon name="flame" className="w-3.5 h-3.5 flex-none" />
-                      <span className="truncate">Roast {railQuery.trim()}</span>
-                    </button>
+                    {isValidUrl(railQuery.trim()) ? (<>
+                      <div className="text-gray-400 mb-1.5" style={{ fontSize: 11.5 }}>Not in your list yet.</div>
+                      <button onClick={openFromSearch} title={'See live ads for ' + railQuery.trim()} className="w-full flex items-center gap-1.5 rounded-lg font-semibold text-white hover:opacity-90 transition-opacity" style={{ padding: '7px 10px', fontSize: 12.5, background: '#0a66c2', border: 'none', cursor: 'pointer' }}>
+                        <Icon name="target" className="w-3.5 h-3.5 flex-none" />
+                        <span className="truncate">See {railQuery.trim()} live ads</span>
+                      </button>
+                    </>) : (
+                      <div className="text-gray-500" style={{ fontSize: 11.5, lineHeight: 1.45 }}>No match. To pull a new company, type its full website, e.g. <span className="font-semibold text-gray-700">omniconvert.com</span></div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2439,7 +2450,7 @@
       const [icpGateInput, setIcpGateInput] = useState('');
       const pendingRoastRef = React.useRef(null); // the exact payload of the in-flight roast, so the landing gate can resubmit it (preserving the creative) with a fixed landing / copy / ad-only opt-in
       const [icpTags, setIcpTags] = useState([]);
-      const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
+      // isValidUrl now lives at module scope (shared with AdLibraryView's sidebar search).
       // Front door: a website is all we need. Route into the Live Ads board (?library=1&site=),
       // which detects the ICP, pulls every live ad, and scores each against the buyer.
       const goToLiveAds = () => {
