@@ -353,7 +353,7 @@ export async function fetchLinkedInAds({ company, limit = 12 } = {}) {
 // (tpc.googlesyndication.com/archive/simgad/...). Region 2764 = "anywhere". We keep only
 // image creatives so every Google card shows a real creative (display/HTML ads carry no
 // static image and no separate copy, so they'd be empty cards). Returns UNSCORED cards.
-async function fetchGoogleAds({ domain, limit = 12 } = {}) {
+async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
   const dom = (domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
   if (!dom) return { ok: false, reason: 'no_domain', ads: [] };
   const url = 'https://adstransparency.google.com/anji/_/rpc/SearchService/SearchCreatives?authuser=';
@@ -399,9 +399,31 @@ async function fetchGoogleAds({ domain, limit = 12 } = {}) {
       detailUrl: (AR && CR) ? `https://adstransparency.google.com/advertiser/${AR}/creative/${CR}?region=anywhere` : 'https://adstransparency.google.com/?region=anywhere&domain=' + encodeURIComponent(dom),
       adId: CR || null,
     });
-    if (ads.length >= limit) break;
   }
-  return { ok: true, ads };
+  // Google's domain search returns creatives from EVERY advertiser whose ads point at this domain.
+  // For a normal company that's just them (semgrep.dev -> one advertiser). But a shared site-host
+  // domain (notion.so, carrd.co, framer.website, ...) returns unrelated small businesses that use
+  // it to host their landing page (a stone-crusher factory, a Korean dev shop). Keep only the
+  // company's OWN ads:
+  //  - advertisers whose name matches the company/domain token (notion -> "Notion Labs Japan"), else
+  //  - if a SINGLE advertiser owns the whole result the domain maps cleanly to one account, which can
+  //    be a person/agency name that does not contain the brand (semgrep.dev -> "Pablo Estrada"), so
+  //    keep all; else (several advertisers, none match) it is a shared host with no owned ads -> none.
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const domTok = norm(dom.replace(/\.[a-z.]+$/i, '')); // notion.so -> "notion"
+  const coTok = norm(company);
+  const nameMatches = (adv) => {
+    const a = norm(adv);
+    if (!a) return false;
+    if (domTok && domTok.length >= 4 && (a.includes(domTok) || domTok.includes(a))) return true;
+    if (coTok && coTok.length >= 4 && (a.includes(coTok) || coTok.includes(a))) return true;
+    return false;
+  };
+  const owned = ads.filter(a => nameMatches(a.advertiser));
+  let kept;
+  if (owned.length) kept = owned;
+  else { const distinct = new Set(ads.map(a => norm(a.advertiser))).size; kept = distinct <= 1 ? ads : []; }
+  return { ok: true, ads: kept.slice(0, limit) };
 }
 
 // ---- Meta (Facebook + Instagram) via the OFFICIAL Ad Library API ----------------------------
@@ -497,7 +519,7 @@ export async function fetchMetaAds({ company, domain, limit = 12 } = {}) {
 export async function fetchAllAds({ company, domain, icp, limit = 36 } = {}) {
   const [li, gg, mt] = await Promise.all([
     fetchLinkedInAds({ company, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
-    fetchGoogleAds({ domain, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
+    fetchGoogleAds({ domain, company, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
     fetchMetaAds({ company, domain, limit: 12 }).catch(() => ({ ok: false, ads: [], reason: 'meta_fetch_failed' })),
   ]);
   const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length, meta: (mt.ads || []).length };
