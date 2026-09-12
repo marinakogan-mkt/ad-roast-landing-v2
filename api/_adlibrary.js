@@ -40,9 +40,21 @@ function norm(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 // resolved identities (e.g. a LinkedIn company slug) as extra accepted tokens.
 function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = [] } = {}) {
   const nn = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const wordsOf = (s) => String(s || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   const toks = [nn(String(domain).replace(/\.[a-z.]+$/i, '')), nn(company), ...extraToks.map(nn)].filter(t => t && t.length >= 4);
   if (!toks.length) return ads; // nothing to match on, don't over-filter
-  const nameMatches = (adv) => { const a = nn(adv); if (!a) return false; return toks.some(t => a.includes(t) || t.includes(a)); };
+  // Match by WHOLE WORD, not substring: a name search returns near-names (searching "Vanta" pulls
+  // "Vantage", "VantaSec"; "Miro" pulls "Mirolin", "Miroslava") that a substring test would wrongly
+  // keep. Own it only if a whole word of the advertiser equals the token, the collapsed name equals
+  // the token exactly, or (for a long token >= 6 chars, safe from short-name collisions) the token
+  // appears glued inside the collapsed name. That keeps sub-brands ("Chaos Cylindo", "Vanta
+  // Incorporated", "Notion Labs Japan") while dropping the homonyms.
+  const nameMatches = (adv) => {
+    const aw = wordsOf(adv);
+    const ac = aw.join('');
+    if (!ac) return false;
+    return toks.some(t => aw.includes(t) || ac === t || (t.length >= 6 && (ac.includes(t) || t.includes(ac))));
+  };
   const owned = ads.filter(a => nameMatches(a.advertiser));
   if (owned.length) return owned;
   const distinct = new Set(ads.map(a => nn(a.advertiser))).size;
