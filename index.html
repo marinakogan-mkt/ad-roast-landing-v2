@@ -1439,6 +1439,7 @@
       }, []);
       const [icpOverride, setIcpOverride] = useState(null); // user-edited ICP (null = use detected)
       const [icpEditing, setIcpEditing] = useState(false);
+      const [icpExpanded, setIcpExpanded] = useState(false); // Buyer pill: false = one-line truncated, true = full ICP paragraph
       const [icpDraft, setIcpDraft] = useState('');
 
       /* Per-step browser history: entering a platform's grid pushes ?library=1&p=<plat>, so the
@@ -2020,10 +2021,13 @@
                   <button onClick={() => { setEntryMode(true); setPhase('idle'); setStage('overview'); setFP('all'); setSiteInput(''); window.scrollTo(0, 0); }} title="Roast a different company's ads" className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold" style={{ color: '#0a66c2' }}>roast a different company</button>
                 </div>
                 {ICPeff && !icpEditing && (
-                  <div className="inline-flex items-center gap-2 rounded-lg" style={{ fontSize: 13, background: '#f8fafc', border: '1px solid #e5e7eb', color: '#374151', padding: '7px 12px', maxWidth: 460, minWidth: 0 }} title={ICPeff}>
-                    <Icon name="target" className="w-4 h-4 flex-none" style={{ color: '#0a66c2' }} />
+                  <div className="inline-flex items-start gap-2 rounded-lg" style={{ fontSize: 13, background: '#f8fafc', border: '1px solid #e5e7eb', color: '#374151', padding: '7px 12px', maxWidth: icpExpanded ? 640 : 460, minWidth: 0 }} title={icpExpanded ? undefined : ICPeff}>
+                    <Icon name="target" className="w-4 h-4 flex-none" style={{ color: '#0a66c2', marginTop: 2 }} />
                     <span className="font-semibold flex-none">Buyer:</span>
-                    <span className="text-gray-600 truncate" style={{ minWidth: 0 }}>{ICPeff}</span>
+                    <span className={'text-gray-600' + (icpExpanded ? '' : ' truncate')} style={{ minWidth: 0, lineHeight: 1.5 }}>{ICPeff}</span>
+                    {(ICPeff || '').length > 90 && (
+                      <button onClick={() => setIcpExpanded(v => !v)} className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold flex-none" style={{ color: '#0a66c2' }}>{icpExpanded ? 'see less' : 'see more'}</button>
+                    )}
                     <button onClick={() => { setIcpDraft(ICPeff || ''); setIcpEditing(true); }} className="ml-1 no-underline bg-transparent border-none cursor-pointer p-0 font-semibold flex-none" style={{ color: '#0a66c2' }}>edit</button>
                   </div>
                 )}
