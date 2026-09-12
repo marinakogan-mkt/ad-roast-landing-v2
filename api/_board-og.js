@@ -60,7 +60,7 @@ function replaceTag(html, re, value) {
   return re.test(html) ? html.replace(re, value) : html;
 }
 
-export default async function handler(req, res) {
+export async function boardOgHandler(req, res) {
   const slug = (req.query && (req.query.slug || req.query.s)) || '';
   let html = await getShell();
   try {

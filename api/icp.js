@@ -145,6 +145,14 @@ export default async function handler(req, res) {
     const { mcpHandler } = await import('./_mcp.js');
     return mcpHandler(req, res);
   }
+  /* Per-company link preview (/b/<slug> and /board/<slug>, rewritten to /api/icp?og=1&slug=<slug>).
+     Serves the SPA shell with Open Graph tags rewritten for the company so a shared board link shows
+     a card about THAT company, not the generic AdRoast card. Folded in here (helper _board-og.js) to
+     stay under the Hobby 12-function cap, same pattern as the MCP handler above. */
+  if (req.query && req.query.og !== undefined) {
+    const { boardOgHandler } = await import('./_board-og.js');
+    return boardOgHandler(req, res);
+  }
   /* Image proxy (GET /api/icp?img=<encoded url>). Ad creatives live on
      tpc.googlesyndication.com (Google) and media.licdn.com (LinkedIn) — hosts that every
      ad-blocker (uBlock, Brave, AdBlock) blocks by name, so hotlinked creatives silently
