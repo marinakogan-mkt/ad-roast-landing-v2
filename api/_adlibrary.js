@@ -152,7 +152,7 @@ BRAND / NON-DEMAND-GEN: some ads are NOT trying to sell the product to a buyer: 
 
 LOCALIZATION: ads may be localized on purpose, written in another language and aimed at a specific country. That is deliberate, not a defect. Do NOT lower the score for the language or the geo. Read and translate the ad, then judge how well it speaks to the SAME buyer ROLE in its own market. Never make the verdict or fix about the ad being in another language or region-specific, and never say "no ICP signal" or "unclear buyer" when the signal is simply expressed in that language. Judge substance only: hook, clarity, proof, CTA, value for its intended local buyer.
 
-No markdown. Never use em dashes or en dashes; use commas or periods.`;
+No markdown. Never use em dashes or en dashes; use commas or periods. Output MUST be valid JSON: inside any string value do NOT use raw double quotes (use single quotes for any quoted phrase) and do not use raw newlines.`;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -182,7 +182,19 @@ No markdown. Never use em dashes or en dashes; use commas or periods.`;
     const txt = d.content?.[0]?.text || '';
     const mm = txt.match(/\[[\s\S]*\]/);
     if (!mm) { console.error('[scoreAds] no JSON array in response:', txt.slice(0, 200)); throw new Error('scoreAds: unparseable response'); }
-    const scores = JSON.parse(mm[0]);
+    let scores;
+    try {
+      scores = JSON.parse(mm[0]);
+    } catch (e1) {
+      // ONE malformed row (e.g. an unescaped quote inside a title/verdict) used to fail the whole
+      // JSON.parse and waste the entire batch, so the board could never get past that creative.
+      // Salvage every well-formed {...} row and skip only the broken one; it retries next pull.
+      scores = [];
+      const objs = mm[0].match(/\{[^{}]*\}/g) || [];
+      for (const o of objs) { try { scores.push(JSON.parse(o)); } catch (e2) { /* skip the bad row */ } }
+      if (!scores.length) { console.error('[scoreAds] JSON salvage failed:', String(e1.message), mm[0].slice(0, 300)); throw new Error('scoreAds: JSON parse failed'); }
+      console.error('[scoreAds] salvaged ' + scores.length + '/' + objs.length + ' rows after parse error: ' + String(e1.message));
+    }
     const byI = {};
     for (const s of scores) if (typeof s.i === 'number') byI[s.i] = s;
     // head falls back to the model's title so image-only Google ads (no headline text) still
