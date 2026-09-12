@@ -246,7 +246,7 @@ export default async function handler(req, res) {
     // LinkedIn and merge it with the cached Google/Meta — not redo everything. Needs a cached copy to
     // merge into; without one we fall through to a normal full pull.
     if (refresh && body.only === 'linkedin' && cachedCopy) {
-      const liPull = await fetchLinkedInAds({ company: body.company, limit: 12 }).catch(() => ({ ok: false, ads: [] }));
+      const liPull = await fetchLinkedInAds({ company: body.company, domain: body.domain, limit: 12 }).catch(() => ({ ok: false, ads: [] }));
       const gotLi = !!(liPull.ok && liPull.ads && liPull.ads.length);
       const nonLi = (cachedCopy.ads || []).filter(a => (a.plat || '') !== 'LinkedIn');
       const liAds = gotLi ? liPull.ads : (cachedCopy.ads || []).filter(a => (a.plat || '') === 'LinkedIn'); // keep last-seen if still blocked

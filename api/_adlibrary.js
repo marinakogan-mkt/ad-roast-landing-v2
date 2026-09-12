@@ -30,6 +30,25 @@ function decodeHtml(s) {
 function stripTags(s) { return (s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '); }
 function norm(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 
+// Homonym guard. An ad-library search by NAME (LinkedIn accountOwner, Google domain, Meta
+// search_terms) can return ads from OTHER companies that share the name: searching "Chaos" (the 3D
+// render company, chaos.com) pulls in "Fogo de Chao", a Brazilian steakhouse. Keep only ads whose
+// advertiser matches the target company/domain token; if none match but a SINGLE advertiser owns the
+// whole result, keep all (a person or agency account that does not contain the brand, e.g.
+// semgrep.dev -> "Pablo Estrada"); else (several advertisers, none match) we cannot identify the
+// company's own ads, so keep none rather than show a stranger's ads. `extraToks` lets a caller add
+// resolved identities (e.g. a LinkedIn company slug) as extra accepted tokens.
+function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = [] } = {}) {
+  const nn = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const toks = [nn(String(domain).replace(/\.[a-z.]+$/i, '')), nn(company), ...extraToks.map(nn)].filter(t => t && t.length >= 4);
+  if (!toks.length) return ads; // nothing to match on, don't over-filter
+  const nameMatches = (adv) => { const a = nn(adv); if (!a) return false; return toks.some(t => a.includes(t) || t.includes(a)); };
+  const owned = ads.filter(a => nameMatches(a.advertiser));
+  if (owned.length) return owned;
+  const distinct = new Set(ads.map(a => nn(a.advertiser))).size;
+  return distinct <= 1 ? ads : [];
+}
+
 // Parse the rendered ad-library search HTML into ad cards. Each preview card contains the
 // advertiser name (a font-bold div), the body copy (commentary__content), and a content
 // image anchor (/ad-library/detail/{id}) whose <img data-delayed-url> is the real creative
@@ -348,7 +367,7 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
   } catch (e) { return { ok: false, reason: 'apify_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
 }
 
-export async function fetchLinkedInAds({ company, limit = 12 } = {}) {
+export async function fetchLinkedInAds({ company, domain = '', limit = 12 } = {}) {
   const q = (company || '').trim();
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
   // Try Apify first (reliable, no rate-limit fingerprint); fall back to Jina's anon pool if it's not
@@ -360,7 +379,7 @@ export async function fetchLinkedInAds({ company, limit = 12 } = {}) {
   let apifyReason = process.env.APIFY_TOKEN ? (process.env.APIFY_LINKEDIN === '1' ? 'apify_not_run' : 'apify_disabled') : 'apify_no_token';
   if (process.env.APIFY_TOKEN && process.env.APIFY_LINKEDIN === '1') {
     const ap = await fetchLinkedInAdsViaApify({ company: q, limit });
-    if (ap.ok && ap.ads && ap.ads.length) return { ...ap, _apify: 'ok' };
+    if (ap.ok && ap.ads && ap.ads.length) { const owned = ownedByAdvertiser(ap.ads, { domain, company: q }); if (owned.length) return { ...ap, ads: owned, _apify: 'ok' }; }
     apifyReason = ap.reason || 'apify_empty';
   }
   const target = 'https://www.linkedin.com/ad-library/search?accountOwner=' + encodeURIComponent(q);
@@ -398,7 +417,9 @@ export async function fetchLinkedInAds({ company, limit = 12 } = {}) {
       const html = await r.text();
       // Only keep ads that carry a real creative image — every board card must show a real
       // creative, never a text-only placeholder tile.
-      const ads = parseAdCards(html, q).filter(a => a.img).slice(0, limit);
+      // Filter to the company's OWN ads BEFORE slicing: the accountOwner name search is fuzzy and
+      // returns homonyms (searching "Chaos" the 3D-render co pulls in "Fogo de Chao", a steakhouse).
+      const ads = ownedByAdvertiser(parseAdCards(html, q).filter(a => a.img), { domain, company: q }).slice(0, limit);
       if (ads.length) return { ok: true, ads, _apify: apifyReason };
       lastReason = 'no_ads';
     } catch (e) { lastReason = String(e && e.message || e); }
@@ -468,20 +489,7 @@ async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
   //  - if a SINGLE advertiser owns the whole result the domain maps cleanly to one account, which can
   //    be a person/agency name that does not contain the brand (semgrep.dev -> "Pablo Estrada"), so
   //    keep all; else (several advertisers, none match) it is a shared host with no owned ads -> none.
-  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-  const domTok = norm(dom.replace(/\.[a-z.]+$/i, '')); // notion.so -> "notion"
-  const coTok = norm(company);
-  const nameMatches = (adv) => {
-    const a = norm(adv);
-    if (!a) return false;
-    if (domTok && domTok.length >= 4 && (a.includes(domTok) || domTok.includes(a))) return true;
-    if (coTok && coTok.length >= 4 && (a.includes(coTok) || coTok.includes(a))) return true;
-    return false;
-  };
-  const owned = ads.filter(a => nameMatches(a.advertiser));
-  let kept;
-  if (owned.length) kept = owned;
-  else { const distinct = new Set(ads.map(a => norm(a.advertiser))).size; kept = distinct <= 1 ? ads : []; }
+  const kept = ownedByAdvertiser(ads, { domain: dom, company });
   return { ok: true, ads: kept.slice(0, limit) };
 }
 
@@ -577,7 +585,7 @@ export async function fetchMetaAds({ company, domain, limit = 12 } = {}) {
 // the EU/UK; otherwise the UI keeps Meta as "coming soon".
 export async function fetchAllAds({ company, domain, icp, limit = 36 } = {}) {
   const [li, gg, mt] = await Promise.all([
-    fetchLinkedInAds({ company, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
+    fetchLinkedInAds({ company, domain, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
     fetchGoogleAds({ domain, company, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
     fetchMetaAds({ company, domain, limit: 12 }).catch(() => ({ ok: false, ads: [], reason: 'meta_fetch_failed' })),
   ]);
