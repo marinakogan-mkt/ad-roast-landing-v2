@@ -12,7 +12,11 @@
 // (~1/3 the input cost, ~1/3 the output cost of Sonnet) instead of the roast model.
 // Output is editable by the user in the review step, so the quality tradeoff is safe.
 // Its own env var (not the shared ANTHROPIC_MODEL) so it doesn't inherit Sonnet.
-const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-haiku-4-5';
+// The ICP is the backbone of the whole board: every ad is scored AGAINST it, so a thin or
+// too-narrow ICP silently degrades every score (a real vertical ad reads as "off-target"). It is
+// cached per URL for 60 days, so a stronger model here is a ONE-TIME cost per company that lifts
+// the accuracy of the entire board. Sonnet 4.6 (accepts temperature 0) over Haiku for that reason.
+const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 
 /* ICP cache (token optimization): the ICP inferred from a given page is stable, so we
    cache it and reuse it instead of re-running Haiku every roast. IMPORTANT: the page the
@@ -325,7 +329,10 @@ export default async function handler(req, res) {
   // unless the caller explicitly asked to refresh it. Keyed by the FULL url, not the
   // host, so different ad-library links on the same platform never collide.
   const urlHash = crypto.createHash('sha256').update(url).digest('hex').slice(0, 32);
-  const icpCacheKey = `icp:url:${urlHash}`;
+  // v2 (2026-09-12): bumped so boards regenerate their ICP under the richer, less-shrunk prompt
+  // (multi-vertical, role-and-pain based). Regeneration is lazy per board on open, and because the
+  // scores are keyed by a hash of the ICP, a changed ICP also re-scores that board (batched, safe).
+  const icpCacheKey = `icp:v2:url:${urlHash}`;
   if (_redis && !body.refresh) {
     try {
       const raw = await _redis.get(icpCacheKey);
@@ -338,7 +345,9 @@ export default async function handler(req, res) {
   let site = { title: brand, desc: '', body: '' };
   try { site = await fetchSite(url); } catch (e) { /* keep fallback */ }
 
-  const systemPrompt = `You are a B2B go-to-market analyst. From a page, identify the advertiser company and infer its Ideal Customer Profile — the specific buyer its ads should target. Be concrete about role, company stage, and spend. Do not invent facts that contradict the content.
+  const systemPrompt = `You are a B2B go-to-market analyst. From a page, identify the advertiser company and infer its Ideal Customer Profile, the buyer its ads should target. Be concrete about the buyer role or roles, the account profile, the sweet-spot segments, and the core pain. Do not invent facts that contradict the content.
+
+CAPTURE THE FULL BUYER, DO NOT SHRINK IT. The single most common mistake is collapsing a company that sells across several industries or buyer roles into one narrow persona (e.g. calling a CIAM platform that serves retail, ecommerce, finance, travel, healthcare, government and B2B partner portals just "SaaS companies"). That narrow ICP makes the company's legitimate vertical or segment ads look "off-target" and silently breaks every ad score. Instead: capture the buyer by their DEFINING SITUATION and PAIN (what they operate, what breaks, why they buy), not by a narrow industry guess; name the buyer ROLES the company actually sells to (several related titles when true, not one); and name the sweet-spot INDUSTRIES or SEGMENTS when the company clearly serves more than one, so a vertical-specific ad is judged on-target. Stay specific about the pain and the account profile so the ICP is broad in coverage but sharp in who it is, never generic.
 
 The page may be the company's own website, OR an ad-library / ad-transparency page (Meta, Google, or LinkedIn) that shows one of the company's ads. If it is an ad-library page, identify the advertiser from the content and infer their real company website.
 
@@ -348,9 +357,9 @@ Return ONLY valid JSON. No markdown, no backticks, no text before or after. Exac
 {
   "company": "the advertiser company name",
   "website": "the company's own website as a full https:// URL (best guess)",
-  "summary": "2-3 sentences on who this company sells to and the pain those buyers feel",
-  "icp_text": "one tight sentence naming the target buyer, company profile, and ad spend",
-  "tags": ["4-6 short chips like 'B2B Cybersecurity', 'Series A-C', 'CISOs', '$20K+/mo ad spend'"]
+  "summary": "2-3 sentences on who this company sells to (roles and segments) and the pain those buyers feel",
+  "icp_text": "one to three sentences that capture the REAL buyer: the buyer role or roles (several related titles if the company sells to more than one), the defining account situation or firmographic that makes a company a fit (what they operate, size, model), the sweet-spot industries or segments when the company clearly serves several (name them, do not collapse a multi-vertical seller into one narrow label), and the core pain or trigger that makes them buy. Lead with the defining characteristic and pain, not a narrow industry guess. Only mention ad spend if the page actually signals it.",
+  "tags": ["4-6 short chips: mix buyer roles and sweet-spot segments, like 'CISOs', 'Head of Identity', 'Retail & ecommerce', 'Enterprise', 'Legacy CIAM replacement'"]
 }
 Never use em dashes or en dashes in any field value. Use commas, colons, or periods instead.`;
 
