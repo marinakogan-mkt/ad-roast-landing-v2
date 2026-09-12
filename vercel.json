@@ -7,12 +7,15 @@
     { "source": "/dashboard", "destination": "/index.html" },
     { "source": "/account", "destination": "/index.html" },
     { "source": "/board", "destination": "/index.html" },
-    { "source": "/board/(.*)", "destination": "/index.html" },
+    { "source": "/board/(.*)", "destination": "/api/board-og?slug=$1" },
     { "source": "/b", "destination": "/index.html" },
-    { "source": "/b/(.*)", "destination": "/index.html" },
+    { "source": "/b/(.*)", "destination": "/api/board-og?slug=$1" },
     { "source": "/report/(.*)", "destination": "/index.html" },
     { "source": "/api/mcp", "destination": "/api/icp?mcp=1" }
   ],
+  "functions": {
+    "api/board-og.js": { "includeFiles": "index.html" }
+  },
   "crons": [
     { "path": "/api/verify-payment?cron=refills", "schedule": "0 8 * * *" },
     { "path": "/api/lead?action=followup-sweep", "schedule": "0 15 * * *" }
