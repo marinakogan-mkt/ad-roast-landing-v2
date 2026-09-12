@@ -1531,6 +1531,10 @@
           const realObj = { co, icp: icpText, ads: _cleanBoardAds(res.ads), notes: res.notes || {}, fresh: res.fresh || null };
           cachePut([siteRaw, co.domain], realObj);
           setReal(realObj);
+          // If the scoring call hard-failed (rate limit / no credit), stop: re-calling 12 times just
+          // hammers the API and makes a rate limit worse. The board keeps what it has; a later refresh
+          // retries. (Before this, scoredNew lied and pending never fell, so the loop spun uselessly.)
+          if (res.fresh && res.fresh.scoreError) break;
           pending = (res.fresh && res.fresh.pending) || 0;
         }
       };

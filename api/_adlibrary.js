@@ -165,17 +165,35 @@ No markdown. Never use em dashes or en dashes; use commas or periods.`;
       // above real need rather than at it. Billing is by actual output, so the cap is not a cost.
       body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 2000, temperature: 0, system: sys, messages: [{ role: 'user', content }] }),
     });
-    const d = await r.json();
+    const d = await r.json().catch(() => null);
+    // HARD FAILURE: the API returned an error (rate limit, no credit, overloaded) or no content.
+    // Previously this fell through to `return ads` (unscored) and looked identical to success, so
+    // scoreAdsCached reported scoredNew and the board just never filled. THROW so the caller knows
+    // the batch failed, can surface the real reason, and does NOT mark these creatives as "scored".
+    if (!r.ok || !d || d.error || !d.content) {
+      const e = (d && d.error) || {};
+      const msg = e.message || e.type || ('HTTP ' + r.status);
+      console.error('[scoreAds] Anthropic error status=' + r.status, JSON.stringify(e).slice(0, 300));
+      const err = new Error('scoreAds: ' + msg);
+      err.status = r.status;
+      err.rateLimited = r.status === 429 || r.status === 529 || /rate.?limit|overloaded|credit|billing|quota/i.test((e.type || '') + ' ' + (e.message || ''));
+      throw err;
+    }
     const txt = d.content?.[0]?.text || '';
     const mm = txt.match(/\[[\s\S]*\]/);
-    if (!mm) return ads;
+    if (!mm) { console.error('[scoreAds] no JSON array in response:', txt.slice(0, 200)); throw new Error('scoreAds: unparseable response'); }
     const scores = JSON.parse(mm[0]);
     const byI = {};
     for (const s of scores) if (typeof s.i === 'number') byI[s.i] = s;
     // head falls back to the model's title so image-only Google ads (no headline text) still
     // show a real name in the board/preview instead of "Live creative".
     return ads.map((a, i) => byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, fix: byI[i].fix, title: byI[i].title || null, head: a.head || byI[i].title || '' } : a);
-  } catch (e) { return ads; }
+  } catch (e) {
+    // A parse error or a thrown hard-failure: re-throw so scoreAdsCached reports it instead of
+    // silently returning unscored ads. (fetch/network errors also land here and propagate.)
+    console.error('[scoreAds] failed:', e.message);
+    throw e;
+  }
 }
 
 // --- Per-creative score cache (token optimization) ------------------------------------
@@ -210,7 +228,10 @@ function icpHash(icp) {
 // Returns { ads, scoredNew, reused }. If redis is unavailable it just scores everything (old path).
 export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0 } = {}) {
   if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0, pending: 0 };
-  if (!redis) { const scored = await scoreAds(ads, icp); return { ads: scored, scoredNew: ads.length, reused: 0, pending: 0 }; }
+  if (!redis) {
+    try { const scored = await scoreAds(ads, icp); const n = scored.filter(a => typeof a.score === 'number').length; return { ads: scored, scoredNew: n, reused: 0, pending: ads.length - n }; }
+    catch (e) { return { ads, scoredNew: 0, reused: 0, pending: ads.length, scoreError: e.message, rateLimited: !!e.rateLimited }; }
+  }
   const ih = icpHash(icp);
   // Namespace bumped to v2 on 2026-09-12 to invalidate scores made before the localization / blank /
   // brand-vs-demand-gen scoring rules, so existing boards re-score under the fixed prompt. Batched
@@ -234,22 +255,34 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // (the list is cached by then, so those calls skip the pull). limit 0 = no cap (score everything).
   const toScore = (limit > 0 && need.length > limit) ? need.slice(0, limit) : need;
   const freshBySig = {};
+  let scoreError = null, rateLimited = false;
   if (toScore.length) {
-    const scored = await scoreAds(toScore, icp);
-    const writes = [];
-    for (const a of scored) {
-      if (typeof a.score !== 'number') continue;
-      const o = { score: a.score, verdict: a.verdict, fix: a.fix, title: a.title || null };
-      freshBySig[creativeSig(a)] = o;
-      writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL }));
+    try {
+      const scored = await scoreAds(toScore, icp);
+      const writes = [];
+      for (const a of scored) {
+        if (typeof a.score !== 'number') continue;
+        const o = { score: a.score, verdict: a.verdict, fix: a.fix, title: a.title || null };
+        freshBySig[creativeSig(a)] = o;
+        writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL }));
+      }
+      try { await Promise.all(writes); } catch (e) { /* best-effort */ }
+    } catch (e) {
+      // The scoring call hard-failed (rate limit, no credit, overloaded). Do NOT count these as
+      // scored: leave them unscored so pending stays accurate and the client stops looping instead
+      // of hammering the API. Surface the real reason so it shows up in the API response + logs.
+      scoreError = e.message; rateLimited = !!e.rateLimited;
+      console.error('[scoreAdsCached] scoring batch failed:', e.message, 'rateLimited=' + rateLimited);
     }
-    try { await Promise.all(writes); } catch (e) { /* best-effort */ }
   }
   const out = ads.map(a => {
     const o = cachedBySig[creativeSig(a)] || freshBySig[creativeSig(a)];
     return o ? { ...a, score: o.score, verdict: o.verdict, fix: o.fix, title: o.title || a.title || null, head: a.head || o.title || '' } : a;
   });
-  return { ads: out, scoredNew: toScore.length, reused: Object.keys(cachedBySig).length, pending: need.length - toScore.length };
+  // scoredNew = creatives that ACTUALLY got a number this call (not what we tried). pending falls
+  // only by real scores, so a stuck batch reports pending honestly instead of a false success.
+  const scoredNew = Object.keys(freshBySig).length;
+  return { ads: out, scoredNew, reused: Object.keys(cachedBySig).length, pending: need.length - scoredNew, scoreError, rateLimited };
 }
 
 // --- LinkedIn (free, via Jina Reader) -------------------------------------------------

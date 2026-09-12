@@ -255,7 +255,7 @@ export default async function handler(req, res) {
       const scM = await scoreAdsCached(merged.ads, body.icp, _redis, { force: false, limit: 3 });
       merged.ads = scM.ads;
       if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(merged), { ex: CACHE_TTL }); } catch (e) {} }
-      return res.status(200).json({ ...merged, fresh: { checked: Date.now(), checkedAt: merged._checkedAt, stale: false, listCached: false, count: merged.ads.length, scoredNew: scM.scoredNew, reused: scM.reused, pending: scM.pending } });
+      return res.status(200).json({ ...merged, fresh: { checked: Date.now(), checkedAt: merged._checkedAt, stale: false, listCached: false, count: merged.ads.length, scoredNew: scM.scoredNew, reused: scM.reused, pending: scM.pending, scoreError: scM.scoreError || null, rateLimited: !!scM.rateLimited } });
     }
 
     let pull = null, listCached = false, stale = false, lastChecked = null;
@@ -310,7 +310,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ...pull,
       ads: sc.ads,
-      fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: pull.ads.length, scoredNew: sc.scoredNew, reused: sc.reused, pending: sc.pending },
+      fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: pull.ads.length, scoredNew: sc.scoredNew, reused: sc.reused, pending: sc.pending, scoreError: sc.scoreError || null, rateLimited: !!sc.rateLimited },
     });
   }
 
