@@ -113,6 +113,12 @@ export async function boardOgImageHandler(req, res) {
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
     res.status(200).send(buf);
   } catch (e) {
+    console.error('[og-image] render failed:', e && (e.stack || e.message || String(e)));
+    if (req.query && req.query.debug) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.status(500).send('og-image error: ' + (e && (e.stack || e.message || String(e))));
+      return;
+    }
     // Never break the card: fall back to the static branded hero.
     res.setHeader('Location', 'https://www.adroast.in/og-hero.png?v=1');
     res.status(302).end();
