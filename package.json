@@ -6,12 +6,8 @@
   "scripts": {
     "build": "node build.js"
   },
-  "engines": {
-    "node": "22.x"
-  },
   "dependencies": {
-    "@upstash/redis": "^1.28.0",
-    "@vercel/og": "^1.0.2"
+    "@upstash/redis": "^1.28.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.10",

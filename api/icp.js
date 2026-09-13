@@ -153,14 +153,6 @@ export default async function handler(req, res) {
     const { boardOgHandler } = await import('./_board-og.js');
     return boardOgHandler(req, res);
   }
-  /* Per-company link-preview IMAGE (og:image), rewritten to /api/icp?ogimg=1&slug=<slug>. Renders a
-     1200x630 PNG named for the company with its live board stats, so a shared board link shows a card
-     about THAT company. Dynamic import so @vercel/og (satori + resvg) never loads on the normal ICP /
-     scoring path, and folded in here to stay under the Hobby 12-function cap (same pattern as above). */
-  if (req.query && req.query.ogimg !== undefined) {
-    const { boardOgImageHandler } = await import('./_board-og-image.js');
-    return boardOgImageHandler(req, res);
-  }
   /* Image proxy (GET /api/icp?img=<encoded url>). Ad creatives live on
      tpc.googlesyndication.com (Google) and media.licdn.com (LinkedIn) — hosts that every
      ad-blocker (uBlock, Brave, AdBlock) blocks by name, so hotlinked creatives silently
