@@ -92,7 +92,13 @@ export async function boardOgHandler(req, res) {
     html = replaceTag(html, /(<meta property="og:url" content=")[^"]*(">)/, `$1${attr(boardUrl)}$2`);
     html = replaceTag(html, /(<meta name="twitter:title" content=")[^"]*(">)/, `$1${attr(title)}$2`);
     html = replaceTag(html, /(<meta name="twitter:description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
-    // og:image left as the branded AdRoast card for now (per-company image is a follow-up).
+
+    // Per-company og:image: a 1200x630 PNG rendered for THIS company (name + live board stats),
+    // served by /api/icp?ogimg=1. Falls back to the static hero on any render error (see helper).
+    const imgUrl = 'https://www.adroast.in/api/icp?ogimg=1&slug=' + encodeURIComponent(slug);
+    html = replaceTag(html, /(<meta property="og:image" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
+    html = replaceTag(html, /(<meta name="twitter:image" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
+    html = replaceTag(html, /(<meta property="og:image:alt" content=")[^"]*(">)/, `$1${attr('Where ' + company + "'s ads lose the buyer")}$2`);
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     // Let the crawler and CDN cache the personalized shell briefly; stats refresh within the hour.
