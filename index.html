@@ -312,43 +312,73 @@
     };
 
     const scoreColor = s => s <= 3 ? 'text-red-600 bg-red-50 border-red-200' : s <= 6 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-green-600 bg-green-50 border-green-200';
+    /* Landing "watch it work" demo, rebuilt to mirror the real board dashboard: metric chips, the
+       ranked ad spectrum, and the worst ad with its diagnosis CHIPS, all appearing in sequence so it
+       reads as scoring live. Self-contained (local color helpers) so it never depends on board scope. */
     const RoastPreview = () => {
-      const items = DEMO_ROAST.issues.slice(0, 3);
+      const ADS = [
+        { s: 3, t: 'The #1 platform for cloud security', tags: ['Generic hook', 'No proof'] },
+        { s: 4, t: 'AI-powered CNAPP for teams', tags: ['Jargon', 'No differentiator'] },
+        { s: 5, t: 'Book a demo today', tags: ['Weak CTA'] },
+        { s: 6, t: 'Trusted by security teams', tags: ['Vague offer'] },
+        { s: 7, t: 'Cut alert noise 80%', tags: ['Sharp hook'] },
+        { s: 8, t: 'See it on your stack', tags: ['Clear proof'] },
+      ];
+      const sorted = [...ADS].sort((a, b) => a.s - b.s);
+      const worst = sorted[0];
+      const toFix = ADS.filter(a => a.s <= 4).length;
+      const avg = ADS.reduce((x, a) => x + a.s, 0) / ADS.length;
+      const offPct = Math.round((10 - avg) * 10);
+      const hex = (x) => x <= 3 ? '#dc2626' : x <= 6 ? '#d97706' : '#0a66c2';
+      const sevOf = (x) => x <= 4 ? { label: 'Critical', c: '#dc2626', bg: '#fef2f2', bd: '#fecaca' } : x <= 6 ? { label: 'Needs work', c: '#b45309', bg: '#fffbeb', bd: '#fde68a' } : { label: 'Solid', c: '#0a66c2', bg: '#eff6ff', bd: '#bfdbfe' };
+      const sev = sevOf(worst.s);
       const [step, setStep] = useState(0);
       const [cycle, setCycle] = useState(0);
       useEffect(() => {
         setStep(0);
         const ts = [];
-        ts.push(setTimeout(() => setStep(1), 500));
-        ts.push(setTimeout(() => setStep(2), 1700));
-        ts.push(setTimeout(() => setStep(3), 2900));
-        ts.push(setTimeout(() => setStep(4), 4100));
-        ts.push(setTimeout(() => setCycle(c => c + 1), 7400));
+        ts.push(setTimeout(() => setStep(1), 450));
+        ts.push(setTimeout(() => setStep(2), 1400));
+        ts.push(setTimeout(() => setStep(3), 2600));
+        ts.push(setTimeout(() => setCycle(c => c + 1), 8200));
         return () => ts.forEach(clearTimeout);
       }, [cycle]);
+      const metric = (num, unit, cap, color, delay) => (
+        <div style={{ background: '#fff', border: '1px solid ' + color + '33', borderRadius: 14, padding: '10px 12px', opacity: step >= 1 ? 1 : 0, transform: step >= 1 ? 'none' : 'translateY(8px)', transition: 'all .5s cubic-bezier(.22,1,.36,1) ' + delay + 's' }}>
+          <div className="flex items-baseline gap-1"><span style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{step >= 1 ? num : '·'}</span><span style={{ fontSize: 11, fontWeight: 700, color: '#334155' }}>{unit}</span></div>
+          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>{cap}</div>
+        </div>
+      );
       return (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xl p-6 max-w-md w-full mx-auto text-left floaty">
-          <div className="flex items-center gap-2 text-xs text-gray-500 mb-4"><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span><span className="font-semibold text-gray-800">LinkedIn ad</span> · roasting live</div>
-          <div className="flex items-center gap-4 mb-5">
-            <div className="flex-shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center border-2 border-red-200 bg-red-50">
-              <div className="text-2xl font-bold text-red-600 leading-none">{step >= 1 ? DEMO_ROAST.overall_score : '·'}</div>
-              <div className="text-[9px] text-red-400">/ 10</div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="h-2 rounded-full bg-gray-100 overflow-hidden"><div className="gauge-bar" style={{ width: step >= 1 ? '40%' : '0%', background: 'linear-gradient(90deg,#dc2626,#f59e0b)' }} /></div>
-              <p className="text-xs text-gray-400 mt-2 truncate">&ldquo;The #1 platform for cloud security&rdquo;</p>
+        <div className="rounded-2xl border border-gray-200 shadow-xl p-5 max-w-md w-full mx-auto text-left floaty" style={{ background: '#f8fafc' }}>
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-4"><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span><span className="font-semibold text-gray-800">Your live ads</span> · scoring against your buyer</div>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {metric(toFix, 'to fix', 'wrong buyer', '#dc2626', 0)}
+            {metric(offPct + '%', 'off-target', 'of spend', '#b45309', .08)}
+            {metric(avg.toFixed(1), '/10', 'avg fit', '#0a66c2', .16)}
+          </div>
+          <div className="rounded-xl bg-white border border-gray-100 p-3 mb-3">
+            <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94a3b8', marginBottom: 12 }}>Every ad, ranked</div>
+            <div className="relative" style={{ height: 42 }}>
+              <div className="absolute" style={{ left: 0, right: 0, top: 18, height: 5, borderRadius: 99, background: 'linear-gradient(90deg,#dc2626,#d97706 48%,#0a66c2)' }} />
+              {sorted.map((a, k) => { const x = 6 + (k / (sorted.length - 1)) * 88; const on = k === 0; return (
+                <span key={k} className="absolute rounded-full" style={{ left: x + '%', top: 20, width: on ? 16 : 12, height: on ? 16 : 12, transform: 'translate(-50%,-50%)', background: hex(a.s), border: '2px solid #fff', boxShadow: '0 1px 4px rgba(11,15,26,.25)', opacity: step >= 2 ? 1 : 0, transition: 'opacity .4s ease ' + (k * 0.07) + 's' }} />
+              ); })}
+              <span className="absolute" style={{ left: 0, top: 32, fontSize: 8.5, color: '#dc2626', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Wrong buyer</span>
+              <span className="absolute" style={{ right: 0, top: 32, fontSize: 8.5, color: '#0a66c2', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>On target</span>
             </div>
           </div>
-          <div className="space-y-2" style={{ minHeight: '250px' }}>
-            {items.map((it, i) => (
-              <div key={i} style={{ opacity: step >= i + 2 ? 1 : 0, transform: step >= i + 2 ? 'none' : 'translateX(-8px)', transition: 'all .5s cubic-bezier(.22,1,.36,1)' }} className="flex items-start gap-2.5 p-3 rounded-lg bg-gray-50">
-                <span className={`flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-xs font-bold border ${scoreColor(it.score)}`}>{it.score}</span>
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-gray-800 leading-snug">{it.title}</div>
-                  <div className="text-xs text-gray-500 mt-1" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.5 }}>{it.explanation}</div>
-                </div>
-              </div>
-            ))}
+          <div className="rounded-xl bg-white border p-3" style={{ borderColor: '#bcd8f2', opacity: step >= 3 ? 1 : 0, transform: step >= 3 ? 'none' : 'translateY(8px)', transition: 'all .5s cubic-bezier(.22,1,.36,1)' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center font-bold uppercase" style={{ fontSize: 9, letterSpacing: '0.05em', color: '#fff', background: '#dc2626', padding: '2px 7px', borderRadius: 5 }}>Start here</span>
+              <span className="inline-flex items-center gap-1 font-bold rounded-full" style={{ fontSize: 9.5, padding: '2px 8px', color: sev.c, background: sev.bg, border: '1px solid ' + sev.bd }}><span style={{ width: 5, height: 5, borderRadius: 99, background: sev.c }} />{sev.label}</span>
+              <span className="ml-auto font-bold text-gray-500" style={{ fontSize: 11 }}>Buyer fit {worst.s}/10</span>
+            </div>
+            <div className="font-semibold text-gray-800 mb-2" style={{ fontSize: 13, lineHeight: 1.3 }}>{worst.t}</div>
+            <div className="rounded-lg" style={{ background: sev.bg, border: '1px solid ' + sev.bd, borderLeft: '3px solid ' + sev.c, padding: '8px 10px' }}>
+              <div className="flex items-center gap-1.5" style={{ color: sev.c, marginBottom: 6 }}><Icon name="alertCircle" className="w-3 h-3" /><span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Where it loses the buyer</span></div>
+              <div className="flex flex-wrap gap-1">{worst.tags.map((t, ti) => <span key={ti} className="font-bold rounded" style={{ fontSize: 9.5, padding: '1px 6px', color: sev.c, background: '#fff', border: '1px solid ' + sev.bd }}>{t}</span>)}</div>
+            </div>
           </div>
         </div>
       );
