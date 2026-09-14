@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives } from './_adlibrary.js';
 
 // The Ad Library fetch renders a page via Jina and runs a quick Haiku score, so allow headroom.
 export const config = { maxDuration: 60 };
@@ -272,7 +272,7 @@ export default async function handler(req, res) {
         _checkedAt: Date.now(),
       };
       const scM = await scoreAdsCached(merged.ads, body.icp, _redis, { force: false, limit: 3 });
-      merged.ads = scM.ads;
+      merged.ads = dropJunkCreatives(scM.ads);
       if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(merged), { ex: CACHE_TTL }); } catch (e) {} }
       return res.status(200).json({ ...merged, fresh: { checked: Date.now(), checkedAt: merged._checkedAt, stale: false, listCached: false, count: merged.ads.length, scoredNew: scM.scoredNew, reused: scM.reused, pending: scM.pending, scoreError: scM.scoreError || null, rateLimited: !!scM.rateLimited } });
     }
@@ -285,11 +285,12 @@ export default async function handler(req, res) {
     // reuses them for free.
     if (body.only === 'google') {
       const gg = await fetchGoogleAds({ domain: body.domain, company: body.company, limit: 12 }).catch(() => ({ ok: false, ads: [] }));
-      const gads = (gg.ads || []);
+      const gads = dropJunkCreatives(gg.ads || []);
       if (!gads.length) return res.status(200).json({ ok: false, ads: [], _fast: true });
       if (!wantScore) return res.status(200).json({ ok: true, ads: gads, sources: { google: gads.length }, notes: { google: 'ok' }, _fast: true });
       const scG = await scoreAdsCached(gads, body.icp, _redis, { force: false, limit: 6 });
-      return res.status(200).json({ ok: true, ads: scG.ads, sources: { google: gads.length }, notes: { google: 'ok' }, _fast: true, fresh: { checked: Date.now(), checkedAt: null, stale: false, listCached: false, count: gads.length, scoredNew: scG.scoredNew, reused: scG.reused, pending: scG.pending, scoreError: scG.scoreError || null, rateLimited: !!scG.rateLimited } });
+      const scGads = dropJunkCreatives(scG.ads);
+      return res.status(200).json({ ok: true, ads: scGads, sources: { google: scGads.length }, notes: { google: 'ok' }, _fast: true, fresh: { checked: Date.now(), checkedAt: null, stale: false, listCached: false, count: scGads.length, scoredNew: scG.scoredNew, reused: scG.reused, pending: scG.pending, scoreError: scG.scoreError || null, rateLimited: !!scG.rateLimited } });
     }
 
     let pull = null, listCached = false, stale = false, lastChecked = null;
@@ -328,6 +329,10 @@ export default async function handler(req, res) {
       }
     }
 
+    // Strip Google "collapsed ad" placeholders from whatever we're about to show (fresh OR a cached
+    // copy from before this filter existed), so they never count toward "ads to fix" / "badly off".
+    if (pull && Array.isArray(pull.ads)) pull.ads = dropJunkCreatives(pull.ads);
+
     // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.
     // ALWAYS incremental (force:false), even on Refresh. Refresh re-pulls the LIST (so added ads get
     // scored and paused ones drop off), but it must NOT re-score every creative from scratch: with the
@@ -341,10 +346,11 @@ export default async function handler(req, res) {
     // Fewer per call when this call also did the pull (~30s of the budget); more when the list was
     // served from cache (no pull, so almost the whole 60s is free for scoring).
     const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: false, limit: listCached ? 8 : 3 });
+    const scAds = dropJunkCreatives(sc.ads); // catch any blank only revealed by its scored verdict
     return res.status(200).json({
       ...pull,
-      ads: sc.ads,
-      fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: pull.ads.length, scoredNew: sc.scoredNew, reused: sc.reused, pending: sc.pending, scoreError: sc.scoreError || null, rateLimited: !!sc.rateLimited },
+      ads: scAds,
+      fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: scAds.length, scoredNew: sc.scoredNew, reused: sc.reused, pending: sc.pending, scoreError: sc.scoreError || null, rateLimited: !!sc.rateLimited },
     });
   }
 

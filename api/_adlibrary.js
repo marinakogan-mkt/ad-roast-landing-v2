@@ -448,6 +448,25 @@ export async function fetchLinkedInAds({ company, domain = '', limit = 12 } = {}
 // (tpc.googlesyndication.com/archive/simgad/...). Region 2764 = "anywhere". We keep only
 // image creatives so every Google card shows a real creative (display/HTML ads carry no
 // static image and no separate copy, so they'd be empty cards). Returns UNSCORED cards.
+// A Google "collapsed ad" PLACEHOLDER is a Transparency Center UI artifact, NOT a real creative:
+// a reused static simgad asset, tiny, black text on white reading "Collapsed ad on mobile /
+// Collapsed ad on desktop / Expanded ad / more_vert". Google occasionally returns it as if it were
+// an ad. It must never reach the board (we'd tell an advertiser their worst ad is an empty slot) or
+// the counts. Detect it three ways so BOTH fresh pulls and already-cached/scored boards are covered:
+// a known placeholder simgad id, a tiny render size, or a scorer verdict that flagged it blank.
+export const GOOGLE_PLACEHOLDER_SIMGAD = new Set(['6364307266515146391']);
+export function isJunkCreative(a) {
+  if (!a) return true;
+  const id = (String(a.img || '').match(/simgad\/(\d+)/) || [])[1];
+  if (id && GOOGLE_PLACEHOLDER_SIMGAD.has(id)) return true;                 // the reused placeholder asset
+  if (a._w && a._h && a._w < 200 && a._h < 100) return true;               // too small to be a real ad creative
+  const t = (String(a.title || a.head || '') + ' ' + String(a.verdict || '')).toLowerCase();
+  if (/collapsed ad on (mobile|desktop)|expanded ad|more_vert/.test(t)) return true;
+  if (/\b(blank|empty|collapsed)\b[\s\S]*\b(ad|unit|slot|creative)\b/.test(t) || t.indexOf('empty ad slot') !== -1 || t.indexOf('nothing to show') !== -1) return true;
+  return false;
+}
+export const dropJunkCreatives = (ads) => (Array.isArray(ads) ? ads.filter(a => !isJunkCreative(a)) : ads);
+
 export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
   const dom = (domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
   if (!dom) return { ok: false, reason: 'no_domain', ads: [] };
@@ -485,6 +504,11 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
       if (m) img = m[0];
     }
     if (!img || seen.has(img)) continue;
+    // Drop Google's "collapsed ad" placeholder at the source (by known id or tiny render size) so it
+    // never gets scored (wasted vision call) or shown as an empty slot.
+    const _w = parseFloat((htmlImg.match(/width="?([\d.]+)/) || [])[1] || 0);
+    const _h = parseFloat((htmlImg.match(/height="?([\d.]+)/) || [])[1] || 0);
+    if (isJunkCreative({ img, _w, _h })) continue;
     seen.add(img);
     const AR = c['1'], CR = c['2'];
     ads.push({
