@@ -1414,7 +1414,21 @@
         const arr = (railCos || []).slice();
         const nk = c => String((c && (c.name || c.domain)) || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         if (sortMode === 'alpha') arr.sort((a, b) => String(a.name || a.domain).localeCompare(String(b.name || b.domain)));
-        else if (sortMode === 'gravity') arr.sort((a, b) => { const sa = coScores[nk(a)], sb = coScores[nk(b)]; return ((typeof sa === 'number') ? sa : 99) - ((typeof sb === 'number') ? sb : 99); }); // worst (lowest score) first, unscored last
+        else if (sortMode === 'gravity') arr.sort((a, b) => {
+          // Needs help first = worst CURRENT board first: most off-target, then lowest avg fit (from the
+          // live ads:ogstats snapshot on each company). Boards with no current score fall to the bottom.
+          // Falls back to the old roasted-ad average only when a company has no board snapshot yet.
+          const ra = (typeof a.offPct === 'number') ? a.offPct : null;
+          const rb = (typeof b.offPct === 'number') ? b.offPct : null;
+          if (ra !== null || rb !== null) {
+            if (ra === null) return 1; if (rb === null) return -1;
+            if (rb !== ra) return rb - ra;                                   // more off-target first
+            const fa = (typeof a.avg === 'number') ? a.avg : 99, fb = (typeof b.avg === 'number') ? b.avg : 99;
+            return fa - fb;                                                  // then lowest avg fit first
+          }
+          const sa = coScores[nk(a)], sb = coScores[nk(b)];
+          return ((typeof sa === 'number') ? sa : 99) - ((typeof sb === 'number') ? sb : 99);
+        });
         else arr.sort((a, b) => (b.ts || 0) - (a.ts || 0)); // recent
         return arr;
       }, [railCos, sortMode, coScores]);

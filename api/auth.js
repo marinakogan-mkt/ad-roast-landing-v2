@@ -352,11 +352,26 @@ async function handleMyCompanies(req, res) {
       } catch (e) {}
     }));
     const companies = Object.values(bySite).sort((a, b) => (b.ts || 0) - (a.ts || 0));
-    // Cache the resolved roster so subsequent calls skip the report fetches.
+    // Cache the resolved roster so subsequent calls skip the report fetches. (Cache the BASE roster
+    // only, before attaching risk below, so the live risk score is never served stale.)
     try {
       const hset = {};
-      for (const c of companies) hset[c.domain] = JSON.stringify(c);
+      for (const c of companies) hset[c.domain] = JSON.stringify({ domain: c.domain, name: c.name, site: c.site, ts: c.ts });
       if (Object.keys(hset).length) await redis.hset(`roast:cos:${email}`, hset);
+    } catch (e) {}
+    // Attach each company's CURRENT board risk from the ads:ogstats snapshot (written on every board
+    // render with the latest platform-aware scoring), so the sidebar "Needs help first" ranks by the
+    // real current risk, not old roasted-ad averages.
+    try {
+      const domKeys = companies.map(c => 'ads:ogstats:' + String(c.domain).replace(/[^a-z0-9.]/g, ''));
+      if (domKeys.length) {
+        const vals = await redis.mget(...domKeys);
+        companies.forEach((c, i) => {
+          const v = vals && vals[i];
+          const og = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null;
+          if (og && typeof og.offPct === 'number') { c.avg = og.avg; c.off = og.off; c.offPct = og.offPct; c.count = og.count; }
+        });
+      }
     } catch (e) {}
     return res.status(200).json({ success: true, companies });
   } catch (e) {
