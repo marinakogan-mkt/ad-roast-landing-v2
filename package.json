@@ -8,8 +8,7 @@
   },
   "dependencies": {
     "@resvg/resvg-wasm": "^2.6.2",
-    "@upstash/redis": "^1.28.0",
-    "satori": "^0.33.4"
+    "@upstash/redis": "^1.28.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.10",

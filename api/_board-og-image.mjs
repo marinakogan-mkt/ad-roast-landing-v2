@@ -3,18 +3,17 @@
 // /api/icp?ogimg=1&slug=<slug>, which lands here. We render a branded card named for the company with
 // its live board stats, so the preview is about THAT company, not the generic AdRoast hero.
 //
-// WHY satori + resvg-wasm (not @vercel/og): @vercel/og 1.x is ESM-only and its Node build throws
-// "Dynamic require of fs" (harfbuzz) in a "type":"module" project, and its edge build would need a
-// separate function file = a 12th Vercel Function over the Hobby cap. satori (vdom -> SVG) and
-// @resvg/resvg-wasm (SVG -> PNG) are both ESM-clean and run on the Node runtime, so this stays folded
-// into icp.js. Imported dynamically from icp.js so none of it loads on the normal ICP/scoring path.
-// The font + wasm ship in api/_assets and are referenced via new URL(import.meta.url) so Vercel's
-// bundler traces them into the function. Any failure redirects to the static hero, so the card can
-// never break.
+// WHY hand-built SVG + resvg-wasm (not @vercel/og, not satori): both @vercel/og and satori pull in
+// harfbuzzjs, whose hb.wasm cannot be bundled into a Vercel Node function (nft misses it and the pnpm
+// symlink layout defeats includeFiles), so both throw at runtime here. @resvg/resvg-wasm is a single
+// self-contained wasm (no harfbuzz) that does its own text layout, and it bundles cleanly from
+// api/_assets. So we compose the card as an SVG string ourselves (fixed layout) and let resvg
+// rasterize it with the Inter TTFs we ship. .mjs so it loads as ESM (resvg-wasm is ESM-only). Imported
+// dynamically from icp.js so none of it loads on the normal ICP/scoring path. Any failure redirects to
+// the static hero, so the card can never break.
 import fs from 'fs';
 import path from 'path';
 import { Redis } from '@upstash/redis';
-import satori from 'satori';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
 
 let _redis = null;
@@ -24,9 +23,9 @@ try {
   }
 } catch (e) { _redis = null; }
 
-// Locate a bundled asset. We read via process.cwd() (like _board-og.js reads index.html) rather than
-// new URL(import.meta.url): Vercel bundles the function to CommonJS, where import.meta is a syntax
-// error. vercel.json's functions.includeFiles ships api/_assets/** into the function so it's on disk.
+// Locate a bundled asset. Read via process.cwd() (like _board-og.js reads index.html); Vercel bundles
+// the function to CommonJS where new URL(import.meta.url) is a syntax error, and vercel.json's
+// functions.includeFiles ships api/_assets/** into the function so these are on disk.
 function assetPath(name) {
   for (const base of [path.join(process.cwd(), 'api', '_assets'), '/var/task/api/_assets']) {
     try { const p = path.join(base, name); if (fs.existsSync(p)) return p; } catch (e) {}
@@ -34,16 +33,10 @@ function assetPath(name) {
   return path.join(process.cwd(), 'api', '_assets', name); // let readFileSync throw a clear ENOENT
 }
 
-// Read the bundled assets once per warm process.
 let _fonts = null;
 function loadFonts() {
   if (_fonts) return _fonts;
-  const reg = fs.readFileSync(assetPath('inter-regular.woff'));
-  const bold = fs.readFileSync(assetPath('inter-bold.woff'));
-  _fonts = [
-    { name: 'Inter', data: reg, weight: 400, style: 'normal' },
-    { name: 'Inter', data: bold, weight: 700, style: 'normal' },
-  ];
+  _fonts = [fs.readFileSync(assetPath('inter-regular.ttf')), fs.readFileSync(assetPath('inter-bold.ttf'))];
   return _fonts;
 }
 
@@ -53,7 +46,6 @@ function ensureWasm() {
   if (!_wasmReady) {
     const bytes = fs.readFileSync(assetPath('resvg.wasm'));
     _wasmReady = initWasm(bytes).catch((e) => {
-      // "Already initialized" is fine (another path won the race); anything else re-throws on use.
       if (!/already/i.test(String(e && e.message))) { _wasmReady = null; throw e; }
     });
   }
@@ -80,55 +72,58 @@ function boardStats(ads) {
   return { count: scored.length, avg: Math.round(avg * 10) / 10, toFix };
 }
 
-// Minimal hyperscript so we build the satori vdom without JSX (functions ship as plain .js here).
-const h = (type, props, ...children) => ({ type, props: { ...(props || {}), children: children.length === 1 ? children[0] : children }, key: null });
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const INK = '#141426';
 const INK_2 = '#1f1f3a';
 const ACCENT = '#3b8ff0';
 const WHITE = '#ffffff';
 const MUTE = '#9a9ac2';
+const WARN = '#ff8a78';
 
-function chip(label, value, tone) {
-  return h('div', { style: {
-    display: 'flex', flexDirection: 'column', gap: '4px',
-    background: INK_2, borderRadius: '16px', padding: '20px 28px',
-    border: '1px solid ' + (tone === 'warn' ? 'rgba(255,138,120,0.35)' : 'rgba(59,143,240,0.30)'),
-  } },
-    h('div', { style: { fontSize: '44px', fontWeight: 700, color: tone === 'warn' ? '#ff8a78' : WHITE, display: 'flex' } }, value),
-    h('div', { style: { fontSize: '22px', color: MUTE, display: 'flex' } }, label)
+// One stat chip: rounded panel with a big value and a small label. Fixed width, laid out left to right.
+function chipSvg(x, y, w, value, label, tone) {
+  const stroke = tone === 'warn' ? 'rgba(255,138,120,0.35)' : 'rgba(59,143,240,0.30)';
+  const vColor = tone === 'warn' ? WARN : WHITE;
+  return (
+    `<rect x="${x}" y="${y}" width="${w}" height="104" rx="16" fill="${INK_2}" stroke="${stroke}" stroke-width="1"/>` +
+    `<text x="${x + 28}" y="${y + 54}" font-family="Inter" font-size="44" font-weight="700" fill="${vColor}">${esc(value)}</text>` +
+    `<text x="${x + 28}" y="${y + 86}" font-family="Inter" font-size="22" font-weight="400" fill="${MUTE}">${esc(label)}</text>`
   );
 }
 
-function card(company, stats) {
-  const bottom = stats
-    ? h('div', { style: { display: 'flex', gap: '20px' } },
-        chip('live ads', String(stats.count)),
-        chip('avg fit', stats.avg + '/10'),
-        chip('to fix', String(stats.toFix), 'warn')
-      )
-    : h('div', { style: { display: 'flex', fontSize: '26px', color: MUTE } },
-        'Every live ad, scored against the buyer. Free, no card.');
+function buildSvg(company, stats) {
+  // Company name font-size scales down for long names so it never runs off the card.
+  const n = company.length;
+  const size = n <= 9 ? 104 : n <= 13 ? 88 : n <= 18 ? 72 : n <= 26 ? 56 : 44;
+  const compBaseline = 340;
 
-  return h('div', { style: {
-    width: '1200px', height: '630px', display: 'flex', flexDirection: 'row',
-    background: INK, fontFamily: 'Inter',
-  } },
-    h('div', { style: { width: '14px', height: '100%', background: ACCENT, display: 'flex' } }),
-    h('div', { style: {
-      display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-      padding: '68px 76px', flex: 1,
-    } },
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: '14px', fontSize: '24px', letterSpacing: '2px', color: MUTE, fontWeight: 700 } },
-        h('div', { style: { display: 'flex', color: ACCENT } }, 'ADROAST'),
-        h('div', { style: { display: 'flex' } }, '·  LIVE AD TEARDOWN')
-      ),
-      h('div', { style: { display: 'flex', flexDirection: 'column', gap: '12px' } },
-        h('div', { style: { display: 'flex', fontSize: '96px', fontWeight: 700, color: ACCENT, lineHeight: 1 } }, company),
-        h('div', { style: { display: 'flex', fontSize: '52px', fontWeight: 700, color: WHITE, lineHeight: 1.15 } }, 'Where their ads lose the buyer')
-      ),
-      bottom
-    )
+  let bottom;
+  if (stats) {
+    const y = 470;
+    // widen each chip enough for its value; simple fixed widths read fine for these ranges.
+    const w1 = 210, w2 = 250, w3 = 190, gap = 20;
+    bottom =
+      chipSvg(76, y, w1, String(stats.count), 'live ads') +
+      chipSvg(76 + w1 + gap, y, w2, stats.avg + '/10', 'avg fit') +
+      chipSvg(76 + w1 + gap + w2 + gap, y, w3, String(stats.toFix), 'to fix', 'warn');
+  } else {
+    bottom = `<text x="76" y="512" font-family="Inter" font-size="26" font-weight="400" fill="${MUTE}">Every live ad, scored against the buyer. Free, no card.</text>`;
+  }
+
+  return (
+    `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="1200" height="630" fill="${INK}"/>` +
+    `<rect x="0" y="0" width="14" height="630" fill="${ACCENT}"/>` +
+    // eyebrow
+    `<text x="76" y="112" font-family="Inter" font-size="24" font-weight="700" letter-spacing="2" fill="${ACCENT}">ADROAST` +
+    `<tspan fill="${MUTE}">   ·   LIVE AD TEARDOWN</tspan></text>` +
+    // company name
+    `<text x="76" y="${compBaseline}" font-family="Inter" font-size="${size}" font-weight="700" fill="${ACCENT}">${esc(company)}</text>` +
+    // headline
+    `<text x="76" y="418" font-family="Inter" font-size="52" font-weight="700" fill="${WHITE}">Where their ads lose the buyer</text>` +
+    bottom +
+    `</svg>`
   );
 }
 
@@ -149,11 +144,13 @@ export async function boardOgImageHandler(req, res) {
     }
 
     await ensureWasm();
-    const svg = await satori(card(company, stats), { width: 1200, height: 630, fonts: loadFonts() });
-    const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } }).render().asPng();
+    const svg = buildSvg(company, stats);
+    const png = new Resvg(svg, {
+      fitTo: { mode: 'width', value: 1200 },
+      font: { fontBuffers: loadFonts(), defaultFontFamily: 'Inter', loadSystemFonts: false },
+    }).render().asPng();
 
     res.setHeader('Content-Type', 'image/png');
-    // Cache on the CDN and in the crawler; stats refresh within the hour.
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
     res.status(200).send(Buffer.from(png));
   } catch (e) {
@@ -163,7 +160,6 @@ export async function boardOgImageHandler(req, res) {
       res.status(500).send('og-image error: ' + (e && (e.stack || e.message || String(e))));
       return;
     }
-    // Never break the card: fall back to the static branded hero.
     res.setHeader('Location', 'https://www.adroast.in/og-hero.png?v=1');
     res.status(302).end();
   }
