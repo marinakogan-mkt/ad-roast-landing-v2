@@ -287,9 +287,12 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // Namespace bumped over time to invalidate scores made under an older scorer prompt, so a board
   // re-scores under the current rules on its NEXT open. This is LAZY per-board (each open re-scores
   // only that board, batched under the 60s limit): safe as long as boards are opened gradually, NOT a
-  // global forced re-score (that once tripped a rate limit). v4 (2026-09-14): diagnosis-not-fix verdict
+  // global forced re-score (that once tripped a rate limit). v6 (2026-09-14): platform-aware lens
+  // (Google search = high intent, judged on query match / offer / CTA, never on proof or visual
+  // hook; LinkedIn and Meta stay cold-audience). v5 (2026-09-14): one-line diagnosis + chips.
+  // v4 (2026-09-14): diagnosis-not-fix verdict
   // (what is off + WHY it loses the buyer, no fix). v3 (2026-09-12): localization / blank / brand rules.
-  const keyOf = (a) => 'adscore:v5:' + ih + ':' + creativeSig(a);
+  const keyOf = (a) => 'adscore:v6:' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
