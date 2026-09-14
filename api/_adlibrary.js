@@ -279,10 +279,12 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
     catch (e) { return { ads, scoredNew: 0, reused: 0, pending: ads.length, scoreError: e.message, rateLimited: !!e.rateLimited }; }
   }
   const ih = icpHash(icp);
-  // Namespace bumped to v2 on 2026-09-12 to invalidate scores made before the localization / blank /
-  // brand-vs-demand-gen scoring rules, so existing boards re-score under the fixed prompt. Batched
-  // scoring keeps that re-score under the 60s limit; it is a one-time cost per board on next load.
-  const keyOf = (a) => 'adscore:v3:' + ih + ':' + creativeSig(a);
+  // Namespace bumped over time to invalidate scores made under an older scorer prompt, so a board
+  // re-scores under the current rules on its NEXT open. This is LAZY per-board (each open re-scores
+  // only that board, batched under the 60s limit): safe as long as boards are opened gradually, NOT a
+  // global forced re-score (that once tripped a rate limit). v4 (2026-09-14): diagnosis-not-fix verdict
+  // (what is off + WHY it loses the buyer, no fix). v3 (2026-09-12): localization / blank / brand rules.
+  const keyOf = (a) => 'adscore:v4:' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
