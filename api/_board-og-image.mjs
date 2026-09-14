@@ -165,54 +165,70 @@ function monoColor(seed) {
   return hues[h % hues.length];
 }
 
+// One big metric inside a soft tinted panel (board-card language): huge value + short unit, optional
+// progress bar. Minimal words so it stays legible at a small feed thumbnail; the tint carries urgency.
+function metricPanel(x, y, w, h, color, value, unit, barPct) {
+  const b = [];
+  b.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="${color}14" stroke="${color}30" stroke-width="1.5"/>`);
+  const vy = y + (typeof barPct === 'number' ? 76 : Math.round(h * 0.5) + 28);
+  b.push(`<text x="${x + 28}" y="${vy}" font-family="Inter" font-size="84" font-weight="700" fill="${color}">${esc(value)}<tspan font-size="40" font-weight="700" fill="${INK}" dx="16">${esc(unit)}</tspan></text>`);
+  if (typeof barPct === 'number') {
+    const bx = x + 28, by = vy + 26, bw = w - 56;
+    b.push(`<rect x="${bx}" y="${by}" width="${bw}" height="12" rx="6" fill="#ffffff" stroke="${color}22" stroke-width="1"/>`);
+    b.push(`<rect x="${bx}" y="${by}" width="${Math.round(bw * Math.max(0, Math.min(100, barPct)) / 100)}" height="12" rx="6" fill="${color}"/>`);
+  }
+  return b.join('');
+}
+
 function buildSvg(opts) {
   const { company, domain, stats, adLogo, coLogo, creative } = opts;
   const parts = [];
   parts.push(`<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`);
   parts.push(`<defs>`);
-  parts.push(`<clipPath id="clogo"><rect x="76" y="108" width="64" height="64" rx="14"/></clipPath>`);
-  parts.push(`<clipPath id="ccrea"><rect x="740" y="130" width="384" height="370" rx="22"/></clipPath>`);
+  parts.push(`<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3f8fe"/><stop offset="1" stop-color="#e7eff9"/></linearGradient>`);
+  parts.push(`<clipPath id="clogo"><rect x="84" y="146" width="68" height="68" rx="15"/></clipPath>`);
+  parts.push(`<clipPath id="ccrea"><rect x="700" y="146" width="420" height="396" rx="20"/></clipPath>`);
   parts.push(`</defs>`);
 
-  // Ground + brand rail.
-  parts.push(`<rect width="1200" height="630" fill="#ffffff"/>`);
-  parts.push(`<rect x="0" y="0" width="14" height="630" fill="${BLUE}"/>`);
+  // Soft branded ground + a white "report card" inset (with a faint drop shadow) so it feels designed.
+  parts.push(`<rect width="1200" height="630" fill="url(#bg)"/>`);
+  parts.push(`<rect x="40" y="46" width="1120" height="556" rx="30" fill="#0f1b2d" opacity="0.06"/>`);
+  parts.push(`<rect x="40" y="38" width="1120" height="556" rx="30" fill="#ffffff" stroke="#e6ebf2" stroke-width="1.5"/>`);
 
   // Brand row: AdRoast logo + wordmark.
-  if (adLogo) parts.push(`<image x="76" y="42" width="46" height="46" xlink:href="${adLogo}" href="${adLogo}"/>`);
-  parts.push(`<text x="${adLogo ? 132 : 76}" y="77" font-family="Inter" font-size="29" font-weight="700" fill="${BLUE}">AdRoast</text>`);
+  if (adLogo) parts.push(`<image x="84" y="70" width="42" height="42" xlink:href="${adLogo}" href="${adLogo}"/>`);
+  parts.push(`<text x="${adLogo ? 136 : 84}" y="100" font-family="Inter" font-size="27" font-weight="700" fill="${BLUE}">AdRoast</text>`);
 
   // Company row: their logo (or monogram) + name.
   if (coLogo) {
-    parts.push(`<rect x="76" y="108" width="64" height="64" rx="14" fill="#ffffff" stroke="${LINE}" stroke-width="1.5"/>`);
-    parts.push(`<image x="76" y="108" width="64" height="64" clip-path="url(#clogo)" preserveAspectRatio="xMidYMid meet" xlink:href="${coLogo}" href="${coLogo}"/>`);
+    parts.push(`<rect x="84" y="146" width="68" height="68" rx="15" fill="#ffffff" stroke="${LINE}" stroke-width="1.5"/>`);
+    parts.push(`<image x="84" y="146" width="68" height="68" clip-path="url(#clogo)" preserveAspectRatio="xMidYMid meet" xlink:href="${coLogo}" href="${coLogo}"/>`);
   } else {
     const c = monoColor(domain || company);
-    parts.push(`<rect x="76" y="108" width="64" height="64" rx="14" fill="${c}"/>`);
-    parts.push(`<text x="108" y="153" font-family="Inter" font-size="34" font-weight="700" fill="#ffffff" text-anchor="middle">${esc((company || '?').charAt(0).toUpperCase())}</text>`);
+    parts.push(`<rect x="84" y="146" width="68" height="68" rx="15" fill="${c}"/>`);
+    parts.push(`<text x="118" y="194" font-family="Inter" font-size="36" font-weight="700" fill="#ffffff" text-anchor="middle">${esc((company || '?').charAt(0).toUpperCase())}</text>`);
   }
   const n = (company || '').length;
-  const nameSize = n <= 10 ? 62 : n <= 16 ? 52 : n <= 24 ? 42 : 34;
-  const nameY = 140 + Math.round(nameSize * 0.35); // vertically centered against the 64px logo
-  parts.push(`<text x="158" y="${nameY}" font-family="Inter" font-size="${nameSize}" font-weight="700" fill="${INK}">${esc(company)}</text>`);
+  const nameSize = n <= 10 ? 58 : n <= 16 ? 50 : n <= 24 ? 40 : 32;
+  const nameY = 180 + Math.round(nameSize * 0.35); // vertically centered against the 68px logo
+  parts.push(`<text x="170" y="${nameY}" font-family="Inter" font-size="${nameSize}" font-weight="700" fill="${INK}">${esc(company)}</text>`);
 
-  // The two board metrics as TWO HUGE one-liners, so they stay legible even at a small feed
-  // thumbnail. Minimal words, big, coloured by severity for urgency. No small chips or captions
-  // (they vanish at thumbnail size).
+  // The two board metrics, big, in tinted panels (stacked, left column).
   if (stats) {
     const s1 = sevAdsToFix(stats.offPct, stats.crit);
     const s2 = sevOffTarget(stats.offPct);
-    parts.push(`<text x="76" y="360" font-family="Inter" font-size="150" font-weight="700" fill="${s1.c}">${esc(String(stats.off))}<tspan font-size="54" font-weight="700" fill="${INK}" dx="20">${stats.off === 1 ? 'ad to fix' : 'ads to fix'}</tspan></text>`);
-    parts.push(`<text x="76" y="522" font-family="Inter" font-size="150" font-weight="700" fill="${s2.c}">${esc(stats.offPct + '%')}<tspan font-size="54" font-weight="700" fill="${INK}" dx="20">off-target</tspan></text>`);
+    parts.push(metricPanel(84, 300, 560, 112, s1.c, String(stats.off), stats.off === 1 ? 'ad to fix' : 'ads to fix'));
+    parts.push(metricPanel(84, 428, 560, 150, s2.c, stats.offPct + '%', 'off-target', stats.offPct));
   } else {
-    parts.push(`<text x="76" y="380" font-family="Inter" font-size="76" font-weight="700" fill="${INK}">See your live ads,</text>`);
-    parts.push(`<text x="76" y="470" font-family="Inter" font-size="76" font-weight="700" fill="${INK}">scored.</text>`);
+    parts.push(`<text x="84" y="370" font-family="Inter" font-size="64" font-weight="700" fill="${INK}">See your live ads,</text>`);
+    parts.push(`<text x="84" y="446" font-family="Inter" font-size="64" font-weight="700" fill="${INK}">scored.</text>`);
+    parts.push(`<text x="84" y="500" font-family="Inter" font-size="28" font-weight="400" fill="${MUTE}">Free. No card.</text>`);
   }
 
   // Their creative, framed on the right (only when we have one to show).
   if (creative) {
-    parts.push(`<rect x="740" y="130" width="384" height="370" rx="22" fill="${PANEL}" stroke="${LINE}" stroke-width="1.5"/>`);
-    parts.push(`<image x="756" y="146" width="352" height="338" clip-path="url(#ccrea)" preserveAspectRatio="xMidYMid meet" xlink:href="${creative}" href="${creative}"/>`);
+    parts.push(`<rect x="700" y="146" width="420" height="396" rx="20" fill="${PANEL}" stroke="${LINE}" stroke-width="1.5"/>`);
+    parts.push(`<image x="716" y="162" width="388" height="364" clip-path="url(#ccrea)" preserveAspectRatio="xMidYMid meet" xlink:href="${creative}" href="${creative}"/>`);
   }
 
   parts.push(`</svg>`);
