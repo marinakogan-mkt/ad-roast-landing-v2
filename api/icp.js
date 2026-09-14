@@ -157,7 +157,7 @@ export default async function handler(req, res) {
      1200x630 PNG named for the company with its live board stats. Dynamic import so satori + resvg-wasm
      never load on the normal ICP/scoring path, and folded in here to stay under the Hobby 12-fn cap. */
   if (req.query && req.query.ogimg !== undefined) {
-    const { boardOgImageHandler } = await import('./_board-og-image.js');
+    const { boardOgImageHandler } = await import('./_board-og-image.mjs');
     return boardOgImageHandler(req, res);
   }
   /* Image proxy (GET /api/icp?img=<encoded url>). Ad creatives live on
