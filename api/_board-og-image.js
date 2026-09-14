@@ -12,6 +12,7 @@
 // bundler traces them into the function. Any failure redirects to the static hero, so the card can
 // never break.
 import fs from 'fs';
+import path from 'path';
 import { Redis } from '@upstash/redis';
 import satori from 'satori';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
@@ -23,13 +24,22 @@ try {
   }
 } catch (e) { _redis = null; }
 
-// Read the bundled assets once per warm process. new URL(..., import.meta.url) is the pattern Vercel's
-// file tracer detects, so these ship inside the function.
+// Locate a bundled asset. We read via process.cwd() (like _board-og.js reads index.html) rather than
+// new URL(import.meta.url): Vercel bundles the function to CommonJS, where import.meta is a syntax
+// error. vercel.json's functions.includeFiles ships api/_assets/** into the function so it's on disk.
+function assetPath(name) {
+  for (const base of [path.join(process.cwd(), 'api', '_assets'), '/var/task/api/_assets']) {
+    try { const p = path.join(base, name); if (fs.existsSync(p)) return p; } catch (e) {}
+  }
+  return path.join(process.cwd(), 'api', '_assets', name); // let readFileSync throw a clear ENOENT
+}
+
+// Read the bundled assets once per warm process.
 let _fonts = null;
 function loadFonts() {
   if (_fonts) return _fonts;
-  const reg = fs.readFileSync(new URL('./_assets/inter-regular.woff', import.meta.url));
-  const bold = fs.readFileSync(new URL('./_assets/inter-bold.woff', import.meta.url));
+  const reg = fs.readFileSync(assetPath('inter-regular.woff'));
+  const bold = fs.readFileSync(assetPath('inter-bold.woff'));
   _fonts = [
     { name: 'Inter', data: reg, weight: 400, style: 'normal' },
     { name: 'Inter', data: bold, weight: 700, style: 'normal' },
@@ -41,7 +51,7 @@ function loadFonts() {
 let _wasmReady = null;
 function ensureWasm() {
   if (!_wasmReady) {
-    const bytes = fs.readFileSync(new URL('./_assets/resvg.wasm', import.meta.url));
+    const bytes = fs.readFileSync(assetPath('resvg.wasm'));
     _wasmReady = initWasm(bytes).catch((e) => {
       // "Already initialized" is fine (another path won the race); anything else re-throws on use.
       if (!/already/i.test(String(e && e.message))) { _wasmReady = null; throw e; }

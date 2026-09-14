@@ -1,6 +1,12 @@
 {
   "buildCommand": "node build.js",
   "outputDirectory": ".",
+  "functions": {
+    "api/icp.js": {
+      "maxDuration": 60,
+      "includeFiles": "api/_assets/**"
+    }
+  },
   "rewrites": [
     { "source": "/services", "destination": "/index.html" },
     { "source": "/work-with-us", "destination": "/index.html" },
