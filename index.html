@@ -1569,10 +1569,34 @@
           const co = { name: coName, domain: icpRes.domain || hostOf(siteRaw), initial: (coName || '?').charAt(0).toUpperCase(), color: '#334155' };
           const icpText = icpRes.icp_text || '';
           if (!silent) { setLoadingCo(co); setStatusMsg('Pulling your live ads from LinkedIn and Google…'); }
-          const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText, refresh: !!opts.refresh }) }).then(r => r.json()).catch(() => ({}));
+          // Progressive first paint: fire the fast Google-only pull and the full pull CONCURRENTLY.
+          // On a COLD board the full pull is slow (LinkedIn via Jina, ~30s) while Google returns in ~3s,
+          // so Google paints first and the board is never blank for 30s. On a CACHED board the full pull
+          // returns instantly and wins the race, so the Google result is ignored (guarded by fullDone)
+          // and nothing is slower than before. The Google list pull is free (no tokens) and its scores
+          // reuse the per-creative cache, so this costs effectively nothing on a warm board.
+          let fullDone = false, renderedFast = false;
+          const fullP = fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText, refresh: !!opts.refresh }) }).then(r => r.json()).catch(() => ({}));
+          if (!silent && !opts.refresh && !opts.only) {
+            fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText, only: 'google' }) }).then(r => r.json()).then(g => {
+              if (!fullDone && !renderedFast && g && g.ok && Array.isArray(g.ads) && g.ads.length && mySeq === loadSeqRef.current) {
+                setEntryMode(false);
+                // Display-only partial: not cached and no background scorer (the full pull is authoritative).
+                setReal({ co, icp: icpText, ads: _cleanBoardAds(g.ads), notes: g.notes || {}, fresh: g.fresh || null, _partial: true });
+                if (!opts.keepView) { setStage('overview'); setGridPlat('all'); }
+                setPhase('idle'); setBootLoading(false); setStatusMsg('Pulling your LinkedIn ads…');
+                renderedFast = true;
+              }
+            }).catch(() => {});
+          }
+          const res = await fullP;
+          fullDone = true;
+          if (mySeq !== loadSeqRef.current) return; // the user moved on to another company
           if (!res || !res.ok || !(res.ads && res.ads.length)) {
             // Silent demo: keep showing the static sample; only a real user's fetch surfaces an error.
             if (silent) { setPhase('idle'); setBootLoading(false); return; }
+            // If Google already painted, keep that board instead of blanking it to an error.
+            if (renderedFast) { setPhase('idle'); return; }
             setPhase('error');
             setStatusMsg('Your live ads are taking a moment to load. Give it a few seconds and hit retry.');
             return;

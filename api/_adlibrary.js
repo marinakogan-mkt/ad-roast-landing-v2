@@ -448,7 +448,7 @@ export async function fetchLinkedInAds({ company, domain = '', limit = 12 } = {}
 // (tpc.googlesyndication.com/archive/simgad/...). Region 2764 = "anywhere". We keep only
 // image creatives so every Google card shows a real creative (display/HTML ads carry no
 // static image and no separate copy, so they'd be empty cards). Returns UNSCORED cards.
-async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
+export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
   const dom = (domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
   if (!dom) return { ok: false, reason: 'no_domain', ads: [] };
   const url = 'https://adstransparency.google.com/anji/_/rpc/SearchService/SearchCreatives?authuser=';

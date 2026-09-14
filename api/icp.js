@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchLinkedInAds, scoreAdsCached } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached } from './_adlibrary.js';
 
 // The Ad Library fetch renders a page via Jina and runs a quick Haiku score, so allow headroom.
 export const config = { maxDuration: 60 };
@@ -275,6 +275,21 @@ export default async function handler(req, res) {
       merged.ads = scM.ads;
       if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(merged), { ex: CACHE_TTL }); } catch (e) {} }
       return res.status(200).json({ ...merged, fresh: { checked: Date.now(), checkedAt: merged._checkedAt, stale: false, listCached: false, count: merged.ads.length, scoredNew: scM.scoredNew, reused: scM.reused, pending: scM.pending, scoreError: scM.scoreError || null, rateLimited: !!scM.rateLimited } });
+    }
+
+    // Progressive first paint: a cold board's slow part is LinkedIn (Jina, ~30s); Google is fast (~3s).
+    // On a fresh open the client asks for `only:'google'` FIRST so the board paints in seconds, then
+    // does the normal full pull (LinkedIn included) behind it. This branch pulls + scores ONLY Google
+    // and does NOT write the pull cache (the follow-up full pull writes the authoritative merged set),
+    // so it never masks LinkedIn from the next pull. Per-creative scores ARE cached, so the full pull
+    // reuses them for free.
+    if (body.only === 'google') {
+      const gg = await fetchGoogleAds({ domain: body.domain, company: body.company, limit: 12 }).catch(() => ({ ok: false, ads: [] }));
+      const gads = (gg.ads || []);
+      if (!gads.length) return res.status(200).json({ ok: false, ads: [], _fast: true });
+      if (!wantScore) return res.status(200).json({ ok: true, ads: gads, sources: { google: gads.length }, notes: { google: 'ok' }, _fast: true });
+      const scG = await scoreAdsCached(gads, body.icp, _redis, { force: false, limit: 6 });
+      return res.status(200).json({ ok: true, ads: scG.ads, sources: { google: gads.length }, notes: { google: 'ok' }, _fast: true, fresh: { checked: Date.now(), checkedAt: null, stale: false, listCached: false, count: gads.length, scoredNew: scG.scoredNew, reused: scG.reused, pending: scG.pending, scoreError: scG.scoreError || null, rateLimited: !!scG.rateLimited } });
     }
 
     let pull = null, listCached = false, stale = false, lastChecked = null;
