@@ -169,7 +169,7 @@ async function scoreAds(ads, icp) {
     }
   }
   content[0].text = `ICP: ${icp}\n\nScore each ad 1-10 for how well it fits this ICP and earns the click (1 = severe mismatch, 10 = excellent). Several ads include their creative image below; READ the copy/text rendered on each creative and judge it as the ad's copy. Ads:\n${lines.join('\n')}`;
-  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"title":"3 to 6 word name for the ad","verdict":"the diagnosis, 1 to 2 sentences"}. The title names the ad in a list: for an image ad with no headline text, READ the main line printed on the creative and use that (or a short plain descriptor of the offer), under 6 words, no trailing period. The verdict DIAGNOSES the ad: in 1 to 2 plain sentences, name what most drives its buyer fit, what is off and WHY it loses the intended buyer (or, for a strong ad, what makes it land). It is a diagnosis, NOT a prescription: do NOT tell them how to fix it, and do NOT include an instruction verb like add, make, change, use, swap, put, or rewrite. The fix is delivered separately in the full roast, never here. Base the title and verdict on the ad's actual copy (from the text line and, when present, the words on its creative image).
+  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"title":"3 to 6 word name for the ad","verdict":"one short diagnosis line","tags":["2 to 4 short labels"]}. The title names the ad in a list: for an image ad with no headline text, READ the main line printed on the creative and use that (or a short plain descriptor of the offer), under 6 words, no trailing period. The verdict is ONE short scannable line (max ~14 words) naming the single biggest reason this ad wins or loses the intended buyer: a diagnosis, not a prescription. Do NOT write a paragraph, and do NOT include a fix or an instruction verb (add, make, change, use, swap, put, rewrite); the fix is delivered separately in the full roast. The tags are 2 to 4 VERY short labels (1 to 3 words each, Title Case, no punctuation) that name the specific levers behind the score, so the reader scans them like chips: for a weak ad the missing/broken levers (e.g. "No proof", "Generic hook", "No differentiator", "Weak CTA", "Vague offer", "Wrong buyer"); for a strong ad what it does well (e.g. "Sharp hook", "Clear proof", "Strong CTA"). Base everything on the ad's actual copy (from the text line and, when present, the words on its creative image).
 
 SCORING SCALE (calibrate consistently, the SAME ad must always land on the same score, do NOT cluster at 0-1 or 9-10):
 1-3 = actively hurting the click (severe ICP mismatch, no clear value, confusing).
@@ -233,7 +233,7 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
     for (const s of scores) if (typeof s.i === 'number') byI[s.i] = s;
     // head falls back to the model's title so image-only Google ads (no headline text) still
     // show a real name in the board/preview instead of "Live creative".
-    return ads.map((a, i) => byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, title: byI[i].title || null, head: a.head || byI[i].title || '' } : a);
+    return ads.map((a, i) => byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.slice(0, 4) : [], title: byI[i].title || null, head: a.head || byI[i].title || '' } : a);
   } catch (e) {
     // A parse error or a thrown hard-failure: re-throw so scoreAdsCached reports it instead of
     // silently returning unscored ads. (fetch/network errors also land here and propagate.)
@@ -284,7 +284,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // only that board, batched under the 60s limit): safe as long as boards are opened gradually, NOT a
   // global forced re-score (that once tripped a rate limit). v4 (2026-09-14): diagnosis-not-fix verdict
   // (what is off + WHY it loses the buyer, no fix). v3 (2026-09-12): localization / blank / brand rules.
-  const keyOf = (a) => 'adscore:v4:' + ih + ':' + creativeSig(a);
+  const keyOf = (a) => 'adscore:v5:' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
@@ -310,7 +310,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
       const writes = [];
       for (const a of scored) {
         if (typeof a.score !== 'number') continue;
-        const o = { score: a.score, verdict: a.verdict, title: a.title || null };
+        const o = { score: a.score, verdict: a.verdict, tags: Array.isArray(a.tags) ? a.tags.slice(0, 4) : [], title: a.title || null };
         freshBySig[creativeSig(a)] = o;
         writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL }));
       }
@@ -325,7 +325,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   }
   const out = ads.map(a => {
     const o = cachedBySig[creativeSig(a)] || freshBySig[creativeSig(a)];
-    return o ? { ...a, score: o.score, verdict: o.verdict, title: o.title || a.title || null, head: a.head || o.title || '' } : a;
+    return o ? { ...a, score: o.score, verdict: o.verdict, tags: Array.isArray(o.tags) ? o.tags : [], title: o.title || a.title || null, head: a.head || o.title || '' } : a;
   });
   // scoredNew = creatives that ACTUALLY got a number this call (not what we tried). pending falls
   // only by real scores, so a stuck batch reports pending honestly instead of a false success.
