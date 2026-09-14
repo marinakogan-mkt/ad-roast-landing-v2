@@ -1,7 +1,8 @@
 // Per-company link-preview IMAGE for /b/<slug> (og:image), rendered on demand as a 1200x630 PNG.
 // A card shared on LinkedIn shows the image referenced by og:image; _board-og.js points that tag at
-// /api/icp?ogimg=1&slug=<slug>, which lands here. We render a branded card named for the company with
-// its live board stats, so the preview is about THAT company, not the generic AdRoast hero.
+// /api/icp?ogimg=1&slug=<slug>, which lands here. We render a branded card for THAT company: AdRoast
+// branding (light, not black), the company's own logo, one of their real creatives, and their board
+// metrics as the biggest element. No headline text (the shared link's og:title already says it).
 //
 // WHY hand-built SVG + resvg-wasm (not @vercel/og, not satori): both @vercel/og and satori pull in
 // harfbuzzjs, whose hb.wasm cannot be bundled into a Vercel Node function (nft misses it and the pnpm
@@ -40,6 +41,15 @@ function loadFonts() {
   return _fonts;
 }
 
+// AdRoast brand mark (the blue "in" + flame icon), inlined as a data URI so it embeds in the SVG.
+let _adLogo;
+function adLogoDataUri() {
+  if (_adLogo !== undefined) return _adLogo;
+  try { _adLogo = 'data:image/png;base64,' + fs.readFileSync(assetPath('adroast-logo.png')).toString('base64'); }
+  catch (e) { _adLogo = ''; }
+  return _adLogo;
+}
+
 // initWasm must run exactly once per process; cache the promise so concurrent requests share it.
 let _wasmReady = null;
 function ensureWasm() {
@@ -64,67 +74,131 @@ function nameFromDomain(domain) {
   if (!label) return 'This company';
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
+
+// The same Google "collapsed ad" placeholder guard the board uses, inlined so this generator stays
+// self-contained (it must never throw). Keeps a blank slot out of the stats and off the creative.
+function isJunk(a) {
+  if (!a) return true;
+  const id = (String(a.img || '').match(/simgad\/(\d+)/) || [])[1];
+  if (id === '6364307266515146391') return true;
+  const t = (String(a.title || a.head || '') + ' ' + String(a.verdict || '')).toLowerCase();
+  return /collapsed ad on|empty ad slot|nothing to show|more_vert/.test(t);
+}
 function boardStats(ads) {
-  const scored = (ads || []).filter(a => typeof a.score === 'number');
+  const scored = (ads || []).filter(a => typeof a.score === 'number' && !isJunk(a));
   if (!scored.length) return null;
   const avg = scored.reduce((s, a) => s + a.score, 0) / scored.length;
   const toFix = scored.filter(a => a.score <= 4).length;
   return { count: scored.length, avg: Math.round(avg * 10) / 10, toFix };
 }
+// The single ad we spotlight in the preview: the worst-scoring one with a usable creative (the same
+// "start here" ad the board recommends). Returns the ad or null.
+function worstCreative(ads) {
+  const withImg = (ads || []).filter(a => typeof a.score === 'number' && a.img && /^https?:\/\//.test(String(a.img)) && !isJunk(a));
+  if (!withImg.length) return null;
+  return withImg.slice().sort((a, b) => a.score - b.score)[0];
+}
+
+// Fetch a remote image and return a data URI resvg can embed (png/jpeg/gif only; skip webp/svg which
+// resvg-wasm won't reliably raster). Short timeout + size cap; any problem returns null so the card
+// simply omits that piece instead of failing.
+async function fetchDataUri(url, headers) {
+  if (!url) return null;
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 4500);
+    let r;
+    try { r = await fetch(url, { signal: c.signal, headers: headers || {}, redirect: 'follow' }); } finally { clearTimeout(t); }
+    if (!r || !r.ok) return null;
+    const ct = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!/^image\/(png|jpeg|jpg|gif)$/.test(ct)) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length || buf.length > 3500000) return null;
+    return 'data:' + ct + ';base64,' + buf.toString('base64');
+  } catch (e) { return null; }
+}
+async function firstDataUri(urls, headers) {
+  for (const u of urls) { const d = await fetchDataUri(u, headers); if (d) return d; }
+  return null;
+}
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+const LOGO_DEV_TOKEN = 'pk_EEohEWP8R0a7wQQ9I8FFzw';
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-const INK = '#141426';
-const INK_2 = '#1f1f3a';
-const ACCENT = '#3b8ff0';
-const WHITE = '#ffffff';
-const MUTE = '#9a9ac2';
-const WARN = '#ff8a78';
+// Palette — AdRoast branding, light.
+const BLUE = '#0a66c2';
+const INK = '#0f1b2d';
+const MUTE = '#64748b';
+const LINE = '#e2e8f0';
+const PANEL = '#f1f6fc';
+const RED = '#dc2626';
+const AMBER = '#d97706';
+// score -> color, matching the board's severity read (red badly off, amber weak, blue solid).
+const scoreColor = (s) => (s <= 4 ? RED : s <= 6 ? AMBER : BLUE);
 
-// One stat chip: rounded panel with a big value and a small label. Fixed width, laid out left to right.
-function chipSvg(x, y, w, value, label, tone) {
-  const stroke = tone === 'warn' ? 'rgba(255,138,120,0.35)' : 'rgba(59,143,240,0.30)';
-  const vColor = tone === 'warn' ? WARN : WHITE;
-  return (
-    `<rect x="${x}" y="${y}" width="${w}" height="104" rx="16" fill="${INK_2}" stroke="${stroke}" stroke-width="1"/>` +
-    `<text x="${x + 28}" y="${y + 54}" font-family="Inter" font-size="44" font-weight="700" fill="${vColor}">${esc(value)}</text>` +
-    `<text x="${x + 28}" y="${y + 86}" font-family="Inter" font-size="22" font-weight="400" fill="${MUTE}">${esc(label)}</text>`
-  );
+// Simple deterministic brand color for the monogram fallback when no logo image resolves.
+function monoColor(seed) {
+  let h = 0; const str = String(seed || 'a');
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  const hues = ['#0a66c2', '#2563eb', '#7c3aed', '#0891b2', '#db2777', '#ea580c', '#059669'];
+  return hues[h % hues.length];
 }
 
-function buildSvg(company, stats) {
-  // Company name font-size scales down for long names so it never runs off the card.
-  const n = company.length;
-  const size = n <= 9 ? 104 : n <= 13 ? 88 : n <= 18 ? 72 : n <= 26 ? 56 : 44;
-  const compBaseline = 340;
+function buildSvg(opts) {
+  const { company, domain, stats, adLogo, coLogo, creative } = opts;
+  const parts = [];
+  parts.push(`<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`);
+  parts.push(`<defs>`);
+  parts.push(`<clipPath id="clogo"><rect x="76" y="150" width="96" height="96" rx="20"/></clipPath>`);
+  parts.push(`<clipPath id="ccrea"><rect x="738" y="120" width="386" height="390" rx="22"/></clipPath>`);
+  parts.push(`</defs>`);
 
-  let bottom;
-  if (stats) {
-    const y = 470;
-    // widen each chip enough for its value; simple fixed widths read fine for these ranges.
-    const w1 = 210, w2 = 250, w3 = 190, gap = 20;
-    bottom =
-      chipSvg(76, y, w1, String(stats.count), 'live ads') +
-      chipSvg(76 + w1 + gap, y, w2, stats.avg + '/10', 'avg fit') +
-      chipSvg(76 + w1 + gap + w2 + gap, y, w3, String(stats.toFix), 'to fix', 'warn');
+  // Ground + brand rail.
+  parts.push(`<rect width="1200" height="630" fill="#ffffff"/>`);
+  parts.push(`<rect x="0" y="0" width="14" height="630" fill="${BLUE}"/>`);
+
+  // Brand row: AdRoast logo + wordmark.
+  if (adLogo) parts.push(`<image x="76" y="52" width="52" height="52" xlink:href="${adLogo}" href="${adLogo}"/>`);
+  parts.push(`<text x="${adLogo ? 140 : 76}" y="90" font-family="Inter" font-size="30" font-weight="700" fill="${BLUE}">AdRoast</text>`);
+
+  // Company row: their logo (or monogram) + name.
+  if (coLogo) {
+    parts.push(`<rect x="76" y="150" width="96" height="96" rx="20" fill="#ffffff" stroke="${LINE}" stroke-width="1.5"/>`);
+    parts.push(`<image x="76" y="150" width="96" height="96" clip-path="url(#clogo)" preserveAspectRatio="xMidYMid meet" xlink:href="${coLogo}" href="${coLogo}"/>`);
   } else {
-    bottom = `<text x="76" y="512" font-family="Inter" font-size="26" font-weight="400" fill="${MUTE}">Every live ad, scored against the buyer. Free, no card.</text>`;
+    const c = monoColor(domain || company);
+    parts.push(`<rect x="76" y="150" width="96" height="96" rx="20" fill="${c}"/>`);
+    parts.push(`<text x="124" y="216" font-family="Inter" font-size="52" font-weight="700" fill="#ffffff" text-anchor="middle">${esc((company || '?').charAt(0).toUpperCase())}</text>`);
+  }
+  const n = (company || '').length;
+  const nameSize = n <= 10 ? 60 : n <= 16 ? 50 : n <= 24 ? 40 : 32;
+  const nameY = 150 + 48 + Math.round(nameSize * 0.34); // vertically centered against the 96px logo
+  parts.push(`<text x="196" y="${nameY}" font-family="Inter" font-size="${nameSize}" font-weight="700" fill="${INK}">${esc(company)}</text>`);
+
+  // Metrics — the biggest element on the card.
+  if (stats) {
+    const col = scoreColor(stats.avg);
+    // Giant average buyer fit.
+    parts.push(`<text x="74" y="452" font-family="Inter" font-size="176" font-weight="700" fill="${col}">${esc(String(stats.avg))}<tspan font-size="72" font-weight="700" fill="${MUTE}" dx="6">/10</tspan></text>`);
+    parts.push(`<text x="80" y="500" font-family="Inter" font-size="30" font-weight="400" fill="${MUTE}">average buyer fit</text>`);
+    // Supporting stats, still large: live ads + how many are badly off.
+    parts.push(`<text x="80" y="566" font-family="Inter" font-size="34" font-weight="700" fill="${INK}">${esc(String(stats.count))}<tspan font-weight="400" fill="${MUTE}" font-size="30" dx="6">live ads</tspan><tspan font-weight="700" fill="${RED}" dx="26">${esc(String(stats.toFix))}</tspan><tspan font-weight="400" fill="${MUTE}" font-size="30" dx="6">reaching the wrong buyer</tspan></text>`);
+  } else {
+    parts.push(`<text x="80" y="430" font-family="Inter" font-size="40" font-weight="700" fill="${INK}">Every live ad, scored against the buyer.</text>`);
+    parts.push(`<text x="80" y="480" font-family="Inter" font-size="30" font-weight="400" fill="${MUTE}">Free. No card.</text>`);
   }
 
-  return (
-    `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">` +
-    `<rect width="1200" height="630" fill="${INK}"/>` +
-    `<rect x="0" y="0" width="14" height="630" fill="${ACCENT}"/>` +
-    // eyebrow
-    `<text x="76" y="112" font-family="Inter" font-size="24" font-weight="700" letter-spacing="2" fill="${ACCENT}">ADROAST` +
-    `<tspan fill="${MUTE}">   ·   LIVE AD TEARDOWN</tspan></text>` +
-    // company name
-    `<text x="76" y="${compBaseline}" font-family="Inter" font-size="${size}" font-weight="700" fill="${ACCENT}">${esc(company)}</text>` +
-    // headline
-    `<text x="76" y="418" font-family="Inter" font-size="52" font-weight="700" fill="${WHITE}">Where their ads lose the buyer</text>` +
-    bottom +
-    `</svg>`
-  );
+  // Their creative, framed on the right.
+  parts.push(`<rect x="738" y="120" width="386" height="390" rx="22" fill="${PANEL}" stroke="${LINE}" stroke-width="1.5"/>`);
+  if (creative) {
+    parts.push(`<image x="754" y="136" width="354" height="358" clip-path="url(#ccrea)" preserveAspectRatio="xMidYMid meet" xlink:href="${creative}" href="${creative}"/>`);
+  } else {
+    parts.push(`<text x="931" y="325" font-family="Inter" font-size="26" font-weight="400" fill="${MUTE}" text-anchor="middle">Live ad</text>`);
+  }
+
+  parts.push(`</svg>`);
+  return parts.join('');
 }
 
 export async function boardOgImageHandler(req, res) {
@@ -133,18 +207,29 @@ export async function boardOgImageHandler(req, res) {
     const domain = slugToDomain(slug);
     const company = domain ? nameFromDomain(domain) : 'Your ads';
 
-    let stats = null;
+    let stats = null, worst = null;
     if (_redis && domain) {
       try {
         const domKey = domain.replace(/[^a-z0-9.]/g, '');
         const raw = await _redis.get('ads:pull:' + domKey);
         const pull = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-        stats = pull && pull.ads ? boardStats(pull.ads) : null;
+        if (pull && pull.ads) { stats = boardStats(pull.ads); worst = worstCreative(pull.ads); }
       } catch (e) { stats = null; }
     }
 
+    // Fetch the company logo and the spotlight creative in parallel; either can fail to null.
+    const licdn = worst && /licdn|linkedin/i.test(String(worst.img));
+    const [coLogo, creative] = await Promise.all([
+      domain ? firstDataUri([
+        'https://img.logo.dev/' + domain + '?token=' + LOGO_DEV_TOKEN + '&size=200&format=png&retina=true',
+        'https://logo.clearbit.com/' + domain + '?size=200',
+        'https://www.google.com/s2/favicons?sz=128&domain=' + domain,
+      ], { 'user-agent': UA }) : Promise.resolve(null),
+      worst ? fetchDataUri(worst.img, licdn ? { referer: 'https://www.linkedin.com/', 'user-agent': UA } : { 'user-agent': UA }) : Promise.resolve(null),
+    ]);
+
     await ensureWasm();
-    const svg = buildSvg(company, stats);
+    const svg = buildSvg({ company, domain, stats, adLogo: adLogoDataUri(), coLogo, creative });
     const png = new Resvg(svg, {
       fitTo: { mode: 'width', value: 1200 },
       font: { fontBuffers: loadFonts(), defaultFontFamily: 'Inter', loadSystemFonts: false },
