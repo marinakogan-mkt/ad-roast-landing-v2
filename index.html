@@ -2307,13 +2307,22 @@
                     <div className="px-4 pt-3 pb-4 mt-auto">
                       {free ? (
                         <>
-                          <div className="uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.12em' }}>Where it loses the buyer</div>
-                          <div className="text-gray-800" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>{a.verdict || a.body}</div>
+                          {(() => { const label = a.score <= 4 ? 'Where it loses the buyer' : a.score <= 6 ? "What's holding it back" : 'Why it works'; const ic = a.score > 6 ? 'check' : 'alertCircle'; const s = sev || SEV(a.score || 0); return (
+                            <div className="rounded-xl" style={{ background: s.bg, border: '1px solid ' + s.bd, borderLeft: '3px solid ' + s.c, padding: '10px 12px' }}>
+                              <div className="flex items-center gap-1.5" style={{ marginBottom: 5, color: s.c }}><Icon name={ic} className="w-3.5 h-3.5" /><span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span></div>
+                              <div className="text-gray-800" style={{ fontSize: 13, lineHeight: 1.45 }}>{a.verdict || a.body}</div>
+                            </div>
+                          ); })()}
                           <button onClick={() => setSel(a)} className="w-full font-bold text-white rounded-lg mt-3 hover:opacity-90 transition-opacity inline-flex items-center justify-center gap-1.5" style={{ fontSize: 13.5, padding: '10px', background: '#0a66c2' }}><Icon name="flame" className="w-4 h-4" />Roast this ad →</button>
                         </>
                       ) : (
                         <>
-                          <div className="text-gray-500" style={{ fontSize: 13, lineHeight: 1.4 }}>{a.verdict || a.body || ' '}</div>
+                          {hasScore ? (() => { const label = a.score <= 4 ? 'Where it loses the buyer' : a.score <= 6 ? "What's holding it back" : 'Why it works'; const ic = a.score > 6 ? 'check' : 'alertCircle'; const s = sev || SEV(a.score || 0); return (
+                            <div className="rounded-xl" style={{ background: s.bg, border: '1px solid ' + s.bd, borderLeft: '3px solid ' + s.c, padding: '10px 12px' }}>
+                              <div className="flex items-center gap-1.5" style={{ marginBottom: 5, color: s.c }}><Icon name={ic} className="w-3.5 h-3.5" /><span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span></div>
+                              <div className="text-gray-800" style={{ fontSize: 13, lineHeight: 1.45 }}>{a.verdict || a.body}</div>
+                            </div>
+                          ); })() : <div className="text-gray-500" style={{ fontSize: 13, lineHeight: 1.4 }}>{a.verdict || a.body || ' '}</div>}
                           <button onClick={() => setSel(a)} className="w-full font-bold rounded-lg mt-3" style={{ fontSize: 13.5, padding: '10px', border: '1px dashed #cbd5e1', color: '#0a66c2', background: '#fff' }}>Roast this ad →</button>
                         </>
                       )}
