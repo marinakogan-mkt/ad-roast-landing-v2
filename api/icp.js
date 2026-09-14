@@ -30,6 +30,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
 import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives } from './_adlibrary.js';
+import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 
 // Admin emails (the portal master role) — the only accounts allowed to force a re-score of a board.
@@ -215,6 +216,59 @@ export default async function handler(req, res) {
       return res.status(200).send(buf);
     } catch (e) {
       return res.status(502).json({ error: 'Proxy failed' });
+    }
+  }
+
+  /* Company-logo resolver + proxy (GET /api/icp?logo=<domain>). The real logo of a company is the
+     one it declares on its OWN site (apple-touch-icon / schema.org logo / favicon); the browser can't
+     read another domain's HTML because of CORS, so the board calls this instead. We resolve the
+     ordered candidate list (declared-on-site first, Logo.dev + Google favicon as safety net), fetch
+     the first that yields a real image, and re-serve the bytes from our own origin so hotlink
+     protection and ad-blockers can't drop it. The winning URL is cached per domain (30d), so it's one
+     fetch after the first hit. Folded into this function to stay under the Hobby 12-function cap. */
+  if (req.method === 'GET' && req.query && req.query.logo !== undefined) {
+    const domain = normDomain(Array.isArray(req.query.logo) ? req.query.logo[0] : req.query.logo);
+    if (!domain) return res.status(400).json({ error: 'No domain' });
+    const winKey = 'logo:winner:v1:' + domain;
+    const tryFetch = async (u) => {
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), 8000);
+      try {
+        const up = await fetch(u, { signal: c.signal, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8' } });
+        if (!up.ok) return null;
+        const ct = up.headers.get('content-type') || '';
+        if (!/^image\//i.test(ct)) return null;
+        const buf = Buffer.from(await up.arrayBuffer());
+        if (buf.length < 100) return null; // 1x1 tracker / empty placeholder
+        return { buf, ct };
+      } catch (e) { return null; } finally { clearTimeout(t); }
+    };
+    const serve = (img) => {
+      res.setHeader('Content-Type', img.ct);
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000, stale-while-revalidate=86400');
+      return res.status(200).send(img.buf);
+    };
+    try {
+      // Fast path: a previously resolved winner for this domain.
+      if (_redis) {
+        try {
+          const cached = await _redis.get(winKey);
+          if (cached) { const img = await tryFetch(cached); if (img) return serve(img); }
+        } catch (e) {}
+      }
+      const candidates = await logoCandidates(domain);
+      for (const u of candidates) {
+        const img = await tryFetch(u);
+        if (img) {
+          if (_redis) { try { await _redis.set(winKey, u, { ex: 60 * 60 * 24 * 30 }); } catch (e) {} }
+          return serve(img);
+        }
+      }
+      // Nothing resolved: redirect to the Google favicon so an <img> still shows something.
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.redirect(302, 'https://www.google.com/s2/favicons?sz=128&domain=' + domain);
+    } catch (e) {
+      return res.redirect(302, 'https://www.google.com/s2/favicons?sz=128&domain=' + domain);
     }
   }
 

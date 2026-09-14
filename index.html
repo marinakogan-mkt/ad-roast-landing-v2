@@ -1098,18 +1098,19 @@
     }
     /* Generic company logo for ANY domain (works for every user's roasted companies, nothing is
        hardcoded): tries real logo sources in order, falling back to a distinct-color initial badge.
-       Logo.dev usually gives the cleanest brand logo; Google favicons is the reliable brand mark
-       (Clearbit's free logo API was shut down, so it's dropped). For the handful of domains where
-       Logo.dev returns a marketing/app image instead of the logo (e.g. idnow.io), the favicon is
-       the correct mark, so try it first. */
-    const LOGO_FAVICON_FIRST = new Set(['idnow.io']);
+       First source is our OWN server-side resolver (/api/icp?logo=<domain>): it reads the logo the
+       company declares on its own site (apple-touch-icon / schema.org / favicon), so the mark matches
+       the company's site by construction and there is no per-domain list to maintain. It self-falls
+       back to Logo.dev and the Google favicon server-side; we keep those two here too so a failed
+       resolver request (network/cold) still degrades to a logo instead of the initial badge. */
     function BrandLogo({ domain, name, initial, color, size = 44, radius = 12 }) {
       const sources = React.useMemo(() => {
         if (!domain) return [];
         const d = String(domain).toLowerCase().replace(/^www\./, '');
+        const resolver = '/api/icp?logo=' + encodeURIComponent(d);
         const dev = LOGO_DEV_TOKEN ? ('https://img.logo.dev/' + domain + '?token=' + LOGO_DEV_TOKEN + '&size=128&retina=true') : null;
         const fav = 'https://www.google.com/s2/favicons?sz=128&domain=' + domain;
-        return (LOGO_FAVICON_FIRST.has(d) ? [fav, dev] : [dev, fav]).filter(Boolean);
+        return [resolver, dev, fav].filter(Boolean);
       }, [domain]);
       const [i, setI] = useState(0);
       React.useEffect(() => { setI(0); }, [domain]);
