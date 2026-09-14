@@ -165,19 +165,20 @@ function monoColor(seed) {
   return hues[h % hues.length];
 }
 
-// One big metric inside a soft tinted panel (board-card language): huge value + short unit, optional
-// progress bar. Minimal words so it stays legible at a small feed thumbnail; the tint carries urgency.
-function metricPanel(x, y, w, h, color, value, unit, barPct) {
-  const b = [];
-  b.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="${color}14" stroke="${color}30" stroke-width="1.5"/>`);
-  const vy = y + (typeof barPct === 'number' ? 76 : Math.round(h * 0.5) + 28);
-  b.push(`<text x="${x + 28}" y="${vy}" font-family="Inter" font-size="84" font-weight="700" fill="${color}">${esc(value)}<tspan font-size="40" font-weight="700" fill="${INK}" dx="16">${esc(unit)}</tspan></text>`);
-  if (typeof barPct === 'number') {
-    const bx = x + 28, by = vy + 26, bw = w - 56;
-    b.push(`<rect x="${bx}" y="${by}" width="${bw}" height="12" rx="6" fill="#ffffff" stroke="${color}22" stroke-width="1"/>`);
-    b.push(`<rect x="${bx}" y="${by}" width="${Math.round(bw * Math.max(0, Math.min(100, barPct)) / 100)}" height="12" rx="6" fill="${color}"/>`);
-  }
-  return b.join('');
+// A waste-gravity chip label for the shareable card (this is the outreach hook, so it uses the
+// punchier spend framing the founder designed for it; the in-product board stays measured).
+function wasteChip(offPct) {
+  return offPct >= 70 ? { t: 'SEVERE WASTE', c: RED }
+    : offPct >= 30 ? { t: 'HIGH WASTE', c: RED }
+    : offPct >= 10 ? { t: 'LEAKING BUDGET', c: AMBER }
+    : offPct > 0 ? { t: 'MINOR WASTE', c: AMBER }
+    : { t: 'ON TARGET', c: GREEN };
+}
+// One metric panel: big value on top, label under it, soft tinted by severity.
+function statPanel(x, y, w, h, color, value, label) {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="${color}14" stroke="${color}2e" stroke-width="1.5"/>`
+    + `<text x="${x + 28}" y="${y + 92}" font-family="Inter" font-size="78" font-weight="800" fill="${color}">${esc(value)}</text>`
+    + `<text x="${x + 30}" y="${y + 132}" font-family="Inter" font-size="27" font-weight="700" fill="${INK}">${esc(label)}</text>`;
 }
 
 function buildSvg(opts) {
@@ -186,50 +187,71 @@ function buildSvg(opts) {
   parts.push(`<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`);
   parts.push(`<defs>`);
   parts.push(`<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3f8fe"/><stop offset="1" stop-color="#e7eff9"/></linearGradient>`);
-  parts.push(`<clipPath id="clogo"><rect x="84" y="146" width="68" height="68" rx="15"/></clipPath>`);
-  parts.push(`<clipPath id="ccrea"><rect x="700" y="146" width="420" height="396" rx="20"/></clipPath>`);
+  parts.push(`<linearGradient id="spec" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dc2626"/><stop offset="0.35" stop-color="#d97706"/><stop offset="0.62" stop-color="#64748b"/><stop offset="1" stop-color="#0a66c2"/></linearGradient>`);
+  parts.push(`<clipPath id="clogo"><rect x="68" y="128" width="64" height="64" rx="14"/></clipPath>`);
+  parts.push(`<clipPath id="ccrea"><rect x="800" y="64" width="372" height="300" rx="16"/></clipPath>`);
   parts.push(`</defs>`);
 
   // Soft branded ground + a white "report card" inset (with a faint drop shadow) so it feels designed.
   parts.push(`<rect width="1200" height="630" fill="url(#bg)"/>`);
-  parts.push(`<rect x="40" y="46" width="1120" height="556" rx="30" fill="#0f1b2d" opacity="0.06"/>`);
-  parts.push(`<rect x="40" y="38" width="1120" height="556" rx="30" fill="#ffffff" stroke="#e6ebf2" stroke-width="1.5"/>`);
+  parts.push(`<rect x="28" y="32" width="1144" height="574" rx="28" fill="#0f1b2d" opacity="0.06"/>`);
+  parts.push(`<rect x="28" y="24" width="1144" height="574" rx="28" fill="#ffffff" stroke="#e6ebf2" stroke-width="1.5"/>`);
 
-  // Brand row: AdRoast logo + wordmark.
-  if (adLogo) parts.push(`<image x="84" y="70" width="42" height="42" xlink:href="${adLogo}" href="${adLogo}"/>`);
-  parts.push(`<text x="${adLogo ? 136 : 84}" y="100" font-family="Inter" font-size="27" font-weight="700" fill="${BLUE}">AdRoast</text>`);
+  // Brand row: AdRoast logo + domain wordmark.
+  if (adLogo) parts.push(`<image x="68" y="58" width="38" height="38" xlink:href="${adLogo}" href="${adLogo}"/>`);
+  parts.push(`<text x="${adLogo ? 116 : 68}" y="88" font-family="Inter" font-size="27" font-weight="700" fill="${BLUE}">adroast.in</text>`);
 
   // Company row: their logo (or monogram) + name.
   if (coLogo) {
-    parts.push(`<rect x="84" y="146" width="68" height="68" rx="15" fill="#ffffff" stroke="${LINE}" stroke-width="1.5"/>`);
-    parts.push(`<image x="84" y="146" width="68" height="68" clip-path="url(#clogo)" preserveAspectRatio="xMidYMid meet" xlink:href="${coLogo}" href="${coLogo}"/>`);
+    parts.push(`<rect x="68" y="128" width="64" height="64" rx="14" fill="#ffffff" stroke="${LINE}" stroke-width="1.5"/>`);
+    parts.push(`<image x="68" y="128" width="64" height="64" clip-path="url(#clogo)" preserveAspectRatio="xMidYMid meet" xlink:href="${coLogo}" href="${coLogo}"/>`);
   } else {
     const c = monoColor(domain || company);
-    parts.push(`<rect x="84" y="146" width="68" height="68" rx="15" fill="${c}"/>`);
-    parts.push(`<text x="118" y="194" font-family="Inter" font-size="36" font-weight="700" fill="#ffffff" text-anchor="middle">${esc((company || '?').charAt(0).toUpperCase())}</text>`);
+    parts.push(`<rect x="68" y="128" width="64" height="64" rx="14" fill="${c}"/>`);
+    parts.push(`<text x="100" y="172" font-family="Inter" font-size="34" font-weight="700" fill="#ffffff" text-anchor="middle">${esc((company || '?').charAt(0).toUpperCase())}</text>`);
   }
   const n = (company || '').length;
-  const nameSize = n <= 10 ? 58 : n <= 16 ? 50 : n <= 24 ? 40 : 32;
-  const nameY = 180 + Math.round(nameSize * 0.35); // vertically centered against the 68px logo
-  parts.push(`<text x="170" y="${nameY}" font-family="Inter" font-size="${nameSize}" font-weight="700" fill="${INK}">${esc(company)}</text>`);
+  const nameSize = n <= 10 ? 56 : n <= 16 ? 48 : n <= 24 ? 38 : 30;
+  const nameY = 160 + Math.round(nameSize * 0.35); // vertically centered against the 64px logo
+  parts.push(`<text x="148" y="${nameY}" font-family="Inter" font-size="${nameSize}" font-weight="700" fill="${INK}">${esc(company)}</text>`);
 
-  // The two board metrics, big, in tinted panels (stacked, left column).
   if (stats) {
+    // Gravity chip (waste framing for the hook card).
+    const wc = wasteChip(stats.offPct);
+    const chLabel = wc.t;
+    const chW = Math.round(chLabel.length * 11) + 54;
+    parts.push(`<rect x="68" y="226" width="${chW}" height="40" rx="20" fill="${wc.c}16"/>`);
+    parts.push(`<circle cx="93" cy="246" r="5" fill="${wc.c}"/>`);
+    parts.push(`<text x="106" y="253" font-family="Inter" font-size="21" font-weight="700" letter-spacing="1" fill="${wc.c}">${esc(chLabel)}</text>`);
+
+    // Two metric panels (number on top, label under), side by side.
     const s1 = sevAdsToFix(stats.offPct, stats.crit);
     const s2 = sevOffTarget(stats.offPct);
-    parts.push(metricPanel(84, 300, 560, 112, s1.c, String(stats.off), stats.off === 1 ? 'ad to fix' : 'ads to fix'));
-    parts.push(metricPanel(84, 428, 560, 150, s2.c, stats.offPct + '%', 'off-target', stats.offPct));
+    parts.push(statPanel(68, 300, 300, 152, s1.c, String(stats.off), stats.off === 1 ? 'ad to fix' : 'ads to fix'));
+    parts.push(statPanel(392, 300, 344, 152, s2.c, stats.offPct + '%', 'off-target spend'));
+
+    // Spectrum: red (wrong buyer) to blue (on target), with a marker at the average fit.
+    const sx = 68, sw = 668, sy = 520;
+    parts.push(`<rect x="${sx}" y="${sy}" width="${sw}" height="12" rx="6" fill="url(#spec)"/>`);
+    const mx = sx + Math.round(Math.max(0, Math.min(10, stats.avg)) / 10 * sw);
+    parts.push(`<circle cx="${mx}" cy="${sy + 6}" r="11" fill="${scoreColor(stats.avg)}" stroke="#ffffff" stroke-width="4"/>`);
+    parts.push(`<text x="${sx}" y="${sy + 42}" font-family="Inter" font-size="15" font-weight="700" letter-spacing="1" fill="${RED}">WRONG BUYER</text>`);
+    parts.push(`<text x="${sx + sw}" y="${sy + 42}" font-family="Inter" font-size="15" font-weight="700" letter-spacing="1" fill="${BLUE}" text-anchor="end">ON TARGET</text>`);
   } else {
-    parts.push(`<text x="84" y="370" font-family="Inter" font-size="64" font-weight="700" fill="${INK}">See your live ads,</text>`);
-    parts.push(`<text x="84" y="446" font-family="Inter" font-size="64" font-weight="700" fill="${INK}">scored.</text>`);
-    parts.push(`<text x="84" y="500" font-family="Inter" font-size="28" font-weight="400" fill="${MUTE}">Free. No card.</text>`);
+    parts.push(`<text x="68" y="330" font-family="Inter" font-size="60" font-weight="700" fill="${INK}">See your live ads,</text>`);
+    parts.push(`<text x="68" y="400" font-family="Inter" font-size="60" font-weight="700" fill="${INK}">scored.</text>`);
+    parts.push(`<text x="68" y="452" font-family="Inter" font-size="27" font-weight="400" fill="${MUTE}">Free. No card.</text>`);
   }
 
-  // Their creative, framed on the right (only when we have one to show).
+  // Right column: their creative in a frame, then a "Roast these ads" button.
+  parts.push(`<rect x="800" y="64" width="372" height="300" rx="16" fill="${PANEL}" stroke="${LINE}" stroke-width="1.5"/>`);
   if (creative) {
-    parts.push(`<rect x="700" y="146" width="420" height="396" rx="20" fill="${PANEL}" stroke="${LINE}" stroke-width="1.5"/>`);
-    parts.push(`<image x="716" y="162" width="388" height="364" clip-path="url(#ccrea)" preserveAspectRatio="xMidYMid meet" xlink:href="${creative}" href="${creative}"/>`);
+    parts.push(`<image x="814" y="78" width="344" height="272" clip-path="url(#ccrea)" preserveAspectRatio="xMidYMid meet" xlink:href="${creative}" href="${creative}"/>`);
+  } else {
+    parts.push(`<text x="986" y="222" font-family="Inter" font-size="24" font-weight="400" fill="${MUTE}" text-anchor="middle">Live ad</text>`);
   }
+  parts.push(`<rect x="800" y="388" width="372" height="66" rx="14" fill="${BLUE}"/>`);
+  parts.push(`<text x="986" y="430" font-family="Inter" font-size="25" font-weight="700" fill="#ffffff" text-anchor="middle">Roast these ads →</text>`);
 
   parts.push(`</svg>`);
   return parts.join('');
