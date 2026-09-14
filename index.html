@@ -1578,6 +1578,9 @@
           let fullDone = false, renderedFast = false;
           const fullP = fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText, refresh: !!opts.refresh }) }).then(r => r.json()).catch(() => ({}));
           if (!silent && !opts.refresh && !opts.only) {
+            // Send the icp so Google comes back SCORED (server caps it at 6 so this stays a few seconds):
+            // painting a scored partial matches the board's normal cold UX and avoids a misleading
+            // "0 to fix" while everything is unscored. LinkedIn + the rest of the scores fill in behind.
             fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: coName, domain: co.domain, icp: icpText, only: 'google' }) }).then(r => r.json()).then(g => {
               if (!fullDone && !renderedFast && g && g.ok && Array.isArray(g.ads) && g.ads.length && mySeq === loadSeqRef.current) {
                 setEntryMode(false);
