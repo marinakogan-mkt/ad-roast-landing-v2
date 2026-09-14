@@ -347,6 +347,26 @@ export default async function handler(req, res) {
     // served from cache (no pull, so almost the whole 60s is free for scoring).
     const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: false, limit: listCached ? 8 : 3 });
     const scAds = dropJunkCreatives(sc.ads); // catch any blank only revealed by its scored verdict
+    // Persist a compact stats snapshot for the link-preview image (og:image). The pull cache stores
+    // UNSCORED ads, so the preview can't derive metrics from it; write the scored numbers + the worst
+    // creative here, on every board render, so the shared card is always current. Cheap single set.
+    if (_redis && domKey) {
+      try {
+        const scoredAll = scAds.filter(a => typeof a.score === 'number');
+        if (scoredAll.length) {
+          const worst = scoredAll.filter(a => a.img && /^https?:\/\//.test(String(a.img))).sort((a, b) => a.score - b.score)[0] || null;
+          const og = {
+            count: scoredAll.length,
+            avg: Math.round((scoredAll.reduce((s, a) => s + a.score, 0) / scoredAll.length) * 10) / 10,
+            toFix: scoredAll.filter(a => a.score <= 4).length,
+            worstImg: worst ? worst.img : null,
+            worstPlat: worst ? (worst.plat || null) : null,
+            at: Date.now(),
+          };
+          await _redis.set('ads:ogstats:' + domKey, JSON.stringify(og), { ex: 60 * 60 * 24 * 30 });
+        }
+      } catch (e) {}
+    }
     return res.status(200).json({
       ...pull,
       ads: scAds,

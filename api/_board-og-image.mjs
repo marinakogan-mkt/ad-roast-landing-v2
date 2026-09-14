@@ -185,16 +185,15 @@ function buildSvg(opts) {
     // Supporting stats, still large: live ads + how many are badly off.
     parts.push(`<text x="80" y="566" font-family="Inter" font-size="34" font-weight="700" fill="${INK}">${esc(String(stats.count))}<tspan font-weight="400" fill="${MUTE}" font-size="30" dx="6">live ads</tspan><tspan font-weight="700" fill="${RED}" dx="26">${esc(String(stats.toFix))}</tspan><tspan font-weight="400" fill="${MUTE}" font-size="30" dx="6">reaching the wrong buyer</tspan></text>`);
   } else {
-    parts.push(`<text x="80" y="430" font-family="Inter" font-size="40" font-weight="700" fill="${INK}">Every live ad, scored against the buyer.</text>`);
-    parts.push(`<text x="80" y="480" font-family="Inter" font-size="30" font-weight="400" fill="${MUTE}">Free. No card.</text>`);
+    parts.push(`<text x="80" y="420" font-family="Inter" font-size="46" font-weight="700" fill="${INK}">See your live ads,</text>`);
+    parts.push(`<text x="80" y="474" font-family="Inter" font-size="46" font-weight="700" fill="${INK}">scored.</text>`);
+    parts.push(`<text x="80" y="524" font-family="Inter" font-size="28" font-weight="400" fill="${MUTE}">Free. No card.</text>`);
   }
 
-  // Their creative, framed on the right.
-  parts.push(`<rect x="738" y="120" width="386" height="390" rx="22" fill="${PANEL}" stroke="${LINE}" stroke-width="1.5"/>`);
+  // Their creative, framed on the right (only when we have one to show).
   if (creative) {
+    parts.push(`<rect x="738" y="120" width="386" height="390" rx="22" fill="${PANEL}" stroke="${LINE}" stroke-width="1.5"/>`);
     parts.push(`<image x="754" y="136" width="354" height="358" clip-path="url(#ccrea)" preserveAspectRatio="xMidYMid meet" xlink:href="${creative}" href="${creative}"/>`);
-  } else {
-    parts.push(`<text x="931" y="325" font-family="Inter" font-size="26" font-weight="400" fill="${MUTE}" text-anchor="middle">Live ad</text>`);
   }
 
   parts.push(`</svg>`);
@@ -207,25 +206,37 @@ export async function boardOgImageHandler(req, res) {
     const domain = slugToDomain(slug);
     const company = domain ? nameFromDomain(domain) : 'Your ads';
 
-    let stats = null, worst = null;
+    let stats = null, worstImg = null, worstPlat = null;
     if (_redis && domain) {
+      const domKey = domain.replace(/[^a-z0-9.]/g, '');
+      // Primary: the compact snapshot the board writes on every render (has scored metrics + the worst
+      // creative). Fallback: the raw pull cache (works only if it happens to hold scored ads).
       try {
-        const domKey = domain.replace(/[^a-z0-9.]/g, '');
-        const raw = await _redis.get('ads:pull:' + domKey);
-        const pull = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-        if (pull && pull.ads) { stats = boardStats(pull.ads); worst = worstCreative(pull.ads); }
-      } catch (e) { stats = null; }
+        const rawOg = await _redis.get('ads:ogstats:' + domKey);
+        const og = rawOg ? (typeof rawOg === 'string' ? JSON.parse(rawOg) : rawOg) : null;
+        if (og && typeof og.avg === 'number') {
+          stats = { count: og.count, avg: og.avg, toFix: og.toFix };
+          worstImg = og.worstImg || null; worstPlat = og.worstPlat || null;
+        }
+      } catch (e) {}
+      if (!stats) {
+        try {
+          const raw = await _redis.get('ads:pull:' + domKey);
+          const pull = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+          if (pull && pull.ads) { stats = boardStats(pull.ads); const w = worstCreative(pull.ads); if (w) { worstImg = w.img; worstPlat = w.plat; } }
+        } catch (e) { stats = null; }
+      }
     }
 
     // Fetch the company logo and the spotlight creative in parallel; either can fail to null.
-    const licdn = worst && /licdn|linkedin/i.test(String(worst.img));
+    const licdn = worstImg && /licdn|linkedin/i.test(String(worstImg));
     const [coLogo, creative] = await Promise.all([
       domain ? firstDataUri([
         'https://img.logo.dev/' + domain + '?token=' + LOGO_DEV_TOKEN + '&size=200&format=png&retina=true',
         'https://logo.clearbit.com/' + domain + '?size=200',
         'https://www.google.com/s2/favicons?sz=128&domain=' + domain,
       ], { 'user-agent': UA }) : Promise.resolve(null),
-      worst ? fetchDataUri(worst.img, licdn ? { referer: 'https://www.linkedin.com/', 'user-agent': UA } : { 'user-agent': UA }) : Promise.resolve(null),
+      worstImg ? fetchDataUri(worstImg, licdn ? { referer: 'https://www.linkedin.com/', 'user-agent': UA } : { 'user-agent': UA }) : Promise.resolve(null),
     ]);
 
     await ensureWasm();
