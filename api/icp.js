@@ -355,10 +355,18 @@ export default async function handler(req, res) {
         const scoredAll = scAds.filter(a => typeof a.score === 'number');
         if (scoredAll.length) {
           const worst = scoredAll.filter(a => a.img && /^https?:\/\//.test(String(a.img))).sort((a, b) => a.score - b.score)[0] || null;
+          // Same numbers the board overview cards show, so the link preview mirrors them exactly:
+          // off = ads reaching the wrong buyer (score <= 6, "ads to fix"), crit = badly off (<= 4).
+          const cnt = scoredAll.length;
+          const off = cnt - scoredAll.filter(a => a.score > 6).length;
+          const crit = scoredAll.filter(a => a.score <= 4).length;
           const og = {
-            count: scoredAll.length,
-            avg: Math.round((scoredAll.reduce((s, a) => s + a.score, 0) / scoredAll.length) * 10) / 10,
-            toFix: scoredAll.filter(a => a.score <= 4).length,
+            count: cnt,
+            avg: Math.round((scoredAll.reduce((s, a) => s + a.score, 0) / cnt) * 10) / 10,
+            off,
+            crit,
+            offPct: Math.round(off / cnt * 100),
+            toFix: crit, // legacy field
             worstImg: worst ? worst.img : null,
             worstPlat: worst ? (worst.plat || null) : null,
             at: Date.now(),
