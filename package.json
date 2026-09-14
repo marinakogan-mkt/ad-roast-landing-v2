@@ -7,7 +7,9 @@
     "build": "node build.js"
   },
   "dependencies": {
-    "@upstash/redis": "^1.28.0"
+    "@resvg/resvg-wasm": "^2.6.2",
+    "@upstash/redis": "^1.28.0",
+    "satori": "^0.33.4"
   },
   "devDependencies": {
     "@babel/core": "^7.26.10",

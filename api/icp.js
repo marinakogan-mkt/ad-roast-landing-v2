@@ -153,6 +153,13 @@ export default async function handler(req, res) {
     const { boardOgHandler } = await import('./_board-og.js');
     return boardOgHandler(req, res);
   }
+  /* Per-company link-preview IMAGE (og:image), rewritten to /api/icp?ogimg=1&slug=<slug>. Renders a
+     1200x630 PNG named for the company with its live board stats. Dynamic import so satori + resvg-wasm
+     never load on the normal ICP/scoring path, and folded in here to stay under the Hobby 12-fn cap. */
+  if (req.query && req.query.ogimg !== undefined) {
+    const { boardOgImageHandler } = await import('./_board-og-image.js');
+    return boardOgImageHandler(req, res);
+  }
   /* Image proxy (GET /api/icp?img=<encoded url>). Ad creatives live on
      tpc.googlesyndication.com (Google) and media.licdn.com (LinkedIn) — hosts that every
      ad-blocker (uBlock, Brave, AdBlock) blocks by name, so hotlinked creatives silently

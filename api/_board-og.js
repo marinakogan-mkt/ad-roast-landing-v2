@@ -92,10 +92,12 @@ export async function boardOgHandler(req, res) {
     html = replaceTag(html, /(<meta property="og:url" content=")[^"]*(">)/, `$1${attr(boardUrl)}$2`);
     html = replaceTag(html, /(<meta name="twitter:title" content=")[^"]*(">)/, `$1${attr(title)}$2`);
     html = replaceTag(html, /(<meta name="twitter:description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
-    // og:image stays the static branded AdRoast hero (a directly-fetchable PNG that LinkedIn always
-    // renders). The per-company IMAGE is intentionally not wired here: @vercel/og is ESM-only and its
-    // Node build throws (dynamic require of "fs"), and an Edge function would be a 12th Vercel Function
-    // (over the Hobby cap). Only the og:image:alt is personalized so the card still names the company.
+
+    // Per-company og:image: a 1200x630 PNG rendered for THIS company (name + live board stats) by
+    // /api/icp?ogimg=1 (satori + resvg-wasm). Falls back to the static hero on any render error.
+    const imgUrl = 'https://www.adroast.in/api/icp?ogimg=1&slug=' + encodeURIComponent(slug);
+    html = replaceTag(html, /(<meta property="og:image" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
+    html = replaceTag(html, /(<meta name="twitter:image" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
     html = replaceTag(html, /(<meta property="og:image:alt" content=")[^"]*(">)/, `$1${attr('Where ' + company + "'s ads lose the buyer")}$2`);
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
