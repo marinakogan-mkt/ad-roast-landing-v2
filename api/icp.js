@@ -30,6 +30,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
 import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives } from './_adlibrary.js';
+import { readSessionCookie } from './auth/_allowlist.js';
 
 // The Ad Library fetch renders a page via Jina and runs a quick Haiku score, so allow headroom.
 export const config = { maxDuration: 60 };
@@ -212,6 +213,44 @@ export default async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   if (!body || typeof body !== 'object') body = {};
+
+  // First-party VISIT beacon: who entered and by which door (homepage vs a shared board/roast link),
+  // where they came from (referrer + UTM), which link, approx geo, and their email if signed in.
+  // Public and best-effort: it must never block or error the page. Stored capped in Redis; the admin
+  // reads it at /api/roast-view?action=visits.
+  if (body.action === 'visit') {
+    try {
+      if (_redis) {
+        const h = req.headers || {};
+        const clean = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
+        let email = '';
+        try {
+          const tok = readSessionCookie(req);
+          if (tok) { const s = await _redis.get('auth:session:' + tok); const sess = s ? (typeof s === 'string' ? JSON.parse(s) : s) : null; email = (sess && sess.email) || ''; }
+        } catch (e) {}
+        const u = (body.utm && typeof body.utm === 'object') ? body.utm : {};
+        const rec = {
+          ts: Date.now(),
+          path: clean(body.path, 300),
+          entry: clean(body.entry, 24),          // 'home' | 'board' | 'report' | 'other'
+          slug: clean(body.slug, 160),           // company slug or report id the link points at
+          ref: clean(body.ref, 400),             // document.referrer
+          refHost: clean(body.refHost, 120),
+          utm: { source: clean(u.source, 80), medium: clean(u.medium, 80), campaign: clean(u.campaign, 120), term: clean(u.term, 80), content: clean(u.content, 120) },
+          vid: clean(body.vid, 40),              // first-party visitor id (localStorage)
+          ret: !!body.ret,                       // returning visitor
+          dev: clean(body.dev, 16),              // 'mobile' | 'desktop'
+          ua: clean(h['user-agent'], 200),
+          geo: { country: clean(h['x-vercel-ip-country'], 8), region: clean(h['x-vercel-ip-country-region'], 16), city: (() => { try { return decodeURIComponent(clean(h['x-vercel-ip-city'], 80)); } catch (e) { return clean(h['x-vercel-ip-city'], 80); } })() },
+          email,
+        };
+        await _redis.lpush('visits:log', JSON.stringify(rec));
+        await _redis.ltrim('visits:log', 0, 9999); // keep the last ~10k visits
+      }
+    } catch (e) {}
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(204).end();
+  }
 
   // Ad Library dashboard (real ad creatives, free) is served from this same function to stay
   // under the Hobby 12-function cap. It carries no url, so handle it before normalizeUrl

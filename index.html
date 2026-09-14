@@ -9491,5 +9491,30 @@
       <AppErrorBoundary><RootRouter /></AppErrorBoundary>
     );
   </script>
+  <!-- First-party visit beacon: fires once per page load with the entry point (homepage vs a shared
+       board/roast link), referrer + UTM, a first-party visitor id, and device. Plain script (not
+       Babel) so it runs on every real-user view regardless of the React build. Best-effort, silent. -->
+  <script>
+  (function(){
+    try {
+      var p = location.pathname || '/', q = new URLSearchParams(location.search), m, entry = 'other', slug = '';
+      if (p === '/' || p === '' || /(^|\/)index\.html$/.test(p) || q.get('home') === '1') entry = 'home';
+      else if ((m = p.match(/^\/(?:b|board)\/([^\/?#]+)/))) { entry = 'board'; slug = decodeURIComponent(m[1]); }
+      else if ((m = p.match(/^\/report\/([^\/?#]+)/))) { entry = 'report'; slug = decodeURIComponent(m[1]); }
+      else if (q.get('id')) { entry = 'report'; slug = q.get('id'); }
+      else if (p === '/board' || p === '/dashboard' || p === '/account' || p === '/services' || p === '/work-with-us') entry = 'home';
+      var vid = '', ret = false;
+      try { vid = localStorage.getItem('ar_vid') || ''; if (!vid) { vid = Date.now().toString(36) + Math.random().toString(36).slice(2, 10); localStorage.setItem('ar_vid', vid); } ret = localStorage.getItem('ar_seen') === '1'; localStorage.setItem('ar_seen', '1'); } catch (e) {}
+      var ref = document.referrer || '', refHost = '';
+      try { refHost = ref ? new URL(ref).hostname.replace(/^www\./, '') : ''; } catch (e) {}
+      var dev = (window.matchMedia && window.matchMedia('(max-width:768px)').matches) ? 'mobile' : 'desktop';
+      var payload = JSON.stringify({ action: 'visit', path: (p + location.search).slice(0, 300), entry: entry, slug: slug, ref: ref, refHost: refHost,
+        utm: { source: q.get('utm_source') || '', medium: q.get('utm_medium') || '', campaign: q.get('utm_campaign') || '', term: q.get('utm_term') || '', content: q.get('utm_content') || '' },
+        vid: vid, ret: ret, dev: dev });
+      if (navigator.sendBeacon) navigator.sendBeacon('/api/icp', new Blob([payload], { type: 'application/json' }));
+      else fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(function(){});
+    } catch (e) {}
+  })();
+  </script>
 </body>
 </html>
