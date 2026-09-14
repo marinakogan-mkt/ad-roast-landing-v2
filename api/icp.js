@@ -30,7 +30,19 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
 import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives } from './_adlibrary.js';
-import { readSessionCookie } from './auth/_allowlist.js';
+import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
+
+// Admin emails (the portal master role) — the only accounts allowed to force a re-score of a board.
+const ADMIN_EMAILS = new Set(((PORTAL_ROLES.find(r => r.mode === 'master') || {}).emails || []).map(e => String(e).toLowerCase()));
+async function icpIsAdmin(req, redis) {
+  try {
+    const tok = readSessionCookie(req);
+    if (!tok || !redis) return false;
+    const s = await redis.get('auth:session:' + tok);
+    const sess = s ? (typeof s === 'string' ? JSON.parse(s) : s) : null;
+    return !!(sess && sess.email && ADMIN_EMAILS.has(String(sess.email).toLowerCase()));
+  } catch (e) { return false; }
+}
 
 // The Ad Library fetch renders a page via Jina and runs a quick Haiku score, so allow headroom.
 export const config = { maxDuration: 60 };
@@ -295,6 +307,10 @@ export default async function handler(req, res) {
     }
     const cacheAge = (cachedCopy && cachedCopy._checkedAt) ? (Date.now() - cachedCopy._checkedAt) : Infinity;
     const cacheFresh = !!cachedCopy && cacheAge < FRESH_MS;
+    // Admin-only manual RE-SCORE: re-run the risk score on an already-pulled board on demand (the button
+    // Marina sees). Uses the cached ad LIST (no re-pull) and forces a fresh score of every creative in
+    // one call. Gated to admin so a prospect viewing a shared board can't trigger expensive re-scores.
+    const adminRescore = !!body.rescore && await icpIsAdmin(req, _redis);
 
     // LinkedIn-only retry: Google and the ICP are already done, so "Retry LinkedIn" should re-pull ONLY
     // LinkedIn and merge it with the cached Google/Meta — not redo everything. Needs a cached copy to
@@ -333,8 +349,8 @@ export default async function handler(req, res) {
     }
 
     let pull = null, listCached = false, stale = false, lastChecked = null;
-    if (!refresh && cacheFresh) {
-      // Fresh enough (< a week): show the last seen instantly, no live pull.
+    if ((!refresh && cacheFresh) || (adminRescore && cachedCopy && cachedCopy.ads && cachedCopy.ads.length)) {
+      // Fresh enough (< a week), OR an admin re-score: show the last-seen list instantly, no live pull.
       pull = cachedCopy; listCached = true; lastChecked = cachedCopy._checkedAt;
     } else {
       // Go live: the user asked to refresh, or the copy is stale (>1 week), or we've never pulled.
@@ -384,7 +400,9 @@ export default async function handler(req, res) {
     // (list now cached, so no pull) to score the next batch until pending hits 0.
     // Fewer per call when this call also did the pull (~30s of the budget); more when the list was
     // served from cache (no pull, so almost the whole 60s is free for scoring).
-    const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: false, limit: listCached ? 8 : 3 });
+    // Admin re-score forces a fresh score of every creative in one call (list is cached, so the whole
+    // 60s budget is free for scoring); normal loads score incrementally and reuse cached scores.
+    const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
     const scAds = dropJunkCreatives(sc.ads); // catch any blank only revealed by its scored verdict
     // Persist a compact stats snapshot for the link-preview image (og:image). The pull cache stores
     // UNSCORED ads, so the preview can't derive metrics from it; write the scored numbers + the worst

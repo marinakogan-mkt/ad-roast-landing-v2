@@ -1337,6 +1337,7 @@
       const [fP, setFP] = useState('all');
       const [siteInput, setSiteInput] = useState('');
       const [real, setReal] = useState(null);      // { co, icp, ads } once real ads load
+      const [rescoring, setRescoring] = useState(false); // admin-only manual re-score in progress
       const [phase, setPhase] = useState('idle');  // idle | loading | error
       const [statusMsg, setStatusMsg] = useState('');
       const [stage, setStage] = useState('overview'); // overview (platforms) -> grid (one platform's ads)
@@ -1430,6 +1431,21 @@
       const visibleCos = React.useMemo(() => { const q = railQuery.trim().toLowerCase(); return sortedCos.filter(c => !hiddenCos.has(String(c.domain || '').toLowerCase()) && coMatchesQ(c, q)); }, [sortedCos, hiddenCos, railQuery]);
       const hiddenList = React.useMemo(() => { const q = railQuery.trim().toLowerCase(); return sortedCos.filter(c => hiddenCos.has(String(c.domain || '').toLowerCase()) && coMatchesQ(c, q)); }, [sortedCos, hiddenCos, railQuery]);
       const openCo = (co) => { const s = co.site || co.domain; const c = cacheGet(s, co.domain); setSiteInput(s); setEntryMode(false); if (c) { setReal(c); setPhase('idle'); /* keep the current platform view (Google/LinkedIn/all) when switching companies */ try { window.history.pushState({ board: co.domain }, '', '/b/' + encodeURIComponent(shortDom(co.domain))); } catch (e) {} window.scrollTo(0, 0); } else loadReal(s, { keepView: true }); };
+      /* Admin-only manual re-score: re-run the risk score for THIS board on demand (new companies
+         score themselves on first open). Uses the cached ad list on the server (no re-pull), forces a
+         fresh score, and updates the board + client cache in place. Gated server-side to admin too. */
+      const rescoreBoard = async () => {
+        if (!real || !real.co || real.icp == null || rescoring) return;
+        setRescoring(true);
+        try {
+          const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'ads-fetch', company: real.co.name, domain: real.co.domain, icp: real.icp, rescore: true }) }).then(r => r.json()).catch(() => null);
+          if (res && Array.isArray(res.ads) && res.ads.length) {
+            const updated = { ...real, ads: _cleanBoardAds(res.ads), fresh: res.fresh || real.fresh };
+            setReal(updated);
+            cachePut([real.co.site, real.co.domain, siteInput], updated);
+          }
+        } finally { setRescoring(false); }
+      };
       // The sidebar search doubles as a "jump to / roast" box: Enter (or the "Roast <x>" button on
       // no match) opens the top matching company from cache, or, when the typed text is not in her
       // list, pulls that website's board right here so she never has to go back to the main page.
@@ -2106,6 +2122,12 @@
                   </div>
                   );
                 })()}
+                {acct.plan === 'unlimited' && usingReal && real && real.icp != null && (
+                  <button onClick={rescoreBoard} disabled={rescoring} className="inline-flex items-center gap-1.5 rounded-lg flex-none font-semibold cursor-pointer" style={{ fontSize: 12, background: '#fff', border: '1px solid #cfe1f5', color: '#0a66c2', padding: '7px 12px', opacity: rescoring ? 0.7 : 1 }}
+                    title="Re-run the risk score for this board with the latest scoring. New companies score automatically on first open.">
+                    <Icon name="flame" className="w-3.5 h-3.5" />{rescoring ? 'Re-scoring…' : 'Re-score'}
+                  </button>
+                )}
               </div>
             )}
 
