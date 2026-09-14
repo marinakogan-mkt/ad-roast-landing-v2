@@ -17,6 +17,7 @@
     { "source": "/b", "destination": "/index.html" },
     { "source": "/b/(.*)", "destination": "/api/icp?og=1&slug=$1" },
     { "source": "/report/(.*)", "destination": "/index.html" },
+    { "source": "/visits", "destination": "/api/roast-view?action=visits" },
     { "source": "/api/mcp", "destination": "/api/icp?mcp=1" }
   ],
   "crons": [
