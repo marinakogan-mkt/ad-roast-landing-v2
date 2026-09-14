@@ -202,7 +202,7 @@ function buildSvg(opts) {
 
   // Brand row: AdRoast logo + domain wordmark.
   if (adLogo) parts.push(`<image x="68" y="58" width="38" height="38" xlink:href="${adLogo}" href="${adLogo}"/>`);
-  parts.push(`<text x="${adLogo ? 116 : 68}" y="88" font-family="Inter" font-size="27" font-weight="700" fill="${BLUE}">adroast.in</text>`);
+  parts.push(`<text x="${adLogo ? 116 : 68}" y="88" font-family="Inter" font-size="31" font-weight="700" fill="${BLUE}">adroast.in</text>`);
 
   // Company row: their logo (or monogram) + name.
   if (coLogo) {
@@ -214,32 +214,34 @@ function buildSvg(opts) {
     parts.push(`<text x="100" y="172" font-family="Inter" font-size="34" font-weight="700" fill="#ffffff" text-anchor="middle">${esc((company || '?').charAt(0).toUpperCase())}</text>`);
   }
   const n = (company || '').length;
-  const nameSize = n <= 10 ? 56 : n <= 16 ? 48 : n <= 24 ? 38 : 30;
+  const nameSize = n <= 10 ? 64 : n <= 16 ? 56 : n <= 24 ? 44 : 34;
   const nameY = 160 + Math.round(nameSize * 0.35); // vertically centered against the 64px logo
   parts.push(`<text x="148" y="${nameY}" font-family="Inter" font-size="${nameSize}" font-weight="700" fill="${INK}">${esc(company)}</text>`);
 
   if (stats) {
-    // Gravity chip (waste framing for the hook card).
-    const wc = wasteChip(stats.offPct);
-    const chLabel = wc.t;
-    const chW = Math.round(chLabel.length * 11) + 54;
-    parts.push(`<rect x="68" y="226" width="${chW}" height="40" rx="20" fill="${wc.c}16"/>`);
-    parts.push(`<circle cx="93" cy="246" r="5" fill="${wc.c}"/>`);
-    parts.push(`<text x="106" y="253" font-family="Inter" font-size="21" font-weight="700" letter-spacing="1" fill="${wc.c}">${esc(chLabel)}</text>`);
+    // Marina 2026-09-14: "las letras son muy pequenias". LinkedIn suele pintar el
+    // preview a ~240px de ancho, o sea 1/5: todo lo que no llegue a ~100px en este
+    // lienzo no se lee. Por eso hay UN heroe grande en vez de dos paneles chicos, y
+    // la chip de gravedad es la unica etiqueta. Nada de "spend": no lo medimos.
+    const wc = sevOffTarget(stats.offPct);
+    const chLabel = wc.t.toUpperCase();
+    const chW = Math.round(chLabel.length * 13) + 58;
+    parts.push(`<rect x="68" y="222" width="${chW}" height="46" rx="23" fill="${wc.c}16"/>`);
+    parts.push(`<circle cx="96" cy="245" r="6" fill="${wc.c}"/>`);
+    parts.push(`<text x="112" y="254" font-family="Inter" font-size="25" font-weight="700" letter-spacing="1" fill="${wc.c}">${esc(chLabel)}</text>`);
 
-    // Two metric panels (number on top, label under), side by side.
-    const s1 = sevAdsToFix(stats.offPct, stats.crit);
-    const s2 = sevOffTarget(stats.offPct);
-    parts.push(statPanel(68, 300, 300, 152, s1.c, String(stats.off), stats.off === 1 ? 'ad to fix' : 'ads to fix'));
-    parts.push(statPanel(392, 300, 344, 152, s2.c, stats.offPct + '%', 'off-target spend'));
+    // El heroe: cuantos de sus ads le hablan al comprador equivocado.
+    const hero = `${stats.off} of ${stats.count}`;
+    parts.push(`<text x="68" y="404" font-family="Inter" font-size="132" font-weight="800" letter-spacing="-4" fill="${wc.c}">${esc(hero)}</text>`);
+    parts.push(`<text x="68" y="462" font-family="Inter" font-size="46" font-weight="700" fill="${INK}">live ads miss the buyer</text>`);
 
-    // Spectrum: red (wrong buyer) to blue (on target), with a marker at the average fit.
-    const sx = 68, sw = 668, sy = 520;
-    parts.push(`<rect x="${sx}" y="${sy}" width="${sw}" height="12" rx="6" fill="url(#spec)"/>`);
+    // Espectro: rojo (comprador equivocado) a azul (en el blanco), con el promedio.
+    const sx = 68, sw = 668, sy = 524;
+    parts.push(`<rect x="${sx}" y="${sy}" width="${sw}" height="14" rx="7" fill="url(#spec)"/>`);
     const mx = sx + Math.round(Math.max(0, Math.min(10, stats.avg)) / 10 * sw);
-    parts.push(`<circle cx="${mx}" cy="${sy + 6}" r="11" fill="${scoreColor(stats.avg)}" stroke="#ffffff" stroke-width="4"/>`);
-    parts.push(`<text x="${sx}" y="${sy + 42}" font-family="Inter" font-size="15" font-weight="700" letter-spacing="1" fill="${RED}">WRONG BUYER</text>`);
-    parts.push(`<text x="${sx + sw}" y="${sy + 42}" font-family="Inter" font-size="15" font-weight="700" letter-spacing="1" fill="${BLUE}" text-anchor="end">ON TARGET</text>`);
+    parts.push(`<circle cx="${mx}" cy="${sy + 7}" r="13" fill="${scoreColor(stats.avg)}" stroke="#ffffff" stroke-width="4"/>`);
+    parts.push(`<text x="${sx}" y="${sy + 46}" font-family="Inter" font-size="21" font-weight="700" letter-spacing="1" fill="${RED}">WRONG BUYER</text>`);
+    parts.push(`<text x="${sx + sw}" y="${sy + 46}" font-family="Inter" font-size="21" font-weight="700" letter-spacing="1" fill="${BLUE}" text-anchor="end">ON TARGET</text>`);
   } else {
     parts.push(`<text x="68" y="330" font-family="Inter" font-size="60" font-weight="700" fill="${INK}">See your live ads,</text>`);
     parts.push(`<text x="68" y="400" font-family="Inter" font-size="60" font-weight="700" fill="${INK}">scored.</text>`);
@@ -254,7 +256,7 @@ function buildSvg(opts) {
     parts.push(`<text x="986" y="222" font-family="Inter" font-size="24" font-weight="400" fill="${MUTE}" text-anchor="middle">Live ad</text>`);
   }
   parts.push(`<rect x="800" y="388" width="372" height="66" rx="14" fill="${BLUE}"/>`);
-  parts.push(`<text x="986" y="430" font-family="Inter" font-size="25" font-weight="700" fill="#ffffff" text-anchor="middle">Roast these ads →</text>`);
+  parts.push(`<text x="986" y="430" font-family="Inter" font-size="30" font-weight="700" fill="#ffffff" text-anchor="middle">Roast these ads →</text>`);
 
   parts.push(`</svg>`);
   return parts.join('');
