@@ -516,6 +516,11 @@ PLATFORM TRUST-SIGNAL RULES:
 - LinkedIn and Meta DO support logos and badges in the creative: image-based trust signals are valid there.
 - LANDING PAGE recommendations: logos/badges/screenshots are ALWAYS valid (they live on the LP, not the ad). Always state whether a recommendation targets the ad or the LP.
 
+PLATFORM INTENT LENS: weight the score by the buyer's intent on this platform, and suppress levers that do not apply rather than scoring them low.
+- Google Search / text ads are HIGH intent: the buyer typed a query, and the click is cheap because the real selling happens on the landing page. Weight query-to-headline match, offer relevance, and ad-to-landing match HEAVILY; weight in-ad proof and hook cleverness LIGHTLY. A plain text ad with no creative and no in-ad proof can still score 7-8 if it nails the query and the outcome. Do NOT dock a Google Search ad for lacking a visual or in-ad social proof.
+- LinkedIn is COLD B2B: the buyer did not ask for you, so the first-line hook, a real point of view (not corporate speak), in-feed proof, and a cold-audience-appropriate CTA all carry heavy weight.
+- Meta is COLD consumer-context: the creative and its first 2 to 3 seconds or first words carry the most weight; judge thumb-stop, native feel, vertical framing, and sound-off readability.
+
 CTA RULES — three separate CTA surfaces, never blur them:
   1. PRE-SET CTA BUTTON: on LinkedIn/Meta a fixed dropdown from a closed list (not free text; you cannot invent a label).
   2. WRITTEN CTA in the ad copy or creative (free text, e.g. "See the 2-minute teardown").
