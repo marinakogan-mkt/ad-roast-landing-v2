@@ -112,7 +112,8 @@ function parseAdCards(html, company) {
   }));
 }
 
-// One Sonnet 4.6 vision call scores the whole set: 1-10 fit-to-ICP + one-line verdict + a fix.
+// One Sonnet 4.6 vision call scores the whole set: 1-10 fit-to-ICP + a diagnosis verdict (what is off
+// and WHY it loses the buyer, no fix; the fix is reserved for the full roast).
 // Multimodal: each ad contributes a text line AND (capped) its creative image, because the
 // copy that sells the ad usually lives ON the creative, and Google image ads carry no
 // separate text at all. Images are passed as URL sources (Anthropic fetches them), so we
@@ -168,7 +169,7 @@ async function scoreAds(ads, icp) {
     }
   }
   content[0].text = `ICP: ${icp}\n\nScore each ad 1-10 for how well it fits this ICP and earns the click (1 = severe mismatch, 10 = excellent). Several ads include their creative image below; READ the copy/text rendered on each creative and judge it as the ad's copy. Ads:\n${lines.join('\n')}`;
-  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"title":"3 to 6 word name for the ad","verdict":"one short line","fix":"one short fix line"}. The title names the ad in a list: for an image ad with no headline text, READ the main line printed on the creative and use that (or a short plain descriptor of the offer), under 6 words, no trailing period. Base the title/verdict/fix on the ad's actual copy (from the text line and, when present, the words on its creative image).
+  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"title":"3 to 6 word name for the ad","verdict":"the diagnosis, 1 to 2 sentences"}. The title names the ad in a list: for an image ad with no headline text, READ the main line printed on the creative and use that (or a short plain descriptor of the offer), under 6 words, no trailing period. The verdict DIAGNOSES the ad: in 1 to 2 plain sentences, name what most drives its buyer fit, what is off and WHY it loses the intended buyer (or, for a strong ad, what makes it land). It is a diagnosis, NOT a prescription: do NOT tell them how to fix it, and do NOT include an instruction verb like add, make, change, use, swap, put, or rewrite. The fix is delivered separately in the full roast, never here. Base the title and verdict on the ad's actual copy (from the text line and, when present, the words on its creative image).
 
 SCORING SCALE (calibrate consistently, the SAME ad must always land on the same score, do NOT cluster at 0-1 or 9-10):
 1-3 = actively hurting the click (severe ICP mismatch, no clear value, confusing).
@@ -183,7 +184,7 @@ BRAND / NON-DEMAND-GEN: some ads are NOT trying to sell the product to a buyer: 
 
 SEGMENT / VERTICAL FIT: the ICP often covers several industries, segments, or buyer roles. An ad aimed at just ONE of them (e.g. a retail ad from a vendor whose ICP includes retail, finance, healthcare, and more) is ON-target for that segment, NOT off-target for being vertical-specific. Judge whether it speaks well to that segment's buyer and pain. Only score it low as a mismatch if the segment or buyer it targets is genuinely OUTSIDE the ICP, never merely because it is narrower than the whole ICP. When the ICP names sweet-spot segments, treat an ad to any of them as in-market.
 
-LOCALIZATION: ads may be localized on purpose, written in another language and aimed at a specific country. That is deliberate, not a defect. Do NOT lower the score for the language or the geo. Read and translate the ad, then judge how well it speaks to the SAME buyer ROLE in its own market. Never make the verdict or fix about the ad being in another language or region-specific, and never say "no ICP signal" or "unclear buyer" when the signal is simply expressed in that language. Judge substance only: hook, clarity, proof, CTA, value for its intended local buyer.
+LOCALIZATION: ads may be localized on purpose, written in another language and aimed at a specific country. That is deliberate, not a defect. Do NOT lower the score for the language or the geo. Read and translate the ad, then judge how well it speaks to the SAME buyer ROLE in its own market. Never make the verdict about the ad being in another language or region-specific, and never say "no ICP signal" or "unclear buyer" when the signal is simply expressed in that language. Judge substance only: hook, clarity, proof, CTA, value for its intended local buyer.
 
 No markdown. Never use em dashes or en dashes; use commas or periods. Output MUST be valid JSON: inside any string value do NOT use raw double quotes (use single quotes for any quoted phrase) and do not use raw newlines.`;
   try {
@@ -232,7 +233,7 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
     for (const s of scores) if (typeof s.i === 'number') byI[s.i] = s;
     // head falls back to the model's title so image-only Google ads (no headline text) still
     // show a real name in the board/preview instead of "Live creative".
-    return ads.map((a, i) => byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, fix: byI[i].fix, title: byI[i].title || null, head: a.head || byI[i].title || '' } : a);
+    return ads.map((a, i) => byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, title: byI[i].title || null, head: a.head || byI[i].title || '' } : a);
   } catch (e) {
     // A parse error or a thrown hard-failure: re-throw so scoreAdsCached reports it instead of
     // silently returning unscored ads. (fetch/network errors also land here and propagate.)
@@ -307,7 +308,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
       const writes = [];
       for (const a of scored) {
         if (typeof a.score !== 'number') continue;
-        const o = { score: a.score, verdict: a.verdict, fix: a.fix, title: a.title || null };
+        const o = { score: a.score, verdict: a.verdict, title: a.title || null };
         freshBySig[creativeSig(a)] = o;
         writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL }));
       }
@@ -322,7 +323,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   }
   const out = ads.map(a => {
     const o = cachedBySig[creativeSig(a)] || freshBySig[creativeSig(a)];
-    return o ? { ...a, score: o.score, verdict: o.verdict, fix: o.fix, title: o.title || a.title || null, head: a.head || o.title || '' } : a;
+    return o ? { ...a, score: o.score, verdict: o.verdict, title: o.title || a.title || null, head: a.head || o.title || '' } : a;
   });
   // scoredNew = creatives that ACTUALLY got a number this call (not what we tried). pending falls
   // only by real scores, so a stuck batch reports pending honestly instead of a false success.

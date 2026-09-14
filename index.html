@@ -1820,7 +1820,7 @@
                   <span className="font-bold text-gray-500" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>Fit {active.score}/10</span>
                 </div>
                 <div className="text-gray-800 truncate" style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>{active.head || active.title || active.body || (active.dom ? active.dom + ' display ad' : 'Untitled ad')}</div>
-                <div className="text-gray-500 truncate" style={{ fontSize: 12.5, marginTop: 1 }}>{active.fix || active.verdict || active.body || ''}</div>
+                <div className="text-gray-500 truncate" style={{ fontSize: 12.5, marginTop: 1 }}>{active.verdict || active.body || ''}</div>
               </div>
               <button onClick={() => setSel(active)} className="hidden sm:inline-flex items-center flex-none font-bold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ fontSize: 12.5, padding: '9px 13px', background: '#0a66c2', whiteSpace: 'nowrap' }}>Roast this ad →</button>
              </div>
@@ -2277,8 +2277,8 @@
                     <div className="px-4 pt-3 pb-4 mt-auto">
                       {free ? (
                         <>
-                          <div className="uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.12em' }}>Biggest fix</div>
-                          <div className="text-gray-800" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>{a.fix || a.verdict || a.body}</div>
+                          <div className="uppercase tracking-wider text-gray-400" style={{ fontSize: 10, letterSpacing: '0.12em' }}>Where it loses the buyer</div>
+                          <div className="text-gray-800" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>{a.verdict || a.body}</div>
                           <button onClick={() => setSel(a)} className="w-full font-bold text-white rounded-lg mt-3 hover:opacity-90 transition-opacity inline-flex items-center justify-center gap-1.5" style={{ fontSize: 13.5, padding: '10px', background: '#0a66c2' }}><Icon name="flame" className="w-4 h-4" />Roast this ad →</button>
                         </>
                       ) : (
