@@ -125,6 +125,9 @@ async function firstDataUri(urls, headers) {
 }
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 const LOGO_DEV_TOKEN = 'pk_EEohEWP8R0a7wQQ9I8FFzw';
+// Domains where Logo.dev returns a marketing/app image instead of the brand logo: use the Google
+// favicon (the clean mark) first. Keep in sync with LOGO_FAVICON_FIRST in index.html.
+const LOGO_FAVICON_FIRST = new Set(['idnow.io']);
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -288,11 +291,12 @@ export async function boardOgImageHandler(req, res) {
     // Fetch the company logo and the spotlight creative in parallel; either can fail to null.
     const licdn = worstImg && /licdn|linkedin/i.test(String(worstImg));
     const [coLogo, creative] = await Promise.all([
-      domain ? firstDataUri([
-        'https://img.logo.dev/' + domain + '?token=' + LOGO_DEV_TOKEN + '&size=200&format=png&retina=true',
-        'https://logo.clearbit.com/' + domain + '?size=200',
-        'https://www.google.com/s2/favicons?sz=128&domain=' + domain,
-      ], { 'user-agent': UA }) : Promise.resolve(null),
+      domain ? firstDataUri((() => {
+        const d = String(domain).toLowerCase().replace(/^www\./, '');
+        const dev = 'https://img.logo.dev/' + domain + '?token=' + LOGO_DEV_TOKEN + '&size=200&format=png&retina=true';
+        const fav = 'https://www.google.com/s2/favicons?sz=128&domain=' + domain;
+        return LOGO_FAVICON_FIRST.has(d) ? [fav, dev] : [dev, fav];
+      })(), { 'user-agent': UA }) : Promise.resolve(null),
       worstImg ? fetchDataUri(worstImg, licdn ? { referer: 'https://www.linkedin.com/', 'user-agent': UA } : { 'user-agent': UA }) : Promise.resolve(null),
     ]);
 
