@@ -240,6 +240,12 @@ export default async function handler(req, res) {
           const tok = readSessionCookie(req);
           if (tok) { const s = await _redis.get('auth:session:' + tok); const sess = s ? (typeof s === 'string' ? JSON.parse(s) : s) : null; email = (sess && sess.email) || ''; }
         } catch (e) {}
+        // Never log the admin's own visits: they'd swamp the real signal. Skipped either when the
+        // session is an admin email, or when this browser carries the ar_notrack cookie (set the first
+        // time the admin opens /visits, so even logged-out browsing from that browser is excluded).
+        const _selfAdmin = !!email && ADMIN_EMAILS.has(String(email).toLowerCase());
+        const _noTrack = /(?:^|;\s*)ar_notrack=1(?:;|$)/.test(String((req.headers || {}).cookie || ''));
+        if (_selfAdmin || _noTrack) { res.setHeader('Cache-Control', 'no-store'); return res.status(204).end(); }
         const u = (body.utm && typeof body.utm === 'object') ? body.utm : {};
         const rec = {
           ts: Date.now(),

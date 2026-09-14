@@ -137,10 +137,16 @@ export default async function handler(req, res) {
     if (!(await isAdmin(req))) {
       return res.status(401).send('<!doctype html><meta charset="utf-8"><body style="font:15px/1.5 system-ui;padding:48px;color:#0f1b2d;background:#eef3fa"><h2>Admin only</h2><p>Sign in with your AdRoast admin account, then reload this page.</p></body>');
     }
+    // Opening the dashboard means this is the admin's browser, so stamp it so its own future
+    // visits (even logged out) are never logged. The visit beacon in /api/icp checks this cookie.
+    res.setHeader('Set-Cookie', 'ar_notrack=1; Path=/; Max-Age=31536000; SameSite=Lax');
     let items = [];
     try {
       const raw = await redis.lrange('visits:log', 0, 2000);
       items = (raw || []).map(r => { try { return typeof r === 'string' ? JSON.parse(r) : r; } catch (e) { return null; } }).filter(Boolean);
+      // Drop the admin's own entries already in the log (belt and suspenders for rows written
+      // before self-exclusion shipped), so the numbers reflect real visitors only.
+      items = items.filter(v => !(v && v.email && ADMIN_EMAILS.has(String(v.email).toLowerCase())));
     } catch (e) {}
     const byEntry = {}, bySource = {}, byCompany = {};
     for (const v of items) {
@@ -158,12 +164,17 @@ export default async function handler(req, res) {
       const camp = (v.utm && v.utm.campaign) ? ' / ' + v.utm.campaign : '';
       const geo = [v.geo && v.geo.city, v.geo && v.geo.country].filter(Boolean).join(', ');
       const link = v.slug ? esc(v.slug) : '';
+      // The exact link the visitor landed on (path + query, e.g. /b/strivacity?utm_source=li),
+      // as a clickable adroast.in URL so you can open the very page they clicked.
+      const path = v.path ? (String(v.path).charAt(0) === '/' ? v.path : '/' + v.path) : '';
+      const landing = path ? `<a href="https://www.adroast.in${esc(path)}" target="_blank" rel="noopener" style="color:#0a66c2;text-decoration:none">${esc(path)}</a>` : '';
       return `<tr>
         <td style="white-space:nowrap;color:#64748b">${esc(fmt(v.ts))}</td>
         <td><span class="e e-${esc(v.entry || 'other')}">${esc(v.entry || 'other')}</span></td>
         <td>${link}</td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${landing}</td>
         <td>${esc(src)}${esc(camp)}</td>
-        <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(v.ref)}">${esc(v.ref || '')}</td>
+        <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(v.ref)}">${esc(v.ref || '')}</td>
         <td>${esc(geo)}</td>
         <td>${esc(v.dev || '')}${v.ret ? ' · ret' : ''}</td>
         <td>${esc(v.email || '')}</td>
@@ -184,11 +195,11 @@ export default async function handler(req, res) {
   .e{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap}
   .e-board{background:#dcfce7;color:#15803d}.e-report{background:#e0f2fe;color:#0369a1}.e-home{background:#f1f5f9;color:#475569}.e-other{background:#fef3c7;color:#92400e}
 </style></head><body><div class="wrap">
-  <h1>AdRoast visits</h1><div class="sub">First-party. Last ${items.length} visits (capped at 10k). Newest first.</div>
+  <h1>AdRoast visits</h1><div class="sub">First-party. Last ${items.length} visits (capped at 10k), your own excluded. Newest first.</div>
   <div class="tiles">${tile('Total', items.length)}${tile('Homepage', byEntry.home || 0)}${tile('Board links', byEntry.board || 0)}${tile('Roast links', byEntry.report || 0)}</div>
   <div class="cols">${chipList('Top sources', topN(bySource, 8))}${chipList('Top company links', topN(byCompany, 8))}</div>
   <input id="q" placeholder="Filter (company, source, referrer, email, geo)..." oninput="filt()">
-  <table id="t"><thead><tr><th>When (UTC)</th><th>Entry</th><th>Company / link</th><th>Source</th><th>Referrer</th><th>Geo</th><th>Device</th><th>Email</th></tr></thead><tbody>${rows || '<tr><td colspan="8" style="color:#94a3b8;padding:20px">No visits recorded yet.</td></tr>'}</tbody></table>
+  <table id="t"><thead><tr><th>When (UTC)</th><th>Entry</th><th>Company / link</th><th>Link clicked</th><th>Source</th><th>Referrer</th><th>Geo</th><th>Device</th><th>Email</th></tr></thead><tbody>${rows || '<tr><td colspan="9" style="color:#94a3b8;padding:20px">No visits recorded yet.</td></tr>'}</tbody></table>
 </div>
 <script>function filt(){var q=document.getElementById('q').value.toLowerCase();var rows=document.querySelectorAll('#t tbody tr');rows.forEach(function(r){r.style.display=r.textContent.toLowerCase().indexOf(q)>-1?'':'none';});}</script>
 </body></html>`;
