@@ -2009,11 +2009,12 @@
                             <a href="/visits" className="block px-4 py-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}>Visits</a>
                           )}
                           <a href="/?home=1" className="block px-4 py-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}>Home</a>
+                          <a href="/services" className="block px-4 py-2.5 no-underline hover:bg-gray-50 transition-colors" style={{ fontSize: 13.5, fontWeight: 600, color: '#1f2937' }}>Work with us</a>
                           <button onClick={async () => { try { await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {} window.location.href = '/?home=1'; }} className="block w-full text-left px-4 py-2.5 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors" style={{ fontSize: 13.5, fontWeight: 600, color: '#b91c1c' }}>Sign out</button>
                         </div>
                       </>)}
                     </div>
-                  : <a href="/?home=1" className="text-sm font-semibold text-gray-500 hover:text-gray-800 no-underline">Home</a>}
+                  : <span className="flex items-center gap-3"><a href="/services" className="text-sm font-semibold text-gray-500 hover:text-gray-800 no-underline">Work with us</a><a href="/?home=1" className="text-sm font-semibold text-gray-500 hover:text-gray-800 no-underline">Home</a></span>}
               </div>
             </div>
           </header>
