@@ -3340,6 +3340,10 @@
          finish, but stop the moment the user scrolls or interacts. */
       React.useEffect(() => {
         let id = (window.location.hash || '').replace('#', '');
+        /* #services is the old anchor for the "Work with us" section (id="work-with-us"); a fresh
+           load of /#services can be read here BEFORE the boot code normalizes the hash, so map it
+           explicitly instead of bailing (that was the "typing /#services doesn't scroll" case). */
+        if (id === 'services') id = 'work-with-us';
         /* Clean-path deep links: /work-with-us (and /services) land on the services section. */
         if (!id && (BOOT_PATH === '/work-with-us' || BOOT_PATH === '/services')) id = 'work-with-us';
         if (id !== 'deliverables' && id !== 'work-with-us') return;
