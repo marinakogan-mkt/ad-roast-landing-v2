@@ -3325,7 +3325,7 @@
       /* Route to the services page whenever the hash becomes #services (covers
          in-app hash changes and back/forward, alongside the on-load check). */
       React.useEffect(() => {
-        const onHash = () => { if (window.location.hash === '#services') { try { window.history.replaceState({}, '', '/#work-with-us'); } catch (e) {} const el = document.getElementById('work-with-us'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
+        const onHash = () => { const h = window.location.hash; if (h === '#services' || h === '#work-with-us') openWorkWithUs(); };
         window.addEventListener('hashchange', onHash);
         return () => window.removeEventListener('hashchange', onHash);
       }, []);
@@ -4252,12 +4252,21 @@
         }
       };
       const backToRoast = () => { try { window.history.back(); } catch (e) { setCameFromResults(false); setView('results'); } };
-      const goPricing = () => {
+      /* Open the "Work with us" (services) section from ANYWHERE. The section only exists on the
+         landing view, so from the board (ad-library) or a roast (results) we must switch to landing
+         FIRST and then scroll once it mounts. A fixed timeout raced the render (landed on top with no
+         scroll); instead we retry until the section exists. One source of truth for every services link. */
+      const openWorkWithUs = () => {
         setNavOpen(false);
-        const doScroll = () => { const el = document.getElementById('work-with-us'); if (el) { const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; el.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' }); } };
-        if (document.getElementById('work-with-us')) doScroll();
-        else { leaveRoastFor(); setView('landing'); setTimeout(doScroll, 80); }
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const doScroll = () => { const el = document.getElementById('work-with-us'); if (el) { el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); return true; } return false; };
+        if (doScroll()) return;
+        leaveRoastFor(); setView('landing');
+        try { window.history.pushState({}, '', '/#work-with-us'); } catch (e) {}
+        let n = 0; const tick = () => { if (doScroll() || n++ > 20) return; setTimeout(tick, 100); };
+        setTimeout(tick, 60);
       };
+      const goPricing = openWorkWithUs;
       /* Scroll to the "Your whole campaign, repositioned" deliverables section (from the
          results-page "See the roadmap" card). Routes back to the landing page first if needed. */
       const goDeliverables = () => {
