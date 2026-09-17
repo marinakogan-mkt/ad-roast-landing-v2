@@ -3075,13 +3075,29 @@
 
         if (portalParam === '1') setIsPortalView(true);
 
-        /* Direct link to the services section (/services, /#services): normalize to the real
-           section anchor (/#work-with-us) instead of stripping to bare "/". Stripping to "/" broke
-           the deep link two ways: the scroll never had a target, and for a signed-in account the
-           bare "/" tripped the auto-dashboard below (which only skips when a hash/search is present),
-           so it opened the board instead of the services section. Keeping the #work-with-us hash lets
-           the scroll effect land on the section AND makes auto-dashboard correctly skip. */
-        if (window.location.hash === '#services' || window.location.pathname.replace(/\/+$/, '') === '/services') { try { window.history.replaceState({}, '', '/#work-with-us'); } catch (e) {} }
+        /* Direct link to the services section (/services, /#services, /work-with-us, /#work-with-us).
+           This must land on the section in EVERY state, so we do three things right here, before the
+           async auto-dashboard can fire:
+           1. Kill the returning-user dashboard for THIS load (autoDashRef=true). Its redirect runs
+              inside an async fetch .then() that only checks pathname==='/', so a signed-in account was
+              landing on the board instead of services no matter what the URL said. Setting the ref
+              makes that effect return on its very first line, deterministically.
+           2. Force the landing view (in case something else set it) so the section is in the DOM.
+           3. Scroll to #work-with-us with our own retry (the section/images mount after us). */
+        if (window.location.hash === '#services' || window.location.hash === '#work-with-us' || BOOT_PATH === '/services' || BOOT_PATH === '/work-with-us') {
+          autoDashRef.current = true;
+          setView('landing');
+          try { window.history.replaceState({}, '', '/#work-with-us'); } catch (e) {}
+          const _reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          let _n = 0;
+          const _svc = () => {
+            const el = document.getElementById('work-with-us');
+            if (el) { el.scrollIntoView({ behavior: _reduce ? 'auto' : 'smooth', block: 'start' }); if (_n++ < 6) setTimeout(_svc, 220); return; }
+            if (_n++ < 30) setTimeout(_svc, 100);
+          };
+          setTimeout(_svc, 60);
+          return;
+        }
 
         /* Magic sign-in link failed (expired / already used) - show a clear message
            on the landing instead of dumping the user into the portal gate. */
