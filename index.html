@@ -3367,6 +3367,11 @@
       useEffect(() => {
         if (autoDashRef.current) return;
         if (!(roastSession && roastSession.email)) return;
+        // A services/section deep link (/services, /work-with-us) must never open the dashboard, even
+        // though its URL gets normalized to a bare "/" after the section scroll — otherwise a signed-in
+        // account clicking "Services" lands on the board instead of the section. BOOT_PATH is the URL
+        // the page actually loaded with, captured before any normalization, so this is deterministic.
+        if (BOOT_PATH === '/services' || BOOT_PATH === '/work-with-us') return;
         try {
           // Only auto-open the dashboard on a TRULY bare "/" — not when a hash deep-links to a
           // section (e.g. the roast's "See the roadmap" -> /#deliverables), or the dashboard would
