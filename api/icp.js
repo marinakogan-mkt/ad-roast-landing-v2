@@ -90,6 +90,30 @@ async function fetchSiteViaJina(url) {
   return res.ok ? { title: '', desc: '', body: res.body, blocked: false } : null;
 }
 
+/* Fetch a page as raw HTML through the Jina proxy (X-Return-Format: html), so we can read its
+   links. LinkedIn/Google ad-library detail pages are datacenter-IP blocked and JS-rendered, so a
+   direct fetch returns nothing; Jina renders them. Used by the ad-landing resolver to pull the
+   real click destination (the first outbound href) off an ad's own detail page. */
+async function fetchHtmlViaJina(url) {
+  const attempt = async (useKey) => {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 15000);
+    try {
+      const headers = { 'X-Return-Format': 'html', 'X-Timeout': '20' };
+      if (useKey && process.env.JINA_API_KEY) headers['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
+      const r = await fetch('https://r.jina.ai/' + url, { headers, signal: c.signal });
+      if (!r.ok) return { ok: false, status: r.status };
+      const html = await r.text();
+      if (!html || html.length < 200) return { ok: false, status: 0 };
+      return { ok: true, html };
+    } catch (e) { return { ok: false, status: -1 }; } finally { clearTimeout(t); }
+  };
+  const hasKey = !!process.env.JINA_API_KEY;
+  let res = await attempt(hasKey);
+  if (!res.ok && hasKey && (res.status === 402 || res.status === 401 || res.status === 403)) res = await attempt(false);
+  return res.ok ? res.html : null;
+}
+
 async function fetchSite(url) {
   let direct = null;
   try { direct = await fetchSiteDirect(url); } catch (e) { direct = null; }
@@ -322,6 +346,62 @@ export default async function handler(req, res) {
     } catch (e) {}
     res.setHeader('Cache-Control', 'no-store');
     return res.status(204).end();
+  }
+
+  /* Resolve the landing page an ad points to, server-side (POST { action:'ad-landing', plat,
+     detailUrl, adId, body, dom }). The board can't read another domain's ad-library detail page in
+     the browser (CORS), so it asks the server. Mechanism proven in the outreach-engine's
+     check_landings: the click destination is the FIRST outbound href on the ad's own detail page
+     (LinkedIn/Google), and when the page exposes none, a URL the advertiser printed in the ad copy.
+     We NEVER assume the homepage: if nothing resolves, we return null and the board asks the user for
+     it (Marina's rule). Result cached per ad (7d). Meta already carries its ctaUrl, so the board
+     never calls this for Meta. */
+  if (body.action === 'ad-landing') {
+    const plat = String(body.plat || '').toLowerCase();
+    const detailUrl = String(body.detailUrl || '').trim();
+    const adId = String(body.adId || '').trim();
+    const adBody = String(body.body || '');
+    const cacheKey = adId ? 'adland:v1:' + plat + ':' + adId : null;
+    // Hosts that are the ad PLATFORM's own site/CDN/chrome — never the landing page. We do NOT
+    // exclude link shorteners (lnkd.in) or the advertiser's social pages: lnkd.in is the real click
+    // destination the advertiser used and redirects to the landing (roast follows it). Mirrors the
+    // outreach-engine's proven filter (linkedin.com/licdn.com), plus the Google Transparency chrome.
+    const OWN = /(^|\.)(linkedin\.com|licdn\.com|google\.com|gstatic\.com|googlesyndication\.com|googleadservices\.com|doubleclick\.net|youtube\.com|adstransparency\.google\.com)$/i;
+    const isLanding = (u) => { try { const x = new URL(u); return (x.protocol === 'https:' || x.protocol === 'http:') && /\./.test(x.hostname) && !OWN.test(x.hostname); } catch (e) { return false; } };
+    const trim = (u) => String(u).replace(/[.,)\]]+$/, '');
+    const fromHtml = (html) => { for (const m of String(html).matchAll(/href="(https?:\/\/[^"]+)"/gi)) { if (isLanding(m[1])) return m[1]; } return null; };
+    const fromText = (t) => { for (const u of (String(t).match(/https?:\/\/[^\s<>"')]+/gi) || [])) { const c = trim(u); if (isLanding(c)) return c; } return null; };
+    try {
+      if (_redis && cacheKey) {
+        try { const c = await _redis.get(cacheKey); if (c != null) { res.setHeader('Cache-Control', 'no-store'); return res.status(200).json({ landingUrl: c === '__none__' ? null : c, source: 'cache' }); } } catch (e) {}
+      }
+      let landing = null, source = null, definitive = false;
+      // 1. The ad's own detail page: its first outbound href is the real click destination. Guard
+      //    against a challenge/error shell (Jina hitting a Cloudflare 5xx, a "Failed to load" render):
+      //    those carry bogus hrefs (e.g. cloudflare.com/5xx-error-landing) and must NOT be extracted
+      //    or cached. Only a page that actually rendered is a definitive answer.
+      if (detailUrl) {
+        const html = await fetchHtmlViaJina(detailUrl);
+        const broken = !html || html.length < 1500 || /just a moment|attention required|cloudflare ray|cf-ray|5xx-error-landing|\/error-landing|failed to load|enable javascript and cookies/i.test(html);
+        if (html && !broken) {
+          definitive = true;
+          landing = fromHtml(html);
+          if (landing) source = 'detail';
+          else { const t2 = fromText(html); if (t2) { landing = t2; source = 'detail-text'; } }
+        }
+      }
+      // 2. Fallback: a URL the advertiser printed in the ad copy (lead-gen ads expose no href). This
+      //    is always a definitive read (it comes from data we already hold, not a live fetch).
+      if (!landing && adBody) { const b = fromText(adBody); if (b) { landing = b; source = 'body'; definitive = true; } }
+      // Cache only a definitive result (found, or a real page that genuinely had none). A transient
+      // fetch failure returns null WITHOUT caching, so the next click retries instead of asking for 7d.
+      if (_redis && cacheKey && definitive) { try { await _redis.set(cacheKey, landing || '__none__', { ex: 60 * 60 * 24 * 7 }); } catch (e) {} }
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).json({ landingUrl: landing, source: landing ? source : null });
+    } catch (e) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).json({ landingUrl: null, source: null });
+    }
   }
 
   // Ad Library dashboard (real ad creatives, free) is served from this same function to stay
