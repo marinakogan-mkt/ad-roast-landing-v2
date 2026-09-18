@@ -4417,7 +4417,7 @@
                   {o.popular && <div className="absolute -top-3 left-8 px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>MOST POPULAR</div>}
                   <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>{o.tag}</div>
                   <h3 className="text-gray-900 mb-1" style={{ fontSize: '24px', fontWeight: 500, letterSpacing: '-0.2px' }}>{o.name}</h3>
-                  <div className="mb-4"><span className="text-gray-900" style={{ fontSize: '34px', fontWeight: 300, letterSpacing: '-0.5px' }}>{o.price}</span><span className="text-gray-400 text-sm ml-1">{o.sub}</span></div>
+                  <div className="mb-4"><span className="text-gray-500 text-sm">{o.sub}</span></div>
                   <p className="text-gray-500 text-sm mb-3" style={{ lineHeight: 1.6 }}>{o.desc}</p>
                   {o.who && <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide mb-4 px-2.5 py-1 rounded-full self-start" style={{ background: '#eff5fc', color: '#0a66c2' }}><Icon name="arrowRight" className="w-3.5 h-3.5" />{o.who}</div>}
                   <button onClick={() => toggle(o.key)} className="flex items-center justify-between gap-2 w-full text-left text-sm font-semibold text-gray-900 bg-transparent border-t border-gray-100 cursor-pointer py-3">
@@ -6491,8 +6491,8 @@
                 const OPTIONS = {
                   review:     { tag: 'Team review', color: '#0a66c2', title: 'Get the team on your roast',   q: 'Want the team to weigh in?',  kind: 'linkedin' },
                   diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', href: '/board' },
-                  withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Campaign Repositioning Sprint',    q: 'Want it fixed with you?',  cta: 'See the roadmap', href: '/#deliverables', meta: '$6K · 10 days' },
-                  doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', href: '/#work-with-us', meta: '$8K/mo, managed' },
+                  withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Campaign Repositioning Sprint',    q: 'Want it fixed with you?',  cta: 'See the roadmap', href: '/#deliverables', meta: '10 days' },
+                  doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', href: '/#work-with-us', meta: 'Managed' },
                 };
                 let key, reason;
                 if (sev <= 3) { key = 'doneforyou'; reason = `At ${sev}/10 this isn't a copy tweak. Your weakest link is your ${weakest.k} (${weakest.s}/10), and the ad and page pull in different directions. The honest, fastest path is having it rebuilt for you.`; }
