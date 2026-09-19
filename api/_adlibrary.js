@@ -93,7 +93,10 @@ function parseAdCards(html, company) {
     const imgRe = /(?:data-delayed-url|src)="(https:\/\/media\.licdn\.com\/[^"]+)"/g;
     let im;
     while ((im = imgRe.exec(block))) {
-      if (/company-logo/.test(im[1])) continue;
+      // Skip the card's IDENTITY image, not just the company logo: thought-leader ads front a
+      // person, whose avatar (profile-displayphoto / profile-framedphoto) is a media.licdn image
+      // too. Taking it showed a headshot instead of the real creative (the video thumbnail).
+      if (/company-logo|profile-displayphoto|profile-framedphoto/.test(im[1])) continue;
       img = decodeHtml(im[1]);
       break;
     }
@@ -368,7 +371,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // proof or visual hook; LinkedIn and Meta stay cold-audience). v5 (2026-09-14): one-line diagnosis +
   // chips. v4 (2026-09-14): diagnosis-not-fix verdict (what is off + WHY it loses the buyer, no fix).
   // v3 (2026-09-12): localization / blank / brand rules.
-  const keyOf = (a) => 'adscore:v9:' + ih + ':' + creativeSig(a);
+  const keyOf = (a) => 'adscore:v10:' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
