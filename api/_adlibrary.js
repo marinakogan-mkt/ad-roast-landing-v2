@@ -133,10 +133,22 @@ async function _fetchImgB64(url) {
     } finally { clearTimeout(t); }
     if (!r.ok) return null;
     let ct = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-    if (!/^image\/(png|jpe?g|gif|webp)$/.test(ct)) return null;
     if (ct === 'image/jpg') ct = 'image/jpeg';
     const buf = Buffer.from(await r.arrayBuffer());
     if (!buf.length || buf.length > 4_000_000) return null;
+    // Trust the BYTES, not the header. Google (simgad) sometimes serves a real PNG/JPEG with a
+    // missing or generic content-type (octet-stream), so a strict header check dropped a valid
+    // creative -> the ad reached the scorer with empty copy and no image and got scored "broken" (a
+    // false 2 on the prospect's own ad). Sniff the magic bytes and use them when the header isn't a
+    // type Anthropic's vision accepts (png/jpeg/gif/webp).
+    const sniff = (b) => {
+      if (b.length >= 4 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
+      if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+      if (b.length >= 4 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) return 'image/gif';
+      if (b.length >= 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+      return null;
+    };
+    if (!/^image\/(png|jpe?g|gif|webp)$/.test(ct)) { const m = sniff(buf); if (!m) return null; ct = m; }
     return { media_type: ct, data: buf.toString('base64') };
   } catch (e) { return null; }
 }
@@ -240,7 +252,15 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
     for (const s of scores) if (typeof s.i === 'number') byI[s.i] = s;
     // head falls back to the model's title so image-only Google ads (no headline text) still
     // show a real name in the board/preview instead of "Live creative".
-    return ads.map((a, i) => byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.slice(0, 4) : [], title: byI[i].title || null, head: a.head || byI[i].title || '' } : a);
+    return ads.map((a, i) => {
+      // CAPTURE FAILURE, not a bad ad: the ad reached the model with NO copy (empty headline+body)
+      // AND we never got its creative as base64. The model then had nothing real to judge and scores
+      // it "broken" (a false low score). That is OUR capture failing, not the advertiser's ad, so it
+      // must never appear on the prospect's board as their broken ad. Flag it; isJunkCreative drops it.
+      const blind = !(a.head || '').trim() && !(a.body || '').trim() && !imgByIdx[i];
+      if (blind) return { ...a, _captureFail: true };
+      return byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.slice(0, 4) : [], title: byI[i].title || null, head: a.head || byI[i].title || '' } : a;
+    });
   } catch (e) {
     // A parse error or a thrown hard-failure: re-throw so scoreAdsCached reports it instead of
     // silently returning unscored ads. (fetch/network errors also land here and propagate.)
@@ -289,12 +309,14 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // Namespace bumped over time to invalidate scores made under an older scorer prompt, so a board
   // re-scores under the current rules on its NEXT open. This is LAZY per-board (each open re-scores
   // only that board, batched under the 60s limit): safe as long as boards are opened gradually, NOT a
-  // global forced re-score (that once tripped a rate limit). v6 (2026-09-14): platform-aware lens
-  // (Google search = high intent, judged on query match / offer / CTA, never on proof or visual
-  // hook; LinkedIn and Meta stay cold-audience). v5 (2026-09-14): one-line diagnosis + chips.
-  // v4 (2026-09-14): diagnosis-not-fix verdict
-  // (what is off + WHY it loses the buyer, no fix). v3 (2026-09-12): localization / blank / brand rules.
-  const keyOf = (a) => 'adscore:v6:' + ih + ':' + creativeSig(a);
+  // global forced re-score (that once tripped a rate limit). v7 (2026-09-19): capture-failure gate,
+  // so a Google ad we couldn't capture (empty copy + no fetchable creative) is dropped, not scored a
+  // false "broken" 2 on the advertiser's own board (was hitting Juicebox, Group-IB). v6 (2026-09-14):
+  // platform-aware lens (Google search = high intent, judged on query match / offer / CTA, never on
+  // proof or visual hook; LinkedIn and Meta stay cold-audience). v5 (2026-09-14): one-line diagnosis +
+  // chips. v4 (2026-09-14): diagnosis-not-fix verdict (what is off + WHY it loses the buyer, no fix).
+  // v3 (2026-09-12): localization / blank / brand rules.
+  const keyOf = (a) => 'adscore:v7:' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
@@ -302,7 +324,9 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
       ads.forEach((a, i) => {
         const v = vals && vals[i];
         const o = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null;
-        if (o && typeof o.score === 'number') cachedBySig[creativeSig(a)] = o;
+        // A cached capture-failure counts as "known" so the ad leaves `need` (no re-score loop) and
+        // still gets dropped downstream. Otherwise only a real numeric score is a cache hit.
+        if (o && (typeof o.score === 'number' || o._captureFail)) cachedBySig[creativeSig(a)] = o;
       });
     } catch (e) { /* miss -> score all */ }
   }
@@ -313,12 +337,17 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // (the list is cached by then, so those calls skip the pull). limit 0 = no cap (score everything).
   const toScore = (limit > 0 && need.length > limit) ? need.slice(0, limit) : need;
   const freshBySig = {};
+  const failBySig = {}; // creatives our capture couldn't feed the scorer: dropped, never shown as broken
   let scoreError = null, rateLimited = false;
   if (toScore.length) {
     try {
       const scored = await scoreAds(toScore, icp);
       const writes = [];
       for (const a of scored) {
+        // Capture failure: remember it (12h TTL) so it drops out of `need` and doesn't loop the
+        // client's re-score. Short TTL so a creative that only failed transiently (a timeout / 429)
+        // comes back and scores fairly within the day instead of staying hidden.
+        if (a._captureFail) { failBySig[creativeSig(a)] = true; writes.push(redis.set(keyOf(a), JSON.stringify({ _captureFail: true }), { ex: 60 * 60 * 12 })); continue; }
         if (typeof a.score !== 'number') continue;
         const o = { score: a.score, verdict: a.verdict, tags: Array.isArray(a.tags) ? a.tags.slice(0, 4) : [], title: a.title || null };
         freshBySig[creativeSig(a)] = o;
@@ -335,12 +364,15 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   }
   const out = ads.map(a => {
     const o = cachedBySig[creativeSig(a)] || freshBySig[creativeSig(a)];
+    if (failBySig[creativeSig(a)] || (o && o._captureFail)) return { ...a, _captureFail: true }; // our capture failed; isJunkCreative drops it
     return o ? { ...a, score: o.score, verdict: o.verdict, tags: Array.isArray(o.tags) ? o.tags : [], title: o.title || a.title || null, head: a.head || o.title || '' } : a;
   });
   // scoredNew = creatives that ACTUALLY got a number this call (not what we tried). pending falls
-  // only by real scores, so a stuck batch reports pending honestly instead of a false success.
+  // by real scores AND by capture-failures (resolved: dropped), so a board with an uncapturable
+  // creative doesn't loop the client's re-score forever waiting on an ad that can never score.
   const scoredNew = Object.keys(freshBySig).length;
-  return { ads: out, scoredNew, reused: Object.keys(cachedBySig).length, pending: need.length - scoredNew, scoreError, rateLimited };
+  const failedNew = Object.keys(failBySig).length;
+  return { ads: out, scoredNew, reused: Object.keys(cachedBySig).length, pending: Math.max(0, need.length - scoredNew - failedNew), scoreError, rateLimited };
 }
 
 // --- LinkedIn (free, via Jina Reader) -------------------------------------------------
@@ -467,6 +499,7 @@ export async function fetchLinkedInAds({ company, domain = '', limit = 12 } = {}
 export const GOOGLE_PLACEHOLDER_SIMGAD = new Set(['6364307266515146391']);
 export function isJunkCreative(a) {
   if (!a) return true;
+  if (a._captureFail) return true; // our capture gave the scorer nothing real; never show it as the advertiser's broken ad
   const id = (String(a.img || '').match(/simgad\/(\d+)/) || [])[1];
   if (id && GOOGLE_PLACEHOLDER_SIMGAD.has(id)) return true;                 // the reused placeholder asset
   if (a._w && a._h && a._w < 200 && a._h < 100) return true;               // too small to be a real ad creative
