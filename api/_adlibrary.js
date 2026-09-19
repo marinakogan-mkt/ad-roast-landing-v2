@@ -157,6 +157,19 @@ async function _fetchImgB64(url) {
 // Belt and braces: the prompt forbids them, this removes any chip that slips through anyway.
 const ARTIFACT_TAG = /truncat|cut ?off|incomplete|placeholder|dynamic|language|translat|locali[sz]/i;
 const stripCut = (s) => String(s || '').replace(/(\s*(\u2026|\.{3}))+\s*$/, '').trim();
+// The verdict can still mention the cut in passing when the copy is rendered INSIDE the
+// creative image (a Google text ad captured as a picture), where stripCut can't reach it
+// (Greenly "...than the truncated body", Stream.security "...and the sitelinks are truncated").
+// Drop just that clause at read time, for cached and fresh scores alike. A verdict that is
+// ONLY about the cut is left as is: there is nothing true to replace it with.
+const CONJ = 'and|but|though|although|while|yet|with|plus';
+const ARTIFACT_CLAUSE = new RegExp('\\s*,?\\s*\\b(?:' + CONJ + ')\\b(?:(?!\\b(?:' + CONJ + ')\\b)[^,.;])*?\\b(?:truncat\\w*|cut ?off|incomplete)\\b[^,.;]*', 'gi');
+function cleanVerdict(v) {
+  if (!v) return v;
+  const out = String(v).replace(ARTIFACT_CLAUSE, '').replace(/\s+([.,;])/g, '$1').replace(/[,;]\s*$/, '').trim();
+  if (out.split(/\s+/).length < 4) return v;
+  return /[.!?]$/.test(out) ? out : out + '.';
+}
 
 async function scoreAds(ads, icp) {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -383,7 +396,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   const out = ads.map(a => {
     const o = cachedBySig[creativeSig(a)] || freshBySig[creativeSig(a)];
     if (failBySig[creativeSig(a)] || (o && o._captureFail)) return { ...a, _captureFail: true }; // our capture failed; isJunkCreative drops it
-    return o ? { ...a, score: o.score, verdict: o.verdict, tags: Array.isArray(o.tags) ? o.tags : [], title: o.title || a.title || null, head: a.head || o.title || '' } : a;
+    return o ? { ...a, score: o.score, verdict: cleanVerdict(o.verdict), tags: Array.isArray(o.tags) ? o.tags.filter((t) => !ARTIFACT_TAG.test(String(t))) : [], title: o.title || a.title || null, head: a.head || o.title || '' } : a;
   });
   // scoredNew = creatives that ACTUALLY got a number this call (not what we tried). pending falls
   // by real scores AND by capture-failures (resolved: dropped), so a board with an uncapturable
