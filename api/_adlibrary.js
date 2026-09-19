@@ -153,6 +153,11 @@ async function _fetchImgB64(url) {
   } catch (e) { return null; }
 }
 
+// Preview artifacts that are never the advertiser's defect (see NOT A DEFECT in the prompt).
+// Belt and braces: the prompt forbids them, this removes any chip that slips through anyway.
+const ARTIFACT_TAG = /truncat|cut ?off|incomplete|placeholder|dynamic|language|translat|locali[sz]/i;
+const stripCut = (s) => String(s || '').replace(/(\s*(\u2026|\.{3}))+\s*$/, '').trim();
+
 async function scoreAds(ads, icp) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key || !icp || !ads.length) return ads;
@@ -170,7 +175,10 @@ async function scoreAds(ads, icp) {
   const content = [{ type: 'text', text: '' }]; // header filled in after the loop
   for (let i = 0; i < ads.length; i++) {
     const a = ads[i];
-    lines.push(`#${i} [${a.plat}] advertiser="${(a.advertiser || '').slice(0, 60)}" headline="${(a.head || '').slice(0, 140)}" body="${(a.body || '').slice(0, 220)}"`);
+    // The ad library cuts copy with a trailing ellipsis; the live ad is complete. The prompt
+    // says never to flag truncation, but the model still did (Infiterra, 2026-09-20: "Truncated
+    // Body", scored 6). Strip the cut marker so it never SEES a truncation to complain about.
+    lines.push(`#${i} [${a.plat}] advertiser="${(a.advertiser || '').slice(0, 60)}" headline="${stripCut(a.head).slice(0, 140)}" body="${stripCut(a.body).slice(0, 220)}"`);
     if (imgByIdx[i]) {
       content.push({ type: 'text', text: `Creative image for ad #${i}:` });
       content.push({ type: 'image', source: { type: 'base64', media_type: imgByIdx[i].media_type, data: imgByIdx[i].data } });
@@ -264,7 +272,7 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
       if (byI[i] && byI[i].flag === 'capture_fail') return { ...a, _captureFail: true };
       const blind = !(a.head || '').trim() && !(a.body || '').trim() && !imgByIdx[i];
       if (blind) return { ...a, _captureFail: true };
-      return byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.slice(0, 4) : [], title: byI[i].title || null, head: a.head || byI[i].title || '' } : a;
+      return byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.filter((t) => !ARTIFACT_TAG.test(String(t))).slice(0, 4) : [], title: byI[i].title || null, head: a.head || byI[i].title || '' } : a;
     });
   } catch (e) {
     // A parse error or a thrown hard-failure: re-throw so scoreAdsCached reports it instead of
@@ -314,7 +322,9 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // Namespace bumped over time to invalidate scores made under an older scorer prompt, so a board
   // re-scores under the current rules on its NEXT open. This is LAZY per-board (each open re-scores
   // only that board, batched under the 60s limit): safe as long as boards are opened gradually, NOT a
-  // global forced re-score (that once tripped a rate limit). v8 (2026-09-19): capture-artifact rules,
+  // global forced re-score (that once tripped a rate limit). v9 (2026-09-20): the truncation rule
+  // was prompt-only and the model ignored it (Infiterra); the cut marker is now stripped before
+  // scoring and artifact chips are filtered after. v8 (2026-09-19): capture-artifact rules,
   // so error pages, internal identifiers, a wrong advertiser's creative, dynamic-insertion tokens,
   // preview truncation and foreign-language ads are no longer shown as the advertiser's own defect
   // (was hitting Allstacks, TreviPay, Mambu, SpecterOps, Detectify, Rydoo and more). v7 (2026-09-19):
@@ -324,7 +334,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // proof or visual hook; LinkedIn and Meta stay cold-audience). v5 (2026-09-14): one-line diagnosis +
   // chips. v4 (2026-09-14): diagnosis-not-fix verdict (what is off + WHY it loses the buyer, no fix).
   // v3 (2026-09-12): localization / blank / brand rules.
-  const keyOf = (a) => 'adscore:v8:' + ih + ':' + creativeSig(a);
+  const keyOf = (a) => 'adscore:v9:' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
