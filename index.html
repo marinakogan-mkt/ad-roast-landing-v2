@@ -1684,11 +1684,15 @@
             return;
           }
         } catch (e) {}
-        /* No website given: show the static sample instantly (creatives visible via the
-           proxy), and in the BACKGROUND pull the real Semgrep ads so the preview upgrades
-           to actual live creatives + real scores. Falls back to the sample if the pull fails. */
+        /* No website given: show the static Semgrep sample and stop there. We deliberately do
+           NOT pull Semgrep live in the background anymore: that silently swapped the fixed
+           sample for the live board (a visible flicker) and cost an ICP + vision-scoring call
+           on every mount, for a demo that isn't even the visitor's company. The hardcoded
+           sample (YOUR_CO / YOUR_ADS) stands on its own; a real board only loads when the
+           visitor enters their own website. */
         setSiteInput('semgrep.dev');
-        loadReal('semgrep.dev', { silent: true });
+        setBootLoading(false);
+        setPhase('idle');
       }, []);
 
       // Let the urgency bar animate from 0 to its value once, just after mount.

@@ -68,22 +68,43 @@ function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = [] } = 
 function parseAdCards(html, company) {
   const out = [];
   const seen = new Set();
-  const anchorRe = /<a href="\/ad-library\/detail\/(\d+)[^"]*ad_library_ad_preview_content_image[\s\S]{0,1400}?<\/a>/g;
-  let m;
-  while ((m = anchorRe.exec(html))) {
-    const block = m[0];
-    const id = m[1];
+  // Each ad card is a <li class="search-result-item ...">...</li>. LinkedIn changed the
+  // ad-library markup (the old `ad_library_ad_preview_content_image` anchor no longer exists),
+  // which silently cut every board down to the one card that happened to still match. So we now
+  // split on the card boundary and read each block independently, which is robust to the exact
+  // class names and captures image, video and status-update creatives alike.
+  const blocks = html.split('<li class="search-result-item');
+  for (let bi = 1; bi < blocks.length; bi++) {
+    const block = blocks[bi].split('</li>')[0];
+    const idM = block.match(/\/ad-library\/detail\/(\d+)/);
+    if (!idM) continue;
+    const id = idM[1];
     if (seen.has(id)) continue;
     seen.add(id);
-    const imgM = block.match(/data-delayed-url="(https:\/\/media\.licdn\.com[^"]+)"/);
-    const altM = block.match(/<img[^>]*\balt="([^"]*)"/);
-    const img = imgM ? decodeHtml(imgM[1]) : null;
-    const headline = altM ? decodeHtml(altM[1]).trim() : '';
-    const pre = html.slice(Math.max(0, m.index - 2600), m.index);
-    const adv = [...pre.matchAll(/font-bold[^>]*>\s*([^<]{1,90}?)\s*<\/div>/g)];
-    const advertiser = adv.length ? decodeHtml(adv[adv.length - 1][1]).trim() : '';
-    const bod = [...pre.matchAll(/commentary__content[^>]*>([\s\S]*?)<\/p>/g)];
-    const body = bod.length ? decodeHtml(stripTags(bod[bod.length - 1][1])).trim() : '';
+    // advertiser (and creative type) from the card's aria-label: "Otter.ai, Video Ad, View details"
+    const aria = block.match(/aria-label="([^"]+?),\s*[^",]+,\s*View details"/);
+    const advertiser = aria ? decodeHtml(aria[1]).trim() : '';
+    // body copy
+    const bod = block.match(/commentary__content[^>]*>([\s\S]*?)<\/p>/);
+    const body = bod ? decodeHtml(stripTags(bod[1])).trim() : '';
+    // real creative image: the first media.licdn image that is NOT the advertiser's company logo
+    // (video ads carry a thumbnail, image ads the creative; both live on media.licdn.com).
+    let img = null;
+    const imgRe = /(?:data-delayed-url|src)="(https:\/\/media\.licdn\.com\/[^"]+)"/g;
+    let im;
+    while ((im = imgRe.exec(block))) {
+      if (/company-logo/.test(im[1])) continue;
+      img = decodeHtml(im[1]);
+      break;
+    }
+    // headline: an <img alt> that isn't the logo's alt
+    let headline = '';
+    const altRe = /<img[^>]*\balt="([^"]*)"/g;
+    let am;
+    while ((am = altRe.exec(block))) {
+      const a = decodeHtml(am[1]).trim();
+      if (a && !/advertiser logo|^logo$/i.test(a)) { headline = a; break; }
+    }
     out.push({ id, advertiser, headline, body, img });
   }
   // Collapse repeats: the same creative often runs across several campaigns and shows up

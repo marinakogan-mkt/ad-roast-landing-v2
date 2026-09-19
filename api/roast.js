@@ -640,6 +640,19 @@ Return the JSON object defined in the output contract. All fields required.`;
 
     const data = await response.json();
 
+    // Per-roast token accounting so we can see real cost per roast in Vercel logs
+    // (grep "[AdRoast][usage]"). Zero effect on the response; purely observational.
+    if (data && data.usage) {
+      console.log('[AdRoast][usage]', JSON.stringify({
+        model: 'claude-sonnet-5',
+        in: data.usage.input_tokens,
+        out: data.usage.output_tokens,
+        cache_read: data.usage.cache_read_input_tokens || 0,
+        cache_write: data.usage.cache_creation_input_tokens || 0,
+        stop: data.stop_reason
+      }));
+    }
+
     if (data.error) {
       /* Never leak the upstream provider error (billing, rate limits, model
          names) to the end user. Log the real one; show a neutral message. */
