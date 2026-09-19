@@ -46,6 +46,26 @@ async function isAdmin(req) {
   return !!(s && s.email && ADMIN_EMAILS.has(String(s.email).toLowerCase()));
 }
 
+/* Admin auth WITHOUT a browser session: a personal API key (ak_...) whose owner
+   is an admin. The visits dashboard was cookie-only, so a script or a cron job
+   could not read it at all; this lets the weekly outreach digest pull the same
+   data with an x-api-key header and ?format=json. Same key mechanism as /api/roast and the
+   MCP server (roast:apikey:<key> -> email), so nothing new to rotate. */
+async function isAdminKey(req) {
+  const authz = req.headers.authorization || '';
+  const m = /^Bearer\s+(ak_[A-Za-z0-9_]+)/i.exec(authz);
+  // Header only (Authorization: Bearer or x-api-key), never ?key= in the URL: a key in a
+  // query string ends up in request logs and browser history.
+  const key = (m && m[1]) || req.headers['x-api-key'] || '';
+  if (!key || !/^ak_[A-Za-z0-9_]+$/.test(String(key))) return false;
+  try {
+    const em = await redis.get(`roast:apikey:${key}`);
+    return !!(em && ADMIN_EMAILS.has(String(em).toLowerCase()));
+  } catch (e) {
+    return false;
+  }
+}
+
 /* Backfill older roasts that live only in Notion (saved via the pre-Redis
    "Save Your Report" / LinkedIn flow) so they show in the internal list too.
    Reads only page PROPERTIES (Report ID, Platform, scores, Date) — no per-page
@@ -132,14 +152,18 @@ export default async function handler(req, res) {
      signed in as admin. Data is written by the /api/icp {action:'visit'} beacon. */
   if (req.query.action === 'visits') {
     const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    const wantsJson = String(req.query.format || '').toLowerCase() === 'json';
+    res.setHeader('Content-Type', wantsJson ? 'application/json; charset=utf-8' : 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
-    if (!(await isAdmin(req))) {
+    const byCookie = await isAdmin(req);
+    if (!byCookie && !(await isAdminKey(req))) {
+      if (wantsJson) return res.status(401).json({ error: 'Admin only. Send an admin account key in the x-api-key header.' });
       return res.status(401).send('<!doctype html><meta charset="utf-8"><body style="font:15px/1.5 system-ui;padding:48px;color:#0f1b2d;background:#eef3fa"><h2>Admin only</h2><p>Sign in with your AdRoast admin account, then reload this page.</p></body>');
     }
-    // Opening the dashboard means this is the admin's browser, so stamp it so its own future
+    // Opening the dashboard means this is the admin's BROWSER, so stamp it so its own future
     // visits (even logged out) are never logged. The visit beacon in /api/icp checks this cookie.
-    res.setHeader('Set-Cookie', 'ar_notrack=1; Path=/; Max-Age=31536000; SameSite=Lax');
+    // A script reading with an API key is not a browser, so it never gets the cookie.
+    if (byCookie) res.setHeader('Set-Cookie', 'ar_notrack=1; Path=/; Max-Age=31536000; SameSite=Lax');
     let items = [];
     try {
       const raw = await redis.lrange('visits:log', 0, 2000);
@@ -148,6 +172,18 @@ export default async function handler(req, res) {
       // before self-exclusion shipped), so the numbers reflect real visitors only.
       items = items.filter(v => !(v && v.email && ADMIN_EMAILS.has(String(v.email).toLowerCase())));
     } catch (e) {}
+    if (wantsJson) {
+      // ?since=<ISO or ms> trims to the caller's window (the weekly outreach
+      // digest asks for 7 days); ?limit= caps the length. No filters, everything.
+      const sinceRaw = req.query.since;
+      let since = 0;
+      if (sinceRaw) { const t = Date.parse(sinceRaw); since = Number.isNaN(t) ? Number(sinceRaw) || 0 : t; }
+      let out = items;
+      if (since) out = out.filter(v => { const t = Date.parse(v && v.ts); return !Number.isNaN(t) && t >= since; });
+      const limit = Math.min(Number(req.query.limit) || 2000, 2000);
+      return res.status(200).json({ count: out.length, visits: out.slice(0, limit) });
+    }
+
     const byEntry = {}, bySource = {}, byCompany = {};
     for (const v of items) {
       byEntry[v.entry || 'other'] = (byEntry[v.entry || 'other'] || 0) + 1;
