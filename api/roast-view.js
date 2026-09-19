@@ -179,7 +179,10 @@ export default async function handler(req, res) {
       let since = 0;
       if (sinceRaw) { const t = Date.parse(sinceRaw); since = Number.isNaN(t) ? Number(sinceRaw) || 0 : t; }
       let out = items;
-      if (since) out = out.filter(v => { const t = Date.parse(v && v.ts); return !Number.isNaN(t) && t >= since; });
+      // ts is stored as epoch MILLISECONDS (a number), not an ISO string: Date.parse(number)
+      // is NaN, which silently dropped every visit whenever ?since= was passed.
+      const tsOf = (v) => (v && typeof v.ts === 'number') ? v.ts : Date.parse(v && v.ts);
+      if (since) out = out.filter(v => { const t = tsOf(v); return !Number.isNaN(t) && t >= since; });
       const limit = Math.min(Number(req.query.limit) || 2000, 2000);
       return res.status(200).json({ count: out.length, visits: out.slice(0, limit) });
     }
