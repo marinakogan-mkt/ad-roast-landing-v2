@@ -111,7 +111,7 @@ export async function boardOgHandler(req, res) {
     if (listable.length > 0) {
       const items = listable.slice(0, 20).map(a => {
         const h = attr(a.head || a.headline);
-        const sc = (typeof a.score === 'number') ? ` &mdash; scored ${a.score}/10 against ${attr(company)}&rsquo;s ideal buyer` : '';
+        const sc = (typeof a.score === 'number') ? `, scored ${a.score}/10 against ${attr(company)}&rsquo;s ideal buyer` : '';
         const v = a.verdict ? '. ' + attr(String(a.verdict)) : '';
         return `<li><strong>${h}</strong>${sc}${v}</li>`;
       }).join('');
@@ -122,7 +122,7 @@ export async function boardOgHandler(req, res) {
         + `<p>${intro}</p>`
         + `<h2 style="font-size:18px;font-weight:600;margin-top:26px">${attr(company)}&rsquo;s live ads, scored against their buyer</h2>`
         + `<ul>${items}</ul>`
-        + `<p><a href="/b/${attr(slug)}">See ${attr(company)}&rsquo;s full live-ad board on AdRoast</a> &mdash; every creative scored against their ICP, with the exact fix for each.</p>`
+        + `<p><a href="/b/${attr(slug)}">See ${attr(company)}&rsquo;s full live-ad board on AdRoast</a>. Every creative scored against their ICP, with the exact fix for each.</p>`
         + '</main>';
       html = html.replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
       const ld = {
