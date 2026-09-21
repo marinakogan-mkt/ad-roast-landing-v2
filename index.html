@@ -1681,9 +1681,18 @@
             if (silent) { setPhase('idle'); setBootLoading(false); return; }
             // If Google already painted, keep that board instead of blanking it to an error.
             if (renderedFast) { setPhase('idle'); return; }
-            // Distinguish "genuinely no ads" (server answered ok, list empty) from a
-            // read that failed/rate-limited. Only the latter is worth retrying.
-            const noAds = !!(res && res.ok && (!res.ads || !res.ads.length));
+            // Retry only helps a TRANSIENT read (rate limit / timeout). When every
+            // source came back "no ads", "no token", or a persistent block (e.g. Jina
+            // 401 for anon LinkedIn), retrying loops forever, so we show an honest
+            // "no live ads" state instead. No server answer at all is treated as
+            // transient (worth a retry).
+            let noAds;
+            if (!res) { noAds = false; }
+            else {
+              const noteStr = Object.values(res.notes || {}).map(v => String(v || '')).join(' ').toLowerCase();
+              const transient = /429|rate|throttl|timeout|timed out|temporarily|busy|network|econn|\bretry\b/.test(noteStr);
+              noAds = !transient;
+            }
             setPhase('error'); setErrKind(noAds ? 'noads' : 'read');
             if (!noAds) setStatusMsg('Your live ads are taking a moment to load. Give it a few seconds and hit retry.');
             return;
