@@ -1318,6 +1318,7 @@
       const [real, setReal] = useState(null);      // { co, icp, ads } once real ads load
       const [rescoring, setRescoring] = useState(false); // admin-only manual re-score in progress
       const [phase, setPhase] = useState('idle');  // idle | loading | error
+      const [errKind, setErrKind] = useState('read'); // 'read' (transient, offer retry) | 'noads' (genuinely none, no retry loop)
       const [statusMsg, setStatusMsg] = useState('');
       const [stage, setStage] = useState('overview'); // overview (platforms) -> grid (one platform's ads)
       const [gridPlat, setGridPlat] = useState('all'); // which platform's ads the grid shows
@@ -1680,8 +1681,11 @@
             if (silent) { setPhase('idle'); setBootLoading(false); return; }
             // If Google already painted, keep that board instead of blanking it to an error.
             if (renderedFast) { setPhase('idle'); return; }
-            setPhase('error');
-            setStatusMsg('Your live ads are taking a moment to load. Give it a few seconds and hit retry.');
+            // Distinguish "genuinely no ads" (server answered ok, list empty) from a
+            // read that failed/rate-limited. Only the latter is worth retrying.
+            const noAds = !!(res && res.ok && (!res.ads || !res.ads.length));
+            setPhase('error'); setErrKind(noAds ? 'noads' : 'read');
+            if (!noAds) setStatusMsg('Your live ads are taking a moment to load. Give it a few seconds and hit retry.');
             return;
           }
           setEntryMode(false);
@@ -1698,7 +1702,7 @@
           if (!silent && res.fresh && res.fresh.pending > 0) scoreRemaining(co, icpText, siteRaw, mySeq, res.fresh.pending);
           // Clean, shareable URL for this company's board: /board/<domain>.
           if (!silent) { try { const clean = '/b/' + encodeURIComponent(shortDom(co.domain || siteRaw)); if (window.location.pathname !== clean) window.history.pushState({ board: co.domain }, '', clean); } catch (e) {} }
-        } catch (e) { if (silent) { setPhase('idle'); setBootLoading(false); return; } setPhase('error'); setStatusMsg(String(e && e.message || e)); }
+        } catch (e) { if (silent) { setPhase('idle'); setBootLoading(false); return; } setPhase('error'); setErrKind('read'); setStatusMsg(String(e && e.message || e)); }
       };
 
       useEffect(() => {
@@ -2192,13 +2196,19 @@
                 <BrandLogo domain={CO.domain} name={CO.name} initial={CO.initial} color={CO.color} size={44} radius={12} />
                 <h1 className="font-bold text-gray-900 mt-3" style={{ fontSize: 20 }}>{CO.name}</h1>
                 <div className="text-gray-400" style={{ fontSize: 12.5, fontFamily: 'monospace' }}>{CO.domain}</div>
-                {phase === 'error' ? (
+                {phase === 'error' ? (errKind === 'noads' ? (
+                  <div className="mt-5">
+                    <div className="text-gray-700 font-semibold" style={{ fontSize: 14 }}>No live ads found for {CO.name}</div>
+                    <div className="text-gray-400 mt-1 mx-auto" style={{ fontSize: 12.5, maxWidth: 360, lineHeight: 1.45 }}>They're not running ads in the libraries we can read, or the source is blocking us. This won't change on retry.</div>
+                    <button onClick={() => { setEntryMode(true); setPhase('idle'); setStage('overview'); setFP('all'); setSiteInput(''); window.scrollTo(0, 0); }} className="mt-4 font-bold rounded-lg cursor-pointer" style={{ fontSize: 13, padding: '9px 18px', border: '1.5px solid #0a66c2', color: '#0a66c2', background: '#fff' }}>Roast another company &rarr;</button>
+                  </div>
+                ) : (
                   <div className="mt-5">
                     <div className="text-gray-700 font-semibold" style={{ fontSize: 14 }}>{CO.name}'s live ads are taking a moment</div>
                     <div className="text-gray-400 mt-1 mx-auto" style={{ fontSize: 12.5, maxWidth: 360, lineHeight: 1.45 }}>The ad libraries limit how fast they can be read. Give it a few seconds and hit retry, nothing's wrong with your account.</div>
                     <button onClick={() => loadReal(siteInput || CO.domain || '', { refresh: true })} className="mt-4 font-bold rounded-lg cursor-pointer" style={{ fontSize: 13, padding: '9px 18px', border: '1.5px solid #0a66c2', color: '#0a66c2', background: '#fff' }}>Retry &rarr;</button>
                   </div>
-                ) : (
+                )) : (
                   <div className="mt-5 flex flex-col items-center gap-2">
                     <div className="animate-spin rounded-full" style={{ width: 26, height: 26, border: '3px solid #e2e8f0', borderTopColor: '#0a66c2' }} />
                     <div className="text-gray-500 font-semibold" style={{ fontSize: 13 }}>{statusMsg || ('Pulling ' + CO.name + "'s live ads…")}</div>
@@ -4461,7 +4471,7 @@
                   {o.popular && <div className="absolute -top-3 left-8 px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>MOST POPULAR</div>}
                   <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>{o.tag}</div>
                   <h3 className="text-gray-900 mb-1" style={{ fontSize: '24px', fontWeight: 500, letterSpacing: '-0.2px' }}>{o.name}</h3>
-                  <div className="mb-4"><span className="text-gray-500 text-sm">{o.sub}</span></div>
+                  <div className="mb-4"><span className="text-gray-900" style={{ fontSize: '26px', fontWeight: 500, letterSpacing: '-0.4px' }}>{o.sub}</span></div>
                   <p className="text-gray-500 text-sm mb-3" style={{ lineHeight: 1.6 }}>{o.desc}</p>
                   {o.who && <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide mb-4 px-2.5 py-1 rounded-full self-start" style={{ background: '#eff5fc', color: '#0a66c2' }}><Icon name="arrowRight" className="w-3.5 h-3.5" />{o.who}</div>}
                   <button onClick={() => toggle(o.key)} className="flex items-center justify-between gap-2 w-full text-left text-sm font-semibold text-gray-900 bg-transparent border-t border-gray-100 cursor-pointer py-3">
