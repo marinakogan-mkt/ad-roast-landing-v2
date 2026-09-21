@@ -569,6 +569,14 @@ export default async function handler(req, res) {
             at: Date.now(),
           };
           await _redis.set('ads:ogstats:' + domKey, JSON.stringify(og), { ex: 60 * 60 * 24 * 30 });
+          // Clean, scored, non-artifact ads for the public GEO page (/b/<domain>), read by
+          // _board-og. Excludes capture_fail (a wrong-advertiser or scrape artifact) so the
+          // crawlable page never publishes an ad that isn't really this company's.
+          const geoAds = scoredAll
+            .filter(a => a.flag !== 'capture_fail' && (a.head || a.headline))
+            .slice(0, 24)
+            .map(a => ({ head: String(a.head || a.headline).slice(0, 200), score: a.score, verdict: a.verdict ? String(a.verdict).slice(0, 200) : '', plat: a.plat || '' }));
+          if (geoAds.length) await _redis.set('ads:geo:' + domKey, JSON.stringify(geoAds), { ex: 60 * 60 * 24 * 30 });
         }
       } catch (e) {}
     }

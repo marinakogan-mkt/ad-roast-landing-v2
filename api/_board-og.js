@@ -72,13 +72,16 @@ export async function boardOgHandler(req, res) {
     const boardUrl = 'https://www.adroast.in/b/' + encodeURIComponent(slug);
 
     // Enrich with real board stats when the pull is cached (free, no model call).
+    // Read the CLEAN, scored, non-artifact ad list persisted for GEO (ads:geo), not the
+    // raw pull: the raw list can hold capture artifacts and other advertisers' creatives
+    // that the board only filters out AFTER scoring, so publishing it would show wrong ads.
     let stats = null, ads = [];
     if (_redis) {
       try {
         const domKey = domain.replace(/[^a-z0-9.]/g, '');
-        const raw = await _redis.get('ads:pull:' + domKey);
-        const pull = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-        ads = pull && Array.isArray(pull.ads) ? pull.ads : [];
+        const raw = await _redis.get('ads:geo:' + domKey);
+        const list = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+        ads = Array.isArray(list) ? list : [];
         stats = ads.length ? boardStats(ads) : null;
       } catch (e) { stats = null; ads = []; }
     }
