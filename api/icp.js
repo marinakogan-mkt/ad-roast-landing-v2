@@ -541,7 +541,15 @@ export default async function handler(req, res) {
 
     // Strip Google "collapsed ad" placeholders from whatever we're about to show (fresh OR a cached
     // copy from before this filter existed), so they never count toward "ads to fix" / "badly off".
-    if (pull && Array.isArray(pull.ads)) pull.ads = dropJunkCreatives(pull.ads);
+    // Then drop homonym advertisers the LinkedIn name-search pulls in: searching "Wiz" returns Wizz
+    // Air, WizCommerce, Wizard of Ads and unrelated wholesale ads. This is the SAME guard the GEO board
+    // page uses; applying it here too keeps the customer-facing board showing only THIS company's ads,
+    // not just the crawlable /b/ page. Runs on fresh AND cached lists, so old contaminated caches clean
+    // up on next view.
+    if (pull && Array.isArray(pull.ads)) {
+      pull.ads = dropJunkCreatives(pull.ads);
+      pull.ads = ownedByAdvertiser(pull.ads, { domain: body.domain, company: body.company });
+    }
 
     // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.
     // ALWAYS incremental (force:false), even on Refresh. Refresh re-pulls the LIST (so added ads get
