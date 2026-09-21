@@ -107,15 +107,16 @@ export async function boardOgHandler(req, res) {
     // on mount, which REPLACES this markup, so real (JS) users never see it, only the
     // no-JS crawler does. Injected ONLY when the company has real scored ads, so a
     // company with nothing to say never produces a thin page.
-    if (stats && stats.count > 0) {
-      const scored = ads.filter(a => a && typeof a.score === 'number').slice(0, 14);
-      const items = scored.map(a => {
-        const h = attr(a.head || a.headline || 'Ad');
-        const v = a.verdict ? ' ' + attr(String(a.verdict)) : '';
-        return `<li><strong>${h}</strong> &mdash; scored ${a.score}/10 against ${attr(company)}&rsquo;s ideal buyer.${v}</li>`;
+    const listable = ads.filter(a => a && (a.head || a.headline));
+    if (listable.length > 0) {
+      const items = listable.slice(0, 20).map(a => {
+        const h = attr(a.head || a.headline);
+        const sc = (typeof a.score === 'number') ? ` &mdash; scored ${a.score}/10 against ${attr(company)}&rsquo;s ideal buyer` : '';
+        const v = a.verdict ? '. ' + attr(String(a.verdict)) : '';
+        return `<li><strong>${h}</strong>${sc}${v}</li>`;
       }).join('');
-      const fixCopy = stats.toFix === 1 ? '1 ad needs fixing' : stats.toFix + ' ads need fixing';
-      const intro = `${attr(company)} runs ${stats.count} live ads on LinkedIn and Google. Their average fit to their own ideal buyer is ${stats.avg} out of 10, and ${fixCopy}. Each ad below is scored against ${attr(company)}&rsquo;s ideal customer profile.`;
+      const statLine = stats ? ` Their average fit to their own ideal buyer is ${stats.avg} out of 10, and ${stats.toFix === 1 ? '1 ad needs fixing' : stats.toFix + ' ads need fixing'}.` : '';
+      const intro = `${attr(company)} is running ${listable.length} live ads on LinkedIn and Google.${statLine} Each ad below is one of ${attr(company)}&rsquo;s real live creatives, read straight from the ad libraries.`;
       const content = '<main style="max-width:720px;margin:0 auto;padding:40px 20px;font-family:system-ui,-apple-system,sans-serif;color:#1f2937;line-height:1.65">'
         + `<h1 style="font-size:26px;font-weight:600;letter-spacing:-.3px">${attr(title)}</h1>`
         + `<p>${intro}</p>`
