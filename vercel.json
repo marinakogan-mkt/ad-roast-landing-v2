@@ -8,6 +8,7 @@
     }
   },
   "rewrites": [
+    { "source": "/sitemap-boards.xml", "destination": "/api/icp?sitemap=boards" },
     { "source": "/services", "destination": "/index.html" },
     { "source": "/work-with-us", "destination": "/index.html" },
     { "source": "/dashboard", "destination": "/index.html" },

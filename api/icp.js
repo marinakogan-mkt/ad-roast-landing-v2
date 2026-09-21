@@ -191,6 +191,21 @@ export default async function handler(req, res) {
     const { boardOgHandler } = await import('./_board-og.js');
     return boardOgHandler(req, res);
   }
+  /* Sitemap of the crawlable per-company board pages (/sitemap-boards.xml, rewritten to
+     /api/icp?sitemap=boards). Lists every company that has a clean, scored GEO page, so
+     search and LLM crawlers can discover them. Companies are added to geo:companies when
+     their clean ad list is persisted (below). */
+  if (req.query && req.query.sitemap === 'boards') {
+    let doms = [];
+    try { if (_redis) doms = (await _redis.smembers('geo:companies')) || []; } catch (e) { doms = []; }
+    const base = 'https://www.adroast.in';
+    const urls = doms.filter(Boolean).slice(0, 5000).map(d =>
+      `  <url><loc>${base}/b/${encodeURIComponent(String(d))}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`
+    ).join('\n');
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`);
+  }
   /* Per-company link-preview IMAGE (og:image), rewritten to /api/icp?ogimg=1&slug=<slug>. Renders a
      1200x630 PNG named for the company with its live board stats. Dynamic import so satori + resvg-wasm
      never load on the normal ICP/scoring path, and folded in here to stay under the Hobby 12-fn cap. */
@@ -582,7 +597,10 @@ export default async function handler(req, res) {
           const geoAds = ownScored
             .slice(0, 24)
             .map(a => ({ head: String(a.head || a.headline).slice(0, 200), score: a.score, verdict: a.verdict ? String(a.verdict).slice(0, 200) : '', plat: a.plat || '' }));
-          if (geoAds.length) await _redis.set('ads:geo:' + domKey, JSON.stringify(geoAds), { ex: 60 * 60 * 24 * 30 });
+          if (geoAds.length) {
+            await _redis.set('ads:geo:' + domKey, JSON.stringify(geoAds), { ex: 60 * 60 * 24 * 30 });
+            try { await _redis.sadd('geo:companies', domKey); } catch (e) {}
+          }
         }
       } catch (e) {}
     }
