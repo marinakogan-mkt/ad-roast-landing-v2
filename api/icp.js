@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 
@@ -572,8 +572,14 @@ export default async function handler(req, res) {
           // Clean, scored, non-artifact ads for the public GEO page (/b/<domain>), read by
           // _board-og. Excludes capture_fail (a wrong-advertiser or scrape artifact) so the
           // crawlable page never publishes an ad that isn't really this company's.
-          const geoAds = scoredAll
-            .filter(a => a.flag !== 'capture_fail' && (a.head || a.headline))
+          // Belt-and-suspenders: also require the ad's advertiser to match this company, so a
+          // stranger's ad that slipped past the pull-time filter (or an older contaminated cache)
+          // never gets published publicly under this company's name.
+          const ownScored = ownedByAdvertiser(
+            scoredAll.filter(a => a.flag !== 'capture_fail' && (a.head || a.headline)),
+            { domain: body.domain, company: body.company }
+          );
+          const geoAds = ownScored
             .slice(0, 24)
             .map(a => ({ head: String(a.head || a.headline).slice(0, 200), score: a.score, verdict: a.verdict ? String(a.verdict).slice(0, 200) : '', plat: a.plat || '' }));
           if (geoAds.length) await _redis.set('ads:geo:' + domKey, JSON.stringify(geoAds), { ex: 60 * 60 * 24 * 30 });

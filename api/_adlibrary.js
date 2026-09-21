@@ -38,10 +38,13 @@ function norm(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 // semgrep.dev -> "Pablo Estrada"); else (several advertisers, none match) we cannot identify the
 // company's own ads, so keep none rather than show a stranger's ads. `extraToks` lets a caller add
 // resolved identities (e.g. a LinkedIn company slug) as extra accepted tokens.
-function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = [] } = {}) {
+export function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = [] } = {}) {
   const nn = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   const wordsOf = (s) => String(s || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  const toks = [nn(String(domain).replace(/\.[a-z.]+$/i, '')), nn(company), ...extraToks.map(nn)].filter(t => t && t.length >= 4);
+  // >= 3, not 4: a 3-letter brand ("Wiz", "Box") would otherwise yield no token, so the fuzzy
+  // accountOwner search's strangers (an airline-hiring or wholesale ad under "Wiz") passed through
+  // unfiltered. Matching is whole-word (below), so a 3-char token stays safe from substring noise.
+  const toks = [nn(String(domain).replace(/\.[a-z.]+$/i, '')), nn(company), ...extraToks.map(nn)].filter(t => t && t.length >= 3);
   if (!toks.length) return ads; // nothing to match on, don't over-filter
   // Match by WHOLE WORD, not substring: a name search returns near-names (searching "Vanta" pulls
   // "Vantage", "VantaSec"; "Miro" pulls "Mirolin", "Miroslava") that a substring test would wrongly
