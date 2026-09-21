@@ -630,7 +630,20 @@ export default async function handler(req, res) {
     try {
       const raw = await _redis.get(icpCacheKey);
       const cached = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-      if (cached && cached.icp_text) return res.status(200).json({ ...cached, _cached: true });
+      if (cached && cached.icp_text) {
+        // Backfill the domain-keyed GEO positioning record even when the ICP is served from
+        // cache (the fresh path below also writes it), so no-ad companies get their page.
+        if (cached.company) {
+          try {
+            const gk = String(cached.domain || domain || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
+            if (gk) {
+              await _redis.set('geo:icp:' + gk, JSON.stringify({ company: cached.company, website: cached.website || cached.url || '', icp_text: cached.icp_text || '', summary: cached.summary || '', tags: Array.isArray(cached.tags) ? cached.tags.slice(0, 8) : [] }), { ex: ICP_CACHE_TTL });
+              await _redis.sadd('geo:companies', gk);
+            }
+          } catch (e) {}
+        }
+        return res.status(200).json({ ...cached, _cached: true });
+      }
     } catch (e) { /* cache miss / outage -> infer below */ }
   }
 
