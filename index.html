@@ -1539,7 +1539,14 @@
         const _p = String((ad && ad.plat) || '').toLowerCase();
         const plat = _p.indexOf('linkedin') > -1 ? 'LinkedIn' : _p.indexOf('google') > -1 ? 'Google' : (_p.indexOf('meta') > -1 || _p.indexOf('facebook') > -1 || _p.indexOf('instagram') > -1) ? 'Meta' : '';
         if (!ad || !ad.img || dead) return (<span style={{ opacity: 0.3 }}>{plat ? <PlatLogo plat={plat} size={40} /> : <Icon name="alertCircle" className="w-9 h-9 text-gray-300" />}</span>);
-        return <img src={src} alt={ad.head || 'creative'} loading="lazy" onError={() => { if (tries < 2) setTimeout(() => setTries(t => t + 1), 500); else setDead(true); }} style={{ maxWidth: '100%', maxHeight: maxH, width: 'auto', height: 'auto', display: 'block', borderRadius: 8, boxShadow: '0 1px 4px rgba(11,15,26,.12)' }} />;
+        // Google search-ad creatives are white renders that arrive at wildly different aspect ratios
+        // (from ~2.6 wide-and-short to ~0.9 portrait). Letting them float small on a grey tile left a
+        // big grey void that read as broken. Fill the card width and drop the shadow so any remaining
+        // vertical space blends into the ad's own white background (the container is white for Google).
+        const st = plat === 'Google'
+          ? { width: '100%', maxHeight: maxH, height: 'auto', objectFit: 'contain', display: 'block', borderRadius: 4 }
+          : { maxWidth: '100%', maxHeight: maxH, width: 'auto', height: 'auto', display: 'block', borderRadius: 8, boxShadow: '0 1px 4px rgba(11,15,26,.12)' };
+        return <img src={src} alt={ad.head || 'creative'} loading="lazy" onError={() => { if (tries < 2) setTimeout(() => setTries(t => t + 1), 500); else setDead(true); }} style={st} />;
       };
 
       // Enter a website -> detect company + ICP, then pull the company's real live ads
@@ -2392,7 +2399,9 @@
                     </div>
                     {/* Real creative, always, shown in full with no cropping. */}
                     <div className="mx-4 rounded-xl border border-gray-200 overflow-hidden" style={{ background: '#f1f5f9' }}>
-                      <div className="grid place-items-center" style={{ background: '#f8fafc', padding: 12, height: 224 }}><AdCreative ad={a} maxH={200} /></div>
+                      {(() => { const _g = String(a.plat || '').toLowerCase().indexOf('google') > -1; return (
+                      <div className="grid place-items-center" style={{ background: _g ? '#fff' : '#f8fafc', padding: _g ? 8 : 12, height: 224, overflow: 'hidden' }}><AdCreative ad={a} maxH={_g ? 208 : 200} /></div>
+                      ); })()}
                       <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white border-t border-gray-100">
                         <span className="text-gray-400 truncate flex items-center gap-1.5" style={{ fontSize: 11.5, fontFamily: 'monospace' }}><BrandLogo domain={CO.domain} name={CO.name} initial={CO.initial} color={CO.color} size={16} radius={4} />{(a.dom && /\./.test(a.dom) && !/linkedin\.com|licdn|googlesyndication|adstransparency/i.test(a.dom)) ? hostOf(a.dom) : CO.domain}</span>
                         {a.cta && <span className="font-semibold rounded flex-none" style={{ fontSize: 11, padding: '4px 10px', color: '#374151', background: '#eef1f5', border: '1px solid #e2e6ec' }}>{a.cta}</span>}
