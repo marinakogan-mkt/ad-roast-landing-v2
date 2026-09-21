@@ -72,14 +72,15 @@ export async function boardOgHandler(req, res) {
     const boardUrl = 'https://www.adroast.in/b/' + encodeURIComponent(slug);
 
     // Enrich with real board stats when the pull is cached (free, no model call).
-    let stats = null;
+    let stats = null, ads = [];
     if (_redis) {
       try {
         const domKey = domain.replace(/[^a-z0-9.]/g, '');
         const raw = await _redis.get('ads:pull:' + domKey);
         const pull = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-        stats = pull && pull.ads ? boardStats(pull.ads) : null;
-      } catch (e) { stats = null; }
+        ads = pull && Array.isArray(pull.ads) ? pull.ads : [];
+        stats = ads.length ? boardStats(ads) : null;
+      } catch (e) { stats = null; ads = []; }
     }
 
     const title = 'Where ' + company + "'s ads lose the buyer";
@@ -99,6 +100,41 @@ export async function boardOgHandler(req, res) {
     html = replaceTag(html, /(<meta property="og:image" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
     html = replaceTag(html, /(<meta name="twitter:image" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
     html = replaceTag(html, /(<meta property="og:image:alt" content=")[^"]*(">)/, `$1${attr('Where ' + company + "'s ads lose the buyer")}$2`);
+
+    // GEO (generative-engine optimization): inject real, crawlable body content plus
+    // JSON-LD so LLM crawlers (GPTBot, PerplexityBot, ClaudeBot) and search bots read
+    // a substantive page, not an empty SPA shell. React calls createRoot(#root).render
+    // on mount, which REPLACES this markup, so real (JS) users never see it, only the
+    // no-JS crawler does. Injected ONLY when the company has real scored ads, so a
+    // company with nothing to say never produces a thin page.
+    if (stats && stats.count > 0) {
+      const scored = ads.filter(a => a && typeof a.score === 'number').slice(0, 14);
+      const items = scored.map(a => {
+        const h = attr(a.head || a.headline || 'Ad');
+        const v = a.verdict ? ' ' + attr(String(a.verdict)) : '';
+        return `<li><strong>${h}</strong> &mdash; scored ${a.score}/10 against ${attr(company)}&rsquo;s ideal buyer.${v}</li>`;
+      }).join('');
+      const fixCopy = stats.toFix === 1 ? '1 ad needs fixing' : stats.toFix + ' ads need fixing';
+      const intro = `${attr(company)} runs ${stats.count} live ads on LinkedIn and Google. Their average fit to their own ideal buyer is ${stats.avg} out of 10, and ${fixCopy}. Each ad below is scored against ${attr(company)}&rsquo;s ideal customer profile.`;
+      const content = '<main style="max-width:720px;margin:0 auto;padding:40px 20px;font-family:system-ui,-apple-system,sans-serif;color:#1f2937;line-height:1.65">'
+        + `<h1 style="font-size:26px;font-weight:600;letter-spacing:-.3px">${attr(title)}</h1>`
+        + `<p>${intro}</p>`
+        + `<h2 style="font-size:18px;font-weight:600;margin-top:26px">${attr(company)}&rsquo;s live ads, scored against their buyer</h2>`
+        + `<ul>${items}</ul>`
+        + `<p><a href="/b/${attr(slug)}">See ${attr(company)}&rsquo;s full live-ad board on AdRoast</a> &mdash; every creative scored against their ICP, with the exact fix for each.</p>`
+        + '</main>';
+      html = html.replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
+      const ld = {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: title,
+        description: desc,
+        url: boardUrl,
+        about: { '@type': 'Organization', name: company, url: 'https://' + domain }
+      };
+      const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
+      html = html.replace('</head>', ldScript + '</head>');
+    }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     // Let the crawler and CDN cache the personalized shell briefly; stats refresh within the hour.
