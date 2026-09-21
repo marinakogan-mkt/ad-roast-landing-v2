@@ -75,7 +75,7 @@ export async function boardOgHandler(req, res) {
     // Read the CLEAN, scored, non-artifact ad list persisted for GEO (ads:geo), not the
     // raw pull: the raw list can hold capture artifacts and other advertisers' creatives
     // that the board only filters out AFTER scoring, so publishing it would show wrong ads.
-    let stats = null, ads = [];
+    let stats = null, ads = [], posdata = null;
     if (_redis) {
       try {
         const domKey = domain.replace(/[^a-z0-9.]/g, '');
@@ -83,7 +83,13 @@ export async function boardOgHandler(req, res) {
         const list = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
         ads = Array.isArray(list) ? list : [];
         stats = ads.length ? boardStats(ads) : null;
-      } catch (e) { stats = null; ads = []; }
+        // No clean ads: fall back to the positioning record so a company with no readable
+        // live ads still gets a crawlable page (GEO phase 2).
+        if (!ads.length) {
+          const pr = await _redis.get('geo:icp:' + domKey);
+          posdata = pr ? (typeof pr === 'string' ? JSON.parse(pr) : pr) : null;
+        }
+      } catch (e) { stats = null; ads = []; posdata = null; }
     }
 
     const title = 'Where ' + company + "'s ads lose the buyer";
@@ -136,6 +142,23 @@ export async function boardOgHandler(req, res) {
         url: boardUrl,
         about: { '@type': 'Organization', name: company, url: 'https://' + domain }
       };
+      const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
+      html = html.replace('</head>', ldScript + '</head>');
+    } else if (posdata && posdata.company) {
+      // GEO phase 2: no readable live ads, so render a positioning page (who they sell to)
+      // instead, keeping a crawlable, citable page for a company with no ad footprint.
+      const comp = attr(posdata.company);
+      const tagList = Array.isArray(posdata.tags) ? posdata.tags.filter(Boolean).slice(0, 8) : [];
+      const content = '<main style="max-width:720px;margin:0 auto;padding:40px 20px;font-family:system-ui,-apple-system,sans-serif;color:#1f2937;line-height:1.65">'
+        + `<h1 style="font-size:26px;font-weight:600;letter-spacing:-.3px">${comp}: who they sell to, and their live ad presence</h1>`
+        + (posdata.summary ? `<p>${attr(posdata.summary)}</p>` : '')
+        + (posdata.icp_text ? `<h2 style="font-size:18px;font-weight:600;margin-top:26px">Who ${comp} sells to</h2><p>${attr(posdata.icp_text)}</p>` : '')
+        + (tagList.length ? `<h2 style="font-size:18px;font-weight:600;margin-top:26px">Buyer and segments</h2><ul>${tagList.map(t => `<li>${attr(t)}</li>`).join('')}</ul>` : '')
+        + `<h2 style="font-size:18px;font-weight:600;margin-top:26px">Live ad presence</h2><p>We checked the LinkedIn and Google ad libraries and found no live ads we can read for ${comp} right now. When they run ads, AdRoast scores each one against the buyer above.</p>`
+        + `<p><a href="/b/${attr(slug)}">Score ${comp}&rsquo;s ads against this buyer on AdRoast</a>.</p>`
+        + '</main>';
+      html = html.replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
+      const ld = { '@context': 'https://schema.org', '@type': 'Organization', name: posdata.company, url: posdata.website || ('https://' + domain), description: posdata.summary || posdata.icp_text || '' };
       const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
       html = html.replace('</head>', ldScript + '</head>');
     }

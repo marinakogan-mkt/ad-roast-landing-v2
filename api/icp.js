@@ -718,6 +718,19 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
     if (_redis && !poisoned && (body.refresh || icp.company)) {
       try { await _redis.set(icpCacheKey, JSON.stringify(result), { ex: ICP_CACHE_TTL }); } catch (e) {}
     }
+    // GEO phase 2: a domain-keyed positioning record so /b/<domain> can render a crawlable
+    // page even for a company with NO readable live ads. The ICP cache is keyed by URL hash,
+    // which _board-og cannot reconstruct, so we persist a separate domain-keyed copy and add
+    // the company to the sitemap set.
+    if (_redis && !poisoned && icp.company) {
+      try {
+        const gk = String(domain || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
+        if (gk) {
+          await _redis.set('geo:icp:' + gk, JSON.stringify({ company: icp.company, website: icp.website || url, icp_text: icp.icp_text || '', summary: icp.summary || '', tags: Array.isArray(icp.tags) ? icp.tags.slice(0, 8) : [] }), { ex: ICP_CACHE_TTL });
+          await _redis.sadd('geo:companies', gk);
+        }
+      } catch (e) {}
+    }
     return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({ error: 'Server error: ' + error.message });
