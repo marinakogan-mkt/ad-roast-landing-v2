@@ -132,6 +132,7 @@ export async function boardOgHandler(req, res) {
         + `<h2 style="font-size:18px;font-weight:600;margin-top:26px">${attr(company)}&rsquo;s live ads, scored against their buyer</h2>`
         + `<ul>${items}</ul>`
         + `<p><a href="/b/${attr(slug)}">See ${attr(company)}&rsquo;s full live-ad board on AdRoast</a>. Every creative scored against their ICP, with the exact fix for each.</p>`
+        + `<p>Learn the method behind these scores: the AdRoast <a href="/guides">guides</a> cover how to <a href="/guides/audit-linkedin-ads-icp">audit your ads against your ICP</a> and why <a href="/guides/clicks-no-pipeline">clicks do not turn into pipeline</a>.</p>`
         + '</main>';
       html = html.replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
       const ld = {
@@ -156,6 +157,7 @@ export async function boardOgHandler(req, res) {
         + (tagList.length ? `<h2 style="font-size:18px;font-weight:600;margin-top:26px">Buyer and segments</h2><ul>${tagList.map(t => `<li>${attr(t)}</li>`).join('')}</ul>` : '')
         + `<h2 style="font-size:18px;font-weight:600;margin-top:26px">Live ad presence</h2><p>We checked the LinkedIn and Google ad libraries and found no live ads we can read for ${comp} right now. When they run ads, AdRoast scores each one against the buyer above.</p>`
         + `<p><a href="/b/${attr(slug)}">Score ${comp}&rsquo;s ads against this buyer on AdRoast</a>.</p>`
+        + `<p>Learn the method: the AdRoast <a href="/guides">guides</a> cover how to <a href="/guides/audit-linkedin-ads-icp">audit ads against your ICP</a> and how to <a href="/guides/what-is-an-ad-teardown">run an ad teardown</a>.</p>`
         + '</main>';
       html = html.replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
       const ld = { '@context': 'https://schema.org', '@type': 'Organization', name: posdata.company, url: posdata.website || ('https://' + domain), description: posdata.summary || posdata.icp_text || '' };
