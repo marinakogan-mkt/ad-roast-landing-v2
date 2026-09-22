@@ -326,9 +326,21 @@
       }, []);
       const src = narrow ? '/adroast-demo-4x5.mp4' : '/adroast-demo.mp4';
       const poster = narrow ? '/adroast-demo-4x5-poster.jpg' : '/adroast-demo-poster.jpg';
+      const vref = React.useRef(null);
+      // Browsers only autoplay a video while it is muted, so the demo starts silent even though the
+      // cut carries a real audio track. This toggle lets a viewer turn the sound on. Reset to muted
+      // when the breakpoint flips and the <video> remounts (key={src}).
+      const [muted, setMuted] = useState(true);
+      useEffect(() => { setMuted(true); }, [src]);
+      const toggle = () => { const v = vref.current; if (!v) return; v.muted = !v.muted; if (!v.muted) { try { v.play(); } catch (e) {} } setMuted(v.muted); };
       return (
-        <div className="rounded-2xl overflow-hidden border border-gray-200 bg-black mx-auto" style={{ boxShadow: '0 20px 60px -20px rgba(11,15,26,.35)', aspectRatio: narrow ? '4 / 5' : '16 / 9', maxWidth: narrow ? 430 : '100%' }}>
-          <video key={src} src={src} poster={poster} autoPlay muted loop playsInline preload="metadata" aria-label="AdRoast demo: a live ad scored against its ICP, with the fixes" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        <div className="rounded-2xl overflow-hidden border border-gray-200 bg-black mx-auto" style={{ position: 'relative', boxShadow: '0 20px 60px -20px rgba(11,15,26,.35)', aspectRatio: narrow ? '4 / 5' : '16 / 9', maxWidth: narrow ? 430 : '100%' }}>
+          <video ref={vref} key={src} src={src} poster={poster} autoPlay muted loop playsInline preload="metadata" aria-label="AdRoast demo: a live ad scored against its ICP, with the fixes" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <button onClick={toggle} aria-label={muted ? 'Unmute demo' : 'Mute demo'} className="absolute flex items-center gap-1.5 rounded-full" style={{ right: 12, bottom: 12, padding: '7px 12px', fontSize: 12.5, fontWeight: 500, color: '#fff', background: 'rgba(11,15,26,.62)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,.25)', cursor: 'pointer' }}>
+            {muted
+              ? (<><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg><span>Sound off</span></>)
+              : (<><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg><span>Sound on</span></>)}
+          </button>
         </div>
       );
     };
