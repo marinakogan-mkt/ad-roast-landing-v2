@@ -312,6 +312,27 @@
     };
 
     const scoreColor = s => s <= 3 ? 'text-red-600 bg-red-50 border-red-200' : s <= 6 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-green-600 bg-green-50 border-green-200';
+    /* Main product demo video. Serves the 4:5 cut (1080x1350) on phones and the 16:9 cut
+       (1920x1080) on wider screens, picking the right file up front (matchMedia in the state
+       initializer) so a phone never downloads the desktop cut first. key={src} remounts the
+       <video> when the breakpoint flips so it reloads the correct file. */
+    const DemoVideo = () => {
+      const [narrow, setNarrow] = useState(() => { try { return window.matchMedia('(max-width: 767px)').matches; } catch (e) { return false; } });
+      useEffect(() => {
+        let mq; try { mq = window.matchMedia('(max-width: 767px)'); } catch (e) { return; }
+        const on = () => setNarrow(mq.matches);
+        try { mq.addEventListener('change', on); } catch (e) { try { mq.addListener(on); } catch (e2) {} }
+        return () => { try { mq.removeEventListener('change', on); } catch (e) { try { mq.removeListener(on); } catch (e2) {} } };
+      }, []);
+      const src = narrow ? '/adroast-demo-4x5.mp4' : '/adroast-demo.mp4';
+      const poster = narrow ? '/adroast-demo-4x5-poster.jpg' : '/adroast-demo-poster.jpg';
+      return (
+        <div className="rounded-2xl overflow-hidden border border-gray-200 bg-black mx-auto" style={{ boxShadow: '0 20px 60px -20px rgba(11,15,26,.35)', aspectRatio: narrow ? '4 / 5' : '16 / 9', maxWidth: narrow ? 430 : '100%' }}>
+          <video key={src} src={src} poster={poster} autoPlay muted loop playsInline preload="metadata" aria-label="AdRoast demo: a live ad scored against its ICP, with the fixes" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        </div>
+      );
+    };
+
     /* Landing "watch it work" demo — ORIGINAL version (the "roasting live" card): a score gauge +
        the top issues appearing in sequence. Restored from before the mini-dashboard rebuild (Marina,
        17 Sep): the main page keeps this original while the big-dashboard demo is prototyped separately. */
@@ -4955,9 +4976,7 @@
               <p className="text-gray-400 mb-6" style={{ fontSize: '16px', lineHeight: 1.7 }}>Every ad scored against your ICP, every weak line flagged with the fix. About 2&prime;, no call.</p>
               <button onClick={() => { const el = document.getElementById('hero-site'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => el.focus(), 300); } }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-7 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity cta-glow">Roast my ads free &rarr;</button>
             </div>
-            <div className="rounded-2xl overflow-hidden border border-gray-200 bg-black mx-auto" style={{ boxShadow: '0 20px 60px -20px rgba(11,15,26,.35)', aspectRatio: '16 / 9' }}>
-              <video src="/adroast-demo.mp4" poster="/adroast-demo-poster.jpg" autoPlay muted loop playsInline preload="metadata" aria-label="AdRoast demo: a live ad scored against its ICP, with the fixes" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-            </div>
+            <DemoVideo />
           </section>
 
           {/* WHAT YOU GET (accordion) */}
