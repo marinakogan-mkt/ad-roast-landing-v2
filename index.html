@@ -4947,16 +4947,16 @@
             </div>
           </div>
 
-          {/* WATCH IT WORK */}
+          {/* WATCH IT WORK — main product demo (silent 38s loop, 1920x1080) */}
           <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-12 sm:pb-16 w-full">
-            <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
-              <div className="text-center md:text-left">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Watch it work</div>
-                <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(34px, 8vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>See your ad get roasted in real time.</h2>
-                <p className="text-gray-400 mb-6 md:max-w-sm" style={{ fontSize: '16px', lineHeight: 1.7 }}>Every ad scored against your ICP, every weak line flagged with the fix. About 2&prime;, no call.</p>
-                <button onClick={() => { const el = document.getElementById('hero-site'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => el.focus(), 300); } }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-7 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity cta-glow">Roast my ads free &rarr;</button>
-              </div>
-              <RoastPreview />
+            <div className="text-center max-w-2xl mx-auto mb-7 sm:mb-8">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Watch it work</div>
+              <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(34px, 8vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>See your ad get roasted in real time.</h2>
+              <p className="text-gray-400 mb-6" style={{ fontSize: '16px', lineHeight: 1.7 }}>Every ad scored against your ICP, every weak line flagged with the fix. About 2&prime;, no call.</p>
+              <button onClick={() => { const el = document.getElementById('hero-site'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => el.focus(), 300); } }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-7 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity cta-glow">Roast my ads free &rarr;</button>
+            </div>
+            <div className="rounded-2xl overflow-hidden border border-gray-200 bg-black mx-auto" style={{ boxShadow: '0 20px 60px -20px rgba(11,15,26,.35)', aspectRatio: '16 / 9' }}>
+              <video src="/adroast-demo.mp4" poster="/adroast-demo-poster.jpg" autoPlay muted loop playsInline preload="metadata" aria-label="AdRoast demo: a live ad scored against its ICP, with the fixes" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             </div>
           </section>
 
