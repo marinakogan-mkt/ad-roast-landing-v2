@@ -140,11 +140,11 @@
     .field-bloom:focus { box-shadow: 0 0 0 4px rgba(10,102,194,0.12); border-color: #0a66c2 !important; }
     .nav-link { transition: color 0.15s ease; }
     .nav-link:hover { color: #0a66c2 !important; }
-    /* Hero H1: mobile bigger and in 3 lines; desktop stays as it was (2 lines, 64px). */
-    .hero-h1 { font-size: clamp(44px, 12vw, 56px); }
+    /* Hero H1: large on mobile (three short lines, tight leading); desktop balances to two lines. */
+    .hero-h1 { font-size: clamp(46px, 12.5vw, 58px); line-height: 0.92; }
     .hero-h1 .dbr { display: none; }
     @media (min-width: 640px) {
-      .hero-h1 { font-size: 70px; }
+      .hero-h1 { font-size: 70px; line-height: 1.02; }
       .hero-h1 .mbr { display: none; }
       .hero-h1 .dbr { display: inline; }
     }
@@ -4913,23 +4913,20 @@
             </div>
           )}
 
-          {/* HERO */}
-          <section className="flex-shrink-0 text-center px-4 sm:px-6" style={{ paddingTop: '56px', paddingBottom: '40px', position: 'relative', overflow: 'hidden' }}>
+          {/* HERO — full above-the-fold: eyebrow, headline, subhead, demo video, then the search bar */}
+          <section className="flex-shrink-0 text-center px-4 sm:px-6" style={{ paddingTop: '30px', paddingBottom: '24px', position: 'relative', overflow: 'hidden' }}>
             <div className="hero-wash" />
-            <div className="max-w-4xl mx-auto reveal" style={{ position: 'relative', zIndex: 1 }}>
-              <p className="text-left sm:text-center mb-5 sm:mb-6" style={{ color: '#0a66c2' }}>
-                <span className="hidden sm:inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-full">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>
-                  <span style={{ fontSize: '17px' }}>Your live ads, brutally reviewed</span>
-                </span>
-                <span className="sm:hidden inline-flex items-center gap-2 text-sm px-4 py-2 border border-gray-200 rounded-full" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>Your live ads, brutally reviewed</span>
+            <div className="max-w-3xl mx-auto reveal" style={{ position: 'relative', zIndex: 1 }}>
+              <p className="text-center mb-3.5 sm:mb-3" style={{ color: '#0a66c2' }}>
+                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-gray-200 rounded-full"><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span><span style={{ fontSize: '14px' }}>Your live ads, brutally reviewed</span></span>
               </p>
-              <h1 className="hero-h1 text-left sm:text-center text-gray-900 mb-6 sm:mb-5" style={{ fontWeight: 300, lineHeight: 1.0, letterSpacing: '-0.5px' }}>Find out where<br className="mbr" /> your ad<br className="dbr" /> loses<br className="mbr" /> the buyer.</h1>
-              <p className="text-left sm:text-center text-gray-500 sm:text-gray-400 max-w-2xl sm:mx-auto mb-3" style={{ fontSize: 'clamp(18px, 5vw, 20px)', lineHeight: 1.5 }}>Enter your website. We pull every live ad you are running<br className="hidden sm:inline" /> and score each one against your buyer, with the fixes ranked by impact.</p>
-              <p className="text-left sm:text-center text-gray-400 max-w-2xl sm:mx-auto mb-9 sm:mb-8" style={{ fontSize: '14px', lineHeight: 1.5 }}>Works with LinkedIn, Meta, and Google ads, across any industry.</p>
-              {/* Inline ad-link input + CTA - pill-shape matching the nav button, same height across both */}
-              <div className="max-w-2xl mx-auto">
-                <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+              <h1 className="hero-h1 text-center text-gray-900 mb-4 sm:mb-7" style={{ fontWeight: 300, letterSpacing: '-0.5px', textWrap: 'balance' }}>Find out where<br className="mbr" /> your ad loses<br className="mbr" /> the buyer.</h1>
+              {/* Sub-headline: full copy on desktop, a shorter two-line version on mobile */}
+              <p className="hidden sm:block text-center text-gray-400 max-w-2xl mx-auto mb-5" style={{ fontSize: 'clamp(15px, 3.6vw, 17px)', lineHeight: 1.45 }}>Enter your website. We pull every live ad you are running and score each one against your buyer, with the fixes ranked by impact.</p>
+              <p className="sm:hidden text-center text-gray-500 mx-auto mb-4" style={{ maxWidth: 360, fontSize: '13px', lineHeight: 1.5 }}>Every live ad you run, scored against your buyer.<br />Fixes ranked by impact.</p>
+              {/* Inline ad-link input + CTA — sits ABOVE the demo so the primary action is high on the page */}
+              <div className="max-w-xs sm:max-w-xl mx-auto mb-4">
+                <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
                   <input
                     id="hero-site"
                     type="text"
@@ -4937,19 +4934,25 @@
                     value={heroSite}
                     onChange={(e) => { setHeroSite(e.target.value); if (heroErr) setHeroErr(''); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); goToLiveAds(); } }}
-                    className="flex-1 px-5 py-4 sm:py-2 bg-white border rounded-full text-base sm:text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm field-bloom"
+                    className="flex-1 px-4 py-2 sm:py-2 bg-white border rounded-full text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm field-bloom"
                     style={{ borderColor: heroErr ? '#dc2626' : '#e8e8f0' }}
                   />
                   <button
                     onClick={goToLiveAds}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
-                    className="px-6 py-4 sm:py-2 border rounded-full font-semibold sm:font-medium text-base sm:text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
+                    className="self-center sm:self-stretch px-5 py-2 sm:py-2 border rounded-full font-semibold sm:font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
                   >Roast my ads free →</button>
                 </div>
                 {heroErr
-                  ? <p className="text-center mt-3" style={{ fontSize: '15px', color: '#dc2626' }}>{heroErr}</p>
-                  : <p className="text-center text-gray-400 mt-3" style={{ fontSize: '15px' }}>🎁 We pull every live ad we find and score it &middot; first roast's on us &middot; no credit card</p>}
+                  ? <p className="text-center mt-2" style={{ fontSize: '14px', color: '#dc2626' }}>{heroErr}</p>
+                  : (<>
+                      <p className="hidden sm:block text-center text-gray-400 mt-3" style={{ fontSize: '13px' }}>🎁 We pull every live ad we find and score it &middot; first roast's on us &middot; no credit card</p>
+                      <p className="sm:hidden text-center text-gray-400 mt-3" style={{ fontSize: '11px' }}>🎁 First roast's on us &middot; no credit card</p>
+                    </>)}
               </div>
+              {/* MAIN DEMO VIDEO */}
+              <div className="mx-auto mb-2.5" style={{ maxWidth: 660 }}><DemoVideo /></div>
+              <p className="text-center text-gray-400 max-w-2xl mx-auto" style={{ fontSize: '12.5px', lineHeight: 1.4 }}>Works with LinkedIn, Meta, and Google ads, across any industry.</p>
             </div>
           </section>
 
@@ -4979,17 +4982,6 @@
               </div>
             </div>
           </div>
-
-          {/* WATCH IT WORK — main product demo (silent 38s loop, 1920x1080) */}
-          <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-12 sm:pb-16 w-full">
-            <div className="text-center max-w-2xl mx-auto mb-7 sm:mb-8">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Watch it work</div>
-              <h2 className="text-gray-900 mb-3" style={{ fontSize: 'clamp(34px, 8vw, 42px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>See your ad get roasted in real time.</h2>
-              <p className="text-gray-400 mb-6" style={{ fontSize: '16px', lineHeight: 1.7 }}>Every ad scored against your ICP, every weak line flagged with the fix. About 2&prime;, no call.</p>
-              <button onClick={() => { const el = document.getElementById('hero-site'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => el.focus(), 300); } }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-7 py-3 border rounded-full font-medium text-sm hover:opacity-90 transition-opacity cta-glow">Roast my ads free &rarr;</button>
-            </div>
-            <DemoVideo />
-          </section>
 
           {/* WHAT YOU GET (accordion) */}
           <section className="max-w-2xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 w-full">
