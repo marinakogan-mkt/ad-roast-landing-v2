@@ -464,13 +464,21 @@ export default async function handler(req, res) {
   meta.landingUrlProvided = !!(landingUrl && landingUrl.trim());
   meta.landingCopyProvided = !!(landingCopy && landingCopy.trim());
 
+  // A landing that resolves to a standards/technical domain (w3.org, schema.org, ...) is never the
+  // advertiser's real page: it is a schema/spec link captured off the ad, not the real CTA. Treat it
+  // as a wrong/third-party landing and gate (ask for the real URL) instead of scoring the LP and the
+  // ad<->landing match against it, which unfairly reads as a "broken page" (Marina, 2026-09-23).
+  const _landingHost = (() => { try { return new URL((landingUrl || '').trim()).hostname.replace(/^www\./, '').toLowerCase(); } catch (e) { return ''; } })();
+  const landingThirdParty = /(^|\.)(w3\.org|schema\.org|purl\.org|xmlns\.com|ogp\.me|gmpg\.org|creativecommons\.org|example\.com|example\.org)$/i.test(_landingHost);
+  meta.landingThirdParty = landingThirdParty;
+
   // Landing-page gate (product rule): NEVER fabricate a bad ad<->landing match from a landing we
   // couldn't read. 'unreadable' = a URL was given but came back empty/JS-rendered/bot-blocked;
   // 'missing' = no landing at all. In either case, stop BEFORE the roast and ask the caller for the
   // landing (fix the URL or paste its copy), instead of returning a roast whose match/landing read
   // as "bad" when the real reason is that there was no page to read. The caller can proceed ad-only
   // with allowNoLanding:true, and then the match/landing sections are marked "not scored", never bad.
-  const landingStatus = hasAnyLandingContent ? 'ok' : (meta.landingUrlProvided ? 'unreadable' : 'missing');
+  const landingStatus = landingThirdParty ? 'third_party' : (hasAnyLandingContent ? 'ok' : (meta.landingUrlProvided ? 'unreadable' : 'missing'));
   // Marina 2026-09-09: el audit avanzado tambien pregunta. Antes lo salteaba, asi
   // que la unica ruta que seguia puntuando contra una pagina no leida o un
   // comprador adivinado era justo la de varias variantes a la vez.
@@ -531,7 +539,9 @@ CTA RULES — three separate CTA surfaces, never blur them:
 - button_cta MUST be copied verbatim from the option list for the current platform — same spelling and capitalization. NEVER invent a label. "Book a Demo", "Book a Call", "Get Demo", "Try Now", "Start Free Trial" are NOT valid buttons — map the intent to the nearest allowed option (book-a-demo -> "Request Demo" on LinkedIn, "Book Now" on Meta/Google; self-serve trial -> "Sign Up"/"Start Now"; top-of-funnel content -> "Learn More"/"Download").
 - Platform linkedin, meta, or google: set fix_kit.button_cta to the single best label from THAT platform's list above, and fix_kit.button_cta_reason to one sentence on why it beats "Learn More" (the lazy default). fix_kit.ctas are SEPARATE free-text copy/creative CTAs; the LP CTA is landing_page_headline/subhead. Keep all three consistent but distinct.
 
-CASE — write ALL generated ad copy in SENTENCE CASE, never Title Case. Capitalize only the first letter of each sentence plus genuine proper nouns and acronyms (company/brand names, AI, API, SaaS, CI/CD, CISO, etc.). This applies to fix_kit.headlines, fix_kit.body, fix_kit.ctas (the written CTAs), fix_kit.landing_page_headline, fix_kit.landing_page_subhead, and experiments[].title. Example: write "Shift left is dead. Here's what replaces it." NOT "Shift Left Is Dead. Here's What Replaces It." The ONLY exception is fix_kit.button_cta, a fixed platform label copied verbatim (keep its native casing, e.g. "Learn More").`;
+CASE — write ALL generated ad copy in SENTENCE CASE, never Title Case. Capitalize only the first letter of each sentence plus genuine proper nouns and acronyms (company/brand names, AI, API, SaaS, CI/CD, CISO, etc.). This applies to fix_kit.headlines, fix_kit.body, fix_kit.ctas (the written CTAs), fix_kit.landing_page_headline, fix_kit.landing_page_subhead, and experiments[].title. Example: write "Shift left is dead. Here's what replaces it." NOT "Shift Left Is Dead. Here's What Replaces It." The ONLY exception is fix_kit.button_cta, a fixed platform label copied verbatim (keep its native casing, e.g. "Learn More").
+
+NO CLICHE COPY — the fix_kit rewrites (headlines, body, ctas, landing_page_headline/subhead) must be specific and concrete, never generic B2B filler. Do NOT use these formulas or close variants: "from X to Y" alliterations (e.g. "from data to dollars", "from cost to growth"); the "stop selling X, start selling Y" or "stop X, start Y" template; and the tired words playbook, unlock, supercharge, seamless, game-changer, revolutionize, "next level", "the secret to", and "turn X into Y" openers. Instead lead with the buyer's specific pain, a concrete outcome or number, or the named mechanism/product. If a headline could belong to any vendor in the category, it is too generic: rewrite it sharper.`;
 
   /* Expand the terse offer id into a descriptive line so the model calibrates the WHOLE
      roast — CTA-friction scoring, the recommended pre-set button, and the ad↔landing match
@@ -546,7 +556,12 @@ CASE — write ALL generated ad copy in SENTENCE CASE, never Title Case. Capital
   const offerLine = OFFER_LABELS[offerType]
     || (offerType === 'other' && (offerDetail || '').trim()
         ? `Custom offer described by the advertiser: "${offerDetail.trim()}". Calibrate the CTA-friction scoring, the funnel stage, and the recommended pre-set button to THIS offer, not to a demo or trial by default.`
-        : (offerType || 'Not specified'));
+        // Board roasts pass offerType 'other' with no detail: steer the model to infer the funnel
+        // stage here (server-side) instead of stuffing this instruction into offerDetail, which the
+        // report renders verbatim and would leak into the buyer-facing brief.
+        : (offerType === 'other'
+            ? 'Unknown funnel stage. Infer whether this ad is a booked-demo, free-trial/self-serve, or content/lead-magnet offer from the creative and landing page, then calibrate the CTA-friction scoring and the recommended pre-set button to THAT stage. Do not assume a demo by default.'
+            : (offerType || 'Not specified')));
 
   // Pull the real creative from the ad-library dashboard. adImageUrl is a public
   // media.licdn.com (or similar) URL; fetch it here (server-side avoids browser CORS)

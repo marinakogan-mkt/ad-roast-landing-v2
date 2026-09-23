@@ -3079,7 +3079,10 @@
             // (that unfairly dings a content/lead-magnet ad's low-commitment CTA). Tell the
             // model to infer the stage from the creative + landing and calibrate to that.
             offerType: 'other',
-            offerDetail: 'Unknown funnel stage. Infer whether this ad is a booked-demo, free-trial/self-serve, or content/lead-magnet offer from the creative and landing page, then calibrate the CTA-friction scoring and the recommended pre-set button to THAT stage. Do not assume a demo by default.',
+            // Funnel stage is unknown from the library; the SERVER steers the model to infer it (see
+            // roast.js offerLine). We intentionally leave offerDetail empty so no internal scoring
+            // instruction leaks into the buyer-facing "brief" on the report.
+            offerDetail: '',
             icpDescription: stash.icp || '',
             landingUrl: a.ctaUrl || '', // never assume the homepage; the modal already required a real LP, and if somehow empty the server gates with needsLanding
             adCopy: adText,
@@ -6322,8 +6325,11 @@
         const signedInRoast = !!(roastSession && roastSession.email);
         const backToAds = signedInRoast ? '/dashboard' : ('/board' + (backDom ? '/' + encodeURIComponent(backDom) : ''));
         const backLabel = signedInRoast ? 'My roasted ads' : 'Your ads';
+        // Guard already-stored roasts: older board roasts saved an internal scoring instruction in
+        // offerDetail. Never render a steering instruction as the buyer-facing offer/brief.
+        const _isSteeringText = (t) => { const s = String(t || '').trim().toLowerCase(); return s.startsWith('unknown funnel stage') || s.includes('infer whether this ad is') || s.includes('do not assume a demo') || s.includes('calibrate the cta-friction') || s.includes('recommended pre-set button'); };
         const offerLabelText = offerType === 'other'
-          ? ((offerDetail || '').trim() || 'Other')
+          ? (_isSteeringText(offerDetail) ? '' : (offerDetail || '').trim())
           : ((OFFER_OPTIONS.find(o => o.id === offerType) || {}).label || offerType || '');
         const roastMetaRows = [
           companyName && companyName.trim() ? { label: 'Company', value: companyName.trim() } : null,
