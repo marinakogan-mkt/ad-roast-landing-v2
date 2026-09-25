@@ -2007,7 +2007,7 @@
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {aFree && <span className="inline-flex items-center gap-1 font-bold uppercase" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#fff', background: '#dc2626', padding: '2px 7px', borderRadius: 5, whiteSpace: 'nowrap' }}><Icon name="flame" className="w-2.5 h-2.5" />Start here</span>}
+                  {aFree && <span className="inline-flex items-center gap-1 font-bold uppercase" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#fff', background: '#dc2626', padding: '2px 7px', borderRadius: 5, whiteSpace: 'nowrap' }}><Icon name="flame" className="w-2.5 h-2.5" />Fix first</span>}
                   {allPlat && active.plat && <span className="inline-flex items-center gap-1 font-semibold text-gray-600" style={{ fontSize: 11, whiteSpace: 'nowrap' }}><PlatLogo plat={active.plat} size={13} />{active.plat}</span>}
                   <span className="inline-flex items-center rounded-full font-bold" style={{ fontSize: 10.5, color: SEV(active.score).c, background: SEV(active.score).bg, border: '1px solid ' + SEV(active.score).bd, padding: '2px 8px', whiteSpace: 'nowrap' }}>{SEV(active.score).label}</span>
                   <span className="font-bold text-gray-500" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>Fit {active.score}/10</span>
@@ -2038,7 +2038,7 @@
                     {/* Redundant with the big START HERE badge in the preview card above, and it
                         clips at the mobile scroller's right edge when the worst dot sits mid-track,
                         so it shows on desktop (track fits, no scroll) but is hidden on mobile. */}
-                    {isWorst && <span className="absolute left-1/2 whitespace-nowrap hidden sm:inline-flex items-center gap-0.5" style={{ transform: 'translateX(-50%)', top: 0, fontSize: 9, fontWeight: 800, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.04em' }}><Icon name="flame" className="w-2.5 h-2.5" />Start here</span>}
+                    {isWorst && <span className="absolute left-1/2 whitespace-nowrap hidden sm:inline-flex items-center gap-0.5" style={{ transform: 'translateX(-50%)', top: 0, fontSize: 9, fontWeight: 800, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.04em' }}><Icon name="flame" className="w-2.5 h-2.5" />Fix first</span>}
                     <span className="absolute rounded-full spec-dot" style={{ left: '50%', top: 35, width: d, height: d, transform: 'translate(-50%,-50%)', background: col, border: '2.5px solid #fff', boxShadow: on ? '0 6px 16px ' + col + '66' : '0 1px 5px rgba(11,15,26,.28)', transition: 'width .16s ease, height .16s ease', animation: 'dotIn .45s cubic-bezier(.22,1,.36,1) both', animationDelay: (Math.min(i, 24) * 0.045) + 's' }} />
                     <span className="absolute left-1/2 whitespace-nowrap" style={{ transform: 'translateX(-50%)', top: 48, fontSize: 10, fontWeight: 800, color: col, opacity: on ? 1 : 0, transition: 'opacity .16s ease' }}>{a.score}/10</span>
                   </button>
@@ -2491,7 +2491,7 @@
                     <div className="px-4 pt-4 pb-2.5">
                       <div className="flex items-center gap-2">
                         <span className="inline-flex items-center justify-center flex-none" style={{ width: 24, height: 24, borderRadius: 7, background: '#fff', border: '1px solid #e5e7eb' }} title={a.plat}><PlatLogo plat={a.plat} size={14} /></span>
-                        {free && <span className="inline-flex items-center justify-center flex-none" style={{ width: 24, height: 24, borderRadius: 7, background: '#dc2626', color: '#fff' }} title="Start here: your worst-scoring ad, roast this one first"><Icon name="flame" className="w-3 h-3" /></span>}
+                        {free && <span className="inline-flex items-center justify-center flex-none" style={{ width: 24, height: 24, borderRadius: 7, background: '#dc2626', color: '#fff' }} title="Your worst-scoring ad. Roast this one first."><Icon name="flame" className="w-3 h-3" /></span>}
                         {hasScore && <span className="inline-flex items-center gap-1.5 font-bold flex-none" style={{ height: 24, fontSize: 10.5, padding: '0 10px', borderRadius: 7, color: sev.c, background: sev.bg, border: '1px solid ' + sev.bd, whiteSpace: 'nowrap' }}><span style={{ width: 6, height: 6, borderRadius: 99, background: sev.c }} />{sev.label}</span>}
                         {hasScore && <span className="ml-auto flex-none inline-flex items-center gap-1.5" title="Buyer fit: how well this ad matches the buyer you want to reach, scored 0 to 10. Low means you're paying to reach the wrong people." style={{ height: 24, padding: '0 4px 0 9px', borderRadius: 7, background: scoreCol(a.score) + '14', border: '1px solid ' + scoreCol(a.score) + '3a', whiteSpace: 'nowrap' }}>
                           <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: scoreCol(a.score) }}>Buyer fit</span>
@@ -5036,9 +5036,9 @@
           {/* SERVICE PRICING - the paid offers live on the main page; the roast-token
               upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
           <section id="work-with-us" className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full scroll-mt-20">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Human-led services for B2B software</div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Human-led services for B2B teams</div>
             <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>The roast found the problem.<br className="hidden sm:inline" />Want us to fix the full campaign?</h2>
-            <p className="text-gray-400 mb-8 sm:mb-12 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>The free AdRoast works with ads from any industry. Our human-led services are built for B2B software teams running active paid campaigns. <strong className="font-semibold text-gray-600">We align your campaign around the buyer, helping generate 3× more demos from the ad spend you already have.</strong></p>
+            <p className="text-gray-400 mb-8 sm:mb-12 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>The free AdRoast works with ads from any industry. Our human-led services are built for B2B teams running active paid campaigns. <strong className="font-semibold text-gray-600">We align your campaign around the buyer, helping generate 3× more demos from the ad spend you already have.</strong></p>
 
             {ServiceOffers()}
 
