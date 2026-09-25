@@ -117,6 +117,9 @@ export async function boardOgHandler(req, res) {
     // /api/icp?ogimg=1 (satori + resvg-wasm). Falls back to the static hero on any render error.
     const imgUrl = 'https://www.adroast.in/api/icp?ogimg=1&slug=' + encodeURIComponent(slug);
     html = replaceTag(html, /(<meta property="og:image" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
+    // LinkedIn and Slack prefer og:image:secure_url when both are present, so leaving it
+    // on the static card silently served the generic image for every board.
+    html = replaceTag(html, /(<meta property="og:image:secure_url" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
     html = replaceTag(html, /(<meta name="twitter:image" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
     html = replaceTag(html, /(<meta property="og:image:alt" content=")[^"]*(">)/, `$1${attr('Where ' + company + "'s ads lose the buyer")}$2`);
 
