@@ -68,7 +68,7 @@ export async function boardOgHandler(req, res) {
     const domain = slugToDomain(slug);
     if (!domain) { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.status(200).send(html); return; }
 
-    const company = nameFromDomain(domain);
+    let company = nameFromDomain(domain);
     // Canonical form is the normalized domain (the sitemap lists /b/<domain>), so /b/wiz,
     // /b/Wiz.io and /board/wiz.io all consolidate on one indexable URL.
     const boardUrl = 'https://www.adroast.in/b/' + encodeURIComponent(domain);
@@ -85,12 +85,14 @@ export async function boardOgHandler(req, res) {
         const list = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
         ads = Array.isArray(list) ? list : [];
         stats = ads.length ? boardStats(ads) : null;
-        // No clean ads: fall back to the positioning record so a company with no readable
-        // live ads still gets a crawlable page (GEO phase 2).
-        if (!ads.length) {
-          const pr = await _redis.get('geo:icp:' + domKey);
-          posdata = pr ? (typeof pr === 'string' ? JSON.parse(pr) : pr) : null;
-        }
+        // The positioning record carries the company's real name ("Palo Alto Networks", not
+        // "Paloaltonetworks" from the domain label). With no clean ads it is also the
+        // fallback content, so a company with no readable live ads still gets a crawlable page.
+        const pr = await _redis.get('geo:icp:' + domKey);
+        const icpRec = pr ? (typeof pr === 'string' ? JSON.parse(pr) : pr) : null;
+        const realName = icpRec && typeof icpRec.company === 'string' ? icpRec.company.trim() : '';
+        if (realName && realName.length <= 60) company = realName;
+        if (!ads.length) posdata = icpRec;
       } catch (e) { stats = null; ads = []; posdata = null; }
     }
 
