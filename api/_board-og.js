@@ -69,7 +69,9 @@ export async function boardOgHandler(req, res) {
     if (!domain) { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.status(200).send(html); return; }
 
     const company = nameFromDomain(domain);
-    const boardUrl = 'https://www.adroast.in/b/' + encodeURIComponent(slug);
+    // Canonical form is the normalized domain (the sitemap lists /b/<domain>), so /b/wiz,
+    // /b/Wiz.io and /board/wiz.io all consolidate on one indexable URL.
+    const boardUrl = 'https://www.adroast.in/b/' + encodeURIComponent(domain);
 
     // Enrich with real board stats when the pull is cached (free, no model call).
     // Read the CLEAN, scored, non-artifact ad list persisted for GEO (ads:geo), not the
@@ -96,6 +98,14 @@ export async function boardOgHandler(req, res) {
     const desc = stats
       ? company + "'s live LinkedIn and Google ads, each scored against their ideal buyer. " + stats.count + ' live ads, ' + stats.avg + '/10 average fit, ' + stats.toFix + ' to fix. See the board.'
       : company + "'s live LinkedIn and Google ads, each scored against their ideal buyer, with the exact fixes. Free, no card.";
+
+    // Search-engine identity of the page: without these the board ships the home's <title>,
+    // meta description and canonical (https://www.adroast.in/), so Google folds every board into
+    // the home as a duplicate and never indexes it. Board-specific, self-canonical.
+    const docTitle = company + ' LinkedIn & Google ads, scored against their buyer | AdRoast';
+    html = replaceTag(html, /<title>[^<]*<\/title>/, `<title>${attr(docTitle)}</title>`);
+    html = replaceTag(html, /(<meta name="description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
+    html = replaceTag(html, /(<link rel="canonical" href=")[^"]*(">)/, `$1${attr(boardUrl)}$2`);
 
     html = replaceTag(html, /(<meta property="og:title" content=")[^"]*(">)/, `$1${attr(title)}$2`);
     html = replaceTag(html, /(<meta property="og:description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
@@ -163,6 +173,12 @@ export async function boardOgHandler(req, res) {
       const ld = { '@context': 'https://schema.org', '@type': 'Organization', name: posdata.company, url: posdata.website || ('https://' + domain), description: posdata.summary || posdata.icp_text || '' };
       const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
       html = html.replace('</head>', ldScript + '</head>');
+    }
+
+    // Nothing real to show (no clean ads, no positioning record): keep it out of the index so an
+    // arbitrary /b/<anything> never becomes a thin indexed page. Humans still get the app.
+    if (!listable.length && !(posdata && posdata.company)) {
+      html = html.replace('</head>', '<meta name="robots" content="noindex, follow"></head>');
     }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
