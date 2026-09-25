@@ -116,7 +116,9 @@ export default async function handler(req, res) {
 
   /* Admin-only: list the most recent roasts from the Redis index. */
   if (req.query.action === 'list') {
-    if (!(await isAdmin(req))) {
+    // Cookie session OR an admin API key, same as the visits dashboard: the outreach
+    // scripts need the roast list without a browser (who roasted, to ask for a review).
+    if (!(await isAdmin(req)) && !(await isAdminKey(req))) {
       return res.status(401).json({ error: 'Admin only' });
     }
     try {

@@ -318,6 +318,13 @@
        (1920x1080) on wider screens, picking the right file up front (matchMedia in the state
        initializer) so a phone never downloads the desktop cut first. key={src} remounts the
        <video> when the breakpoint flips so it reloads the correct file. */
+    // Split the landing into two pages: the self-serve SOFTWARE (/) and the human-led SERVICES
+    // (/services, /work-with-us). Computed ONCE at module load (before the ?home=1 boot effect
+    // rewrites the URL and would drop the query), so each render shows only its own sections.
+    // Local preview also accepts ?view=services.
+    const SERVICES_PAGE = (() => { try { const p = window.location.pathname; return p === '/services' || p === '/work-with-us' || new URLSearchParams(window.location.search).get('view') === 'services'; } catch (e) { return false; } })();
+    const isServicesPage = () => SERVICES_PAGE;
+
     const DemoVideo = () => {
       const [narrow, setNarrow] = useState(() => { try { return window.matchMedia('(max-width: 767px)').matches; } catch (e) { return false; } });
       useEffect(() => {
@@ -4941,6 +4948,8 @@
             </div>
           )}
 
+          {/* ==== SOFTWARE PAGE ( / ): hero, how it works, what you get ==== */}
+          {!isServicesPage() && (<>
           {/* HERO — full above-the-fold: eyebrow, headline, subhead, demo video, then the search bar */}
           <section className="flex-shrink-0 text-center px-4 sm:px-6 pt-2 sm:pt-[30px] pb-5 sm:pb-6" style={{ position: 'relative', overflow: 'hidden' }}>
             <div className="hero-wash" />
@@ -5037,6 +5046,9 @@
             <p className="text-center text-xs text-gray-400 mt-3">Tap any answer to see what's inside.</p>
           </section>
 
+          </>)}
+          {/* ==== SERVICES PAGE ( /services ): work with us, pricing, results, testimonials, FAQ ==== */}
+          {isServicesPage() && (<>
           {/* SERVICE PRICING - the paid offers live on the main page; the roast-token
               upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
           <section id="work-with-us" className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full scroll-mt-20">
@@ -5164,6 +5176,9 @@
             </div>
           </section>
 
+          </>)}
+          {/* Bridge CTA shown on the SOFTWARE page: points to the services page */}
+          {!isServicesPage() && (<>
           {/* BOTTOM CTA */}
           <section className="text-center px-4 pb-10 sm:pb-20 max-w-5xl mx-auto">
             <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(34px, 8vw, 46px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
@@ -5178,11 +5193,12 @@
               <div className="rounded-2xl border-2 p-6 flex flex-col" style={{ borderColor: '#0a66c2', background: '#f7f9fc' }}>
                 <h3 className="font-semibold text-gray-900 mb-2" style={{ fontSize: 18 }}>Running active B2B campaigns?</h3>
                 <p className="text-gray-500 mb-5 flex-1" style={{ fontSize: 14.5, lineHeight: 1.6 }}>Want the full ad-to-page journey repositioned and rewritten for you? That's the Campaign Repositioning Sprint.</p>
-                <a href="/#work-with-us" onClick={(e) => { const el = document.getElementById('work-with-us'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }} className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-full font-semibold text-sm no-underline self-start border-2 bg-white transition-colors hover:bg-blue-50" style={{ borderColor: '#0a66c2', color: '#0a66c2' }}>Explore the Repositioning Sprint <Icon name="arrowRight" className="w-4 h-4" /></a>
+                <a href="/services" className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-full font-semibold text-sm no-underline self-start border-2 bg-white transition-colors hover:bg-blue-50" style={{ borderColor: '#0a66c2', color: '#0a66c2' }}>Explore the Repositioning Sprint <Icon name="arrowRight" className="w-4 h-4" /></a>
               </div>
             </div>
           </section>
 
+          </>)}
           {/* LEGAL MODAL */}
           {legalModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={() => setLegalModal(null)}>
