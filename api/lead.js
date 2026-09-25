@@ -35,6 +35,42 @@ async function sendEmailJS(template_id, template_params) {
   } catch (e) { console.error('[Lead API] EmailJS error:', e.message); return false; }
 }
 
+
+/* ---- Newsletter opt-in (Substack) ----------------------------------------
+   The roast report form asks for an email to send the permanent link, and that
+   screen promises "no spam, ever". So the weekly teardown needs its own, explicit
+   consent: an unchecked box next to that field. When it is ticked we store the
+   address here with the exact sentence the person agreed to, and a scheduled job
+   adds those addresses to Substack from Marina's own session.
+   Substack has no server-to-server subscribe: POST /api/v1/free answers 403 from a
+   datacenter IP, which is why this is a queue and not a direct call. */
+const NEWS_OPTIN_KEY = 'news:optin:';        // per-email record
+const NEWS_OPTIN_PENDING = 'news:optin:pending';
+const NEWS_CONSENT_TEXT = 'Also send me the weekly teardown: one real B2B ad and the landing page it sends to.';
+
+async function storeNewsletterOptIn(email, source) {
+  if (!redis || !email) return false;
+  try {
+    const rec = { email, ts: Date.now(), source: source || 'roast-report', consent: NEWS_CONSENT_TEXT };
+    await redis.set(NEWS_OPTIN_KEY + email, rec);   // no TTL: it is the proof of consent
+    await redis.sadd(NEWS_OPTIN_PENDING, email);
+    return true;
+  } catch (e) { console.error('[Lead API] newsletter opt-in store error:', e.message); return false; }
+}
+
+/* Admin-only read of the pending opt-ins, same key mechanism as /api/roast-view
+   (roast:apikey:<key> -> email). Header only, never ?key= in the URL. */
+async function isAdminKeyLead(req) {
+  const authz = req.headers.authorization || '';
+  const m = /^Bearer\s+(ak_[A-Za-z0-9_]+)/i.exec(authz);
+  const key = (m && m[1]) || req.headers['x-api-key'] || '';
+  if (!key || !/^ak_[A-Za-z0-9_]+$/.test(String(key)) || !redis) return false;
+  try {
+    const em = await redis.get(`roast:apikey:${key}`);
+    return !!(em && String(em).toLowerCase() === 'marina.kogan@brandswithpurpose.us');
+  } catch (e) { return false; }
+}
+
 // Generate short ID (8 chars)
 const generateId = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -46,6 +82,31 @@ const generateId = () => {
 export default async function handler(req, res) {
   // ---- Booking-flow lead capture (Redis) — handled before the Notion report path ----
   const action = req.method === 'GET' ? (req.query && req.query.action) : (req.body && req.body.action);
+
+  // ---- Newsletter opt-ins: queue for the Substack import ----
+  if (action === 'newsletter-optins') {
+    if (!(await isAdminKeyLead(req))) return res.status(401).json({ error: 'unauthorized' });
+    if (!redis) return res.status(200).json({ pending: [] });
+    try {
+      const emails = (await redis.smembers(NEWS_OPTIN_PENDING)) || [];
+      const recs = [];
+      for (const em of emails) {
+        const r = await redis.get(NEWS_OPTIN_KEY + em);
+        recs.push(r || { email: em });
+      }
+      return res.status(200).json({ pending: recs, count: recs.length });
+    } catch (e) { return res.status(200).json({ pending: [], error: e.message }); }
+  }
+
+  if (action === 'newsletter-optins-done') {
+    if (!(await isAdminKeyLead(req))) return res.status(401).json({ error: 'unauthorized' });
+    const done = Array.isArray(req.body && req.body.emails) ? req.body.emails : [];
+    if (!redis || !done.length) return res.status(200).json({ ok: true, removed: 0 });
+    try {
+      await redis.srem(NEWS_OPTIN_PENDING, ...done);
+      return res.status(200).json({ ok: true, removed: done.length });
+    } catch (e) { return res.status(200).json({ ok: false, error: e.message }); }
+  }
 
   if (action === 'book-intent' || action === 'book-mark') {
     if (!redis) return res.status(200).json({ ok: true, stored: false });
@@ -118,6 +179,11 @@ export default async function handler(req, res) {
 
   try {
     const { platform, adScore, lpScore, matchScore, roastData, icp } = req.body;
+    // Explicit, unticked-by-default consent from the roast report form.
+    if (req.body && req.body.subscribeNewsletter) {
+      const em = String(req.body.email || '').trim().toLowerCase();
+      if (em && em.includes('@')) await storeNewsletterOptIn(em, 'roast-report');
+    }
     
     const reportId = generateId();
     
