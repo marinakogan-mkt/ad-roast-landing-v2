@@ -206,6 +206,35 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400');
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`);
   }
+  /* Crawlable HUB of every board (/boards, rewritten to /api/icp?hub=boards). Without it the
+     /b/<company> pages are orphans: Search Console reported "Discovered, currently not indexed"
+     with "Referring page: None detected", because nothing on the site links to them. */
+  if (req.query && req.query.hub === 'boards') {
+    let doms = [];
+    try { if (_redis) doms = (await _redis.smembers('geo:companies')) || []; } catch (e) { doms = []; }
+    doms = doms.filter(Boolean).map(String).sort();
+    const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const items = doms.map(d => `      <li><a href="/b/${encodeURIComponent(d)}">${esc(d)}</a></li>`).join('\n');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=86400');
+    return res.status(200).send(`<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live ad boards by company | AdRoast</title>
+<meta name="description" content="Every company whose live LinkedIn and Google ads AdRoast has pulled and scored against their buyer. ${doms.length} boards and counting.">
+<link rel="canonical" href="https://www.adroast.in/boards">
+<link rel="stylesheet" href="/teardowns/roast.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Live ad boards by company","url":"https://www.adroast.in/boards","description":"Companies whose live ads AdRoast has scored against their buyer.","isPartOf":{"@type":"WebSite","name":"AdRoast","url":"https://www.adroast.in/"}}</script>
+</head><body>
+<main class="wrap" style="max-width:860px;margin:0 auto;padding:48px 20px">
+  <p><a href="/">AdRoast</a> / Boards</p>
+  <h1>Live ad boards by company</h1>
+  <p>Each board shows the ads a company is running right now on LinkedIn and Google, scored against the buyer those ads are meant to reach, and how much of the ad's promise survives on the landing page. Built from public ad libraries, no account access.</p>
+  <p>${doms.length} companies so far. Want yours? <a href="/?library=1">Roast your ads free</a>, or read the <a href="/guides">guides</a> and the <a href="/teardowns">teardowns</a>.</p>
+  <ul style="columns:2;line-height:1.9">
+${items}
+  </ul>
+</main></body></html>`);
+  }
   /* Per-company link-preview IMAGE (og:image), rewritten to /api/icp?ogimg=1&slug=<slug>. Renders a
      1200x630 PNG named for the company with its live board stats. Dynamic import so satori + resvg-wasm
      never load on the normal ICP/scoring path, and folded in here to stay under the Hobby 12-fn cap. */
