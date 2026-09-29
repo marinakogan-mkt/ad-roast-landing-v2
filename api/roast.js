@@ -191,7 +191,7 @@ export default async function handler(req, res) {
     body = {};
   }
 
-  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, adImageUrl, company, website, adUrl, forceFresh } = body;
+  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, adImageUrl, company, website, adUrl, forceFresh, isVideo } = body;
 
   // Working creative vars: a roast started from the "Your Live Ads" dashboard sends the
   // real creative as a hotlinkable URL (adImageUrl) instead of an uploaded base64 image.
@@ -260,7 +260,7 @@ export default async function handler(req, res) {
     catch (e) { return _norm(u); }
   };
   const dedupeHash = crypto.createHash('sha256')
-    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null, adImageUrl: adImageUrl || null }))
+    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null, adImageUrl: adImageUrl || null, isVideo: !!isVideo }))
     .digest('hex');
   const dedupeKey = acctEmail ? `roast:dedupe:${acctEmail}:${dedupeHash}` : null;
   if (dedupeKey && !redisDown && !forceFresh) {
@@ -611,7 +611,9 @@ Landing page content available: ${hasAnyLandingContent ? 'YES — SCORE IT 1-10'
 ${effectiveAdCopy ? (isAdvancedAudit ? `=== AD COPY (MULTI-VARIANT GOOGLE/PAID-ADS AUDIT — ${variants?.length || 0} variants) ===\n${effectiveAdCopy}\n\nNOTE: This is a structured Google Ads-style audit with multiple variants. Analyse the full ad structure: scoring should reflect the overall campaign quality across variants, and the 5 Ad Issues / Fix Kit / Experiments should cite specific headlines and descriptions (by variant + number) when relevant.` : `=== AD COPY ===\n${effectiveAdCopy}`) : '=== AD COPY ===\n[No ad copy provided]'}
 
 ${visualDescription ? `=== AD VISUAL DESCRIPTION ===\n${visualDescription}` : ''}
-${effShot ? `=== AD CREATIVE IMAGE ATTACHED ===\nThe actual ad creative image is attached to this message. READ the copy/text rendered ON the creative (headline, overlay text, CTA, captions) and analyze it as the ad's creative copy. Factor the creative copy AND its visual into the issues, especially headline_clarity, visual_copy_match, cta_friction and trust_signals, citing specific words shown on the creative.` : ''}
+${effShot ? (isVideo
+  ? `=== AD CREATIVE: VIDEO (only a still thumbnail attached) ===\nThis ad is a VIDEO. The attached image is ONLY a single still thumbnail (usually an intro or logo frame), NOT the full video, which you cannot watch. Do NOT judge the video by this one frame: NEVER call it "logo-only", "just a logo", "static", or fault it for lacking imagery, motion, product shots or a scene, and do NOT base visual_copy_match or trust_signals on the thumbnail. Analyze the COPY (headline/body/CTA and any words shown on the frame) and the ICP fit; for the visual, state only that it is a video whose full content was not analyzed, and do not invent a critique of it.`
+  : `=== AD CREATIVE IMAGE ATTACHED ===\nThe actual ad creative image is attached to this message. READ the copy/text rendered ON the creative (headline, overlay text, CTA, captions) and analyze it as the ad's creative copy. Factor the creative copy AND its visual into the issues, especially headline_clarity, visual_copy_match, cta_friction and trust_signals, citing specific words shown on the creative.`) : ''}
 
 ${landingPageContent ? `=== LANDING PAGE CONTENT (AUTO-SCRAPED FROM URL) ===\n${landingPageContent}` : ''}
 

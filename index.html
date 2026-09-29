@@ -3102,6 +3102,8 @@
             landingCopy: '',
             adScreenshot: null, adScreenshotType: null,
             adImageUrl: a.img || null,
+            isVideo: !!a.isVideo, // a video ad: roast.js only gets a still thumbnail, so it must not judge it as logo-only
+
             company: co.name || '', website: co.domain || '',
             adUrl: a.detailUrl || '',
             forceFresh: false,

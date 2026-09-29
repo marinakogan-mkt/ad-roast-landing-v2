@@ -85,8 +85,12 @@ function parseAdCards(html, company) {
     if (seen.has(id)) continue;
     seen.add(id);
     // advertiser (and creative type) from the card's aria-label: "Otter.ai, Video Ad, View details"
-    const aria = block.match(/aria-label="([^"]+?),\s*[^",]+,\s*View details"/);
+    const aria = block.match(/aria-label="([^"]+?),\s*([^",]+),\s*View details"/);
     const advertiser = aria ? decodeHtml(aria[1]).trim() : '';
+    // Is this a VIDEO ad? We only ever capture its poster/thumbnail (one frame, often a logo/intro
+    // card), never the video itself, so the scorer must be told not to judge the still as the whole ad.
+    const _ctype = (block.match(/data-creative-type="([^"]*)"/) || [])[1] || '';
+    const isVideo = /video/i.test(_ctype) || /\bvideo\b/i.test((aria && aria[2]) || '');
     // body copy
     const bod = block.match(/commentary__content[^>]*>([\s\S]*?)<\/p>/);
     const body = bod ? decodeHtml(stripTags(bod[1])).trim() : '';
@@ -111,7 +115,7 @@ function parseAdCards(html, company) {
       const a = decodeHtml(am[1]).trim();
       if (a && !/advertiser logo|^logo$/i.test(a)) { headline = a; break; }
     }
-    out.push({ id, advertiser, headline, body, img });
+    out.push({ id, advertiser, headline, body, img, isVideo });
   }
   // Collapse repeats: the same creative often runs across several campaigns and shows up
   // as multiple cards. Keep one per unique creative (by image, falling back to headline).
@@ -134,6 +138,7 @@ function parseAdCards(html, company) {
     ctaUrl: null,
     dom: null,
     advertiser: a.advertiser || null,
+    isVideo: !!a.isVideo,       // true = we only have a thumbnail/poster frame, not the full video
     detailUrl: 'https://www.linkedin.com/ad-library/detail/' + a.id,
     adId: a.id,
   }));
@@ -218,13 +223,14 @@ async function scoreAds(ads, icp) {
     // The ad library cuts copy with a trailing ellipsis; the live ad is complete. The prompt
     // says never to flag truncation, but the model still did (Infiterra, 2026-09-20: "Truncated
     // Body", scored 6). Strip the cut marker so it never SEES a truncation to complain about.
-    lines.push(`#${i} [${a.plat}] advertiser="${(a.advertiser || '').slice(0, 60)}" headline="${stripCut(a.head).slice(0, 140)}" body="${stripCut(a.body).slice(0, 220)}"`);
+    lines.push(`#${i} [${a.plat}]${a.isVideo ? ' [VIDEO AD - only a still thumbnail is shown below, NOT the full video]' : ''} advertiser="${(a.advertiser || '').slice(0, 60)}" headline="${stripCut(a.head).slice(0, 140)}" body="${stripCut(a.body).slice(0, 220)}"`);
+    const imgLabel = a.isVideo ? `Thumbnail (one still frame) of VIDEO ad #${i}: this is NOT the full video, often just an intro/logo frame:` : `Creative image for ad #${i}:`;
     if (imgByIdx[i]) {
-      content.push({ type: 'text', text: `Creative image for ad #${i}:` });
+      content.push({ type: 'text', text: imgLabel });
       content.push({ type: 'image', source: { type: 'base64', media_type: imgByIdx[i].media_type, data: imgByIdx[i].data } });
     } else if (a.img && /^https:\/\//i.test(a.img)) {
       // Fallback: couldn't fetch it ourselves, let Anthropic try the URL.
-      content.push({ type: 'text', text: `Creative image for ad #${i}:` });
+      content.push({ type: 'text', text: imgLabel });
       content.push({ type: 'image', source: { type: 'url', url: a.img } });
     }
   }
@@ -237,6 +243,8 @@ SCORING SCALE (calibrate consistently, the SAME ad must always land on the same 
 7-8 = solid (clear ICP fit, specific value, a real reason to click).
 9-10 = best-in-class (sharp hook, strong proof, unmistakable CTA).
 An image-only ad with a readable value proposition is NOT a 1: judge the copy shown on the creative. Only score 1-2 when the ad is genuinely broken or badly mismatched to the ICP.
+
+VIDEO ADS: some ads are marked [VIDEO AD] and you are shown ONLY a still thumbnail (one frame, usually an intro or logo card), NEVER the full video. Do NOT judge a video ad as if that still frame is the whole ad. NEVER say "logo-only", "just a logo", "static", "no imagery/visuals", or fault it for lacking a scene, motion, or product shots, and keep the thumbnail out of the verdict and tags. Score a video ad on its COPY and ICP fit only, treating the visual as a video you cannot watch. A logo or intro thumbnail is NORMAL for a video, never a capture_fail.
 
 BLANK / EMPTY CREATIVE: if a creative is a blank or collapsed ad slot with NO visible content (a solid or empty image, no text, no logo, no offer), do NOT invent content or a verdict for it. Set title EXACTLY to "Blank ad", score 1, verdict "Empty ad slot, nothing to show." These are filtered out of the board, so a clean canonical title matters.
 
@@ -374,7 +382,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // proof or visual hook; LinkedIn and Meta stay cold-audience). v5 (2026-09-14): one-line diagnosis +
   // chips. v4 (2026-09-14): diagnosis-not-fix verdict (what is off + WHY it loses the buyer, no fix).
   // v3 (2026-09-12): localization / blank / brand rules.
-  const keyOf = (a) => 'adscore:v10:' + ih + ':' + creativeSig(a);
+  const keyOf = (a) => 'adscore:v11:' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
