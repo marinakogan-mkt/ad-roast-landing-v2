@@ -766,6 +766,20 @@ Return the JSON object defined in the output contract. All fields required.`;
         // when there was no readable page. 'ok' | 'unreadable' | 'missing' (ad-only opt-in).
         parsed.landingStatus = landingStatus;
 
+        /* Video ads: LinkedIn only exposes a still thumbnail (usually an intro or logo
+           frame), never the full video, so the creative genuinely cannot be judged.
+           Mirror the no-landing gate: the Visual-Copy Match dimension is marked "not
+           analyzed" (no score) instead of roasted from one frame, so it never drags the
+           ad down or reads as "logo-only". Copy and ICP fit above still score normally. */
+        if (isVideo && Array.isArray(parsed.issues)) {
+          parsed.isVideo = true;
+          let vm = parsed.issues.find(i => i && i.category === 'visual_copy_match');
+          if (!vm) { vm = { category: 'visual_copy_match', title: 'Visual-Copy Match' }; parsed.issues.push(vm); }
+          vm.score = null;
+          vm.not_analyzed = true;
+          vm.explanation = 'This ad is a video. The full video was not analyzed, so its creative is not scored here. The copy and targeting are still scored above.';
+        }
+
         /* Token consume + entitlement. We only reach here when `entitled` was true
            at the gate above (account has tokens, or Redis was down and we failed
            open). Consume one token for this successful roast, and cache the full

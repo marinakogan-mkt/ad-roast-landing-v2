@@ -636,6 +636,26 @@
     };
 
     const IssueRow = ({ issue }) => {
+      /* Video ads expose only a still thumbnail, never the full video, so the creative
+         is marked "not analyzed" server-side (score null). Render it greyed with no
+         score, exactly like the landing shows N/A when there's no readable page: shown,
+         but not roasted and not counted against the ad. */
+      if (issue.not_analyzed || issue.score == null) {
+        return (
+          <div className="rounded-xl border bg-gray-50 p-4" style={{ borderColor: '#e5e7eb' }}>
+            <div className="flex items-center gap-2.5 mb-2.5">
+              <span className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-gray-100"><Icon name={CATEGORY_ICON[issue.category] || 'alertCircle'} className="w-4 h-4 text-gray-400" /></span>
+              <span className="flex-1 min-w-0 font-semibold text-sm text-gray-500 leading-tight">{issue.title}</span>
+              <span className="inline-flex items-center rounded-full font-bold flex-none text-gray-400 bg-gray-100 border border-gray-200" style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.03em', padding: '2px 7px' }}>Not scored</span>
+            </div>
+            <div className="flex items-baseline gap-1.5 mb-2">
+              <span className="font-extrabold leading-none text-gray-300" style={{ fontSize: 22 }}>N/A</span>
+              <span className="text-gray-400 font-semibold" style={{ fontSize: 11.5 }}>video not analyzed</span>
+            </div>
+            <p className="text-gray-500" style={{ fontSize: 12.5, lineHeight: 1.5 }}>{issue.explanation}</p>
+          </div>
+        );
+      }
       const col = hexForScore(issue.score);
       const gv = SEV(issue.score); // gravity: label + colour + bg/border, matching the board cards
       const tint = gv.bg;
@@ -6334,7 +6354,10 @@
       if (view === 'results' && result) {
         const lp = result.landing_page_roast || {};
         const mismatch = result.ad_landing_mismatch || {};
-        const avgIssue = visibleIssues.length ? Math.round(visibleIssues.reduce((s, i) => s + (i.score || 5), 0) / visibleIssues.length) : 5;
+        /* "Not analyzed" dimensions (a video creative we can't judge) are shown but never
+           counted as issues or averaged into the score, just like a missing landing page. */
+        const analyzedIssues = visibleIssues.filter(i => i && !i.not_analyzed && i.score != null);
+        const avgIssue = analyzedIssues.length ? Math.round(analyzedIssues.reduce((s, i) => s + (i.score || 5), 0) / analyzedIssues.length) : 5;
         /* Who this roast is for. Prefer the detected company name; fall back to the
            website/landing hostname so the report still reads as theirs. */
         const _host = (u) => { try { return new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
@@ -6376,7 +6399,7 @@
         // chip so its score reads as a severity level.
         const overviewCards = [
           { id: 'scores', group: 'diagnose', label: 'Ad score', value: result.overall_score, suffix: '/10', desc: 'overall ad score', valueColor: hexForScore(result.overall_score), barPct: (result.overall_score || 0) * 10, barColor: hexForScore(result.overall_score), grav: SEV(result.overall_score || 0) },
-          { id: 'issues', group: 'diagnose', label: 'Ad issues', value: visibleIssues.length, suffix: '', desc: visibleIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue), grav: SEV(avgIssue) },
+          { id: 'issues', group: 'diagnose', label: 'Ad issues', value: analyzedIssues.length, suffix: '', desc: analyzedIssues.length === 1 ? 'issue to fix' : 'issues to fix', valueColor: hexForScore(avgIssue), barPct: avgIssue * 10, barColor: hexForScore(avgIssue), grav: SEV(avgIssue) },
           ...((lp.overall_score != null || (mismatch.disconnects && mismatch.disconnects.length > 0)) ? [{ id: 'landing', group: 'diagnose', label: 'Landing page', value: lp.overall_score > 0 ? lp.overall_score : '-', suffix: lp.overall_score > 0 ? '/10' : '', desc: 'page & ad match', valueColor: hexForScore(lp.overall_score), barPct: (lp.overall_score || 0) * 10, barColor: hexForScore(lp.overall_score), grav: lp.overall_score > 0 ? SEV(lp.overall_score) : null }] : []),
           { id: 'fixes', group: 'act', label: 'Fixes', value: (result.fix_kit && result.fix_kit.headlines ? result.fix_kit.headlines.length : 0), suffix: '', desc: 'ready-to-ship rewrites', valueColor: '#0a66c2', barPct: 100, barColor: '#0a66c2' },
           { id: 'plan', group: 'act', label: 'Action plan', value: (result.next_steps ? result.next_steps.length : 0), suffix: '', desc: 'steps to ship', valueColor: '#0a66c2', barPct: 100, barColor: '#0a66c2' },
@@ -6699,7 +6722,7 @@
               <div id="sec-issues" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6 scroll-mt-20">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-1">
                   <h2 className="font-bold text-gray-900 flex items-center gap-2"><Icon name="alertCircle" className="w-5 h-5 text-red-500" /> What's holding the ad back</h2>
-                  <span className="text-xs text-gray-400">{visibleIssues.length} issue{visibleIssues.length === 1 ? '' : 's'} · lowest score = biggest problem</span>
+                  <span className="text-xs text-gray-400">{analyzedIssues.length} issue{analyzedIssues.length === 1 ? '' : 's'} · lowest score = biggest problem</span>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
                   {visibleIssues.map((issue, i) => (
@@ -9184,7 +9207,7 @@
                 if (!liveRoast) return null;
                 const r = liveRoast.result || liveRoast;
                 const issues = (r.issues || []).filter(i =>
-                    i && i.title && (i.score !== undefined) &&
+                    i && i.title && (i.score !== undefined) && i.score != null && !i.not_analyzed &&
                     !isCapabilityDisclaimer(i.title) &&
                     !isCapabilityDisclaimer(i.explanation) &&
                     !(portalPlatformIsGoogle && isVisualTrustIssue(i))
