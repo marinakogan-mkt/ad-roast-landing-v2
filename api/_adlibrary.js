@@ -107,13 +107,19 @@ function parseAdCards(html, company) {
       img = decodeHtml(im[1]);
       break;
     }
-    // headline: an <img alt> that isn't the logo's alt
+    // headline: an <img alt> that isn't a logo's alt OR a generic auto-generated placeholder.
+    // LinkedIn stamps content-less alts like "Ad image", "member logo" or "Image" on cards where the
+    // real creative/copy lives elsewhere (a video poster, an end card). Taking one as the headline fed
+    // the scorer a fake copy line ("Ad image") over a logo image and it scored the ad 1 "just a logo,
+    // nothing to communicate" - a false negative on the advertiser's own board. Reject those so the
+    // headline stays empty and the no-copy capture is caught downstream instead of mis-scored.
     let headline = '';
+    const JUNK_ALT = /^(?:(?:advertiser|company|member)\s+)?logo$|^ad image$|^image$|^ad$|^feed ?image$|^photo$/i;
     const altRe = /<img[^>]*\balt="([^"]*)"/g;
     let am;
     while ((am = altRe.exec(block))) {
       const a = decodeHtml(am[1]).trim();
-      if (a && !/advertiser logo|^logo$/i.test(a)) { headline = a; break; }
+      if (a && !JUNK_ALT.test(a)) { headline = a; break; }
     }
     out.push({ id, advertiser, headline, body, img, isVideo });
   }
@@ -248,7 +254,7 @@ VIDEO ADS: some ads are marked [VIDEO AD] and you are shown ONLY a still thumbna
 
 BLANK / EMPTY CREATIVE: if a creative is a blank or collapsed ad slot with NO visible content (a solid or empty image, no text, no logo, no offer), do NOT invent content or a verdict for it. Set title EXACTLY to "Blank ad", score 1, verdict "Empty ad slot, nothing to show." These are filtered out of the board, so a clean canonical title matters.
 
-CAPTURE ARTIFACT (OUR problem, NOT the advertiser's ad): sometimes what was captured is not the real ad but an artifact of scraping the ad library or of how it renders a preview. When you see one of these, set "flag":"capture_fail" and do NOT judge it as the advertiser's ad (still return the row: score 5, a short neutral title, verdict "Capture issue on our side, not the advertiser's ad."). It must NEVER be shown to the advertiser as their broken ad. Treat as capture_fail: (a) an ERROR or SYSTEM page captured instead of an ad (a 4xx/5xx or "Error"/"Something went wrong" page, a Google or system graphic, a blank grey shell); (b) a bare INTERNAL IDENTIFIER or code shown in place of the ad copy (a long number, a hash, a token id, a stray file name) with no real ad message; (c) a creative that clearly belongs to a DIFFERENT advertiser than the one named in advertiser="..." (another company's logo, name, or product, e.g. a construction ad under a fintech advertiser), which means the wrong asset was scraped; (d) template or UI chrome captured as the ad (a cookie banner, a "collapsed ad" tile, a "more" menu, a share button).
+CAPTURE ARTIFACT (OUR problem, NOT the advertiser's ad): sometimes what was captured is not the real ad but an artifact of scraping the ad library or of how it renders a preview. When you see one of these, set "flag":"capture_fail" and do NOT judge it as the advertiser's ad (still return the row: score 5, a short neutral title, verdict "Capture issue on our side, not the advertiser's ad."). It must NEVER be shown to the advertiser as their broken ad. Treat as capture_fail: (a) an ERROR or SYSTEM page captured instead of an ad (a 4xx/5xx or "Error"/"Something went wrong" page, a Google or system graphic, a blank grey shell); (b) a bare INTERNAL IDENTIFIER or code shown in place of the ad copy (a long number, a hash, a token id, a stray file name) with no real ad message; (c) a creative that clearly belongs to a DIFFERENT advertiser than the one named in advertiser="..." (another company's logo, name, or product, e.g. a construction ad under a fintech advertiser), which means the wrong asset was scraped; (d) template or UI chrome captured as the ad (a cookie banner, a "collapsed ad" tile, a "more" menu, a share button); (e) ONLY the advertiser's OWN logo or a bare brand / end card, with NO readable ad copy or offer anywhere on the creative, AND the ad's text line is also empty (no headline and no body). That combination means we captured a logo card, a video poster, or an end frame, not the real ad, so it must never be shown as the advertiser's "just a logo" 1/10 ad. This is the ONLY logo case that is a capture_fail: do NOT apply it to an ad marked [VIDEO AD] (a logo thumbnail is normal there, per the video rule), and do NOT apply it when the ad has ANY real copy in its text line OR any readable words or offer on the creative - judge those normally.
 
 NOT A DEFECT (preview / dynamic artifacts, judge the REAL ad, never flag): (a) DYNAMIC KEYWORD INSERTION: the preview shows placeholder tokens like "{keyword}", "{City}", "{Country}", "{location}", or "<dynamically generated location>"; the LIVE ad fills them, so a real user sees "Chicago", not the token. Read PAST the token and judge the ad as if filled. Never call this broken, a typo, or placeholder text. (b) TRUNCATION: the preview often CUTS OFF the copy with an ellipsis or mid-word; the live ad is complete. Never flag "cut off", "incomplete", or "truncated" as a defect. The ONLY real technical defect is a genuine misspelling in the advertiser's OWN words (tag "Typo", name it plainly) - never invent one, and never treat a dynamic token or a preview truncation as one.
 
@@ -382,7 +388,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // proof or visual hook; LinkedIn and Meta stay cold-audience). v5 (2026-09-14): one-line diagnosis +
   // chips. v4 (2026-09-14): diagnosis-not-fix verdict (what is off + WHY it loses the buyer, no fix).
   // v3 (2026-09-12): localization / blank / brand rules.
-  const keyOf = (a) => 'adscore:v11:' + ih + ':' + creativeSig(a);
+  const keyOf = (a) => 'adscore:v12:' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
