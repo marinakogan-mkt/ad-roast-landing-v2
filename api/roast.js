@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { readSessionCookie } from './auth/_allowlist.js';
 import { consumeToken, peekAccount, companyKey, checkCompanyAllowed, addCompany } from './_tokens.js';
 import { videoStoryboard } from './_vframes.js';
+import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser } from './_adlibrary.js';
 
 const _redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -190,6 +191,33 @@ export default async function handler(req, res) {
   }
   if (!body || typeof body !== 'object') {
     body = {};
+  }
+
+  /* Pre-warm (admin): build + cache the storyboard for the ONE ad we most recommend roasting (the
+     lowest-scored "fix first") when it's a video, so its first real roast is instant during a demo or
+     a cold prospect visit. Scope on purpose: just that one ad, never the whole board. Lives in roast.js
+     because this function already bundles ffmpeg; ranks the already-pulled board (ICP from the body or
+     the stored geo:icp record), warms the lowest-scored video ad with a detail URL. Consumes NO roast
+     token. POST { action:'warm-video', domain, company, icp? }. */
+  if (body.action === 'warm-video') {
+    const em = await roastAccountEmail(req);
+    let bal = null; try { bal = em ? await peekAccount(_redis, em) : null; } catch (e) {}
+    if (!(bal && bal.plan === 'unlimited')) return res.status(403).json({ error: 'admin_only' });
+    const domKey = String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
+    let pull = null;
+    try { const raw = (_redis && domKey) ? await _redis.get('ads:pull:v3:' + domKey) : null; pull = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; } catch (e) {}
+    if (!pull || !Array.isArray(pull.ads) || !pull.ads.length) return res.status(200).json({ ok: false, reason: 'no_board_yet' });
+    let icp = body.icp || '';
+    if (!icp && _redis && domKey) { try { const g = await _redis.get('geo:icp:' + domKey); const gg = g ? (typeof g === 'string' ? JSON.parse(g) : g) : null; icp = (gg && gg.icp_text) || ''; } catch (e) {} }
+    let ads = ownedByAdvertiser(dropJunkCreatives(pull.ads), { domain: body.domain, company: body.company });
+    if (icp) { try { const sc = await scoreAdsCached(ads, icp, _redis, { force: false, limit: 0 }); ads = dropJunkCreatives(sc.ads); } catch (e) {} }
+    // Most recommended to roast = the lowest-scored VIDEO ad that has a detail URL (unscored sorts last).
+    const vids = ads.filter(a => a && a.isVideo && a.detailUrl && a.flag !== 'capture_fail' && !a._captureFail);
+    vids.sort((a, b) => (typeof a.score === 'number' ? a.score : 99) - (typeof b.score === 'number' ? b.score : 99));
+    const target = vids[0] || null;
+    if (!target) return res.status(200).json({ ok: true, warmed: 0, reason: 'no_video_ad' });
+    const sb = await videoStoryboard({ detailUrl: target.detailUrl, adId: target.adId, redis: _redis });
+    return res.status(200).json({ ok: true, warmed: sb ? 1 : 0, ad: { adId: target.adId || null, score: (typeof target.score === 'number' ? target.score : null), head: (target.head || '').slice(0, 80) } });
   }
 
   const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, adImageUrl, company, website, adUrl, forceFresh, isVideo } = body;

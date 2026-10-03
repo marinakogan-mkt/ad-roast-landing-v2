@@ -30,7 +30,6 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
 import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser } from './_adlibrary.js';
-import { videoStoryboard } from './_vframes.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 
@@ -401,30 +400,6 @@ ${items}
      We NEVER assume the homepage: if nothing resolves, we return null and the board asks the user for
      it (Marina's rule). Result cached per ad (7d). Meta already carries its ctaUrl, so the board
      never calls this for Meta. */
-  /* Pre-warm (admin): build + cache the storyboard for the ONE ad we most recommend roasting (the
-     lowest-scored = "fix first") when it is a video, so its first roast is instant during a demo or a
-     cold prospect visit. Scope on purpose: just that one ad, never the whole board. Needs the board to
-     have been pulled already (we rank the cached list); the ICP comes from the body or the stored
-     geo:icp record. Runs server-side (Vercel), nothing local. POST { action:'warm-video', domain, company, icp? }. */
-  if (body.action === 'warm-video') {
-    if (!(await icpIsAdmin(req, _redis))) return res.status(403).json({ error: 'admin_only' });
-    const domKey = String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
-    let pull = null;
-    try { const raw = (_redis && domKey) ? await _redis.get('ads:pull:v3:' + domKey) : null; pull = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; } catch (e) {}
-    if (!pull || !Array.isArray(pull.ads) || !pull.ads.length) return res.status(200).json({ ok: false, reason: 'no_board_yet' });
-    let icp = body.icp || '';
-    if (!icp && _redis && domKey) { try { const g = await _redis.get('geo:icp:' + domKey); const gg = g ? (typeof g === 'string' ? JSON.parse(g) : g) : null; icp = (gg && gg.icp_text) || ''; } catch (e) {} }
-    let ads = ownedByAdvertiser(dropJunkCreatives(pull.ads), { domain: body.domain, company: body.company });
-    if (icp) { try { const sc = await scoreAdsCached(ads, icp, _redis, { force: false, limit: 0 }); ads = dropJunkCreatives(sc.ads); } catch (e) {} }
-    // Most recommended to roast = the lowest-scored VIDEO ad that has a detail URL (unscored sorts last).
-    const vids = ads.filter(a => a && a.isVideo && a.detailUrl && a.flag !== 'capture_fail' && !a._captureFail);
-    vids.sort((a, b) => (typeof a.score === 'number' ? a.score : 99) - (typeof b.score === 'number' ? b.score : 99));
-    const target = vids[0] || null;
-    if (!target) return res.status(200).json({ ok: true, warmed: 0, reason: 'no_video_ad' });
-    const sb = await videoStoryboard({ detailUrl: target.detailUrl, adId: target.adId, redis: _redis });
-    return res.status(200).json({ ok: true, warmed: sb ? 1 : 0, ad: { adId: target.adId || null, score: (typeof target.score === 'number' ? target.score : null), head: (target.head || '').slice(0, 80) } });
-  }
-
   if (body.action === 'ad-landing') {
     const plat = String(body.plat || '').toLowerCase();
     const detailUrl = String(body.detailUrl || '').trim();
