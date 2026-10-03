@@ -808,7 +808,14 @@ Return the JSON object defined in the output contract. All fields required.`;
           if (!vm) { vm = { category: 'visual_copy_match', title: 'Visual-Copy Match' }; parsed.issues.push(vm); }
           vm.score = null;
           vm.not_analyzed = true;
-          vm.explanation = 'This ad is a video. The full video was not analyzed, so its creative is not scored here. The copy and targeting are still scored above.';
+          /* Why the video wasn't analyzed, so the report can show the right card: 'plan' = this plan
+             doesn't include video analysis (Starter / legacy basic) -> upsell to Pro; 'unavailable' =
+             we couldn't fetch/decode the clip -> neutral note, never an upsell for something we can't
+             deliver. videoAllowed already encodes the plan rule (free taster + Pro get video). */
+          vm.reason = videoAllowed ? 'unavailable' : 'plan';
+          vm.explanation = videoAllowed
+            ? 'This ad is a video. The full video could not be analyzed this time, so its creative is not scored here. The copy and targeting are still scored above.'
+            : 'This ad is a video. Video analysis (the hook, the demo, and the end card scored like the rest) is a Pro feature. The copy and targeting are still scored above.';
         }
 
         /* Token consume + entitlement. We only reach here when `entitled` was true

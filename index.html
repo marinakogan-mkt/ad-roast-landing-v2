@@ -635,7 +635,27 @@
       );
     };
 
-    const IssueRow = ({ issue }) => {
+    const IssueRow = ({ issue, onUpgrade }) => {
+      /* Plan-gated video: this account's plan (Starter / legacy basic) doesn't include video
+         analysis, so instead of a flat "not analyzed" we upsell Pro right where the value would be.
+         Only shows when the server set reason:'plan'; a video we genuinely couldn't fetch uses the
+         neutral card below (never sell what we can't deliver). */
+      if (issue.not_analyzed && issue.reason === 'plan') {
+        return (
+          <div className="rounded-xl border p-4" style={{ borderColor: '#bfdbfe', background: '#f0f7ff' }}>
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: '#dbeafe' }}><Icon name="sparkles" className="w-4 h-4" style={{ color: '#0a66c2' }} /></span>
+              <span className="flex-1 min-w-0 font-semibold text-sm text-gray-900 leading-tight">{issue.title}</span>
+              <span className="inline-flex items-center rounded-full font-bold flex-none text-white" style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.03em', padding: '2px 7px', background: '#0a66c2' }}>Pro</span>
+            </div>
+            <p className="font-semibold text-gray-900 mb-1" style={{ fontSize: 13.5 }}>This ad is a video. See it scored, not skipped.</p>
+            <p className="text-gray-600 mb-3" style={{ fontSize: 12.5, lineHeight: 1.5 }}>Pro reads the full video, the hook, the demo, and the end card, and scores the creative like the rest of the ad. The copy and targeting above are already scored.</p>
+            {onUpgrade
+              ? <button onClick={onUpgrade} className="inline-flex items-center gap-1.5 rounded-full font-semibold text-white border-none cursor-pointer hover:opacity-90" style={{ fontSize: 12.5, padding: '7px 14px', background: '#0a66c2' }}>Upgrade to Pro <span style={{ fontSize: 14, lineHeight: 1 }}>&rarr;</span></button>
+              : <a href="/#pricing" className="inline-flex items-center gap-1.5 rounded-full font-semibold text-white no-underline hover:opacity-90" style={{ fontSize: 12.5, padding: '7px 14px', background: '#0a66c2' }}>Upgrade to Pro <span style={{ fontSize: 14, lineHeight: 1 }}>&rarr;</span></a>}
+          </div>
+        );
+      }
       /* Video ads expose only a still thumbnail, never the full video, so the creative
          is marked "not analyzed" server-side (score null). Render it greyed with no
          score, exactly like the landing shows N/A when there's no readable page: shown,
@@ -6726,7 +6746,7 @@
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
                   {visibleIssues.map((issue, i) => (
-                    <IssueRow key={i} issue={issue} />
+                    <IssueRow key={i} issue={issue} onUpgrade={openBilling} />
                   ))}
                 </div>
               </div>
