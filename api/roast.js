@@ -2,6 +2,7 @@ import { Redis } from '@upstash/redis';
 import crypto from 'node:crypto';
 import { readSessionCookie } from './auth/_allowlist.js';
 import { consumeToken, peekAccount, companyKey, checkCompanyAllowed, addCompany } from './_tokens.js';
+import { videoStoryboard } from './_vframes.js';
 
 const _redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -199,6 +200,10 @@ export default async function handler(req, res) {
   // sees the actual creative, exactly as if the user had uploaded a screenshot.
   let effShot = adScreenshot || null;
   let effShotType = adScreenshotType || null;
+  // True once we attach a real storyboard of a VIDEO ad (6 frames, hook -> demo -> end card) instead
+  // of a lone poster: with it the model actually analyzes the video, so the creative is scored, not
+  // marked "not analyzed". Stays false (copy-only, visual not scored) when we can't fetch the video.
+  let videoFramesOk = false;
 
   /* Pre-LLM token gate (optimization #2): a roast only warrants an Anthropic call
      when the caller is a signed-in account WITH tokens. Out-of-token or anonymous
@@ -563,6 +568,23 @@ NO CLICHE COPY — the fix_kit rewrites (headlines, body, ctas, landing_page_hea
             ? 'Unknown funnel stage. Infer whether this ad is a booked-demo, free-trial/self-serve, or content/lead-magnet offer from the creative and landing page, then calibrate the CTA-friction scoring and the recommended pre-set button to THAT stage. Do not assume a demo by default.'
             : (offerType || 'Not specified')));
 
+  // VIDEO ADS: turn the clip into one 6-frame storyboard so the model actually reads the video
+  // (the burned-in captions mirror the voice-over) instead of guessing from a single poster frame.
+  // Board roasts pass the ad-library detail URL as adUrl; on success the storyboard becomes the
+  // attached creative and the creative is scored normally. Cached per ad, best-effort: any failure
+  // leaves effShot empty so the copy-only / "not analyzed" path below takes over, never a guess.
+  if (!effShot && isVideo && typeof adUrl === 'string' && /\/ad-library\/detail\/\d+/.test(adUrl)) {
+    try {
+      const sb = await videoStoryboard({ detailUrl: adUrl.trim(), redis: redisDown ? null : _redis });
+      if (sb && sb.b64) {
+        effShot = sb.b64;
+        effShotType = sb.mime || 'image/jpeg';
+        videoFramesOk = true;
+        console.log('[AdRoast] Attached video storyboard,', sb.b64.length, 'b64 chars');
+      }
+    } catch (e) { console.log('[AdRoast] video storyboard failed:', e.message); }
+  }
+
   // Pull the real creative from the ad-library dashboard. adImageUrl is a public
   // media.licdn.com (or similar) URL; fetch it here (server-side avoids browser CORS)
   // and turn it into the base64 image the model reads. Best-effort: any failure just
@@ -611,9 +633,11 @@ Landing page content available: ${hasAnyLandingContent ? 'YES — SCORE IT 1-10'
 ${effectiveAdCopy ? (isAdvancedAudit ? `=== AD COPY (MULTI-VARIANT GOOGLE/PAID-ADS AUDIT — ${variants?.length || 0} variants) ===\n${effectiveAdCopy}\n\nNOTE: This is a structured Google Ads-style audit with multiple variants. Analyse the full ad structure: scoring should reflect the overall campaign quality across variants, and the 5 Ad Issues / Fix Kit / Experiments should cite specific headlines and descriptions (by variant + number) when relevant.` : `=== AD COPY ===\n${effectiveAdCopy}`) : '=== AD COPY ===\n[No ad copy provided]'}
 
 ${visualDescription ? `=== AD VISUAL DESCRIPTION ===\n${visualDescription}` : ''}
-${effShot ? (isVideo
-  ? `=== AD CREATIVE: VIDEO (only a still thumbnail attached) ===\nThis ad is a VIDEO. The attached image is ONLY a single still thumbnail (usually an intro or logo frame), NOT the full video, which you cannot watch. Do NOT judge the video by this one frame: NEVER call it "logo-only", "just a logo", "static", or fault it for lacking imagery, motion, product shots or a scene, and do NOT base visual_copy_match or trust_signals on the thumbnail. Analyze the COPY (headline/body/CTA and any words shown on the frame) and the ICP fit; for the visual, state only that it is a video whose full content was not analyzed, and do not invent a critique of it.`
-  : `=== AD CREATIVE IMAGE ATTACHED ===\nThe actual ad creative image is attached to this message. READ the copy/text rendered ON the creative (headline, overlay text, CTA, captions) and analyze it as the ad's creative copy. Factor the creative copy AND its visual into the issues, especially headline_clarity, visual_copy_match, cta_friction and trust_signals, citing specific words shown on the creative.`) : ''}
+${effShot ? (videoFramesOk
+  ? `=== AD CREATIVE: VIDEO STORYBOARD (6 frames, first to last) ===\nThe attached image is a 6-frame storyboard of this VIDEO ad, laid out in order from the opening frame to the end card. Read it as the video itself. The on-screen captions mirror the voice-over, so treat the captions across the frames as the ad's spoken script. Judge the real creative: the first-2-seconds hook, how clearly it builds from problem to offer, the product or demo shown, the on-screen text and CTA, and the end card. Score visual_copy_match and the other issues on what the video actually does, citing specific captions or frames. Do NOT say "logo-only", "just a logo", or "static": this is a full video, and a single logo or title frame within the sequence is NORMAL, so judge the sequence as a whole.`
+  : (isVideo
+    ? `=== AD CREATIVE: VIDEO (only a still thumbnail attached) ===\nThis ad is a VIDEO. The attached image is ONLY a single still thumbnail (usually an intro or logo frame), NOT the full video, which you cannot watch. Do NOT judge the video by this one frame: NEVER call it "logo-only", "just a logo", "static", or fault it for lacking imagery, motion, product shots or a scene, and do NOT base visual_copy_match or trust_signals on the thumbnail. Analyze the COPY (headline/body/CTA and any words shown on the frame) and the ICP fit; for the visual, state only that it is a video whose full content was not analyzed, and do not invent a critique of it.`
+    : `=== AD CREATIVE IMAGE ATTACHED ===\nThe actual ad creative image is attached to this message. READ the copy/text rendered ON the creative (headline, overlay text, CTA, captions) and analyze it as the ad's creative copy. Factor the creative copy AND its visual into the issues, especially headline_clarity, visual_copy_match, cta_friction and trust_signals, citing specific words shown on the creative.`)) : ''}
 
 ${landingPageContent ? `=== LANDING PAGE CONTENT (AUTO-SCRAPED FROM URL) ===\n${landingPageContent}` : ''}
 
@@ -771,7 +795,7 @@ Return the JSON object defined in the output contract. All fields required.`;
            Mirror the no-landing gate: the Visual-Copy Match dimension is marked "not
            analyzed" (no score) instead of roasted from one frame, so it never drags the
            ad down or reads as "logo-only". Copy and ICP fit above still score normally. */
-        if (isVideo && Array.isArray(parsed.issues)) {
+        if (isVideo && !videoFramesOk && Array.isArray(parsed.issues)) {
           parsed.isVideo = true;
           let vm = parsed.issues.find(i => i && i.category === 'visual_copy_match');
           if (!vm) { vm = { category: 'visual_copy_match', title: 'Visual-Copy Match' }; parsed.issues.push(vm); }

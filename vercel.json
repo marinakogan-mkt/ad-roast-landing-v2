@@ -5,6 +5,10 @@
     "api/icp.js": {
       "maxDuration": 60,
       "includeFiles": "api/_assets/**"
+    },
+    "api/roast.js": {
+      "maxDuration": 60,
+      "includeFiles": "node_modules/ffmpeg-static/**"
     }
   },
   "rewrites": [

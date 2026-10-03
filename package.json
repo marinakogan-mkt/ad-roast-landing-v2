@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "@resvg/resvg-wasm": "^2.6.2",
-    "@upstash/redis": "^1.28.0"
+    "@upstash/redis": "^1.28.0",
+    "ffmpeg-static": "^5.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.10",
