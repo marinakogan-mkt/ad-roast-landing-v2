@@ -219,6 +219,13 @@ export default async function handler(req, res) {
     catch (e) { redisDown = true; console.error('[AdRoast] peek failed:', e.message); }
   }
   const entitled = redisDown || !!(acctEmail && acctBal && acctBal.tokens > 0);
+  /* Video analysis is a premium lever (it costs a download + ffmpeg + extra vision tokens), so it is
+     gated by plan: the FREE first roast includes it as a taster, and the top paid tier (Pro) includes
+     it, but the basic paid tier (Starter, and the legacy small plans) does NOT — a Starter who wants
+     to roast video upgrades to Pro. Unknown plan (e.g. a transient Redis outage) defaults to 'free',
+     matching how the rest of this handler treats an unknown plan. */
+  const _plan = (acctBal && acctBal.plan) || 'free';
+  const videoAllowed = _plan === 'free' || _plan === 'pro' || _plan === 'unlimited';
   if (!entitled) {
     let cached = null;
     if (acctEmail) {
@@ -573,7 +580,7 @@ NO CLICHE COPY — the fix_kit rewrites (headlines, body, ctas, landing_page_hea
   // Board roasts pass the ad-library detail URL as adUrl; on success the storyboard becomes the
   // attached creative and the creative is scored normally. Cached per ad, best-effort: any failure
   // leaves effShot empty so the copy-only / "not analyzed" path below takes over, never a guess.
-  if (!effShot && isVideo && typeof adUrl === 'string' && /\/ad-library\/detail\/\d+/.test(adUrl)) {
+  if (!effShot && isVideo && videoAllowed && typeof adUrl === 'string' && /\/ad-library\/detail\/\d+/.test(adUrl)) {
     try {
       const sb = await videoStoryboard({ detailUrl: adUrl.trim(), redis: redisDown ? null : _redis });
       if (sb && sb.b64) {
