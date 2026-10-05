@@ -52,7 +52,9 @@ function boardStats(ads) {
   const scored = (ads || []).filter(a => typeof a.score === 'number');
   if (!scored.length) return null;
   const avg = scored.reduce((s, a) => s + a.score, 0) / scored.length;
-  const toFix = scored.filter(a => a.score <= 4).length;
+  // Same cut as the board overview card ("ads to fix" = score 6 or less), so the search
+  // snippet never says "0 to fix" while the board itself shows several.
+  const toFix = scored.filter(a => a.score <= 6).length;
   return { count: scored.length, avg: Math.round(avg * 10) / 10, toFix };
 }
 
