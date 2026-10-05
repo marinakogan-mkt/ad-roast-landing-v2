@@ -440,7 +440,7 @@ async function classifyAdKinds(ads, redis) {
     try {
       const vals = await redis.mget(...ads.map(keyOf));
       need = [];
-      ads.forEach((a, i) => { const v = vals && vals[i]; if (v === 'brand' || v === 'demand') out[creativeSig(a)] = v; else need.push(a); });
+      ads.forEach((a, i) => { const v = vals && vals[i]; if (v === 'brand' || v === 'demand') out[creativeSig(a)] = v; else if (v !== 'retry') need.push(a); });
     } catch (e) { need = ads; }
   }
   const key = process.env.ANTHROPIC_API_KEY;
@@ -465,7 +465,11 @@ async function classifyAdKinds(ads, redis) {
       if (redis) writes.push(redis.set(keyOf(a), v, { ex: ADSCORE_TTL }));
     });
     try { await Promise.all(writes); } catch (e) { /* best-effort */ }
-  } catch (e) { /* classification is a safety net: on failure the score stands as the model gave it */ }
+  } catch (e) {
+    // Safety net only: on failure the score stands as the model gave it. Remember the failure for
+    // an hour so a broken API doesn't trigger a new call on every board open.
+    if (redis) { try { await Promise.all(need.map(a => redis.set(keyOf(a), 'retry', { ex: 60 * 60 }))); } catch (e2) {} }
+  }
   return out;
 }
 async function enforceBrandFloor(ads, redis) {
