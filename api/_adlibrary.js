@@ -132,7 +132,7 @@ function parseAdCards(html, company) {
   //      share that signature, so a normal 2-image A/B test is never merged.
   const normBody = (b) => String(b || '').replace(/\s+/g, ' ').trim().toLowerCase()
     .replace(/^(?:hey|hi|hello|hola|bonjour|hallo)\b[^.!?]{0,40}?(?:👋|,|:)\s*/u, '')
-    .replace(/[…\.\s]+$/, '').slice(0, 160);
+    .replace(/[…\.\s]+$/, '').slice(0, 80); // PREFIX only: the ad-library preview truncates each brand's body at a different point (a longer brand name shifts the cut), so compare the shared opening, not the divergent tail
   const txtKey = (a) => { const nb = normBody(a.body); return nb.length >= 25 ? ('t|' + String(a.headline || '').toLowerCase().trim() + '|' + nb) : null; };
   const txtCount = {};
   for (const a of out) { const t = txtKey(a); if (t) txtCount[t] = (txtCount[t] || 0) + 1; }

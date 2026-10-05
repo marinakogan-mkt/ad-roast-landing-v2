@@ -472,7 +472,7 @@ ${items}
        ones keep their cached score). A full re-score from scratch would blow Vercel's 60s limit with
        the Sonnet scorer, so it is never forced; a changed ICP re-scores on its own via the icpHash. */
     const domKey = String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
-    const pullKey = 'ads:pull:v4:' + domKey; // v4: dedupe brand-personalized template campaigns (3+ near-identical "Hey <brand>" ads collapse to one)
+    const pullKey = 'ads:pull:v5:' + domKey; // v5: template-campaign dedupe compares the shared body PREFIX (preview truncates each brand's body at a different point)
     const wantScore = !!body.icp; // the board always sends the ICP; display-only calls don't
     const refresh = !!body.refresh;
     // A company's live ads barely change day-to-day, and pulling them costs money/rate-limit (Jina).
