@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 
@@ -472,7 +472,7 @@ ${items}
        ones keep their cached score). A full re-score from scratch would blow Vercel's 60s limit with
        the Sonnet scorer, so it is never forced; a changed ICP re-scores on its own via the icpHash. */
     const domKey = String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
-    const pullKey = 'ads:pull:v6:' + domKey; // v6: reject auto creative-type titles that end in "Ad" (Image Ad / Video Ad / Carousel Ad) so a card never describes the creative instead of reading it
+    const pullKey = 'ads:pull:v7:' + domKey; // v7: template-campaign variants are all kept + scored, folded to the worst one after scoring. v6: reject auto creative-type titles that end in "Ad" (Image Ad / Video Ad / Carousel Ad) so a card never describes the creative instead of reading it
     const wantScore = !!body.icp; // the board always sends the ICP; display-only calls don't
     const refresh = !!body.refresh;
     // A company's live ads barely change day-to-day, and pulling them costs money/rate-limit (Jina).
@@ -511,8 +511,9 @@ ${items}
         _checkedAt: Date.now(),
       };
       const scM = await scoreAdsCached(merged.ads, body.icp, _redis, { force: false, limit: 3 });
-      merged.ads = dropJunkCreatives(scM.ads);
-      if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(merged), { ex: CACHE_TTL }); } catch (e) {} }
+      const mergedAll = dropJunkCreatives(scM.ads); // keep every template variant in the cache; collapse only what we return
+      merged.ads = collapseTemplateGroups(mergedAll);
+      if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify({ ...merged, ads: mergedAll }), { ex: CACHE_TTL }); } catch (e) {} }
       return res.status(200).json({ ...merged, fresh: { checked: Date.now(), checkedAt: merged._checkedAt, stale: false, listCached: false, count: merged.ads.length, scoredNew: scM.scoredNew, reused: scM.reused, pending: scM.pending, scoreError: scM.scoreError || null, rateLimited: !!scM.rateLimited } });
     }
 
@@ -586,7 +587,7 @@ ${items}
     // Sonnet scorer + 20 ads that one call blows Vercel's 60s limit, the function is killed, nothing is
     // saved and the user sees an error. Keeping the old scores and scoring only what's new stays well
     // under the limit. (A changed ICP still re-scores everything on its own, via the icpHash in the key.)
-    if (!wantScore) return res.status(200).json({ ...pull, _listCached: listCached, _stale: stale, _checkedAt: lastChecked });
+    if (!wantScore) return res.status(200).json({ ...pull, ads: collapseTemplateGroups(pull.ads), _listCached: listCached, _stale: stale, _checkedAt: lastChecked });
     // Cap new scoring per call so pull + Sonnet vision fits Vercel's 60s limit on a big fresh board.
     // `fresh.pending` tells the client how many creatives are still unscored; it re-calls ads-fetch
     // (list now cached, so no pull) to score the next batch until pending hits 0.
@@ -595,7 +596,7 @@ ${items}
     // Admin re-score forces a fresh score of every creative in one call (list is cached, so the whole
     // 60s budget is free for scoring); normal loads score incrementally and reuse cached scores.
     const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
-    const scAds = dropJunkCreatives(sc.ads); // catch any blank only revealed by its scored verdict
+    const scAds = collapseTemplateGroups(dropJunkCreatives(sc.ads)); // catch any blank only revealed by its scored verdict; fold each template campaign to its WORST-scored variant
     // Persist a compact stats snapshot for the link-preview image (og:image). The pull cache stores
     // UNSCORED ads, so the preview can't derive metrics from it; write the scored numbers + the worst
     // creative here, on every board render, so the shared card is always current. Cheap single set.

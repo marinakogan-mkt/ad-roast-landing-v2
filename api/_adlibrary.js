@@ -140,13 +140,20 @@ function parseAdCards(html, company) {
   const txtKey = (a) => { const nb = normBody(a.body); return nb.length >= 25 ? ('t|' + String(a.headline || '').toLowerCase().trim() + '|' + nb) : null; };
   const txtCount = {};
   for (const a of out) { const t = txtKey(a); if (t) txtCount[t] = (txtCount[t] || 0) + 1; }
+  // A template group is NOT dropped here: each variant carries its own image and the scorer reads
+  // the image, so the variants legitimately score differently (Outset: the same 'Hey <brand>' copy
+  // scored 5 on one brand's image and 8 on another). Keeping only the FIRST variant before scoring
+  // hid the 5s and left an 8 as the board's 'fix first'. So every variant is kept and tagged with
+  // `tpl` (the group signature); collapseTemplateGroups() folds each group to its LOWEST-scored
+  // variant AFTER scoring, so the board still shows one card per campaign, and it's the worst one.
   const uniq = [];
   const seenKey = new Set();
   for (const a of out) {
     const t = txtKey(a);
-    const k = (t && txtCount[t] >= 3) ? t : ((a.img ? a.img.split('?')[0] : '') || (a.headline || '') || a.id);
+    const k = (a.img ? a.img.split('?')[0] : '') || (a.headline || '') || a.id;
     if (seenKey.has(k)) continue;
     seenKey.add(k);
+    if (t && txtCount[t] >= 3) a.tpl = t;
     uniq.push(a);
   }
   // We query by accountOwner (advertiser), so every returned card already belongs to the
@@ -163,7 +170,38 @@ function parseAdCards(html, company) {
     isVideo: !!a.isVideo,       // true = we only have a thumbnail/poster frame, not the full video
     detailUrl: 'https://www.linkedin.com/ad-library/detail/' + a.id,
     adId: a.id,
+    tpl: a.tpl || null,         // template-campaign group signature (see collapseTemplateGroups)
   }));
+}
+
+// Fold each template-campaign group (ads tagged with the same `tpl` in parseAdCards) into ONE card:
+// its LOWEST-scored real variant, so the board's 'fix first' is the genuinely worst ad, never a
+// better-scoring sibling. Brand/culture verdicts and capture failures are skipped as the pick (same
+// rule that keeps them off the board, Leadfeeder) unless the whole group is like that. Run it only on
+// SCORED output: unscored variants are ignored while scored ones exist (progressive scoring).
+const _BRAND_VERDICT = /\bnot a (direct )?demand[\s-]?gen\b|\bbrand \/ culture post\b|\bbrand or culture post\b/i;
+export function collapseTemplateGroups(ads) {
+  if (!Array.isArray(ads)) return ads;
+  const groups = {};
+  for (const a of ads) if (a && a.tpl) (groups[a.tpl] = groups[a.tpl] || []).push(a);
+  const pick = {};
+  for (const k of Object.keys(groups)) {
+    const g = groups[k];
+    const scored = g.filter(a => typeof a.score === 'number');
+    const real = scored.filter(a => a.flag !== 'capture_fail' && !_BRAND_VERDICT.test(String(a.verdict || '')));
+    const pool = real.length ? real : (scored.length ? scored : g);
+    const best = pool.reduce((m, a) => ((typeof a.score === 'number' ? a.score : 99) < (typeof m.score === 'number' ? m.score : 99) ? a : m), pool[0]);
+    pick[k] = { ...best, variants: g.length };
+  }
+  const out = [];
+  const done = new Set();
+  for (const a of ads) {
+    if (!a || !a.tpl) { out.push(a); continue; }
+    if (done.has(a.tpl)) continue;
+    done.add(a.tpl);
+    out.push(pick[a.tpl]);
+  }
+  return out;
 }
 
 // One Sonnet 4.6 vision call scores the whole set: 1-10 fit-to-ICP + a diagnosis verdict (what is off
@@ -564,7 +602,11 @@ export async function fetchLinkedInAds({ company, domain = '', limit = 12 } = {}
       // creative, never a text-only placeholder tile.
       // Filter to the company's OWN ads BEFORE slicing: the accountOwner name search is fuzzy and
       // returns homonyms (searching "Chaos" the 3D-render co pulls in "Fogo de Chao", a steakhouse).
-      const ads = ownedByAdvertiser(parseAdCards(html, q).filter(a => a.img), { domain, company: q }).slice(0, limit);
+      // `limit` counts DISTINCT cards: a template group's variants share one slot, so they can't crowd
+      // the company's other ads out of the pull.
+      const _ownAll = ownedByAdvertiser(parseAdCards(html, q).filter(a => a.img), { domain, company: q });
+      const _slots = new Set();
+      const ads = _ownAll.filter(a => { const k = a.tpl || a.adId; if (_slots.has(k)) return true; if (_slots.size >= limit) return false; _slots.add(k); return true; });
       if (ads.length) return { ok: true, ads, _apify: apifyReason };
       lastReason = 'no_ads';
     } catch (e) { lastReason = String(e && e.message || e); }
