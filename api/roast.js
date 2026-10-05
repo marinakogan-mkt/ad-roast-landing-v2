@@ -205,7 +205,7 @@ export default async function handler(req, res) {
     if (!(bal && bal.plan === 'unlimited')) return res.status(403).json({ error: 'admin_only' });
     const domKey = String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
     let pull = null;
-    try { const raw = (_redis && domKey) ? await _redis.get('ads:pull:v7:' + domKey) : null; pull = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; } catch (e) {}
+    try { const raw = (_redis && domKey) ? await _redis.get('ads:pull:v8:' + domKey) : null; pull = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; } catch (e) {}
     if (!pull || !Array.isArray(pull.ads) || !pull.ads.length) return res.status(200).json({ ok: false, reason: 'no_board_yet' });
     let icp = body.icp || '';
     if (!icp && _redis && domKey) { try { const g = await _redis.get('geo:icp:' + domKey); const gg = g ? (typeof g === 'string' ? JSON.parse(g) : g) : null; icp = (gg && gg.icp_text) || ''; } catch (e) {} }
