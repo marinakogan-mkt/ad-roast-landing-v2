@@ -1577,12 +1577,17 @@
           </div>
         );
       };
+      /* Paid accounts browse the shared AD LIBRARY in the left rail: every company board we've warmed,
+         not just the ones they personally roasted. Free accounts keep their own roster ("Your
+         companies"). The library endpoint is paid-gated server-side, so free callers get an empty list. */
+      const railLibrary = !!(acct.signedIn && acct.plan && acct.plan !== 'free');
       useEffect(() => {
-        fetch('/api/auth?action=my-companies', { credentials: 'same-origin' })
+        const action = railLibrary ? 'library-companies' : 'my-companies';
+        fetch('/api/auth?action=' + action, { credentials: 'same-origin' })
           .then(r => r.ok ? r.json() : null)
           .then(d => setRailCos((d && d.companies) || []))
           .catch(() => setRailCos([]));
-      }, []);
+      }, [railLibrary]);
       const [icpOverride, setIcpOverride] = useState(null); // user-edited ICP (null = use detected)
       const [icpEditing, setIcpEditing] = useState(false);
       const [icpExpanded, setIcpExpanded] = useState(false); // Buyer pill: false = one-line truncated, true = full ICP paragraph
@@ -2152,7 +2157,7 @@
           {acct.signedIn && railCos && railCos.length > 0 && (
             <aside className="hidden lg:flex flex-col fixed left-0 border-r" style={{ top: 57, bottom: 0, width: railOpen ? 208 : 52, borderColor: '#e8ecf1', background: '#fff', zIndex: 9, transition: 'width .16s ease' }}>
               <div className="pt-4 pb-2 flex items-center justify-between" style={{ padding: railOpen ? '16px 12px 8px' : '16px 0 8px', justifyContent: railOpen ? 'space-between' : 'center' }}>
-                {railOpen && <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Your companies</span>}
+                {railOpen && <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{railLibrary ? 'Ad library' : 'Your companies'}</span>}
                 <div className="flex items-center gap-0.5">
                   {railOpen && (
                     <div className="relative">

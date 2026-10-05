@@ -310,6 +310,42 @@ async function handleApiKey(req, res) {
 /* The account's company roster (powers the logged-in sidebar + board landing). Prefers the
    per-account hash roast:cos:<email>; backfills from the global roast index for accounts that
    roasted before that roster existed. Newest-first. */
+/* Shared ad-library roster for PAID accounts: the same company boards Marina has warmed, so a paid
+   subscriber browsing the dashboard sees every company we've pulled and scored (not just the ones they
+   personally roasted). Source is the global geo:companies set (every scored board), enriched with the
+   company name (geo:icp) and the current board risk (ads:ogstats), returned in the SAME shape as
+   my-companies so the left rail renders it identically under a different label. Free accounts get an
+   empty list (gated: true), so the library only shows for paid plans. */
+async function handleLibraryCompanies(req, res) {
+  const email = await sessionRoastEmail(req);
+  if (!email) return res.status(401).json({ error: 'Not signed in' });
+  let acct = null; try { acct = await peekAccount(redis, email); } catch (e) {}
+  const paid = !!(acct && acct.plan && acct.plan !== 'free');
+  if (!paid) return res.status(200).json({ success: true, companies: [], gated: true });
+  const parse = (v) => { try { return v == null ? null : (typeof v === 'string' ? JSON.parse(v) : v); } catch (e) { return null; } };
+  try {
+    let doms = [];
+    try { doms = (await redis.smembers('geo:companies')) || []; } catch (e) { doms = []; }
+    doms = Array.from(new Set(doms.filter(Boolean).map(String))).slice(0, 400);
+    if (!doms.length) return res.status(200).json({ success: true, companies: [] });
+    const key = (d) => String(d).replace(/[^a-z0-9.]/g, '');
+    let icps = [], ogs = [];
+    try { icps = await redis.mget(...doms.map(d => 'geo:icp:' + key(d))); } catch (e) { icps = []; }
+    try { ogs = await redis.mget(...doms.map(d => 'ads:ogstats:' + key(d))); } catch (e) { ogs = []; }
+    const companies = doms.map((d, i) => {
+      const gi = parse(icps[i]); const og = parse(ogs[i]);
+      const c = { domain: d, name: (gi && gi.company) || d, site: (gi && gi.website) || d, ts: (og && og.at) || 0 };
+      if (og && typeof og.offPct === 'number') { c.avg = og.avg; c.off = og.off; c.offPct = og.offPct; c.count = og.count; }
+      return c;
+    });
+    // Surface real boards first: the ones with scored ads (a count), newest by last board render.
+    companies.sort((a, b) => (b.count || 0) - (a.count || 0) || (b.ts || 0) - (a.ts || 0));
+    return res.status(200).json({ success: true, companies });
+  } catch (e) {
+    return res.status(200).json({ success: true, companies: [] });
+  }
+}
+
 async function handleMyCompanies(req, res) {
   const email = await sessionRoastEmail(req);
   if (!email) return res.status(401).json({ error: 'Not signed in' });
@@ -803,6 +839,9 @@ export default async function handler(req, res) {
       case 'my-companies':
         if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
         return await handleMyCompanies(req, res);
+      case 'library-companies':
+        if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+        return await handleLibraryCompanies(req, res);
       case 'backfill-creatives':
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
         return await handleBackfillCreatives(req, res);
