@@ -92,6 +92,10 @@ export async function boardOgHandler(req, res) {
         const icpRec = pr ? (typeof pr === 'string' ? JSON.parse(pr) : pr) : null;
         const realName = icpRec && typeof icpRec.company === 'string' ? icpRec.company.trim() : '';
         if (realName && realName.length <= 60) company = realName;
+        else {
+          const nm = await _redis.get('geo:name:' + domKey);
+          if (nm && typeof nm === 'string' && nm.trim().length <= 60) company = nm.trim();
+        }
         if (!ads.length) posdata = icpRec;
       } catch (e) { stats = null; ads = []; posdata = null; }
     }

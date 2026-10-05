@@ -637,6 +637,17 @@ ${items}
           if (geoAds.length) {
             await _redis.set('ads:geo:' + domKey, JSON.stringify(geoAds), { ex: 60 * 60 * 24 * 30 });
             try { await _redis.sadd('geo:companies', domKey); } catch (e) {}
+            // Display name for the public board title when there is no positioning record
+            // ("Orca Security", not "Orcasecurity"). Only kept when it matches the domain label,
+            // so a caller can't put an arbitrary name on a public, indexable page.
+            try {
+              const nm = String(body.company || '').trim();
+              const flat = nm.toLowerCase().replace(/[^a-z0-9]/g, '');
+              const label = domKey.split('.')[0].replace(/[^a-z0-9]/g, '');
+              if (nm && nm.length <= 60 && flat.length >= 3 && (label === flat || label.indexOf(flat) !== -1 || flat.indexOf(label) === 0)) {
+                await _redis.set('geo:name:' + domKey, nm, { ex: 60 * 60 * 24 * 30 });
+              }
+            } catch (e) {}
           }
         }
       } catch (e) {}
