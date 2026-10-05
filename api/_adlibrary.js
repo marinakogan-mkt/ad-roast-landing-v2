@@ -114,7 +114,11 @@ function parseAdCards(html, company) {
     // nothing to communicate" - a false negative on the advertiser's own board. Reject those so the
     // headline stays empty and the no-copy capture is caught downstream instead of mis-scored.
     let headline = '';
-    const JUNK_ALT = /^(?:(?:advertiser|company|member)\s+)?logo$|^ad image$|^image$|^ad$|^feed ?image$|^photo$/i;
+    // Junk alt text LinkedIn stamps when there's no real headline: bare logos/placeholders, AND the
+    // auto-generated creative-TYPE descriptors that end in "Ad" ("Image Ad", "Video Ad", "Carousel Ad",
+    // "<Brand> Document Ad"...). Taking one as the headline made the card describe the creative instead
+    // of reading it (Terra, Evaluate), so reject them and let the no-copy capture be caught downstream.
+    const JUNK_ALT = /^(?:(?:advertiser|company|member)\s+)?logo$|^(?:ad|ad image|image|photo|feed ?image)$|\b(?:image|video|carousel|document|event|single image|text|dynamic|spotlight|sponsored|promoted)\s+ad$/i;
     const altRe = /<img[^>]*\balt="([^"]*)"/g;
     let am;
     while ((am = altRe.exec(block))) {
