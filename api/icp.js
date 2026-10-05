@@ -489,6 +489,21 @@ ${items}
       try { const raw = await _redis.get(pullKey); cachedCopy = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null; } catch (e) {}
       if (!(cachedCopy && cachedCopy.ads && cachedCopy.ads.length)) cachedCopy = null;
     }
+    // Last copy from an OLDER cache version, used only to carry a platform forward when a live pull
+    // misses it. Without this, every cache-version bump (v7 -> v8) made the next pull start from
+    // nothing, and a flaky LinkedIn read at that moment left the board Google-only for a week
+    // (Palo Alto Networks, 5 oct). Never shown as fresh on its own; the ownership guards below
+    // still run over it.
+    let prevCopy = cachedCopy;
+    if (!prevCopy && _redis && domKey) {
+      for (const v of ['v7', 'v6']) {
+        try {
+          const raw = await _redis.get('ads:pull:' + v + ':' + domKey);
+          const o = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+          if (o && Array.isArray(o.ads) && o.ads.length) { prevCopy = o; break; }
+        } catch (e) {}
+      }
+    }
     const cacheAge = (cachedCopy && cachedCopy._checkedAt) ? (Date.now() - cachedCopy._checkedAt) : Infinity;
     const cacheFresh = !!cachedCopy && cacheAge < FRESH_MS;
     // Admin-only manual RE-SCORE: re-run the risk score on an already-pulled board on demand (the button
@@ -544,11 +559,11 @@ ${items}
         // Preserve last-seen ads PER PLATFORM: a pull that got Google but not LinkedIn (LinkedIn
         // flaky this run) must not wipe the LinkedIn ads we already had — otherwise the LinkedIn card
         // would flip back to an error. Carry forward each platform we lost from the previous copy.
-        if (cachedCopy && Array.isArray(cachedCopy.ads)) {
+        if (prevCopy && Array.isArray(prevCopy.ads)) {
           for (const plat of ['LinkedIn', 'Google']) {
             const gotNow = r.ads.some(a => (a.plat || '') === plat);
             if (!gotNow) {
-              const prev = cachedCopy.ads.filter(a => (a.plat || '') === plat);
+              const prev = prevCopy.ads.filter(a => (a.plat || '') === plat);
               if (prev.length) {
                 r.ads = r.ads.concat(prev);
                 r.sources = { ...(r.sources || {}), [plat.toLowerCase()]: prev.length };

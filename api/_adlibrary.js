@@ -64,10 +64,15 @@ export function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = 
   // the token exactly, or (for a long token >= 6 chars, safe from short-name collisions) the token
   // appears glued inside the collapsed name. That keeps sub-brands ("Chaos Cylindo", "Vanta
   // Incorporated", "Notion Labs Japan") while dropping the homonyms.
+  // Partners and agencies put the brand in their own page name ("HubSpot Platinum Partner",
+  // "MAN Digital: HubSpot & RevOps Agency", "Onward | Atlassian Partner of the Year 2026"), so the
+  // whole-word match let their ads into the brand's board. Their ads are not the brand's ads.
+  const PARTNER_PAGE = /\b(partner|partners|agency|agencia|agentur|reseller|consulting|consultancy)\b/i;
   const nameMatches = (adv) => {
     const aw = wordsOf(adv);
     const ac = aw.join('');
     if (!ac) return false;
+    if (PARTNER_PAGE.test(String(adv || '')) && !toks.some(t => ac === t)) return false;
     return toks.some(t => aw.includes(t) || ac === t || (t.length >= 6 && (ac.includes(t) || t.includes(ac))));
   };
   const owned = ads.filter(a => nameMatches(a.advertiser));
