@@ -123,14 +123,26 @@ function parseAdCards(html, company) {
     }
     out.push({ id, advertiser, headline, body, img, isVideo });
   }
-  // Collapse repeats: the same creative often runs across several campaigns and shows up
-  // as multiple cards. Keep one per unique creative (by image, falling back to headline).
+  // Collapse repeats so the board shows distinct ads, not the same one many times:
+  //  (1) the SAME creative reused across campaigns -> dedupe by image (then headline / id);
+  //  (2) a TEMPLATE CAMPAIGN -> one ad personalized per target brand ("Hey Nike...", "Hey Lowe's...",
+  //      each with its own image), which by (1) never collapses and floods the board with near-identical
+  //      cards that also score inconsistently. We detect it by normalizing the body (stripping the
+  //      leading "Hey <brand> 👋" greeting + trailing truncation) and collapse a group ONLY when 3+ ads
+  //      share that signature, so a normal 2-image A/B test is never merged.
+  const normBody = (b) => String(b || '').replace(/\s+/g, ' ').trim().toLowerCase()
+    .replace(/^(?:hey|hi|hello|hola|bonjour|hallo)\b[^.!?]{0,40}?(?:👋|,|:)\s*/u, '')
+    .replace(/[…\.\s]+$/, '').slice(0, 160);
+  const txtKey = (a) => { const nb = normBody(a.body); return nb.length >= 25 ? ('t|' + String(a.headline || '').toLowerCase().trim() + '|' + nb) : null; };
+  const txtCount = {};
+  for (const a of out) { const t = txtKey(a); if (t) txtCount[t] = (txtCount[t] || 0) + 1; }
   const uniq = [];
-  const key = new Set();
+  const seenKey = new Set();
   for (const a of out) {
-    const k = (a.img ? a.img.split('?')[0] : '') || (a.headline || '') || a.id;
-    if (key.has(k)) continue;
-    key.add(k);
+    const t = txtKey(a);
+    const k = (t && txtCount[t] >= 3) ? t : ((a.img ? a.img.split('?')[0] : '') || (a.headline || '') || a.id);
+    if (seenKey.has(k)) continue;
+    seenKey.add(k);
     uniq.push(a);
   }
   // We query by accountOwner (advertiser), so every returned card already belongs to the
