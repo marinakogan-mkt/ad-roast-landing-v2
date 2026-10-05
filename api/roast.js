@@ -177,8 +177,61 @@ FULLER — give these real substance; write complete, specific guidance, do NOT 
   • experiments[].description = what to test, against what, and what to watch, written in full (1-2 sentences, ~22-36 words).
   • next_steps[] = each an object: "step" is a short imperative title (<=8 words); "detail" explains exactly what to do and why it moves the metric, in 1-2 complete sentences (~22-38 words). Make the four steps a real, sequenced plan, not restatements of the issues.`;
 
+/* Belt and braces for the LOCALIZATION rule in the system prompt. An ad written in
+   another language, or one that switches language inside a single unit, is never the
+   advertiser's defect: it is a deliberate localization choice. The prompt forbids
+   saying otherwise, but a prompt alone leaks, so this strips any sentence that still
+   blames the language or the region. Mirrors ARTIFACT_TAG in api/_adlibrary.js, which
+   does the same job for the board's verdicts and tags. */
+const LOCALE_REASON = /\b(languages?|translat\w*|locali[sz]\w*|non-english|english-language|foreign|multilingual|bilingual)\b/i;
+/* The bare language names too: the leak we actually saw was a sentence naming two
+   of them rather than using the word "language". Known tradeoff: for an advertiser
+   whose product IS a language (a language school, a translation tool), a legitimate
+   sentence can be stripped. The prompt rule above is the real defense; this is the
+   net, and a missing sentence is cheaper than a verdict Marina cannot defend. */
+const LOCALE_NAMES = /\b(english|spanish|portuguese|french|german|italian|dutch|japanese|chinese|mandarin|korean|indonesian|vietnamese|thai|polish|swedish|danish|norwegian|finnish|turkish|arabic|hindi|russian|czech)\b/i;
+function stripLocaleReason(v) {
+  if (typeof v !== 'string' || !v.trim()) return v;
+  const kept = v.split(/(?<=[.!?])\s+/).filter((p) => !LOCALE_REASON.test(p) && !LOCALE_NAMES.test(p));
+  return kept.join(' ').replace(/\s+([.,;])/g, '$1').trim();
+}
+/* Walks the free-text fields the report actually renders. Anything emptied by the
+   strip is reported back so the caller can substitute a neutral line rather than
+   render a blank card. */
+function scrubLocaleReasons(parsed) {
+  const emptied = [];
+  const fix = (obj, key, label) => {
+    if (!obj || typeof obj[key] !== 'string') return;
+    const before = obj[key];
+    const after = stripLocaleReason(before);
+    if (after === before) return;
+    if (!after) { emptied.push(label); obj[key] = ''; return; }
+    obj[key] = after;
+  };
+  if (Array.isArray(parsed.issues)) {
+    parsed.issues.forEach((i, n) => fix(i, 'explanation', `issues[${n}]`));
+  }
+  const lp = parsed.landing_page_roast;
+  if (lp) ['headline_feedback', 'value_prop_feedback', 'cta_feedback', 'trust_feedback'].forEach((k) => fix(lp, k, `landing_page_roast.${k}`));
+  const mm = parsed.ad_landing_mismatch;
+  if (mm) {
+    fix(mm, 'verdict', 'ad_landing_mismatch.verdict');
+    fix(mm, 'message_match_issues', 'ad_landing_mismatch.message_match_issues');
+    if (Array.isArray(mm.disconnects)) mm.disconnects.forEach((d, n) => { fix(d, 'problem', `disconnect[${n}].problem`); fix(d, 'fix', `disconnect[${n}].fix`); });
+  }
+  if (parsed.fix_kit) fix(parsed.fix_kit, 'rationale', 'fix_kit.rationale');
+  if (Array.isArray(parsed.experiments)) parsed.experiments.forEach((e, n) => fix(e, 'description', `experiment[${n}]`));
+  if (Array.isArray(parsed.next_steps)) parsed.next_steps.forEach((x, n) => fix(x, 'detail', `next_step[${n}]`));
+  return emptied;
+}
+
 export default async function handler(req, res) {
   const API_VERSION = 'v4';
+  /* Bumped whenever the scoring PROMPT changes in a way that should invalidate
+     cached roasts. It is part of the dedupe hash only, so a prompt fix actually
+     reaches old ads instead of re-serving a result scored under the old rules.
+     p2 (2026-10-05): LOCALIZATION hard rule + Visual-Copy Match gate for text ads. */
+  const PROMPT_VERSION = 'p2';
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', _version: API_VERSION });
@@ -300,7 +353,7 @@ export default async function handler(req, res) {
     catch (e) { return _norm(u); }
   };
   const dedupeHash = crypto.createHash('sha256')
-    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null, adImageUrl: adImageUrl || null, isVideo: !!isVideo }))
+    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null, adImageUrl: adImageUrl || null, isVideo: !!isVideo, promptVersion: PROMPT_VERSION }))
     .digest('hex');
   const dedupeKey = acctEmail ? `roast:dedupe:${acctEmail}:${dedupeHash}` : null;
   if (dedupeKey && !redisDown && !forceFresh) {
@@ -551,7 +604,7 @@ CRITICAL RULES:
 - Landing-page content provided -> landing_page_roast and ad_landing_mismatch scores are real 1-10 (never 0 or null). No landing content -> set those scores to 0.
 - NEVER state what you cannot do. No capability disclaimers ("can't assess visuals", "without seeing the screenshot", "no visual provided", etc.). If you can't analyze something, skip it silently. The user sees only confident findings.
 - PUNCTUATION: no em dashes or en dashes in any field. Use commas, colons, periods, or parentheses.
-- LOCALIZATION: an ad may be localized on purpose, written in another language and aimed at a specific country. That is deliberate, not a flaw. Do NOT lower the buyer-fit judgment for the language or the geo. Read and translate the ad, then judge fit to the SAME buyer role in its own market. Never make an issue, verdict, or fix about the ad being in another language or region-specific, and never claim it lacks ICP signal or a clear buyer when the signal is simply expressed in that language. Judge substance only: hook, clarity, proof, CTA, value for its intended local buyer.
+- LOCALIZATION: an ad may be localized on purpose, written in another language and aimed at a specific country. That is deliberate, not a flaw. Do NOT lower the buyer-fit judgment for the language or the geo. Read and translate the ad, then judge fit to the SAME buyer role in its own market. Never make an issue, verdict, or fix about the ad being in another language or region-specific, and never claim it lacks ICP signal or a clear buyer when the signal is simply expressed in that language. Judge substance only: hook, clarity, proof, CTA, value for its intended local buyer. HARD RULE: no issue explanation, feedback line, verdict or fix may contain the words "language", "languages", "translated", "translation", "localized", "localised", "non-English", "English-language", "foreign", "multilingual" or "bilingual", and none may name a country or region as the reason something scores low. This holds even when one ad mixes two languages inside a single unit: a headline in one language and a body in another is NOT a defect you may score, mention, or write a fix about. If the only thing "off" about an ad is the language it is written in, or that it switches language, then nothing is off: score it on substance and write every field about the substance.
 
 PLATFORM TRUST-SIGNAL RULES:
 - Google Search RSAs and all Google extensions (sitelinks, callouts, structured snippets, seller ratings) are TEXT-ONLY: they never render customer logos, vendor/certification/security/compliance badges (SOC 2, ISO 27001, G2), or screenshots inside the ad.
@@ -824,6 +877,45 @@ Return the JSON object defined in the output contract. All fields required.`;
         // How the landing read went, so the report shows the match as "not scored" (never "bad")
         // when there was no readable page. 'ok' | 'unreadable' | 'missing' (ad-only opt-in).
         parsed.landingStatus = landingStatus;
+
+        /* LOCALIZATION, enforcement pass. The prompt forbids blaming the language or
+           the region; this removes anything that still slipped into a rendered field.
+           A dimension left with no explanation is given a neutral one rather than a
+           blank card: the score itself stays, because re-scoring here would be a
+           second model call. */
+        try {
+          const emptied = scrubLocaleReasons(parsed);
+          if (emptied.length) {
+            console.warn('[AdRoast] locale-reason stripped:', emptied.join(', '));
+            if (Array.isArray(parsed.issues)) {
+              parsed.issues.forEach((i) => {
+                if (i && typeof i.explanation === 'string' && !i.explanation) {
+                  i.explanation = 'Scored on substance: hook, clarity, proof and CTA for this ad\'s own market.';
+                }
+              });
+            }
+          }
+        } catch (e) { console.error('[AdRoast] locale scrub error:', e.message); }
+
+        /* Google Search and other text-only ads carry no creative at all, so Visual-Copy
+           Match is not a real dimension for them. PLATFORM INTENT LENS already tells the
+           model not to dock them for it, but handed the field it fills it in anyway, and
+           it answers with exactly the capability disclaimer CRITICAL RULES forbids
+           ("Google text ads cannot show visuals"). Gate it like the video and no-landing
+           cases: no score, and no roast of a creative that does not exist. */
+        try {
+          const _plat = String(platform || '').toLowerCase().replace(/[\s_]+/g, '');
+          const isGoogleText = (_plat === 'google' || _plat === 'googleads')
+            && !effShot && !adImageUrl && !isVideo;
+          if (isGoogleText && Array.isArray(parsed.issues)) {
+            let vm = parsed.issues.find(i => i && i.category === 'visual_copy_match');
+            if (!vm) { vm = { category: 'visual_copy_match', title: 'Visual-Copy Match' }; parsed.issues.push(vm); }
+            vm.score = null;
+            vm.not_analyzed = true;
+            vm.reason = 'no_creative';
+            vm.explanation = 'This is a text ad, so there is no creative to match against the copy. The headline, offer and landing-page match are scored above.';
+          }
+        } catch (e) { console.error('[AdRoast] text-ad visual gate error:', e.message); }
 
         /* Video ads: LinkedIn only exposes a still thumbnail (usually an intro or logo
            frame), never the full video, so the creative genuinely cannot be judged.
