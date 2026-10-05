@@ -420,6 +420,62 @@ function icpHash(icp) {
 // Score a pulled ad list, reusing per-creative cached scores and only calling the model on the
 // creatives we haven't scored yet. `force` (the Retry button) bypasses the reuse and re-scores all.
 // Returns { ads, scoredNew, reused }. If redis is unavailable it just scores everything (old path).
+// The scorer's own rule: only a demand-gen ad (one that sells the product, a demo, a trial, a
+// download, an event) may score 1-4; brand, culture and thought-leadership posts floor at 5 with a
+// "not a demand-gen ad" verdict, which keeps them off the board. The model applies that rule
+// unevenly (Leadfeeder's "If you lead R&D..." opinion post came back as a 2 and led the board as
+// "fix first"), so low-scored social ads are re-checked here on every read. Copy with a clear offer
+// is demand-gen by definition and skips the check. The rest get one small temperature-0
+// classification ("is this ad selling the product?"), cached per creative so the answer never flips
+// between runs. Search ads always carry an offer, so only social ads (LinkedIn, Meta) are checked.
+const _OFFER_SIGNAL = /\b(demo|trial|free|download|sign[\s-]?up|signup|register|webinar|webcast|event|summit|conference|book|get started|try|pricing|quote|guide|report|e-?book|whitepaper|white paper|checklist|template|playbook|toolkit|course|workshop|learn more|read more|see how|get the|get your|claim|discount|introducing|announc)/i;
+const KIND_MODEL = process.env.ANTHROPIC_KIND_MODEL || 'claude-haiku-4-5-20251001';
+const BRAND_VERDICT_TEXT = 'Thought-leadership or brand post with no product pitch, not a demand-gen ad; judge it on brand lift, not buyer fit.';
+async function classifyAdKinds(ads, redis) {
+  const out = {};
+  if (!ads.length) return out;
+  const keyOf = (a) => 'adkind:v1:' + creativeSig(a);
+  let need = ads;
+  if (redis) {
+    try {
+      const vals = await redis.mget(...ads.map(keyOf));
+      need = [];
+      ads.forEach((a, i) => { const v = vals && vals[i]; if (v === 'brand' || v === 'demand') out[creativeSig(a)] = v; else need.push(a); });
+    } catch (e) { need = ads; }
+  }
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!need.length || !key) return out;
+  const list = need.map((a, i) => `${i + 1}. Advertiser: ${a.advertiser || 'unknown'}\n${[a.head, a.title, a.body].filter(Boolean).join(' | ').slice(0, 600)}`).join('\n\n');
+  const sys = 'You classify paid social ads. DEMAND = the ad promotes the advertiser\'s product, service, feature, platform or an offer (even without a button). BRAND = employer branding, culture, hiring, team or award news, event recaps, or an opinion / thought-leadership post that does not pitch the product. Answer only with a JSON array of strings, one per ad, each "DEMAND" or "BRAND".';
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: KIND_MODEL, max_tokens: 200, temperature: 0, system: sys, messages: [{ role: 'user', content: list }] }),
+    });
+    const d = await r.json().catch(() => null);
+    const txt = d && Array.isArray(d.content) ? d.content.map(c => c.text || '').join('') : '';
+    const m = txt.match(/\[[\s\S]*\]/);
+    const arr = m ? JSON.parse(m[0]) : null;
+    if (!Array.isArray(arr) || arr.length !== need.length) return out;
+    const writes = [];
+    need.forEach((a, i) => {
+      const v = /brand/i.test(String(arr[i])) ? 'brand' : 'demand';
+      out[creativeSig(a)] = v;
+      if (redis) writes.push(redis.set(keyOf(a), v, { ex: ADSCORE_TTL }));
+    });
+    try { await Promise.all(writes); } catch (e) { /* best-effort */ }
+  } catch (e) { /* classification is a safety net: on failure the score stands as the model gave it */ }
+  return out;
+}
+async function enforceBrandFloor(ads, redis) {
+  const cands = ads.filter(a => a && typeof a.score === 'number' && a.score < 5 && !/google/i.test(String(a.plat || ''))
+    && !_BRAND_VERDICT.test(String(a.verdict || '')) && !_OFFER_SIGNAL.test([a.head, a.title, a.body].filter(Boolean).join(' ')));
+  if (!cands.length) return ads;
+  const kinds = await classifyAdKinds(cands, redis);
+  return ads.map(a => (kinds[creativeSig(a)] === 'brand' && cands.includes(a)) ? { ...a, score: 5, verdict: BRAND_VERDICT_TEXT, tags: [] } : a);
+}
+
 export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0 } = {}) {
   if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0, pending: 0 };
   if (!redis) {
@@ -491,14 +547,15 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   const out = ads.map(a => {
     const o = cachedBySig[creativeSig(a)] || freshBySig[creativeSig(a)];
     if (failBySig[creativeSig(a)] || (o && o._captureFail)) return { ...a, _captureFail: true }; // our capture failed; isJunkCreative drops it
-    return o ? { ...a, score: o.score, verdict: cleanVerdict(o.verdict), tags: Array.isArray(o.tags) ? o.tags.filter((t) => !ARTIFACT_TAG.test(String(t))) : [], title: o.title || a.title || null, head: a.head || o.title || '' } : a;
+    return o ? ({ ...a, score: o.score, verdict: cleanVerdict(o.verdict), tags: Array.isArray(o.tags) ? o.tags.filter((t) => !ARTIFACT_TAG.test(String(t))) : [], title: o.title || a.title || null, head: a.head || o.title || '' }) : a;
   });
+  const outChecked = await enforceBrandFloor(out, redis);
   // scoredNew = creatives that ACTUALLY got a number this call (not what we tried). pending falls
   // by real scores AND by capture-failures (resolved: dropped), so a board with an uncapturable
   // creative doesn't loop the client's re-score forever waiting on an ad that can never score.
   const scoredNew = Object.keys(freshBySig).length;
   const failedNew = Object.keys(failBySig).length;
-  return { ads: out, scoredNew, reused: Object.keys(cachedBySig).length, pending: Math.max(0, need.length - scoredNew - failedNew), scoreError, rateLimited };
+  return { ads: outChecked, scoredNew, reused: Object.keys(cachedBySig).length, pending: Math.max(0, need.length - scoredNew - failedNew), scoreError, rateLimited };
 }
 
 // --- LinkedIn (free, via Jina Reader) -------------------------------------------------
