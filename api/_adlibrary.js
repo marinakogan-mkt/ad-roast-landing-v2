@@ -44,8 +44,20 @@ export function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = 
   // >= 3, not 4: a 3-letter brand ("Wiz", "Box") would otherwise yield no token, so the fuzzy
   // accountOwner search's strangers (an airline-hiring or wholesale ad under "Wiz") passed through
   // unfiltered. Matching is whole-word (below), so a 3-char token stays safe from substring noise.
-  const toks = [nn(String(domain).replace(/\.[a-z.]+$/i, '')), nn(company), ...extraToks.map(nn)].filter(t => t && t.length >= 3);
+  const domBase = nn(String(domain).replace(/\.[a-z.]+$/i, ''));
+  const toks = [domBase, nn(company), ...extraToks.map(nn)].filter(t => t && t.length >= 3);
   if (!toks.length) return ads; // nothing to match on, don't over-filter
+  // HOMONYM GUARD (runs first): the ad-library search matches NAME, so a different company sharing the
+  // name slips in (two "Fluency"s). Some cards expose the advertiser's LinkedIn company slug
+  // (/company/<vanity>). When the board's domain clearly identifies ONE slug as the owner, drop cards
+  // whose slug belongs to a DIFFERENT company. Only drops cards with an explicit, conflicting slug;
+  // cards with no slug are kept (they belong to the dominant real advertiser). Safe no-op otherwise.
+  const slugHit = (s) => s && domBase && (s === domBase || (domBase.length >= 5 && (s.includes(domBase) || domBase.includes(s))));
+  const ownerSlug = ads.map(a => nn(a.vanity)).find(slugHit);
+  if (ownerSlug) {
+    const kept = ads.filter(a => { const s = nn(a.vanity); return !s || s === ownerSlug || slugHit(s); });
+    if (kept.length) ads = kept;
+  }
   // Match by WHOLE WORD, not substring: a name search returns near-names (searching "Vanta" pulls
   // "Vantage", "VantaSec"; "Miro" pulls "Mirolin", "Miroslava") that a substring test would wrongly
   // keep. Own it only if a whole word of the advertiser equals the token, the collapsed name equals
@@ -125,7 +137,11 @@ function parseAdCards(html, company) {
       const a = decodeHtml(am[1]).trim();
       if (a && !JUNK_ALT.test(a)) { headline = a; break; }
     }
-    out.push({ id, advertiser, headline, body, img, isVideo });
+    // Advertiser's LinkedIn company slug (/company/<vanity>), when the card exposes it. Not every card
+    // carries it, but when present it pins the ad to a SPECIFIC company page, which lets us drop a
+    // same-named DIFFERENT company's ads that the name-only search pulled in (homonym contamination).
+    const vanity = (block.match(/\/company\/([a-z0-9][a-z0-9\-]{1,})/) || [])[1] || '';
+    out.push({ id, advertiser, headline, body, img, isVideo, vanity });
   }
   // Collapse repeats so the board shows distinct ads, not the same one many times:
   //  (1) the SAME creative reused across campaigns -> dedupe by image (then headline / id);
@@ -167,6 +183,7 @@ function parseAdCards(html, company) {
     ctaUrl: null,
     dom: null,
     advertiser: a.advertiser || null,
+    vanity: a.vanity || null,   // advertiser's LinkedIn company slug, when the card exposed it (homonym guard)
     isVideo: !!a.isVideo,       // true = we only have a thumbnail/poster frame, not the full video
     detailUrl: 'https://www.linkedin.com/ad-library/detail/' + a.id,
     adId: a.id,
