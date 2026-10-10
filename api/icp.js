@@ -95,11 +95,15 @@ async function fetchSiteViaJina(url) {
    direct fetch returns nothing; Jina renders them. Used by the ad-landing resolver to pull the
    real click destination (the first outbound href) off an ad's own detail page. */
 async function fetchHtmlViaJina(url) {
-  const attempt = async (useKey) => {
+  // `browser:true` asks Jina to render with a real headless browser on ITS servers (nothing local):
+  // it gets past LinkedIn's Cloudflare far more often than the fast default engine, at the cost of a
+  // few extra seconds. A rendered page >= 200 chars is a success; anything else is a transient miss.
+  const attempt = async ({ useKey, browser }) => {
     const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 15000);
+    const t = setTimeout(() => c.abort(), browser ? 26000 : 15000);
     try {
-      const headers = { 'X-Return-Format': 'html', 'X-Timeout': '20' };
+      const headers = { 'X-Return-Format': 'html', 'X-Timeout': browser ? '25' : '20' };
+      if (browser) headers['X-Engine'] = 'browser';
       if (useKey && process.env.JINA_API_KEY) headers['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
       const r = await fetch('https://r.jina.ai/' + url, { headers, signal: c.signal });
       if (!r.ok) return { ok: false, status: r.status };
@@ -108,9 +112,14 @@ async function fetchHtmlViaJina(url) {
       return { ok: true, html };
     } catch (e) { return { ok: false, status: -1 }; } finally { clearTimeout(t); }
   };
+  // Escalating ladder so a transient miss on the fast engine still resolves within THIS call (the
+  // first-time resolution a new user depends on, before any cache): fast -> browser -> browser retry.
+  // A depleted/invalid key (401/402/403) drops the key and retries anonymously, as before.
   const hasKey = !!process.env.JINA_API_KEY;
-  let res = await attempt(hasKey);
-  if (!res.ok && hasKey && (res.status === 402 || res.status === 401 || res.status === 403)) res = await attempt(false);
+  let res = await attempt({ useKey: hasKey, browser: false });
+  if (!res.ok && hasKey && (res.status === 402 || res.status === 401 || res.status === 403)) res = await attempt({ useKey: false, browser: false });
+  if (!res.ok) res = await attempt({ useKey: hasKey, browser: true });
+  if (!res.ok) { await new Promise(r => setTimeout(r, 1200)); res = await attempt({ useKey: hasKey, browser: true }); }
   return res.ok ? res.html : null;
 }
 
