@@ -419,7 +419,10 @@ ${items}
     // exclude link shorteners (lnkd.in) or the advertiser's social pages: lnkd.in is the real click
     // destination the advertiser used and redirects to the landing (roast follows it). Mirrors the
     // outreach-engine's proven filter (linkedin.com/licdn.com), plus the Google Transparency chrome.
-    const OWN = /(^|\.)(linkedin\.com|licdn\.com|google\.com|gstatic\.com|googlesyndication\.com|googleadservices\.com|doubleclick\.net|youtube\.com|adstransparency\.google\.com)$/i;
+    // Platform chrome AND spec/infra domains: the browser-engine render includes inline SVG/markup
+    // whose xmlns/href point at w3.org, schema.org, etc. Those are NEVER a landing page, so a naive
+    // "first external href" would grab w3.org/2000/svg. Exclude them (same set roast.js gates on).
+    const OWN = /(^|\.)(linkedin\.com|licdn\.com|google\.com|gstatic\.com|googlesyndication\.com|googleadservices\.com|doubleclick\.net|youtube\.com|adstransparency\.google\.com|w3\.org|schema\.org|purl\.org|xmlns\.com|ogp\.me|gmpg\.org|creativecommons\.org|example\.com|example\.org)$/i;
     const isLanding = (u) => { try { const x = new URL(u); return (x.protocol === 'https:' || x.protocol === 'http:') && /\./.test(x.hostname) && !OWN.test(x.hostname); } catch (e) { return false; } };
     const trim = (u) => String(u).replace(/[.,)\]]+$/, '');
     const fromHtml = (html) => { for (const m of String(html).matchAll(/href="(https?:\/\/[^"]+)"/gi)) { if (isLanding(m[1])) return m[1]; } return null; };
