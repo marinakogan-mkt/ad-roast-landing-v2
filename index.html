@@ -4419,6 +4419,9 @@
         if (viewRef.current === 'landing') {
           const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           try { window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
+          // Also drop the cursor in the website field, so clicking "Roast an ad" when already at the
+          // top still does something visible (invites the next action) instead of feeling like a no-op.
+          setTimeout(() => { try { document.getElementById('hero-site')?.focus({ preventScroll: true }); } catch (e) {} }, reduce ? 0 : 320);
         } else { reset(); }
       };
       /* Leaving the roast for a landing-page section: remember where we came from and push a
@@ -4444,7 +4447,9 @@
         let n = 0; const tick = () => { if (doScroll() || n++ > 20) return; setTimeout(tick, 100); };
         setTimeout(tick, 60);
       };
-      const goPricing = openWorkWithUs;
+      /* The "Work with us" section now lives only on /services (software/services split), so the top-nav
+         link must NAVIGATE there, not scroll to a section that no longer renders on the home page. */
+      const goPricing = () => { setNavOpen(false); try { window.location.assign('/services'); } catch (e) { window.location.href = '/services'; } };
       /* Scroll to the "Your whole campaign, repositioned" deliverables section (from the
          results-page "See the roadmap" card). Routes back to the landing page first if needed. */
       const goDeliverables = () => {
@@ -5003,46 +5008,53 @@
 
           {/* ==== SOFTWARE PAGE ( / ): hero, how it works, what you get ==== */}
           {!isServicesPage() && (<>
-          {/* HERO — full above-the-fold: eyebrow, headline, subhead, demo video, then the search bar */}
-          <section className="flex-shrink-0 text-center px-4 sm:px-6 pt-2 sm:pt-[30px] pb-5 sm:pb-6" style={{ position: 'relative', overflow: 'hidden' }}>
+          {/* HERO: two columns on desktop: copy + search on the left, the demo video on the right.
+              Stacks to one column (copy, then video) on mobile. Placement only; branding/copy unchanged
+              except the input invites a competitor's site too. */}
+          <section className="flex-shrink-0 px-4 sm:px-6 pt-2 sm:pt-[30px] pb-5 sm:pb-6" style={{ position: 'relative', overflow: 'hidden' }}>
             <div className="hero-wash" />
-            <div className="max-w-3xl mx-auto reveal" style={{ position: 'relative', zIndex: 1 }}>
-              <p className="text-center mb-3.5 sm:mb-3" style={{ color: '#0a66c2' }}>
-                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-gray-200 rounded-full"><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span><span style={{ fontSize: '14px' }}>Your live ads, brutally reviewed</span></span>
-              </p>
-              <h1 className="hero-h1 text-center text-gray-900 mb-4 sm:mb-7" style={{ fontWeight: 300, letterSpacing: '-0.5px', textWrap: 'balance' }}>Find out where<br className="mbr" /> your ad loses<br className="mbr" /> the buyer.</h1>
-              {/* Sub-headline: full copy on desktop, a shorter two-line version on mobile */}
-              <p className="hidden sm:block text-center text-gray-400 max-w-2xl mx-auto mb-5" style={{ fontSize: 'clamp(15px, 3.6vw, 17px)', lineHeight: 1.45 }}>Enter your website. We pull every live ad you are running and score each one against your buyer, with the fixes ranked by impact.</p>
-              <p className="sm:hidden text-center text-gray-500 mx-auto mb-4" style={{ maxWidth: 360, fontSize: '13px', lineHeight: 1.5 }}>Every live ad you run, scored against your buyer.<br />Fixes ranked by impact.</p>
-              {/* Inline ad-link input + CTA — sits ABOVE the demo so the primary action is high on the page */}
-              <div className="max-w-xs sm:max-w-xl mx-auto mb-4">
-                <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
-                  <input
-                    id="hero-site"
-                    type="text"
-                    placeholder="Enter your website, e.g. yourcompany.com"
-                    value={heroSite}
-                    onChange={(e) => { setHeroSite(e.target.value); if (heroErr) setHeroErr(''); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); goToLiveAds(); } }}
-                    className="flex-1 px-4 py-2 sm:py-2 bg-white border rounded-full text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm field-bloom"
-                    style={{ borderColor: heroErr ? '#dc2626' : '#e8e8f0' }}
-                  />
-                  <button
-                    onClick={goToLiveAds}
-                    style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
-                    className="self-center sm:self-stretch px-5 py-2 sm:py-2 border rounded-full font-semibold sm:font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
-                  >Roast my ads free →</button>
+            <div className="max-w-6xl mx-auto reveal" style={{ position: 'relative', zIndex: 1 }}>
+              <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+                {/* LEFT: copy + primary action */}
+                <div className="text-center lg:text-left">
+                  <p className="mb-3.5 sm:mb-3" style={{ color: '#0a66c2' }}>
+                    <span className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-gray-200 rounded-full"><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span><span style={{ fontSize: '14px' }}>Your live ads, brutally reviewed</span></span>
+                  </p>
+                  <h1 className="hero-h1 text-gray-900 mb-4 sm:mb-6" style={{ fontWeight: 300, letterSpacing: '-0.5px', textWrap: 'balance' }}>Find out where<br className="mbr" /> your ad loses<br className="mbr" /> the buyer.</h1>
+                  {/* Sub-headline: full copy on desktop, a shorter two-line version on mobile */}
+                  <p className="hidden sm:block text-gray-400 mb-5 mx-auto lg:mx-0" style={{ fontSize: 'clamp(15px, 3.6vw, 17px)', lineHeight: 1.45, maxWidth: 520 }}>Enter your website, or a competitor's. We pull every live ad being run and score each one against your buyer, with the fixes ranked by impact.</p>
+                  <p className="sm:hidden text-gray-500 mx-auto mb-4" style={{ maxWidth: 360, fontSize: '13px', lineHeight: 1.5 }}>Every live ad, scored against your buyer.<br />Fixes ranked by impact.</p>
+                  {/* Inline website input + CTA */}
+                  <div className="max-w-xs sm:max-w-xl mx-auto lg:mx-0 mb-4">
+                    <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
+                      <input
+                        id="hero-site"
+                        type="text"
+                        placeholder="Your website or a competitor's, e.g. acme.com"
+                        value={heroSite}
+                        onChange={(e) => { setHeroSite(e.target.value); if (heroErr) setHeroErr(''); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); goToLiveAds(); } }}
+                        className="flex-1 px-4 py-2 sm:py-2 bg-white border rounded-full text-sm focus:outline-none focus:border-blue-500 text-gray-900 shadow-sm field-bloom"
+                        style={{ borderColor: heroErr ? '#dc2626' : '#e8e8f0' }}
+                      />
+                      <button
+                        onClick={goToLiveAds}
+                        style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
+                        className="self-center sm:self-stretch px-5 py-2 sm:py-2 border rounded-full font-semibold sm:font-medium text-sm whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
+                      >Roast my ads free →</button>
+                    </div>
+                    {heroErr
+                      ? <p className="text-center lg:text-left mt-2" style={{ fontSize: '14px', color: '#dc2626' }}>{heroErr}</p>
+                      : (<>
+                          <p className="hidden sm:block text-gray-400 mt-3" style={{ fontSize: '13px' }}>🎁 We pull every live ad we find and score it &middot; first roast's on us &middot; no credit card</p>
+                          <p className="sm:hidden text-center text-gray-400 mt-3" style={{ fontSize: '11px' }}>🎁 First roast's on us &middot; no credit card</p>
+                        </>)}
+                  </div>
+                  <p className="text-gray-400 mx-auto lg:mx-0" style={{ fontSize: '12.5px', lineHeight: 1.4, maxWidth: 520 }}>Works with LinkedIn, Meta, and Google ads, across any industry.</p>
                 </div>
-                {heroErr
-                  ? <p className="text-center mt-2" style={{ fontSize: '14px', color: '#dc2626' }}>{heroErr}</p>
-                  : (<>
-                      <p className="hidden sm:block text-center text-gray-400 mt-3" style={{ fontSize: '13px' }}>🎁 We pull every live ad we find and score it &middot; first roast's on us &middot; no credit card</p>
-                      <p className="sm:hidden text-center text-gray-400 mt-3" style={{ fontSize: '11px' }}>🎁 First roast's on us &middot; no credit card</p>
-                    </>)}
+                {/* RIGHT: demo video (below the copy on mobile, beside it on desktop) */}
+                <div className="w-full mt-6 lg:mt-0"><DemoVideo /></div>
               </div>
-              {/* MAIN DEMO VIDEO */}
-              <div className="mx-auto mb-2.5" style={{ maxWidth: 820 }}><DemoVideo /></div>
-              <p className="text-center text-gray-400 max-w-2xl mx-auto" style={{ fontSize: '12.5px', lineHeight: 1.4 }}>Works with LinkedIn, Meta, and Google ads, across any industry.</p>
             </div>
           </section>
 
@@ -5244,7 +5256,7 @@
               </div>
               {/* Route 2 - the B2B-software human service */}
               <div className="rounded-2xl border-2 p-6 flex flex-col" style={{ borderColor: '#0a66c2', background: '#f7f9fc' }}>
-                <h3 className="font-semibold text-gray-900 mb-2" style={{ fontSize: 18 }}>Running active B2B campaigns?</h3>
+                <h3 className="font-semibold text-gray-900 mb-2" style={{ fontSize: 18 }}>Real ad spend, flat pipeline?</h3>
                 <p className="text-gray-500 mb-5 flex-1" style={{ fontSize: 14.5, lineHeight: 1.6 }}>Want the full ad-to-page journey repositioned and rewritten for you? That's the Campaign Repositioning Sprint.</p>
                 <a href="/services" className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-full font-semibold text-sm no-underline self-start border-2 bg-white transition-colors hover:bg-blue-50" style={{ borderColor: '#0a66c2', color: '#0a66c2' }}>Explore the Repositioning Sprint <Icon name="arrowRight" className="w-4 h-4" /></a>
               </div>
