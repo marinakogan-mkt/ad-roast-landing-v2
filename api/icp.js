@@ -414,7 +414,7 @@ ${items}
     const detailUrl = String(body.detailUrl || '').trim();
     const adId = String(body.adId || '').trim();
     const adBody = String(body.body || '');
-    const cacheKey = adId ? 'adland:v1:' + plat + ':' + adId : null;
+    const cacheKey = adId ? 'adland:v2:' + plat + ':' + adId : null; // v2: drop entries poisoned by the pre-fix browser render resolving to w3.org/schema.org
     // Hosts that are the ad PLATFORM's own site/CDN/chrome — never the landing page. We do NOT
     // exclude link shorteners (lnkd.in) or the advertiser's social pages: lnkd.in is the real click
     // destination the advertiser used and redirects to the landing (roast follows it). Mirrors the
