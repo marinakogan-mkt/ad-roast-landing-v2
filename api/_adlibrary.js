@@ -629,7 +629,7 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
     for (const a of ads) { const k = a.adId || String(a.img).split('?')[0]; if (seen.has(k)) continue; seen.add(k); uniq.push(a); }
     const out = uniq.slice(0, limit);
     if (!out.length) return { ok: false, reason: 'apify_no_creatives', ads: [] };
-    return { ok: true, ads: out, via: 'apify' };
+    return { ok: true, ads: out, via: 'apify', total: uniq.length };
   } catch (e) { return { ok: false, reason: 'apify_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
 }
 
@@ -690,7 +690,9 @@ export async function fetchLinkedInAds({ company, domain = '', limit = 12 } = {}
       const _ownAll = ownedByAdvertiser(parseAdCards(html, q).filter(a => a.img), { domain, company: q });
       const _slots = new Set();
       const ads = _ownAll.filter(a => { const k = a.tpl || a.adId; if (_slots.has(k)) return true; if (_slots.size >= limit) return false; _slots.add(k); return true; });
-      if (ads.length) return { ok: true, ads, _apify: apifyReason };
+      // total = distinct creatives on the ad-library page (before the `limit` slice), for "12 of N".
+      const _total = new Set(_ownAll.map(a => a.tpl || a.adId)).size;
+      if (ads.length) return { ok: true, ads, _apify: apifyReason, total: _total };
       lastReason = 'no_ads';
     } catch (e) { lastReason = String(e && e.message || e); }
   }
@@ -727,7 +729,7 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
   const dom = (domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
   if (!dom) return { ok: false, reason: 'no_domain', ads: [] };
   const url = 'https://adstransparency.google.com/anji/_/rpc/SearchService/SearchCreatives?authuser=';
-  const reqBody = 'f.req=' + encodeURIComponent(JSON.stringify({ '2': 40, '3': { '12': { '1': dom, '2': true } }, '7': { '1': 1, '2': 0, '3': 2764 } }));
+  const reqBody = 'f.req=' + encodeURIComponent(JSON.stringify({ '2': 100, '3': { '12': { '1': dom, '2': true } }, '7': { '1': 1, '2': 0, '3': 2764 } }));
   let data;
   try {
     const c = new AbortController();
@@ -785,7 +787,9 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
   //    be a person/agency name that does not contain the brand (semgrep.dev -> "Pablo Estrada"), so
   //    keep all; else (several advertisers, none match) it is a shared host with no owned ads -> none.
   const kept = ownedByAdvertiser(ads, { domain: dom, company });
-  return { ok: true, ads: kept.slice(0, limit) };
+  // total = distinct creatives this advertiser is running (before we slice to `limit`), so the board
+  // can say "showing 12 of N" instead of implying the 12 are all of them.
+  return { ok: true, ads: kept.slice(0, limit), total: kept.length };
 }
 
 // ---- Meta (Facebook + Instagram) via the OFFICIAL Ad Library API ----------------------------
@@ -896,7 +900,11 @@ export async function fetchAllAds({ company, domain, icp, limit = 36 } = {}) {
   let ads = [...(li.ads || []), ...(gg.ads || []), ...(mt.ads || [])].slice(0, limit);
   if (!ads.length) return { ok: false, reason: (li.reason || gg.reason || mt.reason || 'no_ads'), ads: [], sources, notes };
   if (icp) ads = await scoreAds(ads, icp);
-  return { ok: true, ads, count: ads.length, sources, notes };
+  const totals = {
+    linkedin: (typeof li.total === 'number' ? li.total : (li.ads || []).length),
+    google: (typeof gg.total === 'number' ? gg.total : (gg.ads || []).length),
+  };
+  return { ok: true, ads, count: ads.length, sources, notes, totals };
 }
 
 // Back-compat: LinkedIn-only fetch + score (kept for any caller still using it).
