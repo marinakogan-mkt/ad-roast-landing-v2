@@ -171,6 +171,9 @@
     .marquee-wrap a:hover .roast-logo { color: #0f172a; }
     .marquee-wrap a img { transition: filter .2s ease, opacity .2s ease; }
     .marquee-wrap a:hover img { filter: grayscale(0) !important; opacity: 1 !important; }
+    /* The AdRoast mark has a flame above the square, so its box sits low next to the wordmark.
+       Nudge every logo up a touch (scales with size) so it lines up on every screen, dashboards too. */
+    img[alt="AdRoast"] { transform: translateY(-6%); }
 
     @media (prefers-reduced-motion: reduce) {
       .reveal > *, .reveal-up { opacity: 1 !important; animation: none !important; }
@@ -443,12 +446,12 @@
       const [items, setItems] = useState(FALLBACK);
       useEffect(() => {
         let alive = true;
-        fetch('/sitemap-boards.xml').then((r) => (r.ok ? r.text() : '')).then((xml) => {
-          if (!alive || !xml) return;
-          const locs = [...xml.matchAll(/\/b\/([^<\s]+)</g)].map((m) => { try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; } });
+        // Only companies currently running ads (not positioning-only boards).
+        fetch('/api/icp?boards=live').then((r) => (r.ok ? r.json() : null)).then((data) => {
+          if (!alive || !data || !Array.isArray(data.companies)) return;
           const seen = new Set(); const list = [];
-          for (const raw of locs) {
-            const dom = String(raw).replace(/\/+$/, '').toLowerCase();
+          for (const raw of data.companies) {
+            const dom = String(raw || '').replace(/\/+$/, '').toLowerCase();
             if (!dom || seen.has(dom)) continue;
             seen.add(dom); list.push([prettify(dom), dom]);
           }
@@ -462,7 +465,7 @@
       const loop = []; for (let i = 0; i < reps; i++) loop.push(...items);
       const dur = Math.max(18, Math.round(items.length * 2.2)) + 's';
       return (
-        <div className="w-full mt-9 lg:mt-14">
+        <div className="w-full mt-11 lg:mt-20">
           <p className="text-center text-xs sm:text-sm text-gray-400 uppercase tracking-wide font-medium mb-4">Real roasts of SaaS you know</p>
           <div className="marquee-wrap" style={{ overflow: 'hidden', position: 'relative', WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent)', maskImage: 'linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent)' }}>
             <div className="marquee-track" style={{ animationDuration: dur }}>
@@ -517,20 +520,45 @@
             </div>
           </div>
         );
-        if (k === 1) return (
-          <div className="animate-fadein">
-            <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2.5">Five scored issues, worst first</div>
-            <div className="space-y-2">
-              {[['Hook is about you, not them', 3], ['No proof for a skeptical buyer', 4], ['Jargon without payoff', 5], ['CTA asks too much, too soon', 5], ['Benefit is vague', 6]].map(([t, s], n) => (
-                <div key={n} className="flex items-center gap-2.5 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2">
-                  <span className="text-[11px] font-bold w-4 text-gray-300">{n + 1}</span>
-                  <span className="flex-1 text-xs font-medium text-gray-700 leading-tight">{t}</span>
-                  <Pill s={s} />
-                </div>
-              ))}
+        if (k === 1) {
+          const ISSUES = [
+            { t: 'Hook is about you, not them', s: 3, line: '"The #1 platform for cloud security"', why: 'Opens with your ranking, not the breach the buyer is losing sleep over.', fix: 'Lead with their risk: "Catch the breach before it spreads."' },
+            { t: 'No proof for a skeptical buyer', s: 4, line: '"AI-powered CNAPP for modern teams"', why: 'A claim a security lead can’t verify, from a stranger.', fix: 'Name a number or a logo: "What 40+ AppSec teams switched to."' },
+            { t: 'Jargon without a payoff', s: 5, line: '"unified cloud-native application protection"', why: 'Category jargon that buries what it actually does for them.', fix: 'Say what it stops, in their words.' },
+            { t: 'CTA asks too much, too soon', s: 5, line: '"Book a demo today"', why: 'A high-commitment ask on a cold click.', fix: 'Offer a lower-friction first step before the demo.' },
+            { t: 'Benefit is vague', s: 6, line: '"for modern teams"', why: 'Says who it’s for, not what they get.', fix: 'Tie it to a specific, measurable win.' }
+          ];
+          return (
+            <div className="animate-fadein">
+              <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2.5">Five scored issues &middot; click one to see the fix</div>
+              <div className="space-y-1.5">
+                {ISSUES.map((it, n) => {
+                  const open = openIssue === n;
+                  return (
+                    <div key={n} className="rounded-lg border bg-white overflow-hidden transition-colors" style={{ borderColor: open ? barCol(it.s) + '66' : '#eef0f3' }}>
+                      <button onClick={() => setOpenIssue(open ? -1 : n)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left border-none cursor-pointer" style={{ background: open ? barCol(it.s) + '0d' : 'transparent' }}>
+                        <span className="text-[11px] font-bold w-4 flex-none text-gray-300">{n + 1}</span>
+                        <span className="flex-1 text-xs font-medium text-gray-700 leading-tight">{it.t}</span>
+                        <Pill s={it.s} />
+                        <svg className="flex-none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9aa3b2" strokeWidth="2.5" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}><path d="m6 9 6 6 6-6" /></svg>
+                      </button>
+                      {open && (
+                        <div className="px-3 pb-3 pt-0.5 animate-fadein">
+                          <div className="rounded-md px-2.5 py-2 mb-2" style={{ background: barCol(it.s) + '10', borderLeft: '2px solid ' + barCol(it.s) }}>
+                            <span className="text-[9.5px] font-bold uppercase tracking-wide" style={{ color: barCol(it.s) }}>From your copy</span>
+                            <p className="text-[12px] text-gray-700 mt-0.5 italic leading-snug">{it.line}</p>
+                          </div>
+                          <p className="text-[11.5px] text-gray-500 leading-relaxed"><span className="font-semibold text-gray-600">Why:</span> {it.why}</p>
+                          <p className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5"><span className="font-semibold" style={{ color: '#16a34a' }}>Fix:</span> {it.fix}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        );
+          );
+        }
         if (k === 2) return (
           <div className="animate-fadein">
             <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2.5">Ad promise vs the landing page</div>
@@ -4683,7 +4711,7 @@
         <header className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-50" style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
           <div className="max-w-[1360px] mx-auto px-4 sm:px-8 lg:px-10 py-3 flex items-center justify-between">
             <button onClick={goTool} className="flex items-center gap-2.5 cursor-pointer bg-transparent border-none p-0">
-              <img src={ADROAST_LOGO} alt="AdRoast" className="w-8 h-8 rounded" style={{ transform: 'translateY(-2px)' }} />
+              <img src={ADROAST_LOGO} alt="AdRoast" className="w-8 h-8 rounded" />
               <span className="text-lg text-gray-800 font-semibold">AdRoast</span>
             </button>
             <nav className="hidden sm:flex items-center gap-6">
@@ -5262,7 +5290,7 @@
                 <div className="w-full mt-6 lg:mt-0"><DemoVideo /></div>
               </div>
               {/* CENTER: the website bar and its supporting lines, large and centered below both columns */}
-              <div className="max-w-4xl w-full mx-auto mt-7 lg:mt-10 text-center sm:text-left">
+              <div className="max-w-4xl w-full mx-auto mt-9 lg:mt-14 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
                   <input
                     id="hero-site"

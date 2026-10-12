@@ -252,6 +252,25 @@ ${items}
   </ul>
 </main></body></html>`);
   }
+  /* JSON list of companies that are ACTUALLY RUNNING ADS right now (/api/icp?boards=live), for the
+     landing-page logo marquee. geo:companies mixes ad boards with positioning-only pages; a company
+     has live scored ads only when ads:geo:<domain> exists, so we keep just those. */
+  if (req.query && req.query.boards === 'live') {
+    let doms = [];
+    try { if (_redis) doms = (await _redis.smembers('geo:companies')) || []; } catch (e) { doms = []; }
+    doms = doms.filter(Boolean).map(String);
+    let live = [];
+    try {
+      if (_redis && doms.length) {
+        const keys = doms.map((d) => 'ads:geo:' + d);
+        const vals = await _redis.mget(...keys);
+        live = doms.filter((d, i) => vals && vals[i]);
+      }
+    } catch (e) { live = doms; }
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=86400, stale-while-revalidate=86400');
+    return res.status(200).json({ companies: live.slice(0, 400) });
+  }
   /* Per-company link-preview IMAGE (og:image), rewritten to /api/icp?ogimg=1&slug=<slug>. Renders a
      1200x630 PNG named for the company with its live board stats. Dynamic import so satori + resvg-wasm
      never load on the normal ICP/scoring path, and folded in here to stay under the Hobby 12-fn cap. */
