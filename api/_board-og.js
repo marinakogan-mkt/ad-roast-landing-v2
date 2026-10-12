@@ -137,6 +137,17 @@ export async function boardOgHandler(req, res) {
     // on mount, which REPLACES this markup, so real (JS) users never see it, only the
     // no-JS crawler does. Injected ONLY when the company has real scored ads, so a
     // company with nothing to say never produces a thin page.
+    //
+    // Progressive enhancement so a human never sees that crawler text flash before the app
+    // boots: the inline head script sets html.has-js during parse (before first paint), which
+    // hides the SEO shell and shows a clean loader for JS users. No-JS crawlers never set the
+    // class, so they still read the full visible text. React then replaces #root with the board.
+    const GEO_HEAD = '<style>@keyframes geospin{to{transform:rotate(360deg)}}.geo-loading{display:none}'
+      + 'html.has-js .geo-shell{display:none!important}html.has-js .geo-loading{display:flex!important}</style>'
+      + '<script>document.documentElement.classList.add("has-js")</script>';
+    const GEO_LOADING = '<div class="geo-loading" style="min-height:70vh;align-items:center;justify-content:center">'
+      + '<div style="width:34px;height:34px;border:3px solid #e7ecf3;border-top-color:#0a66c2;border-radius:50%;animation:geospin .8s linear infinite"></div></div>';
+    const injectRoot = (h, content) => h.replace('<div id="root"></div>', '<div id="root">' + GEO_LOADING + '<div class="geo-shell">' + content + '</div></div>');
     const listable = ads.filter(a => a && (a.head || a.headline));
     if (listable.length > 0) {
       const items = listable.slice(0, 20).map(a => {
@@ -155,7 +166,7 @@ export async function boardOgHandler(req, res) {
         + `<p><a href="/b/${attr(slug)}">See ${attr(company)}&rsquo;s full live-ad board on AdRoast</a>. Every creative scored against their ICP, with the exact fix for each.</p>`
         + `<p>Learn the method behind these scores: the AdRoast <a href="/guides">guides</a> cover how to <a href="/guides/audit-linkedin-ads-icp">audit your ads against your ICP</a> and why <a href="/guides/clicks-no-pipeline">clicks do not turn into pipeline</a>.</p>`
         + '</main>';
-      html = html.replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
+      html = injectRoot(html, content);
       const ld = {
         '@context': 'https://schema.org',
         '@type': 'WebPage',
@@ -165,7 +176,7 @@ export async function boardOgHandler(req, res) {
         about: { '@type': 'Organization', name: company, url: 'https://' + domain }
       };
       const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
-      html = html.replace('</head>', ldScript + '</head>');
+      html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
     } else if (posdata && posdata.company) {
       // GEO phase 2: no readable live ads, so render a positioning page (who they sell to)
       // instead, keeping a crawlable, citable page for a company with no ad footprint.
@@ -180,10 +191,10 @@ export async function boardOgHandler(req, res) {
         + `<p><a href="/b/${attr(slug)}">Score ${comp}&rsquo;s ads against this buyer on AdRoast</a>.</p>`
         + `<p>Learn the method: the AdRoast <a href="/guides">guides</a> cover how to <a href="/guides/audit-linkedin-ads-icp">audit ads against your ICP</a> and how to <a href="/guides/what-is-an-ad-teardown">run an ad teardown</a>.</p>`
         + '</main>';
-      html = html.replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
+      html = injectRoot(html, content);
       const ld = { '@context': 'https://schema.org', '@type': 'Organization', name: posdata.company, url: posdata.website || ('https://' + domain), description: posdata.summary || posdata.icp_text || '' };
       const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
-      html = html.replace('</head>', ldScript + '</head>');
+      html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
     }
 
     // Nothing real to show (no clean ads, no positioning record): keep it out of the index so an
