@@ -146,7 +146,7 @@
     .hero-h1 { font-size: clamp(46px, 12.5vw, 58px); line-height: 0.92; }
     .hero-h1 .dbr { display: none; }
     @media (min-width: 640px) {
-      .hero-h1 { font-size: clamp(62px, 6.6vw, 100px); line-height: 0.9; }
+      .hero-h1 { font-size: clamp(58px, 6vw, 92px); line-height: 0.9; }
       .hero-h1 .mbr { display: none; }
       .hero-h1 .dbr { display: inline; }
     }
@@ -4619,9 +4619,9 @@
       );
       const SiteNav = ({ active }) => (
         <header className="bg-white border-b border-gray-200 flex-shrink-0 sticky top-0 z-50" style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.95)' }}>
-          <div className="max-w-[1520px] mx-auto px-4 sm:px-8 lg:px-10 py-3 flex items-center justify-between">
+          <div className="max-w-[1360px] mx-auto px-4 sm:px-8 lg:px-10 py-3 flex items-center justify-between">
             <button onClick={goTool} className="flex items-center gap-2.5 cursor-pointer bg-transparent border-none p-0">
-              <img src={ADROAST_LOGO} alt="AdRoast" className="w-8 h-8 rounded" />
+              <img src={ADROAST_LOGO} alt="AdRoast" className="w-8 h-8 rounded" style={{ transform: 'translateY(-2px)' }} />
               <span className="text-lg text-gray-800 font-semibold">AdRoast</span>
             </button>
             <nav className="hidden sm:flex items-center gap-6">
@@ -5169,9 +5169,9 @@
               except the input invites a competitor's site too. */}
           <section className="flex-shrink-0 px-4 sm:px-8 lg:px-10 pt-2 sm:pt-[24px] pb-5 sm:pb-6 lg:pt-0 lg:pb-0 lg:min-h-[calc(100vh-56px)] lg:flex lg:flex-col lg:justify-center" style={{ position: 'relative', overflow: 'hidden' }}>
             <div className="hero-wash" />
-            <div className="max-w-[1520px] w-full mx-auto reveal" style={{ position: 'relative', zIndex: 1 }}>
+            <div className="max-w-[1360px] w-full mx-auto reveal" style={{ position: 'relative', zIndex: 1 }}>
               {/* TOP ROW: headline on the left, demo video on the right, on the same line */}
-              <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+              <div className="grid lg:grid-cols-[1fr_1.12fr] gap-8 lg:gap-10 items-center">
                 {/* LEFT: eyebrow + headline + subhead (the website bar lives below, full width) */}
                 <div className="text-center lg:text-left">
                   <p className="mb-3.5 sm:mb-3" style={{ color: '#0a66c2' }}>
@@ -5180,12 +5180,27 @@
                   <h1 className="hero-h1 text-gray-900 mb-4 sm:mb-5" style={{ fontWeight: 300, letterSpacing: '-0.5px', textWrap: 'balance' }}>Find out where<br className="mbr" /> your ad loses<br className="mbr" /> the buyer.</h1>
                   {/* Sub-headline, directly under the main headline */}
                   <p className="text-gray-500 mx-auto lg:mx-0" style={{ fontSize: 'clamp(15px, 3.8vw, 19px)', lineHeight: 1.4, maxWidth: 560 }}>Every ad and landing page, scored against your buyer.</p>
+                  {/* 3 steps, stacked right under the subheadline */}
+                  <div className="mt-5 lg:mt-6 flex flex-col gap-1.5 items-center lg:items-start">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: '#0a66c2' }}>1</span>
+                      <span style={{ fontSize: '15px' }} className="text-gray-600">Enter your website</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: '#0a66c2' }}>2</span>
+                      <span style={{ fontSize: '15px' }} className="text-gray-600">Get your ad scored against your ICP</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: '#0a66c2' }}>3</span>
+                      <span style={{ fontSize: '15px' }} className="text-gray-600">Know exactly what to fix first</span>
+                    </div>
+                  </div>
                 </div>
                 {/* RIGHT: demo video, on the same line as the main headline */}
                 <div className="w-full mt-6 lg:mt-0"><DemoVideo /></div>
               </div>
               {/* CENTER: the website bar and its supporting lines, large and centered below both columns */}
-              <div className="max-w-4xl w-full mx-auto mt-9 lg:mt-12 text-center sm:text-left">
+              <div className="max-w-4xl w-full mx-auto mt-5 lg:mt-6 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
                   <input
                     id="hero-site"
@@ -5211,48 +5226,27 @@
                 <p className="text-gray-400 mt-1 sm:pl-5" style={{ fontSize: '13px', lineHeight: 1.3 }}>Works with LinkedIn, Meta, and Google ads, across any industry.</p>
               </div>
             </div>
-          </section>
-
-          {/* NAMED PROOF STRIP - a moving, clickable logo marquee of real roasts, each going straight to
-              that brand's board on the platform with the most to fix. Append to ROASTS (or feed it from
-              the roasts we publish) and the logo auto-joins the scroll. */}
-          {(() => {
-            const ROASTS = [['Notion', 'notion', 'google'], ['monday', 'monday', 'google'], ['ClickUp', 'clickup', 'linkedin'], ['Klaviyo', 'klaviyo', 'linkedin'], ['HubSpot', 'hubspot', 'google'], ['Canva', 'canva', 'google'], ['Webflow', 'webflow', 'linkedin'], ['Semrush', 'semrush', 'google'], ['Gong', 'gong', 'linkedin'], ['Ramp', 'ramp', 'linkedin']];
-            return (
-              <div className="w-full mb-8 sm:mb-10">
-                <p className="text-center text-xs sm:text-sm text-gray-400 uppercase tracking-wide font-medium mb-4">Real roasts of SaaS you know</p>
-                <div className="marquee-wrap" style={{ overflow: 'hidden', position: 'relative', WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent)', maskImage: 'linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent)' }}>
-                  <div className="marquee-track">
-                    {[...ROASTS, ...ROASTS].map(([name, slug, plat], i) => (
-                      <a key={slug + '-' + i} href={"/b/" + slug + "/" + plat} aria-label={"See the " + name + " roast"} className="flex items-center justify-center flex-shrink-0 no-underline" style={{ padding: '0 30px', height: 60 }}>
-                        <span className="roast-logo" style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>{name}</span>
-                      </a>
-                    ))}
+            {/* SOCIAL PROOF marquee, inside the first screen: a moving, clickable grayscale logo strip of
+                real roasts, each going straight to that brand's board. Append to ROASTS (or feed it from
+                the roasts we publish) and the logo auto-joins the scroll. */}
+            {(() => {
+              const ROASTS = [['Notion', 'notion', 'google'], ['monday', 'monday', 'google'], ['ClickUp', 'clickup', 'linkedin'], ['Klaviyo', 'klaviyo', 'linkedin'], ['HubSpot', 'hubspot', 'google'], ['Canva', 'canva', 'google'], ['Webflow', 'webflow', 'linkedin'], ['Semrush', 'semrush', 'google'], ['Gong', 'gong', 'linkedin'], ['Ramp', 'ramp', 'linkedin']];
+              return (
+                <div className="w-full mt-5 lg:mt-7">
+                  <p className="text-center text-xs sm:text-sm text-gray-400 uppercase tracking-wide font-medium mb-3">Real roasts of SaaS you know</p>
+                  <div className="marquee-wrap" style={{ overflow: 'hidden', position: 'relative', WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent)', maskImage: 'linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent)' }}>
+                    <div className="marquee-track">
+                      {[...ROASTS, ...ROASTS].map(([name, slug, plat], i) => (
+                        <a key={slug + '-' + i} href={"/b/" + slug + "/" + plat} aria-label={"See the " + name + " roast"} className="flex items-center justify-center flex-shrink-0 no-underline" style={{ padding: '0 28px', height: 52 }}>
+                          <span className="roast-logo" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>{name}</span>
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })()}
-
-          {/* HOW IT WORKS */}
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 mb-6 sm:mb-8">
-            <div className="flex flex-col lg:flex-row lg:flex-nowrap items-start lg:items-center justify-center gap-3 lg:gap-3">
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: '#0a66c2' }}>1</span>
-                <span style={{ fontSize: '17px' }} className="text-gray-600 whitespace-nowrap">Enter your website</span>
-              </div>
-              <Icon name="chevronRight" className="w-4 h-4 text-gray-300 hidden lg:block flex-shrink-0" />
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: '#0a66c2' }}>2</span>
-                <span style={{ fontSize: '17px' }} className="text-gray-600 whitespace-nowrap">Get your ad scored against your ICP</span>
-              </div>
-              <Icon name="chevronRight" className="w-4 h-4 text-gray-300 hidden lg:block flex-shrink-0" />
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold text-white flex-shrink-0" style={{ backgroundColor: '#0a66c2' }}>3</span>
-                <span style={{ fontSize: '17px' }} className="text-gray-600 whitespace-nowrap">Know exactly what to fix first</span>
-              </div>
-            </div>
-          </div>
+              );
+            })()}
+          </section>
 
           {/* WHAT YOU GET: interactive showcase (screen cycles beside the explanation) */}
           <RoastShowcase />
