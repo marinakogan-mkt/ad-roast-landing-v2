@@ -528,33 +528,29 @@
             { t: 'CTA asks too much, too soon', s: 5, line: '"Book a demo today"', why: 'A high-commitment ask on a cold click.', fix: 'Offer a lower-friction first step before the demo.' },
             { t: 'Benefit is vague', s: 6, line: '"for modern teams"', why: 'Says who it’s for, not what they get.', fix: 'Tie it to a specific, measurable win.' }
           ];
+          const sel = (openIssue < 0 || openIssue > ISSUES.length - 1) ? 0 : openIssue;
+          const it = ISSUES[sel];
           return (
             <div className="animate-fadein">
               <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2.5">Five scored issues &middot; click one to see the fix</div>
               <div className="space-y-1.5">
-                {ISSUES.map((it, n) => {
-                  const open = openIssue === n;
+                {ISSUES.map((iss, n) => {
+                  const active = sel === n;
                   return (
-                    <div key={n} className="rounded-lg border bg-white overflow-hidden transition-colors" style={{ borderColor: open ? barCol(it.s) + '66' : '#eef0f3' }}>
-                      <button onClick={() => setOpenIssue(open ? -1 : n)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left border-none cursor-pointer" style={{ background: open ? barCol(it.s) + '0d' : 'transparent' }}>
-                        <span className="text-[11px] font-bold w-4 flex-none text-gray-300">{n + 1}</span>
-                        <span className="flex-1 text-xs font-medium text-gray-700 leading-tight">{it.t}</span>
-                        <Pill s={it.s} />
-                        <svg className="flex-none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9aa3b2" strokeWidth="2.5" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}><path d="m6 9 6 6 6-6" /></svg>
-                      </button>
-                      {open && (
-                        <div className="px-3 pb-3 pt-0.5 animate-fadein">
-                          <div className="rounded-md px-2.5 py-2 mb-2" style={{ background: barCol(it.s) + '10', borderLeft: '2px solid ' + barCol(it.s) }}>
-                            <span className="text-[9.5px] font-bold uppercase tracking-wide" style={{ color: barCol(it.s) }}>From your copy</span>
-                            <p className="text-[12px] text-gray-700 mt-0.5 italic leading-snug">{it.line}</p>
-                          </div>
-                          <p className="text-[11.5px] text-gray-500 leading-relaxed"><span className="font-semibold text-gray-600">Why:</span> {it.why}</p>
-                          <p className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5"><span className="font-semibold" style={{ color: '#16a34a' }}>Fix:</span> {it.fix}</p>
-                        </div>
-                      )}
-                    </div>
+                    <button key={n} onClick={() => setOpenIssue(n)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-lg border cursor-pointer transition-colors" style={{ borderColor: active ? barCol(iss.s) + '66' : '#eef0f3', background: active ? barCol(iss.s) + '0d' : '#fff' }}>
+                      <span className="text-[11px] font-bold w-4 flex-none text-gray-300">{n + 1}</span>
+                      <span className="flex-1 text-xs font-medium text-gray-700 leading-tight">{iss.t}</span>
+                      <Pill s={iss.s} />
+                    </button>
                   );
                 })}
+              </div>
+              {/* Fixed-height detail panel: the content swaps on click, but the card never resizes. */}
+              <div className="mt-2 rounded-lg px-3 py-2.5" style={{ background: barCol(it.s) + '0d', borderLeft: '3px solid ' + barCol(it.s), minHeight: 132 }}>
+                <span className="text-[9.5px] font-bold uppercase tracking-wide" style={{ color: barCol(it.s) }}>From your copy</span>
+                <p className="text-[12px] text-gray-700 mt-0.5 italic leading-snug">{it.line}</p>
+                <p className="text-[11.5px] text-gray-500 leading-relaxed mt-1.5"><span className="font-semibold text-gray-600">Why:</span> {it.why}</p>
+                <p className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5"><span className="font-semibold" style={{ color: '#16a34a' }}>Fix:</span> {it.fix}</p>
               </div>
             </div>
           );
