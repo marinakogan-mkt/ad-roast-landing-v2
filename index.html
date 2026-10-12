@@ -146,7 +146,7 @@
     .hero-h1 { font-size: clamp(46px, 12.5vw, 58px); line-height: 0.92; }
     .hero-h1 .dbr { display: none; }
     @media (min-width: 640px) {
-      .hero-h1 { font-size: clamp(62px, 6.6vw, 100px); line-height: 0.98; }
+      .hero-h1 { font-size: clamp(62px, 6.6vw, 100px); line-height: 0.9; }
       .hero-h1 .mbr { display: none; }
       .hero-h1 .dbr { display: inline; }
     }
@@ -5119,7 +5119,7 @@
           <section className="flex-shrink-0 px-4 sm:px-8 lg:px-10 pt-2 sm:pt-[24px] pb-5 sm:pb-6 lg:pt-0 lg:pb-0 lg:min-h-[calc(100vh-56px)] lg:flex lg:flex-col lg:justify-center" style={{ position: 'relative', overflow: 'hidden' }}>
             <div className="hero-wash" />
             <div className="max-w-[1520px] w-full mx-auto reveal" style={{ position: 'relative', zIndex: 1 }}>
-              <div className="grid lg:grid-cols-[0.88fr_1.3fr] gap-8 lg:gap-14 items-center">
+              <div className="grid lg:grid-cols-[0.95fr_1.2fr] gap-8 lg:gap-14 items-start">
                 {/* LEFT: copy + primary action */}
                 <div className="text-center lg:text-left">
                   <p className="mb-3.5 sm:mb-3" style={{ color: '#0a66c2' }}>
@@ -5127,7 +5127,7 @@
                   </p>
                   <h1 className="hero-h1 text-gray-900 mb-4 sm:mb-6" style={{ fontWeight: 300, letterSpacing: '-0.5px', textWrap: 'balance' }}>Find out where<br className="mbr" /> your ad loses<br className="mbr" /> the buyer.</h1>
                   {/* Sub-headline: full copy on desktop, a shorter two-line version on mobile */}
-                  <p className="hidden sm:block text-gray-400 mb-5 mx-auto lg:mx-0" style={{ fontSize: 'clamp(16px, 3.8vw, 19px)', lineHeight: 1.45, maxWidth: 540 }}>Every ad and landing page, scored against your buyer.</p>
+                  <p className="hidden sm:block xl:whitespace-nowrap text-gray-400 mb-5 mx-auto lg:mx-0" style={{ fontSize: 'clamp(16px, 3.8vw, 19px)', lineHeight: 1.45, maxWidth: 620 }}>Every ad and landing page, scored against your buyer.</p>
                   <p className="sm:hidden text-gray-500 mx-auto mb-4" style={{ maxWidth: 360, fontSize: '14px', lineHeight: 1.5 }}>Every ad and landing page, scored against your buyer.</p>
                   {/* Inline website input + CTA */}
                   <div className="max-w-xs sm:max-w-xl mx-auto lg:mx-0 mb-4">
@@ -5151,14 +5151,15 @@
                     {heroErr
                       ? <p className="text-center lg:text-left mt-2" style={{ fontSize: '14px', color: '#dc2626' }}>{heroErr}</p>
                       : (<>
-                          <p className="hidden sm:block text-gray-400 mt-3" style={{ fontSize: '13px' }}>🎁 We pull every live ad we find and score it &middot; first roast's on us &middot; no credit card</p>
+                          <p className="hidden sm:block xl:whitespace-nowrap text-gray-400 mt-3" style={{ fontSize: '13px' }}>🎁 We pull every live ad we find and score it &middot; first roast's on us &middot; no credit card</p>
                           <p className="sm:hidden text-center text-gray-400 mt-3" style={{ fontSize: '11px' }}>🎁 First roast's on us &middot; no credit card</p>
                         </>)}
                   </div>
                   <p className="text-gray-400 mx-auto lg:mx-0" style={{ fontSize: '12.5px', lineHeight: 1.4, maxWidth: 520 }}>Works with LinkedIn, Meta, and Google ads, across any industry.</p>
                 </div>
-                {/* RIGHT: demo video (below the copy on mobile, beside it on desktop) */}
-                <div className="w-full mt-6 lg:mt-0"><DemoVideo /></div>
+                {/* RIGHT: demo video (below the copy on mobile, beside it on desktop; nudged down so its
+                    top lines up with the main headline, not the eyebrow pill above it) */}
+                <div className="w-full mt-6 lg:mt-[46px]"><DemoVideo /></div>
               </div>
             </div>
           </section>
@@ -5338,6 +5339,19 @@
           </>)}
           {/* Bridge CTA shown on the SOFTWARE page: points to the services page */}
           {!isServicesPage() && (<>
+          {/* NAMED PROOF on the tool page - real roasts of SaaS people recognize (links to the live boards) */}
+          <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-16 w-full">
+            <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#0a66c2', letterSpacing: '0.06em' }}>Real roasts of SaaS you know</p>
+            <p className="text-gray-500 mb-5" style={{ fontSize: 14.5 }}>Every one is a live board: their real ads, scored against the buyer they are trying to reach.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[['Notion', 'notion'], ['Figma', 'figma'], ['HubSpot', 'hubspot'], ['Ramp', 'ramp'], ['Webflow', 'webflow'], ['Vanta', 'vanta']].map(([name, slug]) => (
+                <a key={slug} href={"/b/" + slug} className="block rounded-xl border border-gray-200 bg-white px-4 py-3 no-underline hover:shadow-md hover:border-blue-200 transition-all card-lift text-center">
+                  <span className="block font-semibold text-gray-900 text-sm">{name}</span>
+                  <span className="block text-xs text-gray-400 mt-0.5">See the roast &rarr;</span>
+                </a>
+              ))}
+            </div>
+          </section>
           {/* BOTTOM CTA */}
           <section className="text-center px-4 pb-10 sm:pb-20 max-w-5xl mx-auto">
             <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(34px, 8vw, 46px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Start converting the traffic you already paid for.</h2>
