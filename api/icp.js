@@ -200,6 +200,14 @@ export default async function handler(req, res) {
     const { boardOgHandler } = await import('./_board-og.js');
     return boardOgHandler(req, res);
   }
+  /* Services page (/services and /work-with-us, rewritten to /api/icp?services=1). Same pattern as
+     the board OG above: serves the SPA shell with the services title/description/JSON-LD and crawlable
+     body injected, so Google/LinkedIn and LLM bots read the positioning offer instead of the tool
+     home's "free live-ad audit" shell with empty stats. Humans still boot the app (React clears #root). */
+  if (req.query && req.query.services !== undefined) {
+    const { servicesOgHandler } = await import('./_board-og.js');
+    return servicesOgHandler(req, res);
+  }
   /* Sitemap of the crawlable per-company board pages (/sitemap-boards.xml, rewritten to
      /api/icp?sitemap=boards). Lists every company that has a clean, scored GEO page, so
      search and LLM crawlers can discover them. Companies are added to geo:companies when

@@ -202,3 +202,70 @@ export async function boardOgHandler(req, res) {
     else { res.setHeader('Location', '/'); res.status(302).end(); }
   }
 }
+
+// Services page OG + crawlable body for /services and /work-with-us (rewritten to
+// /api/icp?services=1). Without this the services URL ships the tool home's <title>
+// ("free live-ad audit"), meta and empty SPA shell, so crawlers never see the
+// positioning offer. Static content (no Redis); React clears #root so humans boot the app.
+export async function servicesOgHandler(req, res) {
+  let html = await getShell();
+  try {
+    if (!html) { res.setHeader('Location', '/'); res.status(302).end(); return; }
+    const url = 'https://www.adroast.in/services';
+    const docTitle = 'Reposition your paid campaigns around the buyer | AdRoast';
+    const desc = 'For B2B SaaS spending on paid: we find where your campaign loses the right buyers and reposition the whole ad-to-page journey. 10-day Campaign Repositioning Sprint.';
+    const ogTitle = "Spending on ads but the right buyers aren't booking?";
+
+    html = replaceTag(html, /<title>[^<]*<\/title>/, `<title>${attr(docTitle)}</title>`);
+    html = replaceTag(html, /(<meta name="description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
+    html = replaceTag(html, /(<link rel="canonical" href=")[^"]*(">)/, `$1${attr(url)}$2`);
+    html = replaceTag(html, /(<meta property="og:title" content=")[^"]*(">)/, `$1${attr(ogTitle)}$2`);
+    html = replaceTag(html, /(<meta property="og:description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
+    html = replaceTag(html, /(<meta property="og:url" content=")[^"]*(">)/, `$1${attr(url)}$2`);
+    html = replaceTag(html, /(<meta name="twitter:title" content=")[^"]*(">)/, `$1${attr(ogTitle)}$2`);
+    html = replaceTag(html, /(<meta name="twitter:description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
+
+    const h2 = 'font-size:18px;font-weight:600;margin-top:26px';
+    const content = '<main style="max-width:720px;margin:0 auto;padding:40px 20px;font-family:system-ui,-apple-system,sans-serif;color:#1f2937;line-height:1.65">'
+      + '<h1 style="font-size:26px;font-weight:600;letter-spacing:-.3px">Spending on ads but the right buyers aren&rsquo;t booking?</h1>'
+      + '<p>AdRoast&rsquo;s positioning services are built for B2B SaaS teams spending on paid. We find where your campaign loses the right buyers and reposition the whole ad-to-page journey around them, so the demos your ads earn actually show up.</p>'
+      + `<h2 style="${h2}">Message Drift: why the click never becomes a booked demo</h2>`
+      + '<p>In B2B campaigns the ad creates one expectation while the landing page introduces another. Our positioning sprints identify and repair that break across the ad, the landing page and the sales narrative.</p>'
+      + `<h2 style="${h2}">What you get</h2>`
+      + '<ul>'
+      + '<li><strong>Campaign Repositioning Sprint</strong> (one-time, 10 days): a campaign teardown, a new positioning direction, messaging angles ranked by upside, a rewritten ad-to-page journey and a ranked action plan. About 3 hours of your time.</li>'
+      + '<li><strong>Done-For-You Rebuild</strong> (3-month): the same diagnosis, then our team builds it, launches it and optimizes it live.</li>'
+      + '</ul>'
+      + `<h2 style="${h2}">Proof: public ad teardowns of SaaS you know</h2>`
+      + '<ul><li><a href="/teardowns/silverfort">Silverfort ad teardown</a></li><li><a href="/teardowns/semgrep">Semgrep ad teardown</a></li><li><a href="/teardowns/descope">Descope ad teardown</a></li><li><a href="/teardowns/cycode">Cycode ad teardown</a></li></ul>'
+      + '<p>Across 50+ B2B teams we have repositioned paid campaigns to earn up to 3x more demos from the same ad spend.</p>'
+      + '<p><a href="https://calendly.com/marina-kogan-adroast/30min">Book a 30-minute call</a> to see if it is a fit, or <a href="/">roast one ad free</a> first.</p>'
+      + '<p>Learn the method: the AdRoast <a href="/guides">guides</a> cover how to <a href="/guides/audit-linkedin-ads-icp">audit your ads against your ICP</a> and why <a href="/guides/clicks-no-pipeline">clicks do not turn into pipeline</a>.</p>'
+      + '</main>';
+    html = html.replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
+
+    const ld = {
+      '@context': 'https://schema.org',
+      '@type': 'Service',
+      name: 'Campaign Repositioning for B2B SaaS paid media',
+      serviceType: 'Ad campaign positioning and messaging',
+      description: desc,
+      url: url,
+      areaServed: 'Global',
+      provider: { '@type': 'Organization', name: 'AdRoast', url: 'https://www.adroast.in' },
+      offers: [
+        { '@type': 'Offer', name: 'Campaign Repositioning Sprint', description: 'One-time 10-day repositioning of the ad-to-page journey.' },
+        { '@type': 'Offer', name: 'Done-For-You Rebuild', description: '3-month build, launch and optimization.' }
+      ]
+    };
+    const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
+    html = html.replace('</head>', ldScript + '</head>');
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+    res.status(200).send(html);
+  } catch (e) {
+    if (html) { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.status(200).send(html); }
+    else { res.setHeader('Location', '/'); res.status(302).end(); }
+  }
+}

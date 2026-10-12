@@ -14,8 +14,8 @@
   "rewrites": [
     { "source": "/sitemap-boards.xml", "destination": "/api/icp?sitemap=boards" },
     { "source": "/boards", "destination": "/api/icp?hub=boards" },
-    { "source": "/services", "destination": "/index.html" },
-    { "source": "/work-with-us", "destination": "/index.html" },
+    { "source": "/services", "destination": "/api/icp?services=1" },
+    { "source": "/work-with-us", "destination": "/api/icp?services=1" },
     { "source": "/dashboard", "destination": "/index.html" },
     { "source": "/account", "destination": "/index.html" },
     { "source": "/board", "destination": "/index.html" },
