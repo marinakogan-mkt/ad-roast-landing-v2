@@ -882,10 +882,12 @@ export async function fetchMetaAds({ company, domain, limit = 12 } = {}) {
 // set in one pass, and return one list. Each source is best-effort: one failing never sinks the
 // others. Meta only returns data when META_ADLIBRARY_TOKEN is set and the advertiser ran ads in
 // the EU/UK; otherwise the UI keeps Meta as "coming soon".
-export async function fetchAllAds({ company, domain, icp, limit = 36 } = {}) {
+export async function fetchAllAds({ company, domain, icp, limit = 80 } = {}) {
+  // Pull MANY creatives (cheap): the board shows the most-urgent few in full and the rest greyed/locked
+  // for upsell, and the "X of N" count needs the real volume. Only a bounded batch gets scored (icp.js).
   const [li, gg, mt] = await Promise.all([
-    fetchLinkedInAds({ company, domain, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
-    fetchGoogleAds({ domain, company, limit: 12 }).catch(() => ({ ok: false, ads: [] })),
+    fetchLinkedInAds({ company, domain, limit: 30 }).catch(() => ({ ok: false, ads: [] })),
+    fetchGoogleAds({ domain, company, limit: 40 }).catch(() => ({ ok: false, ads: [] })),
     fetchMetaAds({ company, domain, limit: 12 }).catch(() => ({ ok: false, ads: [], reason: 'meta_fetch_failed' })),
   ]);
   const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length, meta: (mt.ads || []).length };

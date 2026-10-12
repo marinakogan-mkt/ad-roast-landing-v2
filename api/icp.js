@@ -649,8 +649,14 @@ ${items}
     // served from cache (no pull, so almost the whole 60s is free for scoring).
     // Admin re-score forces a fresh score of every creative in one call (list is cached, so the whole
     // 60s budget is free for scoring); normal loads score incrementally and reuse cached scores.
-    const sc = await scoreAdsCached(pull.ads, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
-    const scAds = collapseTemplateGroups(dropJunkCreatives(sc.ads)); // catch any blank only revealed by its scored verdict; fold each template campaign to its WORST-scored variant
+    // Score only the first SCORE_CAP creatives (the ones shown in full + a buffer); the rest ride along
+    // UNSCORED for the greyed/locked gallery, so a big board (60+ ads) never scores -- and bills -- all of
+    // them. The client's progressive re-call scores the unscored ones WITHIN this batch, not the extras.
+    const SCORE_CAP = 18;
+    const _toRank = pull.ads.slice(0, SCORE_CAP);
+    const _extras = pull.ads.slice(SCORE_CAP);
+    const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
+    const scAds = collapseTemplateGroups(dropJunkCreatives(sc.ads)).concat(_extras); // scored batch (template-folded) + unscored extras, shown greyed/locked
     // Persist a compact stats snapshot for the link-preview image (og:image). The pull cache stores
     // UNSCORED ads, so the preview can't derive metrics from it; write the scored numbers + the worst
     // creative here, on every board render, so the shared card is always current. Cheap single set.
