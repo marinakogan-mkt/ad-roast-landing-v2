@@ -2174,6 +2174,10 @@
         const sb = typeof b.score === 'number' ? b.score : 999;
         return sa - sb;
       });
+      // Plan gate for the ad grid: free / anonymous viewers see the most-urgent FREE_LIMIT creatives
+      // in full; the rest of what we pulled shows blurred + locked, inviting an upgrade. Paid see all.
+      const FREE_LIMIT = 6;
+      const _paidView = !!(acct && acct.signedIn && acct.plan && acct.plan !== 'free');
       const avg = scored.length ? (scored.reduce((s, a) => s + a.score, 0) / scored.length).toFixed(1) : null;
       const plats = [...new Set(ads.map(a => a.plat))];
       const scoreCol = (s) => s == null ? '#94a3b8' : s <= 3 ? '#dc2626' : s <= 6 ? '#d97706' : '#0a66c2';
@@ -2777,6 +2781,20 @@
                 const free = isVFree(a);
                 const hasScore = typeof a.score === 'number';
                 const sev = hasScore ? SEV(a.score) : null;
+                if (!_paidView && i >= FREE_LIMIT) {
+                  // Locked: the real creative, blurred + greyed, with a lock. No score, not clickable.
+                  return (
+                    <div key={i} className="relative bg-white rounded-2xl border overflow-hidden flex flex-col" style={{ borderColor: '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }} aria-hidden="true">
+                      <div className="overflow-hidden" style={{ height: 262, filter: 'blur(7px) grayscale(0.5)', opacity: 0.55, pointerEvents: 'none' }}><AdCreative ad={a} maxH={262} /></div>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-5">
+                        <span className="grid place-items-center rounded-full flex-none" style={{ width: 42, height: 42, background: 'rgba(11,15,26,0.78)' }}>
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                        </span>
+                        <span className="font-semibold text-gray-700" style={{ fontSize: 12.5 }}>Locked &middot; Pro</span>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div key={i} className="bg-white rounded-2xl border overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1 hover:shadow-xl" style={{ borderColor: free ? '#bcd8f2' : (sev ? sev.c + '3a' : '#e5e7eb'), boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
                     {/* Header in ONE row: platform LOGO (no text, saves space) + gravity / Recommended
@@ -2827,6 +2845,13 @@
               })}
               {shown.length === 0 && <div className="text-gray-400 text-sm p-5">No ads on this platform.</div>}
             </div>
+            {!_paidView && shownOrdered.length > FREE_LIMIT && (
+              <div className="mt-5 rounded-2xl border text-center mx-auto" style={{ borderColor: '#cfe0f5', background: '#f0f6fd', padding: '18px 20px', maxWidth: 640 }}>
+                <div className="font-semibold text-gray-900" style={{ fontSize: 15 }}>{shownOrdered.length - FREE_LIMIT} more live {(shownOrdered.length - FREE_LIMIT) === 1 ? 'creative' : 'creatives'}, locked</div>
+                <p className="text-gray-500 mt-1" style={{ fontSize: 13, lineHeight: 1.5 }}>You're seeing the {FREE_LIMIT} most urgent. Unlock every creative, scored against your buyer, with Pro.</p>
+                <button onClick={() => setSel(shownOrdered[Math.min(FREE_LIMIT, shownOrdered.length - 1)])} className="inline-flex items-center gap-1.5 mt-3 rounded-full font-semibold text-white" style={{ fontSize: 13.5, padding: '10px 20px', background: '#0a66c2', border: 'none', cursor: 'pointer' }}>Unlock all &rarr;</button>
+              </div>
+            )}
             </>)}
             </>)}
 
