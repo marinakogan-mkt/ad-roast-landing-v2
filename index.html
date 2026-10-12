@@ -2083,6 +2083,10 @@
         setSiteInput('semgrep.dev');
         setBootLoading(false);
         setPhase('idle');
+        // Deep-link into a platform grid of the sample board via ?p=<plat> (the library drilldown URL
+        // has no company slug). onPop restored it on back/forward, but a fresh load / shared link fell
+        // back to the overview; restore the grid on boot here too, so ?library=1&p=LinkedIn isn't broken.
+        try { const _pq = new URLSearchParams(window.location.search).get('p'); const _PN = { linkedin: 'LinkedIn', google: 'Google', meta: 'Meta' }; const _p = _pq ? _PN[_pq.toLowerCase()] : null; if (_p) { setFP(_p); setStage('grid'); } } catch (e) {}
       }, []);
 
       // Let the urgency bar animate from 0 to its value once, just after mount.
