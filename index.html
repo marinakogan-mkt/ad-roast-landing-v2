@@ -169,11 +169,13 @@
     .marquee-wrap:hover .marquee-track { animation-play-state: paused; }
     .roast-logo { color: #94a3b8; transition: color .2s ease, filter .2s ease; filter: grayscale(1); }
     .marquee-wrap a:hover .roast-logo { color: #0f172a; }
+    .marquee-wrap a img { transition: filter .2s ease, opacity .2s ease; }
+    .marquee-wrap a:hover img { filter: grayscale(0) !important; opacity: 1 !important; }
 
     @media (prefers-reduced-motion: reduce) {
       .reveal > *, .reveal-up { opacity: 1 !important; animation: none !important; }
       .spec-dot { animation: none !important; opacity: 1 !important; }
-      .cta-glow, .hero-wash, .animate-pulse, .animate-fadein, .marquee-track { animation: none !important; }
+      .cta-glow, .hero-wash, .animate-pulse, .animate-fadein { animation: none !important; }
     }
   </style>
 </head>
@@ -460,13 +462,22 @@
       const loop = []; for (let i = 0; i < reps; i++) loop.push(...items);
       const dur = Math.max(18, Math.round(items.length * 2.2)) + 's';
       return (
-        <div className="w-full mt-7 lg:mt-10">
+        <div className="w-full mt-9 lg:mt-14">
           <p className="text-center text-xs sm:text-sm text-gray-400 uppercase tracking-wide font-medium mb-4">Real roasts of SaaS you know</p>
           <div className="marquee-wrap" style={{ overflow: 'hidden', position: 'relative', WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent)', maskImage: 'linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent)' }}>
             <div className="marquee-track" style={{ animationDuration: dur }}>
               {loop.map(([name, dom], i) => (
-                <a key={dom + '-' + i} href={"/b/" + dom} aria-label={"See the " + name + " roast"} className="flex items-center justify-center flex-shrink-0 no-underline" style={{ padding: '0 28px', height: 52 }}>
-                  <span className="roast-logo" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>{name}</span>
+                <a key={dom + '-' + i} href={"/b/" + dom} aria-label={"See the " + name + " roast"} title={name} className="flex items-center gap-2 flex-shrink-0 no-underline" style={{ padding: '0 22px', height: 52 }}>
+                  {/* Real brand mark (favicon, grayscale) + wordmark. The icon is the company's own logo;
+                      the name keeps it unambiguous. Hides the icon if it truly fails to load. */}
+                  <img
+                    src={"https://www.google.com/s2/favicons?domain=" + dom + "&sz=128"}
+                    alt=""
+                    loading="lazy"
+                    onError={(e) => { try { e.target.style.display = 'none'; } catch (err) {} }}
+                    style={{ width: 22, height: 22, objectFit: 'contain', borderRadius: 5, filter: 'grayscale(1)', opacity: 0.75 }}
+                  />
+                  <span className="roast-logo" style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>{name}</span>
                 </a>
               ))}
             </div>
@@ -487,8 +498,10 @@
       ];
       const barCol = (s) => s <= 4 ? '#dc2626' : s <= 6 ? '#d97706' : '#16a34a';
       const Pill = ({ s }) => (<span className="flex-none text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: barCol(s) + '18', color: barCol(s) }}>{s}/10</span>);
-      // The four product screens, as compact AdRoast-blue mockups.
+      // The four product screens, as compact AdRoast-blue mockups. Some are interactive: you can click
+      // into them like the real tool (expand an issue to see the offending line and its fix).
       const Screen = ({ k }) => {
+        const [openIssue, setOpenIssue] = useState(0);
         if (k === 0) return (
           <div className="animate-fadein">
             <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2.5">The ad, scored against your buyer</div>
@@ -5249,7 +5262,7 @@
                 <div className="w-full mt-6 lg:mt-0"><DemoVideo /></div>
               </div>
               {/* CENTER: the website bar and its supporting lines, large and centered below both columns */}
-              <div className="max-w-4xl w-full mx-auto mt-5 lg:mt-6 text-center sm:text-left">
+              <div className="max-w-4xl w-full mx-auto mt-7 lg:mt-10 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
                   <input
                     id="hero-site"
