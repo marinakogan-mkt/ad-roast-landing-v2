@@ -505,21 +505,40 @@
       // into them like the real tool (expand an issue to see the offending line and its fix).
       const Screen = ({ k }) => {
         const [openIssue, setOpenIssue] = useState(0);
-        if (k === 0) return (
-          <div className="animate-fadein">
-            <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2.5">The ad, scored against your buyer</div>
-            <div className="rounded-xl border border-gray-200 p-3.5 mb-3">
-              <div className="flex items-center gap-2 mb-2"><span className="w-6 h-6 rounded bg-gray-100 grid place-items-center text-[10px] font-bold text-gray-500">in</span><span className="text-xs font-semibold text-gray-700">Semgrep · Sponsored</span></div>
-              <p className="text-sm font-semibold text-gray-900 leading-snug">The #1 platform for cloud security</p>
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed">AI-powered CNAPP for modern teams. Book a demo today.</p>
+        if (k === 0) {
+          const FIT = [
+            { t: 'Speaks to their pain', s: 4, note: 'The hook leads with your product, not the breach they fear.' },
+            { t: 'Right seniority & segment', s: 7, note: 'Tone and depth fit an AppSec lead at a Series B+ SaaS.' },
+            { t: 'Proof they would trust', s: 4, note: 'No number, customer or result a skeptic can verify yet.' }
+          ];
+          const sel = (openIssue < 0 || openIssue > FIT.length - 1) ? 0 : openIssue;
+          const f = FIT[sel];
+          return (
+            <div className="animate-fadein">
+              <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">The ad, scored against your buyer</div>
+              <div className="rounded-xl border border-gray-200 p-3 mb-2">
+                <div className="flex items-center gap-2 mb-1.5"><span className="w-5 h-5 rounded bg-gray-100 grid place-items-center text-[9px] font-bold text-gray-500">in</span><span className="text-[11px] font-semibold text-gray-700">Semgrep · Sponsored</span></div>
+                <p className="text-[13px] font-semibold text-gray-900 leading-snug">The #1 platform for cloud security</p>
+              </div>
+              <div className="flex items-center justify-between mb-1"><span className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400">Buyer fit &middot; click a factor</span><span className="text-sm font-extrabold" style={{ color: '#d97706' }}>6<span className="text-gray-400 text-[10px] font-bold">/10</span></span></div>
+              <div className="space-y-0.5">
+                {FIT.map((it, n) => {
+                  const active = sel === n;
+                  return (
+                    <button key={n} onClick={() => setOpenIssue(n)} className="w-full flex items-center gap-2.5 px-3 py-1 text-left rounded-lg border cursor-pointer transition-colors" style={{ borderColor: active ? barCol(it.s) + '66' : '#eef0f3', background: active ? barCol(it.s) + '0d' : '#fff' }}>
+                      <span className="flex-1 text-[11.5px] font-medium text-gray-700 leading-tight">{it.t}</span>
+                      <Pill s={it.s} />
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-1.5 rounded-lg px-3 py-1.5" style={{ background: barCol(f.s) + '0d', borderLeft: '3px solid ' + barCol(f.s), minHeight: 50 }}>
+                <p className="text-[11px] text-gray-600 leading-snug">{f.note}</p>
+                <p className="text-[10.5px] text-gray-400 leading-snug mt-0.5"><span className="font-semibold text-gray-500">Detected buyer:</span> AppSec leaders at Series B+ SaaS.</p>
+              </div>
             </div>
-            <div className="rounded-xl p-3.5" style={{ background: '#0a66c20b', border: '1px solid #0a66c233' }}>
-              <div className="flex items-center justify-between mb-1.5"><span className="text-xs font-semibold text-gray-700">Buyer fit</span><span className="text-lg font-extrabold" style={{ color: '#d97706' }}>6<span className="text-gray-400 text-xs font-bold">/10</span></span></div>
-              <div className="h-1.5 rounded-full bg-gray-200 mb-2.5 overflow-hidden"><div className="h-full rounded-full" style={{ width: '60%', background: '#d97706' }} /></div>
-              <p className="text-[11.5px] text-gray-500 leading-relaxed"><span className="font-semibold text-gray-700">Detected buyer:</span> AppSec leaders & security engineers at Series B+ SaaS. The hook leads with your product, not their pain.</p>
-            </div>
-          </div>
-        );
+          );
+        }
         if (k === 1) {
           const ISSUES = [
             { t: 'Hook is about you, not them', s: 3, line: '"The #1 platform for cloud security"', why: 'Opens with your ranking, not their problem.', fix: 'Lead with the breach they fear, not your category.' },
@@ -554,26 +573,59 @@
             </div>
           );
         }
-        if (k === 2) return (
-          <div className="animate-fadein">
-            <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2.5">Ad promise vs the landing page</div>
-            <div className="rounded-xl border border-gray-200 p-3 mb-1.5"><span className="text-[10px] font-bold uppercase text-gray-400">The ad says</span><p className="text-sm font-semibold text-gray-900 mt-0.5">Stop cloud breaches in minutes</p></div>
-            <div className="flex items-center justify-center my-1"><span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#d9770618', color: '#d97706' }}>Match 3/10 · message drift</span></div>
-            <div className="rounded-xl border border-gray-200 p-3"><span className="text-[10px] font-bold uppercase text-gray-400">The page says</span><p className="text-sm font-semibold text-gray-900 mt-0.5">The unified cloud-native application protection platform</p></div>
-            <p className="text-[11.5px] text-gray-500 leading-relaxed mt-3">The scent breaks: the buyer clicked for a fast fix and lands on a platform tour. That gap is where demos leak.</p>
-          </div>
-        );
-        return (
-          <div className="animate-fadein">
-            <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2.5">Your fix kit, ready to ship</div>
-            <div className="space-y-2 mb-3">
-              {['Catch the breach before it spreads, in minutes', 'What 40+ AppSec teams switched to', 'The CNAPP your engineers stop fighting'].map((h, n) => (
-                <div key={n} className="flex items-start gap-2.5 rounded-lg border border-gray-100 px-3 py-2"><span className="flex-none mt-0.5 w-4 h-4 rounded-full grid place-items-center" style={{ background: '#16a34a1a' }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3"><path d="M20 6 9 17l-5-5" /></svg></span><span className="text-xs font-medium text-gray-800 leading-snug">{h}</span></div>
-              ))}
+        if (k === 2) {
+          const SIDES = [
+            { note: 'The ad promises a fast, specific fix. That is the scent the buyer is following when they click.' },
+            { note: 'The page opens with a platform tour, not the fast fix they clicked for. The scent breaks and demos leak.' }
+          ];
+          const sel = openIssue === 1 ? 1 : 0;
+          return (
+            <div className="animate-fadein">
+              <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">Ad promise vs the landing page &middot; click each</div>
+              <button onClick={() => setOpenIssue(0)} className="w-full text-left rounded-xl border p-2.5 cursor-pointer transition-colors" style={{ borderColor: sel === 0 ? '#d9770666' : '#e5e7eb', background: sel === 0 ? '#d9770608' : '#fff' }}>
+                <span className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400">The ad says</span>
+                <p className="text-[13px] font-semibold text-gray-900 mt-0.5 leading-snug">Stop cloud breaches in minutes</p>
+              </button>
+              <div className="flex items-center justify-center my-1"><span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#d9770618', color: '#d97706' }}>Match 3/10 &middot; message drift</span></div>
+              <button onClick={() => setOpenIssue(1)} className="w-full text-left rounded-xl border p-2.5 cursor-pointer transition-colors" style={{ borderColor: sel === 1 ? '#d9770666' : '#e5e7eb', background: sel === 1 ? '#d9770608' : '#fff' }}>
+                <span className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400">The page says</span>
+                <p className="text-[13px] font-semibold text-gray-900 mt-0.5 leading-snug">The unified cloud-native application protection platform</p>
+              </button>
+              <div className="mt-1.5 rounded-lg px-3 py-2" style={{ background: '#d9770610', borderLeft: '3px solid #d97706', minHeight: 54 }}>
+                <p className="text-[11px] text-gray-600 leading-snug">{SIDES[sel].note}</p>
+              </div>
             </div>
-            <div className="rounded-lg px-3 py-2.5 flex items-center gap-2" style={{ background: '#16a34a0f', border: '1px solid #16a34a33' }}><span className="text-[11px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: '#16a34a' }}>Fix first</span><span className="text-[11.5px] text-gray-600">Rewrite the hook, it is costing the most demos.</span></div>
-          </div>
-        );
+          );
+        }
+        {
+          const FIXES = [
+            { after: 'Catch the breach before it spreads, in minutes', before: '"The #1 platform for cloud security"' },
+            { after: 'What 40+ AppSec teams switched to', before: '"AI-powered CNAPP for modern teams"' },
+            { after: 'The CNAPP your engineers stop fighting', before: '"unified cloud-native app protection"' }
+          ];
+          const sel = (openIssue < 0 || openIssue > FIXES.length - 1) ? 0 : openIssue;
+          const fx = FIXES[sel];
+          return (
+            <div className="animate-fadein">
+              <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">Your fix kit &middot; click a rewrite</div>
+              <div className="space-y-0.5">
+                {FIXES.map((it, n) => {
+                  const active = sel === n;
+                  return (
+                    <button key={n} onClick={() => setOpenIssue(n)} className="w-full flex items-start gap-2.5 px-3 py-1.5 text-left rounded-lg border cursor-pointer transition-colors" style={{ borderColor: active ? '#16a34a66' : '#eef0f3', background: active ? '#16a34a0d' : '#fff' }}>
+                      <span className="flex-none mt-0.5 w-4 h-4 rounded-full grid place-items-center" style={{ background: '#16a34a1a' }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3"><path d="M20 6 9 17l-5-5" /></svg></span>
+                      <span className="text-[11.5px] font-medium text-gray-800 leading-snug">{it.after}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-1.5 rounded-lg px-3 py-2" style={{ background: '#16a34a0d', borderLeft: '3px solid #16a34a', minHeight: 58 }}>
+                <p className="text-[10.5px] text-gray-400 leading-snug"><span className="font-semibold text-gray-500">Before:</span> <span className="line-through">{fx.before}</span></p>
+                <p className="text-[11.5px] text-gray-700 leading-snug mt-1"><span className="font-semibold" style={{ color: '#16a34a' }}>After:</span> {fx.after}</p>
+              </div>
+            </div>
+          );
+        }
       };
       return (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 w-full">
@@ -594,7 +646,7 @@
                   </div>
                   <div className={'reveal ' + (visualLeft ? 'lg:order-1' : '')}>
                     <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'linear-gradient(145deg, ' + s.color + '12, ' + s.color + '03)', border: '1px solid ' + s.color + '1f' }}>
-                      <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5" style={{ boxShadow: '0 18px 48px -26px rgba(11,15,26,.3)' }}>
+                      <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 flex flex-col justify-center" style={{ boxShadow: '0 18px 48px -26px rgba(11,15,26,.3)', minHeight: 320 }}>
                         <Screen k={n} />
                       </div>
                     </div>
