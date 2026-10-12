@@ -522,35 +522,34 @@
         );
         if (k === 1) {
           const ISSUES = [
-            { t: 'Hook is about you, not them', s: 3, line: '"The #1 platform for cloud security"', why: 'Opens with your ranking, not the breach the buyer is losing sleep over.', fix: 'Lead with their risk: "Catch the breach before it spreads."' },
-            { t: 'No proof for a skeptical buyer', s: 4, line: '"AI-powered CNAPP for modern teams"', why: 'A claim a security lead can’t verify, from a stranger.', fix: 'Name a number or a logo: "What 40+ AppSec teams switched to."' },
-            { t: 'Jargon without a payoff', s: 5, line: '"unified cloud-native application protection"', why: 'Category jargon that buries what it actually does for them.', fix: 'Say what it stops, in their words.' },
-            { t: 'CTA asks too much, too soon', s: 5, line: '"Book a demo today"', why: 'A high-commitment ask on a cold click.', fix: 'Offer a lower-friction first step before the demo.' },
+            { t: 'Hook is about you, not them', s: 3, line: '"The #1 platform for cloud security"', why: 'Opens with your ranking, not their problem.', fix: 'Lead with the breach they fear, not your category.' },
+            { t: 'No proof for a skeptical buyer', s: 4, line: '"AI-powered CNAPP for modern teams"', why: 'A claim a security lead can’t verify.', fix: 'Name a number or a logo they recognize.' },
+            { t: 'Jargon without a payoff', s: 5, line: '"unified cloud-native app protection"', why: 'Category jargon that buries the outcome.', fix: 'Say what it stops, in their words.' },
+            { t: 'CTA asks too much, too soon', s: 5, line: '"Book a demo today"', why: 'A high-commitment ask on a cold click.', fix: 'Offer a lower-friction step first.' },
             { t: 'Benefit is vague', s: 6, line: '"for modern teams"', why: 'Says who it’s for, not what they get.', fix: 'Tie it to a specific, measurable win.' }
           ];
           const sel = (openIssue < 0 || openIssue > ISSUES.length - 1) ? 0 : openIssue;
           const it = ISSUES[sel];
           return (
             <div className="animate-fadein">
-              <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2.5">Five scored issues &middot; click one to see the fix</div>
-              <div className="space-y-1.5">
+              <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">Five scored issues &middot; click one to see the fix</div>
+              <div className="space-y-0.5">
                 {ISSUES.map((iss, n) => {
                   const active = sel === n;
                   return (
-                    <button key={n} onClick={() => setOpenIssue(n)} className="w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-lg border cursor-pointer transition-colors" style={{ borderColor: active ? barCol(iss.s) + '66' : '#eef0f3', background: active ? barCol(iss.s) + '0d' : '#fff' }}>
+                    <button key={n} onClick={() => setOpenIssue(n)} className="w-full flex items-center gap-2.5 px-3 py-1 text-left rounded-lg border cursor-pointer transition-colors" style={{ borderColor: active ? barCol(iss.s) + '66' : '#eef0f3', background: active ? barCol(iss.s) + '0d' : '#fff' }}>
                       <span className="text-[11px] font-bold w-4 flex-none text-gray-300">{n + 1}</span>
-                      <span className="flex-1 text-xs font-medium text-gray-700 leading-tight">{iss.t}</span>
+                      <span className="flex-1 text-[11.5px] font-medium text-gray-700 leading-tight">{iss.t}</span>
                       <Pill s={iss.s} />
                     </button>
                   );
                 })}
               </div>
               {/* Fixed-height detail panel: the content swaps on click, but the card never resizes. */}
-              <div className="mt-2 rounded-lg px-3 py-2.5" style={{ background: barCol(it.s) + '0d', borderLeft: '3px solid ' + barCol(it.s), minHeight: 132 }}>
+              <div className="mt-1.5 rounded-lg px-3 py-2" style={{ background: barCol(it.s) + '0d', borderLeft: '3px solid ' + barCol(it.s), minHeight: 64 }}>
                 <span className="text-[9.5px] font-bold uppercase tracking-wide" style={{ color: barCol(it.s) }}>From your copy</span>
-                <p className="text-[12px] text-gray-700 mt-0.5 italic leading-snug">{it.line}</p>
-                <p className="text-[11.5px] text-gray-500 leading-relaxed mt-1.5"><span className="font-semibold text-gray-600">Why:</span> {it.why}</p>
-                <p className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5"><span className="font-semibold" style={{ color: '#16a34a' }}>Fix:</span> {it.fix}</p>
+                <p className="text-[11.5px] text-gray-700 mt-0.5 italic leading-snug">{it.line}</p>
+                <p className="text-[11px] text-gray-500 leading-snug mt-1"><span className="font-semibold" style={{ color: '#16a34a' }}>Fix:</span> {it.fix}</p>
               </div>
             </div>
           );
