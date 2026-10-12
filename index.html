@@ -146,7 +146,7 @@
     .hero-h1 { font-size: clamp(46px, 12.5vw, 58px); line-height: 0.92; }
     .hero-h1 .dbr { display: none; }
     @media (min-width: 640px) {
-      .hero-h1 { font-size: 70px; line-height: 1.02; }
+      .hero-h1 { font-size: clamp(62px, 6.6vw, 100px); line-height: 0.98; }
       .hero-h1 .mbr { display: none; }
       .hero-h1 .dbr { display: inline; }
     }
@@ -446,7 +446,6 @@
         <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 w-full">
           <div className="text-center mb-10 sm:mb-16">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast includes</div>
-            <h2 className="text-gray-900 mt-3" style={{ fontSize: 'clamp(32px, 8vw, 34px)', fontWeight: 300, letterSpacing: '-0.3px' }}>Four answers, in 2&prime;.</h2>
           </div>
           {/* Alternating blocks (addiehq-style): the explanation on one side, the AdRoast screen on the
               other, sides flipping each row. The screen reveals on scroll (the "gif" feel). */}
@@ -4515,6 +4514,10 @@
          to a menu (navOpen). Called as a plain function to avoid remount on re-render. */
       const goTool = () => {
         setNavOpen(false);
+        /* On the services page (/services, /work-with-us) the tool-vs-services split is decided once
+           at module load, so a pushState alone keeps the services view rendered. Hard-navigate to the
+           tool home instead so "Roast an ad" actually lands on the homepage. */
+        if (isServicesPage()) { try { window.location.assign('/?home=1'); } catch (e) { window.location.href = '/'; } return; }
         try { window.history.pushState({}, '', '/'); } catch (e) {}
         /* Already on the home page: just glide back to the top (mirrors how "Work with us"
            scrolls down to its section) so the nav's active state returns to "Roast an ad". */
@@ -4697,7 +4700,7 @@
         const toggle = (k) => setOpenOffers(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
         const offers = [
           { key: 'roadmap', popular: true, primary: true, tag: 'Reposition + Rewrite', name: 'Campaign Repositioning Sprint', price: '$6K', sub: 'one-time · 10 days', desc: 'We diagnose where the campaign loses the buyer, reposition it around the right message, and rewrite the ad-to-page journey in 10 days.', who: 'Your team implements it', cta: 'Book a Call', fit: "Find out if it's a fit", bullets: ["Pinpoint exactly where you're losing qualified demos", "The one message that makes the right buyer recognize themselves", "3-5 positioning angles to test, ranked by upside", "Rewritten ad and landing-page messaging, ready to ship, no rewriting", "A fix-list ranked by revenue impact, so the biggest win ships first"] },
-          { key: 'dfy', popular: false, primary: false, tag: 'End-to-End Campaign', name: 'Done-For-You Rebuild', price: '$8K/mo', sub: '3-month sprint', desc: 'Same diagnosis. Then our team builds it, launches it, and optimizes until demo conversion doubles.', who: 'We implement it', cta: 'Talk to Us ↗', fit: "Casual chat to see if there's a fit", bullets: ["Everything in the Campaign Repositioning Sprint", "New ad creatives built and shipped", "Landing page rebuilt to match the ad narrative", "Campaign launch and ongoing ad management", "Weekly optimization and testing"] }
+          { key: 'dfy', popular: false, primary: false, tag: 'End-to-End Campaign', name: 'Done-For-You Rebuild', price: '$8K/mo', sub: '3-month sprint', desc: 'Same diagnosis. Then our team builds it, launches it, and optimizes it live.', who: 'We implement it', cta: 'Talk to Us ↗', fit: "Casual chat to see if there's a fit", bullets: ["Everything in the Campaign Repositioning Sprint", "New ad creatives built and shipped", "Landing page rebuilt to match the ad narrative", "Campaign launch and ongoing ad management", "Weekly optimization and testing"] }
         ];
         return (
           <div className="grid md:grid-cols-2 gap-5 items-start">
@@ -5113,10 +5116,10 @@
           {/* HERO: two columns on desktop: copy + search on the left, the demo video on the right.
               Stacks to one column (copy, then video) on mobile. Placement only; branding/copy unchanged
               except the input invites a competitor's site too. */}
-          <section className="flex-shrink-0 px-4 sm:px-6 pt-2 sm:pt-[30px] pb-5 sm:pb-6" style={{ position: 'relative', overflow: 'hidden' }}>
+          <section className="flex-shrink-0 px-4 sm:px-8 lg:px-10 pt-2 sm:pt-[24px] pb-5 sm:pb-6 lg:pt-0 lg:pb-0 lg:min-h-[calc(100vh-56px)] lg:flex lg:flex-col lg:justify-center" style={{ position: 'relative', overflow: 'hidden' }}>
             <div className="hero-wash" />
-            <div className="max-w-6xl mx-auto reveal" style={{ position: 'relative', zIndex: 1 }}>
-              <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+            <div className="max-w-[1520px] w-full mx-auto reveal" style={{ position: 'relative', zIndex: 1 }}>
+              <div className="grid lg:grid-cols-[0.88fr_1.3fr] gap-8 lg:gap-14 items-center">
                 {/* LEFT: copy + primary action */}
                 <div className="text-center lg:text-left">
                   <p className="mb-3.5 sm:mb-3" style={{ color: '#0a66c2' }}>
@@ -5124,15 +5127,15 @@
                   </p>
                   <h1 className="hero-h1 text-gray-900 mb-4 sm:mb-6" style={{ fontWeight: 300, letterSpacing: '-0.5px', textWrap: 'balance' }}>Find out where<br className="mbr" /> your ad loses<br className="mbr" /> the buyer.</h1>
                   {/* Sub-headline: full copy on desktop, a shorter two-line version on mobile */}
-                  <p className="hidden sm:block text-gray-400 mb-5 mx-auto lg:mx-0" style={{ fontSize: 'clamp(15px, 3.6vw, 17px)', lineHeight: 1.45, maxWidth: 520 }}>Paste a domain. Every ad you run comes back scored against your buyer, with the fixes written for you.</p>
-                  <p className="sm:hidden text-gray-500 mx-auto mb-4" style={{ maxWidth: 360, fontSize: '13px', lineHeight: 1.5 }}>Paste a domain. Every ad comes back scored,<br />with the fixes written for you.</p>
+                  <p className="hidden sm:block text-gray-400 mb-5 mx-auto lg:mx-0" style={{ fontSize: 'clamp(16px, 3.8vw, 19px)', lineHeight: 1.45, maxWidth: 540 }}>Every ad and landing page, scored against your buyer.</p>
+                  <p className="sm:hidden text-gray-500 mx-auto mb-4" style={{ maxWidth: 360, fontSize: '14px', lineHeight: 1.5 }}>Every ad and landing page, scored against your buyer.</p>
                   {/* Inline website input + CTA */}
                   <div className="max-w-xs sm:max-w-xl mx-auto lg:mx-0 mb-4">
                     <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
                       <input
                         id="hero-site"
                         type="text"
-                        placeholder="Your website or a competitor's, e.g. acme.com"
+                        placeholder="Your website, e.g. acme.com"
                         value={heroSite}
                         onChange={(e) => { setHeroSite(e.target.value); if (heroErr) setHeroErr(''); }}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); goToLiveAds(); } }}
@@ -5196,12 +5199,26 @@
           {/* SERVICE PRICING - the paid offers live on the main page; the roast-token
               upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
           <section id="work-with-us" className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full scroll-mt-20">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Human-led services for B2B teams</div>
-            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>The roast found the problem.<br className="hidden sm:inline" />Want us to fix the full campaign?</h2>
-            <p className="text-gray-400 mb-8 sm:mb-12 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>The free AdRoast works with ads from any industry. Our human-led services are built for B2B teams running active paid campaigns. <strong className="font-semibold text-gray-600">We align your campaign around the buyer, helping generate 3× more demos from the ad spend you already have.</strong></p>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Positioning for paid media</div>
+            <h2 className="text-gray-900 mb-4" style={{ fontSize: 'clamp(34px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Spending on ads but<br className="hidden sm:inline" /> <span style={{ color: '#0a66c2' }}>the right buyers aren't booking?</span></h2>
+            <p className="text-gray-400 mb-3 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>We find where your campaign loses the right buyers and reposition the whole campaign around them.</p>
+            <p className="text-gray-500 mb-8 sm:mb-12 font-medium" style={{ fontSize: '14px' }}>Built for B2B SaaS teams running paid campaigns.</p>
 
             {ServiceOffers()}
 
+          </section>
+
+          {/* NAMED PROOF - public teardowns of known SaaS, surfaced high (best proof for this buyer) */}
+          <section className="max-w-5xl mx-auto px-4 pb-10 w-full">
+            <p className="text-xs font-semibold uppercase tracking-wide mb-4" style={{ color: '#0a66c2', letterSpacing: '0.06em' }}>Public teardowns of SaaS you know</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[['Silverfort', 'silverfort'], ['Semgrep', 'semgrep'], ['Descope', 'descope'], ['Cycode', 'cycode']].map(([name, slug]) => (
+                <a key={slug} href={"/teardowns/" + slug} className="block rounded-xl border border-gray-200 bg-white px-4 py-3 no-underline hover:shadow-md hover:border-blue-200 transition-all card-lift">
+                  <span className="block font-semibold text-gray-900 text-sm">{name}</span>
+                  <span className="block text-xs text-gray-400 mt-0.5">Read the teardown &rarr;</span>
+                </a>
+              ))}
+            </div>
           </section>
 
           {/* RESULTS */}
@@ -5212,9 +5229,7 @@
             <div className="grid grid-cols-2 gap-4">
               {[
                 { to: 50, suffix: "+", label: "B2B teams repositioned" },
-                { to: 3, suffix: "\u00d7", label: <span>demos in 90 days <em className="font-normal">(same Ad spend)</em></span> },
-                { to: 47, suffix: "%", label: "demo increase in 8 weeks" },
-                { to: 31, suffix: "%", label: <span>CAC drop <em className="font-normal">(same Ad spend)</em></span> }
+                { to: 3, suffix: "\u00d7", label: <span>demos in 90 days <em className="font-normal">(same Ad spend)</em></span> }
               ].map((r, i) => (
                 <div key={i} className="p-5 sm:p-7 border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-200 transition-all card-lift">
                   <div style={{ fontSize: 'clamp(36px, 9vw, 44px)', fontWeight: 300, color: '#0a66c2', letterSpacing: '-1px', lineHeight: 1 }} className="mb-3"><CountUp to={r.to} suffix={r.suffix} /></div>
@@ -5274,7 +5289,7 @@
                     <div className="mt-6 max-w-2xl rounded-2xl p-5 sm:p-6" style={{ background: '#f0f6fd', border: '1px solid #cfe0f5' }}>
                       <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#0a66c2', letterSpacing: '0.08em' }}>Your diagnosis</div>
                       <p className="font-semibold text-gray-900" style={{ fontSize: 'clamp(17px, 3vw, 20px)', lineHeight: 1.4 }}>Your answers point to <span style={{ color: '#0a66c2' }}>{dx.name}</span> across the campaign: {dx.line}</p>
-                      <a href="/#deliverables" onClick={(e) => { const el = document.getElementById('deliverables'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }} className="inline-flex items-center gap-1.5 mt-4 px-5 py-2.5 rounded-full font-semibold text-sm no-underline step-in" style={{ backgroundColor: '#0a66c2', color: '#fff' }}>See how the sprint fixes it <Icon name="arrowRight" className="w-4 h-4" /></a>
+                      <a href={CALENDLY_URL} target="_blank" rel="noopener" onClick={bookingClick} className="inline-flex items-center gap-1.5 mt-4 px-5 py-2.5 rounded-full font-semibold text-sm no-underline step-in" style={{ backgroundColor: '#0a66c2', color: '#fff' }}>Book a 30-min call <Icon name="arrowRight" className="w-4 h-4" /></a>
                     </div>
                   );
                 })()}
@@ -5285,7 +5300,7 @@
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-5" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>What Founders Say</div>
             <h2 className="text-gray-900 mb-8" style={{ fontSize: 'clamp(36px, 8vw, 44px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.2 }}>Words from clients.</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {CLIENT_QUOTES.map((t, i) => (
+              {SERVICE_QUOTES.map((t, i) => (
                 <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col justify-between">
                   <p className="text-gray-700 text-xs italic mb-3" style={{ lineHeight: 1.6 }}>{`\u201c${t.quote}\u201d`}</p>
                   <div><p className="text-xs font-semibold text-gray-900">{t.name}</p><p className="text-[11px] text-gray-400">{t.role}</p></div>
