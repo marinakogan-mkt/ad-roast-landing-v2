@@ -564,9 +564,12 @@
             </div>
             <div className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400 mb-1">Target / ICP</div>
             <p className="text-[11px] text-gray-600 leading-snug mb-2.5">Marketing leaders (VP/Director of Marketing, Demand Gen, Growth) and digital-experience owners bottlenecked by slow dev cycles and legacy CMS.</p>
-            <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: '#d977060d', border: '1px solid #d9770626' }}>
-              <div><span className="text-[9px] font-bold uppercase tracking-wide text-gray-400">Ad score</span><div className="text-[11px] font-semibold" style={{ color: '#d97706' }}>Needs work</div></div>
-              <span className="text-xl font-extrabold" style={{ color: '#d97706' }}>6<span className="text-gray-400 text-xs font-bold">/10</span></span>
+            <div className="rounded-lg px-3 py-2" style={{ background: '#d977060d', border: '1px solid #d9770626' }}>
+              <div className="flex items-center justify-between">
+                <div><span className="text-[9px] font-bold uppercase tracking-wide text-gray-400">Ad score</span><div className="text-[11px] font-semibold" style={{ color: '#d97706' }}>Needs work</div></div>
+                <span className="text-xl font-extrabold" style={{ color: '#d97706' }}>6<span className="text-gray-400 text-xs font-bold">/10</span></span>
+              </div>
+              <div className="h-1 rounded-full bg-gray-200 overflow-hidden mt-1.5"><div className="h-full rounded-full" style={{ width: shown ? '60%' : '0%', background: '#d97706', transition: 'width 1s ease .15s' }} /></div>
             </div>
           </div>
         );
@@ -580,7 +583,7 @@
           ];
           const it = ISSUES[(sel < 0 || sel > 4) ? 0 : sel]; const v = sev(it.s);
           return (
-            <div className="animate-fadein">
+            <div ref={rootRef} className="animate-fadein">
               <div className="flex items-center gap-1.5 mb-2">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg>
                 <span className="text-[12px] font-bold text-gray-800">What's holding the ad back</span>
@@ -605,17 +608,17 @@
           );
         }
         if (k === 2) return (
-          <div className="animate-fadein">
+          <div ref={rootRef} className="animate-fadein">
             <div className="text-[9.5px] font-bold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Your roast &middot; live</div>
             <div className="rounded-xl border border-gray-200 px-3 py-2.5 mb-2.5">
               <div className="flex items-center gap-2"><span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#d9770618', color: '#d97706' }}>WEAK</span><span className="text-[10px] font-bold text-gray-400">6/10</span></div>
               <p className="text-[12.5px] font-semibold text-gray-900 mt-1 leading-snug">Good budget is leaking on the wrong audience.</p>
               <div className="flex items-baseline gap-1.5 mt-1"><span className="text-xl font-extrabold" style={{ color: '#b45309' }}>40%</span><span className="text-[10px] text-gray-400">off-target spend</span></div>
-              <div className="h-1 rounded-full bg-gray-200 overflow-hidden mt-1.5"><div className="h-full rounded-full" style={{ width: '40%', background: '#b45309' }} /></div>
+              <div className="h-1 rounded-full bg-gray-200 overflow-hidden mt-1.5"><div className="h-full rounded-full" style={{ width: shown ? '40%' : '0%', background: '#b45309', transition: 'width 1s ease .15s' }} /></div>
             </div>
             <div className="flex items-center justify-center gap-3">
-              <Gauge />
-              <div className="flex gap-2.5"><Ring value={4} label="Landing page" /><Ring value={4} label="Ad ↔ LP" /></div>
+              <Gauge shown={shown} />
+              <div className="flex gap-2.5"><Ring value={4} label="Landing page" shown={shown} /><Ring value={4} label="Ad ↔ LP" shown={shown} /></div>
             </div>
             <div className="rounded-lg px-3 py-2 mt-2.5" style={{ background: '#d977060d', borderLeft: '3px solid #d97706' }}>
               <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: '#d97706' }}>The verdict &middot; middling</span>
@@ -630,7 +633,7 @@
         ];
         const hi = (sel < 0 || sel > 2) ? 0 : sel;
         return (
-          <div className="animate-fadein">
+          <div ref={rootRef} className="animate-fadein">
             <div className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">Fix kit &middot; tap to copy</div>
             <div className="rounded-xl border border-gray-200 p-3 mb-2.5">
               <div className="flex items-center gap-2 mb-1"><img src={WF} alt="" style={{ width: 15, height: 15, borderRadius: 4 }} /><span className="text-[10px] font-semibold text-gray-600">Your rewritten ad</span><span className="ml-auto text-[8px] font-bold uppercase tracking-wide" style={{ color: '#16a34a' }}>Preview</span></div>
