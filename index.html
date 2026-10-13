@@ -507,31 +507,29 @@
         { t: "Where do I lose them?", chip: "LANDING 4/10", color: '#d97706', detail: "We compare your ad's promise to your landing page and score the message drift, so you see exactly where the spend leaks." },
         { t: "What do I fix first?", chip: "FIX KIT", color: '#16a34a', detail: "A ready-to-ship rewrite of the ad, the landing hero and the CTA, plus headline options you can copy straight into the platform." }
       ];
-      const Gauge = () => {
-        const ang = (6 / 10) * 180, rad = (180 - ang) * Math.PI / 180;
-        const nx = 60 + 33 * Math.cos(rad), ny = 50 - 33 * Math.sin(rad);
-        return (
-          <div className="text-center flex-none">
-            <svg width="120" height="60" viewBox="0 0 120 60">
-              <path d="M16,50 A44,44 0 0 1 38,11.9" fill="none" stroke="#dc2626" strokeWidth="7" strokeLinecap="round" />
-              <path d="M38,11.9 A44,44 0 0 1 82,11.9" fill="none" stroke="#f59e0b" strokeWidth="7" />
-              <path d="M82,11.9 A44,44 0 0 1 104,50" fill="none" stroke="#16a34a" strokeWidth="7" strokeLinecap="round" />
-              <line x1="60" y1="50" x2={nx} y2={ny} stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="60" cy="50" r="3.5" fill="#d97706" />
-            </svg>
-            <div className="-mt-1"><span className="text-base font-extrabold" style={{ color: '#d97706' }}>6</span><span className="text-[10px] font-bold text-gray-400">/10</span></div>
-            <div className="text-[10px] font-bold" style={{ color: '#d97706' }}>Middling</div>
-            <div className="text-[8px] font-bold uppercase tracking-wide text-gray-400">Conversion health</div>
-          </div>
-        );
-      };
-      const Ring = ({ value, label }) => {
+      const Gauge = ({ shown }) => (
+        <div className="text-center flex-none">
+          <svg width="120" height="60" viewBox="0 0 120 60">
+            <path d="M16,50 A44,44 0 0 1 38,11.9" fill="none" stroke="#dc2626" strokeWidth="7" strokeLinecap="round" />
+            <path d="M38,11.9 A44,44 0 0 1 82,11.9" fill="none" stroke="#f59e0b" strokeWidth="7" />
+            <path d="M82,11.9 A44,44 0 0 1 104,50" fill="none" stroke="#16a34a" strokeWidth="7" strokeLinecap="round" />
+            <g style={{ transformOrigin: '60px 50px', transformBox: 'view-box', transform: shown ? 'rotate(108deg)' : 'rotate(0deg)', transition: 'transform 1.2s cubic-bezier(.2,.75,.25,1)' }}>
+              <line x1="60" y1="50" x2="27" y2="50" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" />
+            </g>
+            <circle cx="60" cy="50" r="3.5" fill="#d97706" />
+          </svg>
+          <div className="-mt-1"><span className="text-base font-extrabold" style={{ color: '#d97706' }}>6</span><span className="text-[10px] font-bold text-gray-400">/10</span></div>
+          <div className="text-[10px] font-bold" style={{ color: '#d97706' }}>Middling</div>
+          <div className="text-[8px] font-bold uppercase tracking-wide text-gray-400">Conversion health</div>
+        </div>
+      );
+      const Ring = ({ value, label, shown }) => {
         const r = 15, C = 2 * Math.PI * r, off = C * (1 - value / 10);
         return (
           <div className="text-center">
             <svg width="44" height="44" viewBox="0 0 42 42">
               <circle cx="21" cy="21" r={r} fill="none" stroke="#e8ecf1" strokeWidth="4" />
-              <circle cx="21" cy="21" r={r} fill="none" stroke="#d97706" strokeWidth="4" strokeDasharray={C} strokeDashoffset={off} strokeLinecap="round" transform="rotate(-90 21 21)" />
+              <circle cx="21" cy="21" r={r} fill="none" stroke="#d97706" strokeWidth="4" strokeDasharray={C} strokeDashoffset={shown ? off : C} strokeLinecap="round" transform="rotate(-90 21 21)" style={{ transition: 'stroke-dashoffset 1s ease .2s' }} />
               <text x="21" y="26" textAnchor="middle" fontSize="13" fontWeight="800" fill="#d97706">{value}</text>
             </svg>
             <div className="text-[9.5px] font-semibold text-gray-700 mt-0.5">{label}</div>
@@ -542,12 +540,22 @@
       const Screen = ({ k }) => {
         const [sel, setSel] = useState(0);
         const [auto, setAuto] = useState(true);
+        const [shown, setShown] = useState(false);
+        const rootRef = React.useRef(null);
         const pick = (n) => { setSel(n); setAuto(false); };
         useEffect(() => {
           if ((k === 1 || k === 3) && auto) { const len = k === 1 ? 5 : 3; const id = setInterval(() => setSel((p) => (p + 1) % len), 2100); return () => clearInterval(id); }
         }, [k, auto]);
+        // Play the tool's load animation (gauge sweep, bars/rings fill) when the screen scrolls in.
+        useEffect(() => {
+          const el = rootRef.current;
+          if (!el || typeof IntersectionObserver === 'undefined') { setShown(true); return; }
+          const io = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) setShown(true); }); }, { threshold: 0.35 });
+          io.observe(el);
+          return () => io.disconnect();
+        }, []);
         if (k === 0) return (
-          <div className="animate-fadein">
+          <div ref={rootRef} className="animate-fadein">
             <div className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">The ad we roasted</div>
             <div className="rounded-xl border border-gray-200 p-3 mb-2.5">
               <div className="flex items-center gap-2 mb-1.5"><img src={WF} alt="" style={{ width: 16, height: 16, borderRadius: 4 }} /><span className="text-[11px] font-semibold text-gray-700">Webflow &middot; LinkedIn</span></div>
@@ -3631,6 +3639,25 @@
            (payload stashed in sessionStorage right before we sent them to sign in). */
         if (signedinParam === '1') {
           window.history.replaceState({}, '', window.location.pathname);
+          // Resume a checkout started before sign-in (board "Choose plan" / any upgrade click
+          // while logged out): confirm the session, then go straight to Stripe checkout.
+          let pendingCheckout = null;
+          try { pendingCheckout = localStorage.getItem('adroast_pending_checkout'); } catch (e) {}
+          if (pendingCheckout) {
+            try { localStorage.removeItem('adroast_pending_checkout'); } catch (e) {}
+            fetch('/api/auth?action=me', { credentials: 'same-origin' })
+              .then(r => r.ok ? r.json() : null)
+              .then(d => {
+                if (d && d.session && d.session.email) {
+                  setRoastSession({ email: d.session.email, plan: d.plan || 'free', tokens: (typeof d.tokens === 'number' ? d.tokens : 0) });
+                  if (d.plan && ['starter', 'pro', 'monthly'].includes(d.plan)) { openBilling(); return; }
+                  return fetch('/api/create-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ email: d.session.email, plan: pendingCheckout }) })
+                    .then(r => r.json()).then(cd => { if (cd && cd.url) { window.location.href = cd.url; } else { setView('ad-library'); } });
+                } else { setView('ad-library'); }
+              })
+              .catch(() => { setView('ad-library'); });
+            return;
+          }
           fetch('/api/auth?action=me', { credentials: 'same-origin' })
             .then(r => r.ok ? r.json() : null)
             .then(d => {
@@ -4042,7 +4069,7 @@
       const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' | 'yearly' for the pricing toggle
       const [companyLimitInfo, setCompanyLimitInfo] = useState(null); // {count,limit} when a roast is blocked by the brand cap
       const startCheckout = async (plan) => {
-        if (!roastSession || !roastSession.email) { setShowSignupGate(true); return; }
+        if (!roastSession || !roastSession.email) { try { localStorage.setItem('adroast_pending_checkout', plan); } catch (e) {} setShowSignupGate(true); return; }
         /* Already a paying SUBSCRIBER (Starter/Pro/legacy monthly)? A plan change must go through
            Stripe's billing portal, which SWITCHES the existing subscription and prorates (you pay only
            the difference). create-checkout would instead open a SECOND subscription and double-charge.
