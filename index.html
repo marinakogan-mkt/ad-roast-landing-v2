@@ -656,33 +656,53 @@
           </div>
         );
       };
+      // Lazy embed of the actual roast report (not a mockup): same product, pixel-exact, interactive,
+      // with the tool's own animations. Loads only when scrolled near, so it stays light. Absolute URL
+      // so it works in local preview too.
+      const RoastEmbed = () => {
+        const wrapRef = React.useRef(null);
+        const [load, setLoad] = useState(false);
+        useEffect(() => {
+          const el = wrapRef.current;
+          if (!el || typeof IntersectionObserver === 'undefined') { setLoad(true); return; }
+          const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { setLoad(true); io.disconnect(); } }), { rootMargin: '600px' });
+          io.observe(el);
+          return () => io.disconnect();
+        }, []);
+        return (
+          <div ref={wrapRef} className="reveal max-w-4xl mx-auto">
+            <div className="text-center mb-4"><span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />A real roast, live</span></div>
+            <div className="rounded-2xl overflow-hidden border border-gray-200 bg-white" style={{ boxShadow: '0 28px 70px -28px rgba(11,15,26,.36)' }}>
+              <div className="flex items-center gap-1.5 px-3.5 flex-none border-b border-gray-100 bg-gray-50" style={{ height: 36 }}>
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#f87171' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fbbf24' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#34d399' }} />
+                <span className="ml-3 text-[11px] text-gray-400 truncate">adroast.in/report &middot; Webflow</span>
+              </div>
+              <div style={{ height: 'min(68vh, 600px)' }}>
+                {load
+                  ? <iframe src="https://www.adroast.in/report/c90f1f39" title="A real AdRoast roast of Webflow" loading="lazy" onLoad={(e) => { try { const w = e.target.contentWindow, d = e.target.contentDocument; if (!d) return; const go = () => { try { const el = [...d.querySelectorAll('*')].find((x) => (x.textContent || '').trim() === "WHERE YOU'RE LOSING THE CLICK"); if (el) w.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + w.scrollY - 64)); } catch (err) {} }; setTimeout(go, 900); setTimeout(go, 1800); } catch (err) {} }} style={{ width: '100%', height: '100%', border: 0, display: 'block' }} />
+                  : <div className="w-full h-full grid place-items-center text-gray-300 text-sm">Loading a real roast&hellip;</div>}
+              </div>
+            </div>
+            <p className="text-center text-xs text-gray-400 mt-3">A live roast of Webflow&rsquo;s ad. Scroll inside to explore it, or <a href="/report/c90f1f39" target="_blank" rel="noopener" className="font-semibold no-underline" style={{ color: '#0a66c2' }}>open it full-size &rarr;</a></p>
+          </div>
+        );
+      };
       return (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 w-full">
-          <div className="text-center mb-10 sm:mb-16">
+          <div className="text-center mb-8 sm:mb-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast includes</div>
+            <h2 className="mt-4 text-gray-900" style={{ fontSize: 'clamp(28px, 6vw, 38px)', fontWeight: 300, letterSpacing: '-0.4px' }}>Every part, scored and rewritten.</h2>
           </div>
-          <div className="space-y-16 sm:space-y-24">
-            {STEPS.map((s, n) => {
-              const visualLeft = n % 2 === 1;
-              return (
-                <div key={n} className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-                  <div className={'reveal ' + (visualLeft ? 'lg:order-2' : '')}>
-                    <span className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: s.color + '14', color: s.color }}>{s.chip}</span>
-                    <h3 className="mt-4 text-gray-900" style={{ fontSize: 'clamp(25px, 5vw, 33px)', fontWeight: 300, lineHeight: 1.12, letterSpacing: '-0.5px', textWrap: 'balance' }}>{s.t}</h3>
-                    <p className="mt-4 text-gray-500" style={{ fontSize: 'clamp(15px, 3.6vw, 17px)', lineHeight: 1.6, maxWidth: 480 }}>{s.detail}</p>
-                    <a href="/report/c90f1f39" target="_blank" rel="noopener" className="inline-flex items-center gap-1 mt-4 text-[13px] font-semibold no-underline" style={{ color: s.color }}>See a real roast &rarr;</a>
-                  </div>
-                  <div className={'reveal ' + (visualLeft ? 'lg:order-1' : '')}>
-                    <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'linear-gradient(145deg, ' + s.color + '12, ' + s.color + '03)', border: '1px solid ' + s.color + '1f' }}>
-                      <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 flex flex-col justify-center" style={{ boxShadow: '0 18px 48px -26px rgba(11,15,26,.3)', minHeight: 352 }}>
-                        <Screen k={n} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid sm:grid-cols-2 gap-3.5 sm:gap-4 max-w-4xl mx-auto mb-12 sm:mb-14">
+            {STEPS.map((s, n) => (
+              <div key={n} className="reveal rounded-2xl border border-gray-100 bg-white p-5" style={{ boxShadow: '0 10px 30px -22px rgba(11,15,26,.25)' }}>
+                <span className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: s.color + '14', color: s.color }}>{s.chip}</span>
+                <h3 className="mt-3 text-gray-900" style={{ fontSize: 'clamp(19px, 3.6vw, 22px)', fontWeight: 500, lineHeight: 1.2, letterSpacing: '-0.2px' }}>{s.t}</h3>
+                <p className="mt-2 text-gray-500" style={{ fontSize: '14px', lineHeight: 1.55 }}>{s.detail}</p>
+              </div>
+            ))}
           </div>
+          <RoastEmbed />
         </section>
       );
     };
@@ -2193,7 +2213,7 @@
         const landing = (landingOverride || a.ctaUrl || '').trim();
         try {
           localStorage.setItem('adroast_library_roast', JSON.stringify({
-            ad: { plat: a.plat, head: a.head || '', body: a.body || '', img: a.img || null, detailUrl: a.detailUrl || '', ctaUrl: landing, dom: a.dom || '', score: (typeof a.score === 'number' ? a.score : null) },
+            ad: { plat: a.plat, head: a.head || '', body: a.body || '', img: a.img || null, detailUrl: a.detailUrl || '', adId: a.adId || '', ctaUrl: landing, dom: a.dom || '', score: (typeof a.score === 'number' ? a.score : null) },
             co: { name: (co && co.name) || '', domain: (co && co.domain) || '' },
             icp: icpText || ''
           }));
@@ -3525,7 +3545,7 @@
             isVideo: !!a.isVideo, // a video ad: roast.js only gets a still thumbnail, so it must not judge it as logo-only
 
             company: co.name || '', website: co.domain || '',
-            adUrl: a.detailUrl || '',
+            adUrl: a.detailUrl || (a.adId && /linkedin/i.test(a.plat || '') ? 'https://www.linkedin.com/ad-library/detail/' + a.adId : ''),
             forceFresh: false,
             source: 'ad-library'
           };
@@ -3535,6 +3555,7 @@
           setCompanyName(payload.company); setSiteUrl(payload.website);
           setInputs(prev => ({ ...prev, copy: adText }));
           setAdLink(payload.adUrl || '');
+          setLandingInput(payload.landingUrl || '');
           setGateAd({ img: a.img || null, plat: a.plat || '', score: (typeof a.score === 'number' ? a.score : null), head: a.head || '' });
           fetch('/api/auth?action=me', { credentials: 'same-origin' })
             .then(r => r.ok ? r.json() : null)
@@ -6904,7 +6925,7 @@
           (siteUrl || '').trim() ? { label: 'Website', value: siteUrl.trim(), href: _href(siteUrl.trim()) } : null
         ].filter(Boolean);
         const adImg = inputs.adScreenshotPreview || '';
-        const landingLink = (inputs.url || '').trim();
+        const landingLink = (inputs.url || landingInput || '').trim();
         const showcaseVisible = !!(adImg || adLink || landingLink || roastMetaRows.length > 0);
         /* Can we re-run the roast from here? Always on the live roaster's own view; on
            an opened report link, only when a signed-in owner has the inputs restored
@@ -6981,8 +7002,8 @@
                           <div className="text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1.5">The ad we roasted</div>
                           <div className="font-semibold text-gray-900 mb-2">{roastedName || 'This ad'}{platform ? <span className="text-gray-400 font-normal capitalize"> · {platform}</span> : null}</div>
                           <div className="flex flex-col items-start gap-1.5">
-                            {adLink && <a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:underline"><Icon name="link" className="w-3.5 h-3.5 flex-shrink-0" /> View the ad ↗</a>}
-                            {landingLink && <a href={_href(landingLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:underline"><Icon name="globe" className="w-3.5 h-3.5 flex-shrink-0" /> {_host(landingLink) || 'View the landing page'} ↗</a>}
+                            {adLink && <div className="min-w-0"><div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">The ad</div><a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:underline break-all"><Icon name="link" className="w-3.5 h-3.5 flex-shrink-0" /> View the live ad ↗</a></div>}
+                            {landingLink && <div className="min-w-0"><div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">The landing page we scored</div><a href={_href(landingLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:underline break-all"><Icon name="globe" className="w-3.5 h-3.5 flex-shrink-0" /> {landingLink.replace(/^https?:\/\//, '')} ↗</a></div>}
                             {!adLink && !landingLink && <span className="text-sm text-gray-400">Ad copy pasted directly</span>}
                           </div>
                         </div>
