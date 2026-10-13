@@ -495,166 +495,161 @@
        AUTO-CYCLES on the right (pauses on hover, click a row to pin it). Reuses the "Four answers" copy.
        AdRoast branding (blue + the severity palette). Replaces the old flat accordion. */
     const RoastShowcase = () => {
+      // Faithful recreation of the real AdRoast roast report (Webflow), interactive. Severity badges and
+      // colors match the product: SOLID (blue) / NEEDS WORK (amber) / CRITICAL (red).
+      const WF = "https://www.google.com/s2/favicons?domain=webflow.com&sz=64";
+      const sev = (s) => s >= 7 ? { lbl: 'SOLID', c: '#0a66c2' } : s >= 5 ? { lbl: 'NEEDS WORK', c: '#d97706' } : { lbl: 'CRITICAL', c: '#dc2626' };
+      const Badge = ({ s }) => { const v = sev(s); return (<span className="flex-none text-[8.5px] font-bold tracking-wide px-1.5 py-0.5 rounded-full" style={{ background: v.c + '1a', color: v.c }}>{v.lbl}</span>); };
+      const check = (<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3"><path d="M20 6 9 17l-5-5" /></svg>);
       const STEPS = [
-        { t: "Am I targeting the right buyer?", chip: "ICP 6/10", color: '#0a66c2', detail: "We read your ICP straight off your site, then score how sharply your ad speaks to that exact buyer, not a generic best-practice checklist." },
-        { t: "Why aren't demos converting?", chip: "5 issues", color: '#dc2626', detail: "5 scored issues: hook, proof, CTA, trust and specificity, each with the exact line from your copy that's costing you the click." },
-        { t: "Where do I lose them?", chip: "Match 3/10", color: '#d97706', detail: "We compare your ad's promise to your landing page and flag every message-drift gap where the scent breaks and demos leak." },
-        { t: "What do I fix first?", chip: "Fix kit", color: '#16a34a', detail: "Your fix kit: rewritten headlines, body and CTAs, plus a prioritized list ranked by what actually moves demos." }
+        { t: "Am I targeting the right buyer?", chip: "AD SCORE 6/10", color: '#0a66c2', detail: "We read your ICP straight off your site, then score how sharply your ad speaks to that exact buyer, not a generic best-practice checklist." },
+        { t: "Why aren't demos converting?", chip: "5 ISSUES", color: '#dc2626', detail: "Every issue scored against your buyer, worst first, each with the exact line from your copy that's costing you the click." },
+        { t: "Where do I lose them?", chip: "LANDING 4/10", color: '#d97706', detail: "We compare your ad's promise to your landing page and score the message drift, so you see exactly where the spend leaks." },
+        { t: "What do I fix first?", chip: "FIX KIT", color: '#16a34a', detail: "A ready-to-ship rewrite of the ad, the landing hero and the CTA, plus headline options you can copy straight into the platform." }
       ];
-      const barCol = (s) => s <= 4 ? '#dc2626' : s <= 6 ? '#d97706' : '#16a34a';
-      const Pill = ({ s }) => (<span className="flex-none text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: barCol(s) + '18', color: barCol(s) }}>{s}/10</span>);
-      // The four product screens, as compact AdRoast-blue mockups. Some are interactive: you can click
-      // into them like the real tool (expand an issue to see the offending line and its fix).
+      const Gauge = () => {
+        const ang = (6 / 10) * 180, rad = (180 - ang) * Math.PI / 180;
+        const nx = 60 + 33 * Math.cos(rad), ny = 50 - 33 * Math.sin(rad);
+        return (
+          <div className="text-center flex-none">
+            <svg width="120" height="60" viewBox="0 0 120 60">
+              <path d="M16,50 A44,44 0 0 1 38,11.9" fill="none" stroke="#dc2626" strokeWidth="7" strokeLinecap="round" />
+              <path d="M38,11.9 A44,44 0 0 1 82,11.9" fill="none" stroke="#f59e0b" strokeWidth="7" />
+              <path d="M82,11.9 A44,44 0 0 1 104,50" fill="none" stroke="#16a34a" strokeWidth="7" strokeLinecap="round" />
+              <line x1="60" y1="50" x2={nx} y2={ny} stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx="60" cy="50" r="3.5" fill="#d97706" />
+            </svg>
+            <div className="-mt-1"><span className="text-base font-extrabold" style={{ color: '#d97706' }}>6</span><span className="text-[10px] font-bold text-gray-400">/10</span></div>
+            <div className="text-[10px] font-bold" style={{ color: '#d97706' }}>Middling</div>
+            <div className="text-[8px] font-bold uppercase tracking-wide text-gray-400">Conversion health</div>
+          </div>
+        );
+      };
+      const Ring = ({ value, label }) => {
+        const r = 15, C = 2 * Math.PI * r, off = C * (1 - value / 10);
+        return (
+          <div className="text-center">
+            <svg width="44" height="44" viewBox="0 0 42 42">
+              <circle cx="21" cy="21" r={r} fill="none" stroke="#e8ecf1" strokeWidth="4" />
+              <circle cx="21" cy="21" r={r} fill="none" stroke="#d97706" strokeWidth="4" strokeDasharray={C} strokeDashoffset={off} strokeLinecap="round" transform="rotate(-90 21 21)" />
+              <text x="21" y="26" textAnchor="middle" fontSize="13" fontWeight="800" fill="#d97706">{value}</text>
+            </svg>
+            <div className="text-[9.5px] font-semibold text-gray-700 mt-0.5">{label}</div>
+            <div className="text-[8px] font-semibold" style={{ color: '#d97706' }}>Needs work</div>
+          </div>
+        );
+      };
       const Screen = ({ k }) => {
-        const [openIssue, setOpenIssue] = useState(0);
-        const [phase, setPhase] = useState(0);   // k===0: enter-site -> read-ICP -> result animation
-        const [auto, setAuto] = useState(true);   // k===1 / k===3: guided-tour auto-advance until clicked
-        const pick = (n) => { setOpenIssue(n); setAuto(false); };
+        const [sel, setSel] = useState(0);
+        const [auto, setAuto] = useState(true);
+        const pick = (n) => { setSel(n); setAuto(false); };
         useEffect(() => {
-          if (k === 0) { const id = setInterval(() => setPhase((p) => (p + 1) % 3), 1900); return () => clearInterval(id); }
-          if ((k === 1 || k === 3) && auto) { const len = k === 1 ? 5 : 3; const id = setInterval(() => setOpenIssue((p) => ((p < 0 ? -1 : p) + 1) % len), 2100); return () => clearInterval(id); }
+          if ((k === 1 || k === 3) && auto) { const len = k === 1 ? 5 : 3; const id = setInterval(() => setSel((p) => (p + 1) % len), 2100); return () => clearInterval(id); }
         }, [k, auto]);
-        if (k === 0) {
-          const spin = { display: 'inline-block', width: 12, height: 12, border: '2px solid #cdd8ea', borderTopColor: '#0a66c2', borderRadius: '50%', animation: 'spin .7s linear infinite' };
-          const check = (<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3"><path d="M20 6 9 17l-5-5" /></svg>);
-          return (
-            <div className="animate-fadein">
-              <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2.5">{phase === 0 ? 'Enter your website' : phase === 1 ? 'Reading webflow.com' : 'Scored against your buyer'}</div>
-              <div style={{ minHeight: 172 }}>
-                {phase === 0 && (
-                  <div key="p0" className="animate-fadein">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 rounded-full border border-gray-200 bg-white px-3.5 py-2.5 text-[13px] text-gray-800 flex items-center">webflow.com<span style={{ display: 'inline-block', width: 1.5, height: 15, background: '#0a66c2', marginLeft: 2, animation: 'caretblink 1s step-end infinite' }} /></div>
-                      <span className="rounded-full px-4 py-2.5 text-[12.5px] font-semibold text-white flex-none" style={{ background: '#0a66c2' }}>Roast</span>
-                    </div>
-                    <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">We pull every live ad webflow.com is running and read their ICP straight off the site.</p>
-                  </div>
-                )}
-                {phase === 1 && (
-                  <div key="p1" className="animate-fadein rounded-xl border border-gray-200 p-3.5">
-                    <div className="flex items-center gap-2 text-[12px] text-gray-500 mb-2.5">{check}<span>Pulled 12 live ads</span></div>
-                    <div className="flex items-center gap-2 text-[12px] font-medium text-gray-700"><span style={spin} /><span>Reading your ICP&hellip;</span></div>
-                    <div className="h-1.5 rounded-full bg-gray-100 mt-3.5 overflow-hidden"><div className="h-full rounded-full" style={{ width: '68%', background: '#0a66c2', transition: 'width .9s ease' }} /></div>
-                  </div>
-                )}
-                {phase === 2 && (
-                  <div key="p2" className="animate-fadein">
-                    <div className="rounded-xl p-3" style={{ background: '#0a66c20b', border: '1px solid #0a66c233' }}>
-                      <span className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400">Detected buyer</span>
-                      <p className="text-[12px] text-gray-700 mt-0.5 leading-snug">Marketing &amp; web teams at scale-ups who own the site but ship through dev.</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-2.5 mb-1"><span className="text-[11px] font-semibold text-gray-700">Buyer fit</span><span className="text-sm font-extrabold" style={{ color: '#d97706' }}>6<span className="text-gray-400 text-[10px] font-bold">/10</span></span></div>
-                    <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden"><div className="h-full rounded-full" style={{ width: '60%', background: '#d97706' }} /></div>
-                    <p className="text-[11px] text-gray-500 mt-2 leading-snug">The hook leads with the product, not the site they can&rsquo;t ship.</p>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center justify-center gap-1.5 mt-2">
-                {[0, 1, 2].map((i) => <span key={i} className="rounded-full" style={{ width: i === phase ? 15 : 5, height: 5, background: i === phase ? '#0a66c2' : '#d1d5db', transition: 'all .3s ease' }} />)}
-              </div>
+        if (k === 0) return (
+          <div className="animate-fadein">
+            <div className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">The ad we roasted</div>
+            <div className="rounded-xl border border-gray-200 p-3 mb-2.5">
+              <div className="flex items-center gap-2 mb-1.5"><img src={WF} alt="" style={{ width: 16, height: 16, borderRadius: 4 }} /><span className="text-[11px] font-semibold text-gray-700">Webflow &middot; LinkedIn</span></div>
+              <p className="text-[13px] font-semibold text-gray-900 leading-snug">Test and personalize the site you already have.</p>
+              <span className="inline-block mt-2 text-[10.5px] font-semibold rounded px-2.5 py-1 bg-gray-100 text-gray-600">Book a walkthrough</span>
             </div>
-          );
-        }
+            <div className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400 mb-1">Target / ICP</div>
+            <p className="text-[11px] text-gray-600 leading-snug mb-2.5">Marketing leaders (VP/Director of Marketing, Demand Gen, Growth) and digital-experience owners bottlenecked by slow dev cycles and legacy CMS.</p>
+            <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: '#d977060d', border: '1px solid #d9770626' }}>
+              <div><span className="text-[9px] font-bold uppercase tracking-wide text-gray-400">Ad score</span><div className="text-[11px] font-semibold" style={{ color: '#d97706' }}>Needs work</div></div>
+              <span className="text-xl font-extrabold" style={{ color: '#d97706' }}>6<span className="text-gray-400 text-xs font-bold">/10</span></span>
+            </div>
+          </div>
+        );
         if (k === 1) {
-          const PARTS = [
-            { t: 'Hook', s: 3, part: 'headline', line: '"The #1 visual development platform"', fix: 'Lead with the site they can’t ship, not your ranking.' },
-            { t: 'Proof', s: 4, part: 'sub', line: '"no code"', fix: 'Add a number or a name a skeptic can trust.' },
-            { t: 'CTA', s: 5, part: 'cta', line: '"Start building"', fix: 'Offer a lower-friction look before the build.' },
-            { t: 'Trust', s: 4, part: 'sub', line: '"scale your site"', fix: 'Show a result or a customer, not a promise.' },
-            { t: 'Specificity', s: 5, part: 'sub', line: '"for teams"', fix: 'Name the outcome, not the audience.' }
+          const ISSUES = [
+            { t: 'Headline Clarity', s: 7, note: '“Test and personalize the site you already have” signals no rebuild needed, a real pain for teams on legacy CMS.' },
+            { t: 'CTA Friction', s: 4, note: 'The creative says “Book a walkthrough” but the button is the generic “Learn more,” undercutting the commitment.' },
+            { t: 'Visual-Copy Match', s: 7, note: 'A real “New test” panel and Insights tab back the claim with product UI, not stock imagery.' },
+            { t: 'Benefit Specificity', s: 5, note: '“Let AI deliver the winning experience” is vague: no number, lift, or timeframe to anchor it.' },
+            { t: 'Trust Signals', s: 3, note: 'No customer, logo or proof in the creative, just the product screenshot and Webflow’s own logo.' }
           ];
-          const sel = (openIssue < 0 || openIssue > PARTS.length - 1) ? 0 : openIssue;
-          const it = PARTS[sel];
-          const hl = (part) => it.part === part ? { background: barCol(it.s) + '26', borderRadius: 4, padding: '0 3px', boxShadow: '0 0 0 1.5px ' + barCol(it.s) + '33' } : {};
+          const it = ISSUES[(sel < 0 || sel > 4) ? 0 : sel]; const v = sev(it.s);
           return (
             <div className="animate-fadein">
-              <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">The roast &middot; click a part</div>
-              <div className="rounded-xl border border-gray-200 p-3 mb-2">
-                <div className="flex items-center gap-2 mb-1.5"><span className="w-5 h-5 rounded bg-gray-100 grid place-items-center text-[9px] font-bold text-gray-500">in</span><span className="text-[11px] font-semibold text-gray-700">Webflow &middot; Sponsored</span></div>
-                <p className="text-[13px] font-semibold text-gray-900 leading-snug"><span style={hl('headline')}>The #1 visual development platform</span></p>
-                <p className="text-[11.5px] text-gray-500 mt-1 leading-relaxed"><span style={hl('sub')}>Design, build and scale your site, no code. For teams.</span></p>
-                <span className="inline-block mt-2 text-[11px] font-semibold rounded-full px-3 py-1" style={{ ...(it.part === 'cta' ? hl('cta') : {}), background: it.part === 'cta' ? barCol(it.s) + '26' : '#f1f5f9', color: '#334155' }}>Start building</span>
+              <div className="flex items-center gap-1.5 mb-2">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg>
+                <span className="text-[12px] font-bold text-gray-800">What's holding the ad back</span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {PARTS.map((p, n) => {
-                  const active = sel === n;
+              <div className="space-y-1">
+                {ISSUES.map((iss, n) => {
+                  const active = sel === n; const vv = sev(iss.s);
                   return (
-                    <button key={n} onClick={() => pick(n)} className="flex items-center gap-1.5 rounded-full border cursor-pointer transition-colors" style={{ padding: '3px 9px', borderColor: active ? barCol(p.s) + '66' : '#e5e7eb', background: active ? barCol(p.s) + '0f' : '#fff' }}>
-                      <span className="text-[11px] font-semibold" style={{ color: active ? barCol(p.s) : '#475569' }}>{p.t}</span>
-                      <span className="text-[9.5px] font-bold" style={{ color: barCol(p.s) }}>{p.s}/10</span>
+                    <button key={n} onClick={() => pick(n)} className="w-full flex items-center gap-2 px-2.5 py-1 rounded-lg border text-left cursor-pointer transition-colors" style={{ borderColor: active ? vv.c + '59' : '#eef0f3', background: active ? vv.c + '0c' : '#fff' }}>
+                      <span className="flex-1 text-[11px] font-semibold text-gray-700 leading-tight">{iss.t}</span>
+                      <Badge s={iss.s} />
+                      <span className="text-[11px] font-bold flex-none" style={{ color: vv.c }}>{iss.s}<span className="text-gray-300 text-[9px]">/10</span></span>
                     </button>
                   );
                 })}
               </div>
-              <div className="mt-2 rounded-lg px-3 py-2" style={{ background: barCol(it.s) + '0d', borderLeft: '3px solid ' + barCol(it.s), minHeight: 52 }}>
-                <p className="text-[11.5px] text-gray-700 italic leading-snug">{it.line}</p>
-                <p className="text-[11px] text-gray-500 leading-snug mt-1"><span className="font-semibold" style={{ color: '#16a34a' }}>Fix:</span> {it.fix}</p>
+              <div className="mt-1.5 rounded-lg px-3 py-2" style={{ background: v.c + '0d', borderLeft: '3px solid ' + v.c, minHeight: 56 }}>
+                <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: v.c }}>{v.lbl} &middot; {it.s}/10 buyer fit</span>
+                <p className="text-[11px] text-gray-600 leading-snug mt-1">{it.note}</p>
               </div>
             </div>
           );
         }
-        if (k === 2) {
-          const SIDES = [
-            { note: 'The ad promises a fast, specific outcome: ship your site in days. That is the scent the buyer follows when they click.' },
-            { note: 'The page opens with the category ("visual development platform"), not the fast launch they clicked for. The scent breaks and demos leak.' }
-          ];
-          const sel = openIssue === 1 ? 1 : 0;
-          return (
-            <div className="animate-fadein">
-              <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">Ad promise vs the landing page &middot; click each</div>
-              <button onClick={() => pick(0)} className="w-full text-left rounded-xl border p-2.5 cursor-pointer transition-colors" style={{ borderColor: sel === 0 ? '#d9770666' : '#e5e7eb', background: sel === 0 ? '#d9770608' : '#fff' }}>
-                <span className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400">The ad says</span>
-                <p className="text-[13px] font-semibold text-gray-900 mt-0.5 leading-snug">Launch your site in days, not months</p>
-              </button>
-              <div className="flex items-center justify-center my-1"><span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#d9770618', color: '#d97706' }}>Match 3/10 &middot; message drift</span></div>
-              <button onClick={() => pick(1)} className="w-full text-left rounded-xl border p-2.5 cursor-pointer transition-colors" style={{ borderColor: sel === 1 ? '#d9770666' : '#e5e7eb', background: sel === 1 ? '#d9770608' : '#fff' }}>
-                <span className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400">The page says</span>
-                <p className="text-[13px] font-semibold text-gray-900 mt-0.5 leading-snug">The visual development platform for building production websites</p>
-              </button>
-              <div className="mt-1.5 rounded-lg px-3 py-2" style={{ background: '#d9770610', borderLeft: '3px solid #d97706', minHeight: 54 }}>
-                <p className="text-[11px] text-gray-600 leading-snug">{SIDES[sel].note}</p>
-              </div>
+        if (k === 2) return (
+          <div className="animate-fadein">
+            <div className="text-[9.5px] font-bold uppercase tracking-wide mb-2" style={{ color: '#0a66c2' }}>Your roast &middot; live</div>
+            <div className="rounded-xl border border-gray-200 px-3 py-2.5 mb-2.5">
+              <div className="flex items-center gap-2"><span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#d9770618', color: '#d97706' }}>WEAK</span><span className="text-[10px] font-bold text-gray-400">6/10</span></div>
+              <p className="text-[12.5px] font-semibold text-gray-900 mt-1 leading-snug">Good budget is leaking on the wrong audience.</p>
+              <div className="flex items-baseline gap-1.5 mt-1"><span className="text-xl font-extrabold" style={{ color: '#b45309' }}>40%</span><span className="text-[10px] text-gray-400">off-target spend</span></div>
+              <div className="h-1 rounded-full bg-gray-200 overflow-hidden mt-1.5"><div className="h-full rounded-full" style={{ width: '40%', background: '#b45309' }} /></div>
             </div>
-          );
-        }
-        {
-          const FIXES = [
-            { part: 'Headline', after: 'Launch your site in days, not months', before: '"The #1 visual development platform"' },
-            { part: 'Body', after: 'Your marketing team ships pages without waiting on dev', before: '"Design, build and scale your site, no code"' },
-            { part: 'CTA', after: 'Watch a 2-minute build', before: '"Start building"' }
-          ];
-          const sel = (openIssue < 0 || openIssue > FIXES.length - 1) ? 0 : openIssue;
-          const fx = FIXES[sel];
-          return (
-            <div className="animate-fadein">
-              <div className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">Your fix kit &middot; click a part</div>
-              <div className="space-y-0.5">
-                {FIXES.map((it, n) => {
-                  const active = sel === n;
-                  return (
-                    <button key={n} onClick={() => pick(n)} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left rounded-lg border cursor-pointer transition-colors" style={{ borderColor: active ? '#16a34a66' : '#eef0f3', background: active ? '#16a34a0d' : '#fff' }}>
-                      <span className="flex-none w-4 h-4 rounded-full grid place-items-center" style={{ background: '#16a34a1a' }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3"><path d="M20 6 9 17l-5-5" /></svg></span>
-                      <span className="flex-none text-[10px] font-bold uppercase tracking-wide w-16" style={{ color: '#16a34a' }}>{it.part}</span>
-                      <span className="flex-1 text-[11.5px] font-medium text-gray-800 leading-snug truncate">{it.after}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-1.5 rounded-lg px-3 py-2" style={{ background: '#16a34a0d', borderLeft: '3px solid #16a34a', minHeight: 58 }}>
-                <p className="text-[10.5px] text-gray-400 leading-snug"><span className="font-semibold text-gray-500">Before:</span> <span className="line-through">{fx.before}</span></p>
-                <p className="text-[11.5px] text-gray-700 leading-snug mt-1"><span className="font-semibold" style={{ color: '#16a34a' }}>After:</span> {fx.after}</p>
-              </div>
+            <div className="flex items-center justify-center gap-3">
+              <Gauge />
+              <div className="flex gap-2.5"><Ring value={4} label="Landing page" /><Ring value={4} label="Ad ↔ LP" /></div>
             </div>
-          );
-        }
+            <div className="rounded-lg px-3 py-2 mt-2.5" style={{ background: '#d977060d', borderLeft: '3px solid #d97706' }}>
+              <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: '#d97706' }}>The verdict &middot; middling</span>
+              <p className="text-[11px] text-gray-600 leading-snug mt-0.5">On-target: speaks to marketing leaders bottlenecked by dev cycles.</p>
+            </div>
+          </div>
+        );
+        const HEADS = [
+          'Ship 10 landing page tests without an engineering ticket.',
+          'Your site, but every visitor gets the version that converts.',
+          'Stop waiting on dev sprints to test your homepage.'
+        ];
+        const hi = (sel < 0 || sel > 2) ? 0 : sel;
+        return (
+          <div className="animate-fadein">
+            <div className="text-[9.5px] font-bold uppercase tracking-wide text-gray-400 mb-2">Fix kit &middot; tap to copy</div>
+            <div className="rounded-xl border border-gray-200 p-3 mb-2.5">
+              <div className="flex items-center gap-2 mb-1"><img src={WF} alt="" style={{ width: 15, height: 15, borderRadius: 4 }} /><span className="text-[10px] font-semibold text-gray-600">Your rewritten ad</span><span className="ml-auto text-[8px] font-bold uppercase tracking-wide" style={{ color: '#16a34a' }}>Preview</span></div>
+              <p className="text-[12.5px] font-semibold text-gray-900 leading-snug">{HEADS[hi]}</p>
+              <span className="inline-block mt-2 text-[10.5px] font-semibold rounded px-2.5 py-1 text-white" style={{ background: '#0a66c2' }}>Request Demo</span>
+            </div>
+            <div className="text-[9px] font-bold uppercase tracking-wide text-gray-400 mb-1">Headline options</div>
+            <div className="space-y-1">
+              {HEADS.map((opt, n) => {
+                const active = hi === n;
+                return (
+                  <button key={n} onClick={() => pick(n)} className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-left cursor-pointer transition-colors" style={{ borderColor: active ? '#16a34a59' : '#eef0f3', background: active ? '#16a34a0c' : '#fff' }}>
+                    <span className="flex-none w-4 h-4 rounded-full grid place-items-center" style={{ background: '#16a34a1a' }}>{check}</span>
+                    <span className="flex-1 text-[11px] font-medium text-gray-800 leading-snug">{opt}</span>
+                    {active && <span className="flex-none text-[8.5px] font-bold" style={{ color: '#16a34a' }}>COPIED</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
       };
       return (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 w-full">
           <div className="text-center mb-10 sm:mb-16">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast includes</div>
           </div>
-          {/* Alternating blocks (addiehq-style): the explanation on one side, the AdRoast screen on the
-              other, sides flipping each row. The screen reveals on scroll (the "gif" feel). */}
           <div className="space-y-16 sm:space-y-24">
             {STEPS.map((s, n) => {
               const visualLeft = n % 2 === 1;
@@ -664,10 +659,11 @@
                     <span className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: s.color + '14', color: s.color }}>{s.chip}</span>
                     <h3 className="mt-4 text-gray-900" style={{ fontSize: 'clamp(25px, 5vw, 33px)', fontWeight: 300, lineHeight: 1.12, letterSpacing: '-0.5px', textWrap: 'balance' }}>{s.t}</h3>
                     <p className="mt-4 text-gray-500" style={{ fontSize: 'clamp(15px, 3.6vw, 17px)', lineHeight: 1.6, maxWidth: 480 }}>{s.detail}</p>
+                    <a href="/report/c90f1f39" target="_blank" rel="noopener" className="inline-flex items-center gap-1 mt-4 text-[13px] font-semibold no-underline" style={{ color: s.color }}>See a real roast &rarr;</a>
                   </div>
                   <div className={'reveal ' + (visualLeft ? 'lg:order-1' : '')}>
                     <div className="rounded-2xl p-4 sm:p-6" style={{ background: 'linear-gradient(145deg, ' + s.color + '12, ' + s.color + '03)', border: '1px solid ' + s.color + '1f' }}>
-                      <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 flex flex-col justify-center" style={{ boxShadow: '0 18px 48px -26px rgba(11,15,26,.3)', minHeight: 320 }}>
+                      <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 flex flex-col justify-center" style={{ boxShadow: '0 18px 48px -26px rgba(11,15,26,.3)', minHeight: 352 }}>
                         <Screen k={n} />
                       </div>
                     </div>
