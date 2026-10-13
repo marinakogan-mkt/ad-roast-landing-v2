@@ -3595,14 +3595,17 @@
               makes that effect return on its very first line, deterministically.
            2. Force the landing view (in case something else set it) so the section is in the DOM.
            3. Scroll to #work-with-us with our own retry (the section/images mount after us). */
-        if (window.location.hash === '#services' || window.location.hash === '#work-with-us' || BOOT_PATH === '/services' || BOOT_PATH === '/work-with-us') {
+        if (window.location.hash === '#services' || window.location.hash === '#work-with-us' || window.location.hash === '#deliverables' || BOOT_PATH === '/services' || BOOT_PATH === '/work-with-us') {
           autoDashRef.current = true;
           setView('landing');
-          try { window.history.replaceState({}, '', '/#work-with-us'); } catch (e) {}
+          // Respect the actual section the deep link asked for: the roast's "See the roadmap" opens
+          // /services#deliverables, while "Work with us" / "See the service" open #work-with-us.
+          const _target = window.location.hash === '#deliverables' ? 'deliverables' : 'work-with-us';
+          try { window.history.replaceState({}, '', '/#' + _target); } catch (e) {}
           const _reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           let _n = 0;
           const _svc = () => {
-            const el = document.getElementById('work-with-us');
+            const el = document.getElementById(_target);
             if (el) { el.scrollIntoView({ behavior: _reduce ? 'auto' : 'smooth', block: 'start' }); if (_n++ < 6) setTimeout(_svc, 220); return; }
             if (_n++ < 30) setTimeout(_svc, 100);
           };
@@ -7133,8 +7136,8 @@
                 const OPTIONS = {
                   review:     { tag: 'Team review', color: '#0a66c2', title: 'Get the team on your roast',   q: 'Want the team to weigh in?',  kind: 'linkedin' },
                   diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', href: '/board' },
-                  withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Campaign Repositioning Sprint',    q: 'Want it fixed with you?',  cta: 'See the roadmap', href: '/#deliverables', meta: '10 days' },
-                  doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', href: '/#work-with-us', meta: 'Managed' },
+                  withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Campaign Repositioning Sprint',    q: 'Want it fixed with you?',  cta: 'See the roadmap', href: '/services#deliverables', meta: '10 days' },
+                  doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', href: '/services#work-with-us', meta: 'Managed' },
                 };
                 let key, reason;
                 if (sev <= 3) { key = 'doneforyou'; reason = `At ${sev}/10 this isn't a copy tweak. Your weakest link is your ${weakest.k} (${weakest.s}/10), and the ad and page pull in different directions. The honest, fastest path is having it rebuilt for you.`; }
