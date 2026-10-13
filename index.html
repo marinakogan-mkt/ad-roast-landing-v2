@@ -663,54 +663,70 @@
       // section (?section=...), so each title shows the real tool for that exact part. Responsive
       // width, so no scaling. Loads only when scrolled near.
       const SECTIONS = ['scores', 'issues', 'landing', 'fixes'];
-      const ReportEmbed = ({ section }) => {
+      // One live roast, driven like a guided demo: the cards switch the embedded report to
+      // that part (?section=...) and highlight. Same product, pixel-exact, interactive. We swap
+      // the iframe src (not a same-origin scroll) because the homepage and the embed can sit on
+      // different origins (adroast.in vs www.adroast.in); ?section makes the report open + scroll
+      // to that section on load. Lazy-loads when scrolled near so it stays light.
+      const RoastEmbed = () => {
         const wrapRef = React.useRef(null);
+        const frameRef = React.useRef(null);
         const [load, setLoad] = useState(false);
+        const [active, setActive] = useState(0);
+        const [swapping, setSwapping] = useState(false);
         useEffect(() => {
           const el = wrapRef.current;
           if (!el || typeof IntersectionObserver === 'undefined') { setLoad(true); return; }
-          const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { setLoad(true); io.disconnect(); } }), { rootMargin: '500px' });
+          const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { setLoad(true); io.disconnect(); } }), { rootMargin: '600px' });
           io.observe(el);
           return () => io.disconnect();
         }, []);
+        const pick = (n) => {
+          if (n === active) return;
+          setActive(n);
+          setSwapping(true);
+          const f = frameRef.current;
+          if (f) { try { f.src = 'https://www.adroast.in/report/c90f1f39?section=' + SECTIONS[n]; } catch (e) {} }
+        };
         return (
-          <div ref={wrapRef} className="rounded-xl overflow-hidden border border-gray-200 bg-white" style={{ boxShadow: '0 18px 48px -26px rgba(11,15,26,.3)' }}>
-            <div className="flex items-center gap-1.5 px-3 flex-none border-b border-gray-100 bg-gray-50" style={{ height: 30 }}>
-              <span className="w-2 h-2 rounded-full" style={{ background: '#f87171' }} /><span className="w-2 h-2 rounded-full" style={{ background: '#fbbf24' }} /><span className="w-2 h-2 rounded-full" style={{ background: '#34d399' }} />
-              <span className="ml-2.5 text-[10px] text-gray-400 truncate">adroast.in/report &middot; Webflow</span>
+          <div ref={wrapRef} className="reveal max-w-4xl mx-auto">
+            {/* Guided cards: click one to jump the live roast to that part. */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-4">
+              {STEPS.map((s, n) => {
+                const on = active === n;
+                return (
+                  <button key={n} onClick={() => pick(n)} className="text-left rounded-xl border bg-white p-3.5 cursor-pointer transition-all" style={{ borderColor: on ? s.color : '#eceef2', boxShadow: on ? '0 10px 26px -14px ' + s.color + '88' : '0 1px 2px rgba(16,24,40,.04)', transform: on ? 'translateY(-1px)' : 'none' }}>
+                    <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: s.color + '14', color: s.color }}>{s.chip}</span>
+                    <div className="mt-2 text-gray-900 font-semibold leading-snug" style={{ fontSize: 13.5 }}>{s.t}</div>
+                    <div className="mt-1.5 text-[11px] font-bold inline-flex items-center gap-1" style={{ color: on ? s.color : '#94a3b8' }}>{on ? 'Showing below ↓' : 'Show me →'}</div>
+                  </button>
+                );
+              })}
             </div>
-            <div style={{ height: 384, overflow: 'hidden' }}>
-              {load
-                ? <iframe src={'https://www.adroast.in/report/c90f1f39?section=' + section} title={'A real AdRoast roast of Webflow, ' + section} loading="lazy" style={{ width: '100%', height: '100%', border: 0, display: 'block' }} />
-                : <div className="w-full h-full grid place-items-center text-gray-300 text-sm">Loading the real roast&hellip;</div>}
+            <div className="rounded-2xl overflow-hidden border border-gray-200 bg-white" style={{ boxShadow: '0 28px 70px -28px rgba(11,15,26,.36)' }}>
+              <div className="flex items-center gap-1.5 px-3.5 flex-none border-b border-gray-100 bg-gray-50" style={{ height: 36 }}>
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#f87171' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fbbf24' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#34d399' }} />
+                <span className="ml-3 text-[11px] text-gray-400 truncate">adroast.in/report &middot; Webflow</span>
+              </div>
+              <div className="relative" style={{ height: 'min(66vh, 560px)' }}>
+                {load
+                  ? <iframe ref={frameRef} src={'https://www.adroast.in/report/c90f1f39?section=' + SECTIONS[0]} title="A real AdRoast roast of Webflow" loading="lazy" onLoad={() => setSwapping(false)} style={{ width: '100%', height: '100%', border: 0, display: 'block' }} />
+                  : <div className="w-full h-full grid place-items-center text-gray-300 text-sm">Loading a real roast&hellip;</div>}
+                {swapping && <div className="absolute inset-0 grid place-items-center text-gray-400 text-sm" style={{ background: 'rgba(255,255,255,.72)' }}>Loading that part&hellip;</div>}
+              </div>
             </div>
+            <p className="text-center text-xs text-gray-400 mt-3">A live roast of Webflow&rsquo;s ad. Click a card to jump to each part, scroll inside to explore, or <a href="/report/c90f1f39" target="_blank" rel="noopener" className="font-semibold no-underline" style={{ color: '#0a66c2' }}>open it full-size &rarr;</a></p>
           </div>
         );
       };
       return (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 w-full">
-          <div className="text-center mb-10 sm:mb-16">
+          <div className="text-center mb-8 sm:mb-10">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Your roast includes</div>
-            <h2 className="mt-4 text-gray-900" style={{ fontSize: 'clamp(28px, 6vw, 38px)', fontWeight: 300, letterSpacing: '-0.4px' }}>Every part, live from a real roast.</h2>
+            <h2 className="mt-4 text-gray-900" style={{ fontSize: 'clamp(28px, 6vw, 38px)', fontWeight: 300, letterSpacing: '-0.4px' }}>Every part, scored and rewritten.</h2>
+            <p className="mt-3 text-gray-500 max-w-xl mx-auto" style={{ fontSize: 15 }}>Click through a real roast below, part by part.</p>
           </div>
-          <div className="space-y-16 sm:space-y-24">
-            {STEPS.map((s, n) => {
-              const visualLeft = n % 2 === 1;
-              return (
-                <div key={n} className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-                  <div className={'reveal ' + (visualLeft ? 'lg:order-2' : '')}>
-                    <span className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: s.color + '14', color: s.color }}>{s.chip}</span>
-                    <h3 className="mt-4 text-gray-900" style={{ fontSize: 'clamp(25px, 5vw, 33px)', fontWeight: 300, lineHeight: 1.12, letterSpacing: '-0.5px', textWrap: 'balance' }}>{s.t}</h3>
-                    <p className="mt-4 text-gray-500" style={{ fontSize: 'clamp(15px, 3.6vw, 17px)', lineHeight: 1.6, maxWidth: 480 }}>{s.detail}</p>
-                    <a href="/report/c90f1f39" target="_blank" rel="noopener" className="inline-flex items-center gap-1 mt-4 text-[13px] font-semibold no-underline" style={{ color: s.color }}>Open the full roast &rarr;</a>
-                  </div>
-                  <div className={'reveal ' + (visualLeft ? 'lg:order-1' : '')}>
-                    <ReportEmbed section={SECTIONS[n]} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <RoastEmbed />
         </section>
       );
     };
@@ -5052,7 +5068,7 @@
                   {o.popular && <div className="absolute -top-3 left-8 px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#0a66c2' }}>MOST POPULAR</div>}
                   <div className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: '#0a66c2' }}>{o.tag}</div>
                   <h3 className="text-gray-900 mb-1" style={{ fontSize: '24px', fontWeight: 500, letterSpacing: '-0.2px' }}>{o.name}</h3>
-                  <div className="mb-4"><span className="text-gray-900" style={{ fontSize: '26px', fontWeight: 500, letterSpacing: '-0.4px' }}>{o.sub}</span></div>
+                  <div className="mb-4"><span className="text-gray-500 font-medium" style={{ fontSize: '14px' }}>{o.sub}</span></div>
                   <p className="text-gray-500 text-sm mb-3" style={{ lineHeight: 1.6 }}>{o.desc}</p>
                   {o.who && <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide mb-4 px-2.5 py-1 rounded-full self-start" style={{ background: '#eff5fc', color: '#0a66c2' }}><Icon name="arrowRight" className="w-3.5 h-3.5" />{o.who}</div>}
                   <button onClick={() => toggle(o.key)} className="flex items-center justify-between gap-2 w-full text-left text-sm font-semibold text-gray-900 bg-transparent border-t border-gray-100 cursor-pointer py-3">
@@ -5628,7 +5644,7 @@
               upgrade ($24 / $482) only appears after a roast, in the unlock modal. */}
           <section id="work-with-us" className="max-w-5xl mx-auto px-4 pb-10 sm:pb-20 w-full scroll-mt-20">
             <p className="mb-4" style={{ color: '#0a66c2' }}><span className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-gray-200 rounded-full" style={{ background: '#fff' }}><span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#0a66c2' }}></span><span style={{ fontSize: '14px' }}>Positioning for paid media</span></span></p>
-            <h2 className="hero-h1 text-gray-900 mb-5" style={{ fontWeight: 300, letterSpacing: '-0.5px', textWrap: 'balance' }}>Spending on ads but <span style={{ color: '#0a66c2' }}>the right buyers aren't booking?</span></h2>
+            <h2 className="text-gray-900 mb-5" style={{ fontSize: 'clamp(32px, 6vw, 56px)', fontWeight: 300, letterSpacing: '-0.5px', lineHeight: 1.08, textWrap: 'balance' }}>Spending on ads but <span style={{ color: '#0a66c2' }}>the right buyers aren't booking?</span></h2>
             <p className="text-gray-400 mb-3 max-w-xl" style={{ fontSize: '17px', lineHeight: 1.7 }}>We find where your campaign loses the right buyers and reposition the whole campaign around them.</p>
             <p className="text-gray-500 mb-8 sm:mb-12 font-medium" style={{ fontSize: '14px' }}>Built for B2B SaaS teams running paid campaigns.</p>
 
