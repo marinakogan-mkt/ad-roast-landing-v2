@@ -1701,6 +1701,9 @@
     /* Path the page was first opened at (captured before any effect rewrites the URL to "/").
        Lets a clean deep link like /work-with-us land directly on that section. */
     const BOOT_PATH = (typeof window !== 'undefined' ? window.location.pathname.replace(/\/+$/, '') : '');
+    // The initial URL hash, captured before the boot normalization drops it (same reason as BOOT_PATH).
+    // Lets a deep link like /services#deliverables still know which section to scroll to.
+    const BOOT_HASH = (typeof window !== 'undefined' ? (window.location.hash || '') : '');
 
     // Shorten a domain for the shareable board URL: drop www + a trailing ".com" (the common case)
     // so /b/claroty.com becomes /b/claroty. Non-.com TLDs (.dev/.io/.ai) are kept because they can't
@@ -3595,12 +3598,12 @@
               makes that effect return on its very first line, deterministically.
            2. Force the landing view (in case something else set it) so the section is in the DOM.
            3. Scroll to #work-with-us with our own retry (the section/images mount after us). */
-        if (window.location.hash === '#services' || window.location.hash === '#work-with-us' || window.location.hash === '#deliverables' || BOOT_PATH === '/services' || BOOT_PATH === '/work-with-us') {
+        if (BOOT_HASH === '#services' || BOOT_HASH === '#work-with-us' || BOOT_HASH === '#deliverables' || BOOT_PATH === '/services' || BOOT_PATH === '/work-with-us') {
           autoDashRef.current = true;
           setView('landing');
           // Respect the actual section the deep link asked for: the roast's "See the roadmap" opens
           // /services#deliverables, while "Work with us" / "See the service" open #work-with-us.
-          const _target = window.location.hash === '#deliverables' ? 'deliverables' : 'work-with-us';
+          const _target = BOOT_HASH === '#deliverables' ? 'deliverables' : 'work-with-us';
           try { window.history.replaceState({}, '', '/#' + _target); } catch (e) {}
           const _reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           let _n = 0;
@@ -3869,7 +3872,7 @@
          couple of seconds (instant, respecting scroll-mt) and again once images
          finish, but stop the moment the user scrolls or interacts. */
       React.useEffect(() => {
-        let id = (window.location.hash || '').replace('#', '');
+        let id = (BOOT_HASH || window.location.hash || '').replace('#', '');
         /* #services is the old anchor for the "Work with us" section (id="work-with-us"); a fresh
            load of /#services can be read here BEFORE the boot code normalizes the hash, so map it
            explicitly instead of bailing (that was the "typing /#services doesn't scroll" case). */
