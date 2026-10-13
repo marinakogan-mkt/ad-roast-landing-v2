@@ -3469,7 +3469,7 @@
         let stopped = false, n = 0;
         const stop = () => { stopped = true; };
         ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((ev) => window.addEventListener(ev, stop, { passive: true }));
-        const go = () => { if (stopped) return; const el = document.getElementById(anchor); if (el) el.scrollIntoView({ block: 'start' }); if (n++ < 24) setTimeout(go, 150); };
+        const go = () => { if (stopped) return; setActiveTab(s); const el = document.getElementById(anchor); if (el) el.scrollIntoView({ block: 'start' }); if (n++ < 50) setTimeout(go, 160); };
         setTimeout(go, 200);
         return () => { stopped = true; ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach((ev) => window.removeEventListener(ev, stop)); };
       }, []);
@@ -4041,6 +4041,8 @@
          settles back on Scores. Skipped under reduced-motion. */
       React.useEffect(() => {
         if (view !== 'results' || !result) return;
+        // A ?section deep link (an embed) wants that exact section, so don't auto-cycle back to Scores.
+        try { if (new URLSearchParams(window.location.search).get('section')) return; } catch (e) {}
         const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (reduce) return;
         const lp0 = result.landing_page_roast || {};
