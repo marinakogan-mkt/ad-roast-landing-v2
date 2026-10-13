@@ -2859,7 +2859,7 @@
                   // button, text rows) read through but the words don't. A frosted "Unlock with Pro"
                   // pill marks it; the whole card is clickable to upgrade. Teaser scaffold (not scored).
                   return (
-                    <div key={i} onClick={() => { try { window.location.assign('/#pricing'); } catch (e) { window.location.href = '/#pricing'; } }} title="Unlock every creative with Pro" className="relative bg-white rounded-2xl border overflow-hidden flex flex-col cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-xl" style={{ borderColor: '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
+                    <div key={i} onClick={() => { try { window.location.assign('/services'); } catch (e) { window.location.href = '/services'; } }} title="Unlock every creative with Pro" className="relative bg-white rounded-2xl border overflow-hidden flex flex-col cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-xl" style={{ borderColor: '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
                       <div aria-hidden="true" style={{ filter: 'blur(3.5px) grayscale(0.25)', opacity: 0.75, pointerEvents: 'none', userSelect: 'none' }}>
                         <div className="px-4 pt-4 pb-2.5">
                           <div className="flex items-center gap-2">
@@ -2948,7 +2948,7 @@
               <div className="mt-5 rounded-2xl border text-center mx-auto" style={{ borderColor: '#cfe0f5', background: '#f0f6fd', padding: '18px 20px', maxWidth: 640 }}>
                 <div className="font-semibold text-gray-900" style={{ fontSize: 15 }}>{shownOrdered.length - FREE_LIMIT} more live {(shownOrdered.length - FREE_LIMIT) === 1 ? 'creative' : 'creatives'}, locked</div>
                 <p className="text-gray-500 mt-1" style={{ fontSize: 13, lineHeight: 1.5 }}>You're seeing the {FREE_LIMIT} most urgent. Unlock every creative, scored against your buyer, with Pro.</p>
-                <button onClick={() => setSel(shownOrdered[Math.min(FREE_LIMIT, shownOrdered.length - 1)])} className="inline-flex items-center gap-1.5 mt-3 rounded-full font-semibold text-white" style={{ fontSize: 13.5, padding: '10px 20px', background: '#0a66c2', border: 'none', cursor: 'pointer' }}>Unlock all &rarr;</button>
+                <button onClick={() => { try { window.location.assign('/services'); } catch (e) { window.location.href = '/services'; } }} className="inline-flex items-center gap-1.5 mt-3 rounded-full font-semibold text-white" style={{ fontSize: 13.5, padding: '10px 20px', background: '#0a66c2', border: 'none', cursor: 'pointer' }}>Unlock all &rarr;</button>
               </div>
             )}
             </>)}
