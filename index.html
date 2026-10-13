@@ -2856,11 +2856,11 @@
                 const sev = hasScore ? SEV(a.score) : null;
                 if (!_paidView && i >= FREE_LIMIT) {
                   // Locked: the FULL card rendered LIGHTLY blurred so the shapes (score badge, chips,
-                  // button, text rows) read through but the words don't. A small soft lock marks it;
-                  // the whole card is clickable to upgrade. Content is a teaser scaffold (not scored).
+                  // button, text rows) read through but the words don't. A frosted "Unlock with Pro"
+                  // pill marks it; the whole card is clickable to upgrade. Teaser scaffold (not scored).
                   return (
                     <div key={i} onClick={() => { try { window.location.assign('/#pricing'); } catch (e) { window.location.href = '/#pricing'; } }} title="Unlock every creative with Pro" className="relative bg-white rounded-2xl border overflow-hidden flex flex-col cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-xl" style={{ borderColor: '#e5e7eb', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 24px rgba(11,15,26,.05)' }}>
-                      <div aria-hidden="true" style={{ filter: 'blur(3px) grayscale(0.25)', opacity: 0.8, pointerEvents: 'none', userSelect: 'none' }}>
+                      <div aria-hidden="true" style={{ filter: 'blur(3.5px) grayscale(0.25)', opacity: 0.75, pointerEvents: 'none', userSelect: 'none' }}>
                         <div className="px-4 pt-4 pb-2.5">
                           <div className="flex items-center gap-2">
                             <span className="inline-flex items-center justify-center flex-none" style={{ width: 24, height: 24, borderRadius: 7, background: '#fff', border: '1px solid #e5e7eb' }}><PlatLogo plat={a.plat} size={14} /></span>
@@ -2885,9 +2885,10 @@
                           <div className="w-full text-center font-bold rounded-lg mt-3" style={{ fontSize: 13.5, padding: '10px', border: '1px dashed #cbd5e1', color: '#94a3b8', background: '#fff' }}>Roast this ad &rarr;</div>
                         </div>
                       </div>
-                      <div className="absolute inset-0 flex items-center justify-center" style={{ pointerEvents: 'none' }}>
-                        <span className="grid place-items-center rounded-full" style={{ width: 40, height: 40, background: 'rgba(100,116,139,0.20)' }}>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" style={{ opacity: 0.8 }}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                      <div className="absolute inset-0 flex items-center justify-center" style={{ pointerEvents: 'none', background: 'rgba(248,250,252,0.28)' }}>
+                        <span className="inline-flex items-center gap-1.5 rounded-full font-semibold" style={{ fontSize: 12, padding: '7px 13px', background: '#fff', color: '#334155', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(11,15,26,.1)' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                          Unlock with Pro
                         </span>
                       </div>
                     </div>
