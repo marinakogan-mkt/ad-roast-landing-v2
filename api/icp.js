@@ -185,6 +185,9 @@ async function fetchSiteDirect(url) {
   }
 }
 
+// User agents that are never a person reading a board (see the visit beacon).
+const NOT_HUMAN_UA = /bot|crawl|spider|slurp|headless|Claude\/|Electron\/|python|curl|wget|lighthouse|facebookexternalhit|embedly|preview/i;
+
 export default async function handler(req, res) {
   /* MCP server (/api/mcp, rewritten to /api/icp?mcp=1). Folded in here to stay under the Hobby
      12-function cap; the actual JSON-RPC handler lives in _mcp.js (an underscore helper). */
@@ -388,6 +391,22 @@ ${items}
   // where they came from (referrer + UTM), which link, approx geo, and their email if signed in.
   // Public and best-effort: it must never block or error the page. Stored capped in Redis; the admin
   // reads it at /api/roast-view?action=visits.
+  // Second beacon from the same page: the visitor stayed 10s visible, scrolled, clicked or typed.
+  // Link scanners and crawl sweeps open the page and leave, so they never send it.
+  if (body.action === 'engaged') {
+    try {
+      const h = req.headers || {};
+      const vid = typeof body.vid === 'string' ? body.vid.slice(0, 40) : '';
+      const path = typeof body.path === 'string' ? body.path.slice(0, 300) : '';
+      if (_redis && vid && !NOT_HUMAN_UA.test(String(h['user-agent'] || ''))) {
+        await _redis.lpush('visits:eng', JSON.stringify({ ts: Date.now(), vid, path }));
+        await _redis.ltrim('visits:eng', 0, 9999);
+      }
+    } catch (e) {}
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(204).end();
+  }
+
   if (body.action === 'visit') {
     try {
       if (_redis) {
@@ -404,6 +423,10 @@ ${items}
         const _selfAdmin = !!email && ADMIN_EMAILS.has(String(email).toLowerCase());
         const _noTrack = /(?:^|;\s*)ar_notrack=1(?:;|$)/.test(String((req.headers || {}).cookie || ''));
         if (_selfAdmin || _noTrack) { res.setHeader('Cache-Control', 'no-store'); return res.status(204).end(); }
+        // Not a person: declared crawlers (Ahrefs, GPTBot...), headless automation (Playwright),
+        // the Claude app's built-in browser, and anything the page saw as navigator.webdriver.
+        // They stay free to CRAWL the site (GEO needs them); they just don't count as visits.
+        if (NOT_HUMAN_UA.test(String(h['user-agent'] || '')) || body.wd === true) { res.setHeader('Cache-Control', 'no-store'); return res.status(204).end(); }
         const u = (body.utm && typeof body.utm === 'object') ? body.utm : {};
         const rec = {
           ts: Date.now(),

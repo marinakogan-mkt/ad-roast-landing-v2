@@ -10286,9 +10286,22 @@
       var dev = (window.matchMedia && window.matchMedia('(max-width:768px)').matches) ? 'mobile' : 'desktop';
       var payload = JSON.stringify({ action: 'visit', path: (p + location.search).slice(0, 300), entry: entry, slug: slug, ref: ref, refHost: refHost,
         utm: { source: q.get('utm_source') || '', medium: q.get('utm_medium') || '', campaign: q.get('utm_campaign') || '', term: q.get('utm_term') || '', content: q.get('utm_content') || '' },
-        vid: vid, ret: ret, dev: dev });
-      if (navigator.sendBeacon) navigator.sendBeacon('/api/icp', new Blob([payload], { type: 'application/json' }));
-      else fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(function(){});
+        vid: vid, ret: ret, dev: dev, wd: !!navigator.webdriver });
+      var send = function (body) {
+        if (navigator.sendBeacon) navigator.sendBeacon('/api/icp', new Blob([body], { type: 'application/json' }));
+        else fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function(){});
+      };
+      send(payload);
+      // "Stayed" signal: 10s visible, or a scroll, click or key. Link scanners never send it.
+      var engaged = false, shown = 0, timer = null;
+      var fire = function () {
+        if (engaged) return; engaged = true;
+        send(JSON.stringify({ action: 'engaged', vid: vid, path: (p + location.search).slice(0, 300) }));
+        ['scroll', 'pointerdown', 'keydown'].forEach(function (t) { window.removeEventListener(t, fire, true); });
+      };
+      ['scroll', 'pointerdown', 'keydown'].forEach(function (t) { window.addEventListener(t, fire, { capture: true, passive: true }); });
+      var tick = function () { if (document.visibilityState === 'visible') { shown += 1; if (shown >= 10) { fire(); return; } } timer = setTimeout(tick, 1000); };
+      tick();
     } catch (e) {}
   })();
   </script>

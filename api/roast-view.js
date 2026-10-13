@@ -109,6 +109,8 @@ async function fetchNotionRoastSummaries(maxPages = 3) {
   return out;
 }
 
+const NOT_HUMAN_UA = /bot|crawl|spider|slurp|headless|Claude\/|Electron\/|python|curl|wget|lighthouse|facebookexternalhit|embedly|preview/i;
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -173,6 +175,12 @@ export default async function handler(req, res) {
       // Drop the admin's own entries already in the log (belt and suspenders for rows written
       // before self-exclusion shipped), so the numbers reflect real visitors only.
       items = items.filter(v => !(v && v.email && ADMIN_EMAILS.has(String(v.email).toLowerCase())));
+      // Same not-a-person rule as the beacon, for rows logged before it shipped.
+      items = items.filter(v => !NOT_HUMAN_UA.test(String((v && v.ua) || '')));
+      // eng = the same visitor on the same page sent the "stayed" beacon (10s visible, scroll, click).
+      const engRaw = await redis.lrange('visits:eng', 0, 9999);
+      const eng = new Set((engRaw || []).map(r => { try { const e = typeof r === 'string' ? JSON.parse(r) : r; return e.vid + '|' + e.path; } catch (x) { return ''; } }));
+      items = items.map(v => ({ ...v, eng: eng.has(v.vid + '|' + v.path) }));
     } catch (e) {}
     if (wantsJson) {
       // ?since=<ISO or ms> trims to the caller's window (the weekly outreach
