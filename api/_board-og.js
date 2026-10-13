@@ -253,7 +253,15 @@ export async function servicesOgHandler(req, res) {
       + '<p><a href="https://calendly.com/marina-kogan-adroast/30min">Book a 30-minute call</a> to see if it is a fit, or <a href="/">roast one ad free</a> first.</p>'
       + '<p>Learn the method: the AdRoast <a href="/guides">guides</a> cover how to <a href="/guides/audit-linkedin-ads-icp">audit your ads against your ICP</a> and why <a href="/guides/clicks-no-pipeline">clicks do not turn into pipeline</a>.</p>'
       + '</main>';
-    html = html.replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
+    // Same progressive-enhancement trick as the board page: hide the crawler text behind a loader
+    // for JS users (html.has-js) so a human never sees the raw services copy flash before the SPA
+    // boots; no-JS crawlers never set the class and still read the full visible text.
+    const GEO_HEAD = '<style>@keyframes geospin{to{transform:rotate(360deg)}}.geo-loading{display:none}'
+      + 'html.has-js .geo-shell{display:none!important}html.has-js .geo-loading{display:flex!important}</style>'
+      + '<script>document.documentElement.classList.add("has-js")</script>';
+    const GEO_LOADING = '<div class="geo-loading" style="min-height:70vh;align-items:center;justify-content:center">'
+      + '<div style="width:34px;height:34px;border:3px solid #e7ecf3;border-top-color:#0a66c2;border-radius:50%;animation:geospin .8s linear infinite"></div></div>';
+    html = html.replace('<div id="root"></div>', '<div id="root">' + GEO_LOADING + '<div class="geo-shell">' + content + '</div></div>');
 
     const ld = {
       '@context': 'https://schema.org',
@@ -270,7 +278,7 @@ export async function servicesOgHandler(req, res) {
       ]
     };
     const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
-    html = html.replace('</head>', ldScript + '</head>');
+    html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
