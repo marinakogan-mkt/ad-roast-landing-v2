@@ -5596,7 +5596,7 @@
                     onClick={goToLiveAds}
                     style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }}
                     className="self-center sm:self-stretch px-7 py-3 border rounded-full font-semibold text-base whitespace-nowrap hover:opacity-90 transition-opacity cta-glow"
-                  >Roast my ads free →</button>
+                  >Roast my ad free →</button>
                 </div>
                 {heroErr && <p className="mt-2" style={{ fontSize: '14px', color: '#dc2626' }}>{heroErr}</p>}
                 {/* Supporting lines, aligned under the input (left), not centered under the blue CTA */}
@@ -5766,7 +5766,7 @@
               <div className="rounded-2xl border border-gray-200 bg-white p-6 flex flex-col">
                 <h3 className="font-semibold text-gray-900 mb-2" style={{ fontSize: 18 }}>Not sure where the message breaks?</h3>
                 <p className="text-gray-500 mb-5 flex-1" style={{ fontSize: 14.5, lineHeight: 1.6 }}>Roast one ad free and get your first diagnosis in two minutes. Any industry, any platform.</p>
-                <button onClick={() => { const el = document.getElementById('hero-site'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => el.focus(), 300); } }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-6 py-2.5 border rounded-full font-semibold text-sm hover:opacity-90 transition-opacity self-start">Roast my ads free &rarr;</button>
+                <button onClick={() => { const el = document.getElementById('hero-site'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => el.focus(), 300); } }} style={{ backgroundColor: '#0a66c2', color: '#fff', borderColor: '#0a66c2' }} className="px-6 py-2.5 border rounded-full font-semibold text-sm hover:opacity-90 transition-opacity self-start">Roast my ad free &rarr;</button>
               </div>
               {/* Route 2 - the B2B-software human service */}
               <div className="rounded-2xl border-2 p-6 flex flex-col" style={{ borderColor: '#0a66c2', background: '#f7f9fc' }}>
@@ -7205,7 +7205,7 @@
                 const weakest = areas.slice().sort((a, b) => a.s - b.s)[0];
                 const OPTIONS = {
                   review:     { tag: 'Team review', color: '#0a66c2', title: 'Get the team on your roast',   q: 'Want the team to weigh in?',  kind: 'linkedin' },
-                  diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast another ad', href: '/board' },
+                  diy:        { tag: 'Do it yourself',  color: '#0a66c2', title: 'Fix it yourself',      q: 'Rather run with it solo?', cta: 'Roast my ad free', href: '/?home=1' },
                   withyou:    { tag: 'Do it with you',  color: '#0a66c2', title: 'Campaign Repositioning Sprint',    q: 'Want it fixed with you?',  cta: 'See the roadmap', href: '/services#deliverables', meta: '10 days' },
                   doneforyou: { tag: 'Done for you',    color: '#0a66c2', title: 'Full Rebuild',          q: 'Want it off your plate?',  cta: 'See the service', href: '/services#work-with-us', meta: 'Managed' },
                 };
