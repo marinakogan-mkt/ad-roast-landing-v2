@@ -5649,11 +5649,11 @@
                 const fc = t.fit <= 3 ? '#dc2626' : t.fit <= 6 ? '#d97706' : '#0a66c2';
                 return (
                   <a key={t.slug} href={"/b/" + t.slug} title={"See the " + t.name + " ad board"} className="group relative flex items-center gap-3 rounded-2xl border bg-white no-underline transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg" style={{ height: 74, padding: '0 16px', borderColor: '#e8ecf3' }}>
-                    <span className="flex items-center gap-3 transition-all duration-200 lg:grayscale lg:opacity-80 lg:group-hover:grayscale-0 lg:group-hover:opacity-100">
+                    <span className="flex items-center gap-3 transition-all duration-200 grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100">
                       <BrandLogo domain={t.domain} name={t.name} initial={t.name.charAt(0)} color="#334155" size={30} radius={7} />
                       <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{t.name}</span>
                     </span>
-                    <span className="absolute inline-flex items-center gap-1 rounded-full bg-white transition-all duration-200 lg:opacity-0 lg:-translate-y-1.5 lg:group-hover:opacity-100 lg:group-hover:translate-y-0" style={{ top: -10, right: -8, padding: '3px 5px 3px 8px', border: '1px solid ' + fc + '55', boxShadow: '0 5px 14px -4px rgba(11,15,26,.3)', pointerEvents: 'none' }}>
+                    <span className="absolute inline-flex items-center gap-1 rounded-full bg-white transition-all duration-200 opacity-0 -translate-y-1.5 group-hover:opacity-100 group-hover:translate-y-0" style={{ top: -10, right: -8, padding: '3px 5px 3px 8px', border: '1px solid ' + fc + '55', boxShadow: '0 5px 14px -4px rgba(11,15,26,.3)', pointerEvents: 'none' }}>
                       <span style={{ fontSize: 8, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: fc }}>Buyer fit</span>
                       <span className="grid place-items-center text-white" style={{ minWidth: 26, height: 16, borderRadius: 5, background: fc, fontSize: 10.5, fontWeight: 800, padding: '0 5px' }}>{t.fit}</span>
                     </span>
