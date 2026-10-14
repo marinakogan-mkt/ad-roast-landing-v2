@@ -661,7 +661,10 @@
       // so it works in local preview too.
       const RoastEmbed = () => {
         const wrapRef = React.useRef(null);
+        const frameRef = React.useRef(null);
         const [load, setLoad] = useState(false);
+        const [step, setStep] = useState(0);
+        const [tour, setTour] = useState(true);
         useEffect(() => {
           const el = wrapRef.current;
           if (!el || typeof IntersectionObserver === 'undefined') { setLoad(true); return; }
@@ -669,6 +672,27 @@
           io.observe(el);
           return () => io.disconnect();
         }, []);
+        /* Guided tour OVER the embedded roast. The iframe is same-origin on a real deploy
+           (relative src), so we can scroll the real report to each part on click. find = heading
+           text to jump to; frac = proportional fallback when the heading is not found. */
+        const TOUR = [
+          { t: 'The ad, scored', b: 'The creative, scored against the buyer it should convert. A strong ad earns the click.', find: '', frac: 0 },
+          { t: "Where you're losing the click", b: "After the click, the ad's promise disappears. That gap is where the demos leak.", find: "WHERE YOU'RE LOSING THE CLICK", frac: 0.4 },
+          { t: 'Ad vs the landing page', b: 'The message-match score: how well the page keeps the exact promise the ad made.', find: 'LANDING', frac: 0.65 },
+          { t: 'The fixes', b: 'Rewritten and ranked by what moves demos, so the biggest win ships first.', find: 'FIX', frac: 0.95 }
+        ];
+        const scrollTo = (i) => {
+          try {
+            const f = frameRef.current; if (!f) return;
+            const w = f.contentWindow, d = f.contentDocument; if (!w || !d) return;
+            const s = TOUR[i]; let y = null;
+            if (s.find) { const el = [].slice.call(d.querySelectorAll('h1,h2,h3,p,div,span')).find((x) => ((x.textContent || '').trim().toUpperCase().indexOf(s.find) === 0)); if (el) y = el.getBoundingClientRect().top + w.scrollY - 70; }
+            if (y == null) { const sh = (d.body && d.body.scrollHeight) || 2000; y = sh * s.frac; }
+            w.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+          } catch (e) {}
+        };
+        const go = (i) => { setStep(i); scrollTo(i); };
+        const pinStyle = (on) => ({ pointerEvents: 'auto', width: 28, height: 28, borderRadius: 999, border: '2px solid #fff', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? '#0a2540' : '#0a66c2', boxShadow: '0 2px 8px rgba(10,102,194,.5)', transition: 'background .15s, transform .15s' });
         return (
           <div ref={wrapRef} className="reveal max-w-4xl mx-auto">
             <div className="text-center mb-4"><span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: '#0a66c2' }}><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />A real roast, live</span></div>
@@ -677,13 +701,30 @@
                 <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#f87171' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#fbbf24' }} /><span className="w-2.5 h-2.5 rounded-full" style={{ background: '#34d399' }} />
                 <span className="ml-3 text-[11px] text-gray-400 truncate">adroast.in/report &middot; Webflow</span>
               </div>
-              <div style={{ height: 'min(68vh, 600px)' }}>
-                {load
-                  ? <iframe src="https://www.adroast.in/report/c90f1f39" title="A real AdRoast roast of Webflow" loading="lazy" onLoad={(e) => { try { const w = e.target.contentWindow, d = e.target.contentDocument; if (!d) return; const go = () => { try { const el = [...d.querySelectorAll('*')].find((x) => (x.textContent || '').trim() === "WHERE YOU'RE LOSING THE CLICK"); if (el) w.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + w.scrollY - 64)); } catch (err) {} }; setTimeout(go, 900); setTimeout(go, 1800); } catch (err) {} }} style={{ width: '100%', height: '100%', border: 0, display: 'block' }} />
-                  : <div className="w-full h-full grid place-items-center text-gray-300 text-sm">Loading a real roast&hellip;</div>}
+              <div style={{ height: 'min(68vh, 600px)', position: 'relative' }}>
+                {load ? (
+                  <React.Fragment>
+                    <iframe ref={frameRef} src="/report/c90f1f39" title="A real AdRoast roast of Webflow" loading="lazy" onLoad={() => { setTimeout(() => scrollTo(step), 700); }} style={{ width: '100%', height: '100%', border: 0, display: 'block' }} />
+                    {tour ? (
+                      <React.Fragment>
+                        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(255,255,255,.9), rgba(255,255,255,0))' }}>
+                          {TOUR.map((s, i) => (<button key={i} onClick={() => go(i)} aria-label={s.t} style={pinStyle(step === i)}>{i + 1}</button>))}
+                        </div>
+                        <div style={{ position: 'absolute', top: 14, right: 14, width: 250, maxWidth: '72%', background: '#0a2540', color: '#fff', borderRadius: 12, padding: '12px 14px', boxShadow: '0 16px 40px rgba(11,15,26,.4)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}><div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{TOUR[step].t}</div><span style={{ fontSize: 10, color: '#8fa6c2', whiteSpace: 'nowrap' }}>{(step + 1) + ' / ' + TOUR.length}</span></div>
+                          <div style={{ fontSize: 12.5, lineHeight: 1.5, color: '#cdd7e5', marginBottom: 10 }}>{TOUR[step].b}</div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => go(Math.max(0, step - 1))} style={{ visibility: step === 0 ? 'hidden' : 'visible', flex: 1, fontSize: 11, background: '#1b3350', color: '#cdd7e5', border: 'none', borderRadius: 7, padding: 6, cursor: 'pointer' }}>Back</button>
+                            <button onClick={() => { if (step >= TOUR.length - 1) setTour(false); else go(step + 1); }} style={{ flex: 1, fontSize: 11, background: '#0a66c2', color: '#fff', border: 'none', borderRadius: 7, padding: 6, cursor: 'pointer' }}>{step >= TOUR.length - 1 ? 'Done' : 'Next'}</button>
+                          </div>
+                        </div>
+                      </React.Fragment>
+                    ) : null}
+                  </React.Fragment>
+                ) : (<div className="w-full h-full grid place-items-center text-gray-300 text-sm">Loading a real roast&hellip;</div>)}
               </div>
             </div>
-            <p className="text-center text-xs text-gray-400 mt-3">A live roast of Webflow&rsquo;s ad. Scroll inside to explore it, or <a href="/report/c90f1f39" target="_blank" rel="noopener" className="font-semibold no-underline" style={{ color: '#0a66c2' }}>open it full-size &rarr;</a></p>
+            <p className="text-center text-xs text-gray-400 mt-3">A live roast of Webflow&rsquo;s ad. <button onClick={() => { setTour(true); go(0); }} className="font-semibold bg-transparent border-none cursor-pointer p-0" style={{ color: '#0a66c2' }}>Take the tour</button>, or <a href="/report/c90f1f39" target="_blank" rel="noopener" className="font-semibold no-underline" style={{ color: '#0a66c2' }}>open it full-size &rarr;</a></p>
           </div>
         );
       };
