@@ -3184,6 +3184,7 @@
       const siteUrlRef = React.useRef(null); // focus this when the ad page can't be read, so the user types the advertiser's site
       const [companyName, setCompanyName] = useState(''); // advertiser name from ICP auto-detect, shown atop the roast
       const [adLink, setAdLink] = useState(''); // the ad-library URL being roasted, shown in the "what's being roasted" showcase
+      const [landingInput, setLandingInput] = useState(''); // landing URL for the roasted ad's report; board roasts set it via payload.landingUrl (fixes a crash: these were referenced in AdRoastApp but only declared in AdLibraryView)
       const [lpCopyInput, setLpCopyInput] = useState(''); // manual landing-page copy when the auto-scrape couldn't read the page
       const [landingGate, setLandingGate] = useState(null); // { status:'unreadable'|'missing', url } when the roast stopped to ask for a readable landing
       const [icpGate, setIcpGate] = useState(null); // { reason:'weak'|'missing', website, icp } when the roast stopped because the buyer couldn't be read accurately
