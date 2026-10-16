@@ -32,6 +32,7 @@ import crypto from 'crypto';
 import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
+import { pingNewBoard } from './_indexnow.js';
 
 // Admin emails (the portal master role) — the only accounts allowed to force a re-score of a board.
 const ADMIN_EMAILS = new Set(((PORTAL_ROLES.find(r => r.mode === 'master') || {}).emails || []).map(e => String(e).toLowerCase()));
@@ -720,7 +721,8 @@ ${items}
             .map(a => ({ head: String(a.head || a.headline).slice(0, 200), score: a.score, verdict: a.verdict ? String(a.verdict).slice(0, 200) : '', plat: a.plat || '' }));
           if (geoAds.length) {
             await _redis.set('ads:geo:' + domKey, JSON.stringify(geoAds), { ex: 60 * 60 * 24 * 30 });
-            try { await _redis.sadd('geo:companies', domKey); } catch (e) {}
+            // First time this board is public: ping IndexNow (deduped, capped, never throws).
+            try { if ((await _redis.sadd('geo:companies', domKey)) === 1) await pingNewBoard(_redis, domKey); } catch (e) {}
             // Display name for the public board title when there is no positioning record
             // ("Orca Security", not "Orcasecurity"). Only kept when it matches the domain label,
             // so a caller can't put an arbitrary name on a public, indexable page.
@@ -770,7 +772,7 @@ ${items}
             const gk = String(cached.domain || domain || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
             if (gk) {
               await _redis.set('geo:icp:' + gk, JSON.stringify({ company: cached.company, website: cached.website || cached.url || '', icp_text: cached.icp_text || '', summary: cached.summary || '', tags: Array.isArray(cached.tags) ? cached.tags.slice(0, 8) : [] }), { ex: ICP_CACHE_TTL });
-              await _redis.sadd('geo:companies', gk);
+              if ((await _redis.sadd('geo:companies', gk)) === 1) await pingNewBoard(_redis, gk);
             }
           } catch (e) {}
         }
@@ -872,7 +874,7 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
         const gk = String(domain || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
         if (gk) {
           await _redis.set('geo:icp:' + gk, JSON.stringify({ company: icp.company, website: icp.website || url, icp_text: icp.icp_text || '', summary: icp.summary || '', tags: Array.isArray(icp.tags) ? icp.tags.slice(0, 8) : [] }), { ex: ICP_CACHE_TTL });
-          await _redis.sadd('geo:companies', gk);
+          if ((await _redis.sadd('geo:companies', gk)) === 1) await pingNewBoard(_redis, gk);
         }
       } catch (e) {}
     }
