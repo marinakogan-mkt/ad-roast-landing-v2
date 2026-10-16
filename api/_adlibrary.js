@@ -285,6 +285,15 @@ function cleanVerdict(v) {
   return /[.!?]$/.test(out) ? out : out + '.';
 }
 
+// Text the scorer READ off a Google image creative (head/body), cleaned. Only ever used when the
+// pulled ad had no copy of its own, so a LinkedIn/Meta ad keeps its real text.
+const _ocr = (v) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+// A title that DESCRIBES the ad ("CDP Starter Kit Display Ad", "M365 Management Tool Ad") instead of
+// quoting it. The prompt forbids it; this is the belt and braces, so a described title never becomes
+// the ad's headline on the board (a prospect would see copy they never wrote).
+const DESCRIBED_TITLE = /\bad\s*$|\b(display|banner|image) creative\s*$|^(ad|sponsored|promoted)?\s*(image|photo|graphic|logo|picture)s?$/i;
+const _ownWords = (v) => { const s = String(v || '').trim(); return s && !DESCRIBED_TITLE.test(s) ? s : ''; };
+
 async function scoreAds(ads, icp) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key || !icp || !ads.length) return ads;
@@ -317,7 +326,9 @@ async function scoreAds(ads, icp) {
     }
   }
   content[0].text = `ICP: ${icp}\n\nScore each ad 1-10 for how well it fits this ICP and earns the click (1 = severe mismatch, 10 = excellent). Several ads include their creative image below; READ the copy/text rendered on each creative and judge it as the ad's copy. Ads:\n${lines.join('\n')}`;
-  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"title":"3 to 6 word name for the ad","verdict":"one short diagnosis line","tags":["2 to 4 short labels"],"flag":"OMIT normally; set to \"capture_fail\" ONLY when what was captured is NOT the advertiser's real ad, per the CAPTURE ARTIFACT rule below"}. The title names the ad in a list: for an image ad with no headline text, READ the main line printed on the creative and use that (or a short plain descriptor of the offer), under 6 words, no trailing period. The verdict is ONE short scannable line (max ~14 words) naming the single biggest reason this ad wins or loses the intended buyer: a diagnosis, not a prescription. Do NOT write a paragraph, and do NOT include a fix or an instruction verb (add, make, change, use, swap, put, rewrite); the fix is delivered separately in the full roast. The tags are 2 to 4 VERY short labels (1 to 3 words each, Title Case, no punctuation) that name the specific levers behind the score, so the reader scans them like chips: for a weak ad the missing/broken levers (e.g. "No proof", "Generic hook", "No differentiator", "Weak CTA", "Vague offer", "Wrong buyer"); for a strong ad what it does well (e.g. "Sharp hook", "Clear proof", "Strong CTA"). Base everything on the ad's actual copy (from the text line and, when present, the words on its creative image).
+  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"title":"3 to 6 word name for the ad","verdict":"one short diagnosis line","tags":["2 to 4 short labels"],"flag":"OMIT normally; set to \"capture_fail\" ONLY when what was captured is NOT the advertiser's real ad, per the CAPTURE ARTIFACT rule below"}. The title names the ad in a list using the ad's OWN words (its headline or the main line printed on the creative, shortened if needed), under 6 words, no trailing period. NEVER describe the ad instead of quoting it: no invented category labels and never end the title with "Ad", "Display Ad", "Banner" or "Creative" (WRONG: "CDP Starter Kit Display Ad", "M365 Management Tool Ad"; RIGHT: "CDP Starter Kit", "Microsoft 365 management tool").
+
+READ THE CREATIVE (OCR): when an ad's text line has an EMPTY headline AND an EMPTY body (Google image ads come this way), its copy exists only on the creative image. For those ads ONLY, also return "head" = the ad's headline (the most prominent line of ad copy) and "body" = the rest of its ad copy (description, offer, CTA text), both transcribed VERBATIM from the image, exactly as printed: no paraphrase, no summary, no description of the visual. Leave out the advertiser name, the display URL/domain and UI chrome ("Sponsored", menus, the logo). Use "" for body when only one line of copy exists. Omit "head"/"body" for ads whose text line already has copy. If such an ad's creative has NO readable ad copy at all (pure imagery or illustration, nothing to read besides at most a logo or brand name), do NOT invent a title or copy and do NOT judge it: return {"i":N,"textless":true,"score":null,"title":"","verdict":"","tags":[]} so it is shown unscored and left out of every average (a capture artifact per the CAPTURE ARTIFACT rule still takes "flag" instead). The verdict is ONE short scannable line (max ~14 words) naming the single biggest reason this ad wins or loses the intended buyer: a diagnosis, not a prescription. Do NOT write a paragraph, and do NOT include a fix or an instruction verb (add, make, change, use, swap, put, rewrite); the fix is delivered separately in the full roast. The tags are 2 to 4 VERY short labels (1 to 3 words each, Title Case, no punctuation) that name the specific levers behind the score, so the reader scans them like chips: for a weak ad the missing/broken levers (e.g. "No proof", "Generic hook", "No differentiator", "Weak CTA", "Vague offer", "Wrong buyer"); for a strong ad what it does well (e.g. "Sharp hook", "Clear proof", "Strong CTA"). Base everything on the ad's actual copy (from the text line and, when present, the words on its creative image).
 
 SCORING SCALE (calibrate consistently, the SAME ad must always land on the same score, do NOT cluster at 0-1 or 9-10):
 1-3 = actively hurting the click (severe ICP mismatch, no clear value, confusing).
@@ -356,7 +367,9 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
       // max_tokens 2000: headroom for up to 14 terse JSON rows. A truncated output fails the JSON
       // parse and wastes the WHOLE call (incl. the expensive vision input), so the cap sits just
       // above real need rather than at it. Billing is by actual output, so the cap is not a cost.
-      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 2000, temperature: 0, system: sys, messages: [{ role: 'user', content }] }),
+      // 3000 (2026-10-16): Google rows now also carry the OCR'd head/body, and an admin re-score
+      // sends up to 18 rows in one call, which could truncate at 2000.
+      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 3000, temperature: 0, system: sys, messages: [{ role: 'user', content }] }),
     });
     const d = await r.json().catch(() => null);
     // HARD FAILURE: the API returned an error (rate limit, no credit, overloaded) or no content.
@@ -402,7 +415,12 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
       if (byI[i] && byI[i].flag === 'capture_fail') return { ...a, _captureFail: true };
       const blind = !(a.head || '').trim() && !(a.body || '').trim() && !imgByIdx[i];
       if (blind) return { ...a, _captureFail: true };
-      return byI[i] ? { ...a, score: byI[i].score, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.filter((t) => !ARTIFACT_TAG.test(String(t))).slice(0, 4) : [], title: byI[i].title || null, head: a.head || byI[i].title || '' } : a;
+      if (!byI[i]) return a;
+      // Image-only ad with no readable copy: shown unscored (greyed), never with an invented title.
+      if (byI[i].textless === true && !(a.head || '').trim() && !(a.body || '').trim()) return { ...a, textless: true };
+      if (typeof byI[i].score !== 'number') return a;
+      const t = _ownWords(byI[i].title);
+      return { ...a, score: byI[i].score, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.filter((t) => !ARTIFACT_TAG.test(String(t))).slice(0, 4) : [], title: t || null, ocrHead: _ocr(byI[i].head), ocrBody: _ocr(byI[i].body), head: a.head || _ocr(byI[i].head) || t || '', body: a.body || _ocr(byI[i].body) || '' };
     });
   } catch (e) {
     // A parse error or a thrown hard-failure: re-throw so scoreAdsCached reports it instead of
@@ -505,7 +523,7 @@ async function enforceBrandFloor(ads, redis) {
 export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0 } = {}) {
   if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0, pending: 0 };
   if (!redis) {
-    try { const scored = await scoreAds(ads, icp); const n = scored.filter(a => typeof a.score === 'number').length; return { ads: scored, scoredNew: n, reused: 0, pending: ads.length - n }; }
+    try { const scored = await scoreAds(ads, icp); const n = scored.filter(a => typeof a.score === 'number' || a.textless).length; return { ads: scored, scoredNew: n, reused: 0, pending: ads.length - n }; }
     catch (e) { return { ads, scoredNew: 0, reused: 0, pending: ads.length, scoreError: e.message, rateLimited: !!e.rateLimited }; }
   }
   const ih = icpHash(icp);
@@ -524,7 +542,10 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // proof or visual hook; LinkedIn and Meta stay cold-audience). v5 (2026-09-14): one-line diagnosis +
   // chips. v4 (2026-09-14): diagnosis-not-fix verdict (what is off + WHY it loses the buyer, no fix).
   // v3 (2026-09-12): localization / blank / brand rules.
-  const keyOf = (a) => 'adscore:v13:' + ih + ':' + creativeSig(a);
+  // v14 (2026-10-16), GOOGLE ONLY: Google image ads now get their copy READ off the creative
+  // (head/body by OCR) and a "textless" flag instead of a described title ("CDP Starter Kit Display
+  // Ad"). LinkedIn/Meta carry their own copy, so their v13 scores stay valid and are NOT re-billed.
+  const keyOf = (a) => 'adscore:' + (/google/i.test(String(a.plat || '')) ? 'v14' : 'v13') + ':' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
@@ -534,7 +555,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
         const o = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null;
         // A cached capture-failure counts as "known" so the ad leaves `need` (no re-score loop) and
         // still gets dropped downstream. Otherwise only a real numeric score is a cache hit.
-        if (o && (typeof o.score === 'number' || o._captureFail)) cachedBySig[creativeSig(a)] = o;
+        if (o && (typeof o.score === 'number' || o._captureFail || o.textless)) cachedBySig[creativeSig(a)] = o;
       });
     } catch (e) { /* miss -> score all */ }
   }
@@ -556,8 +577,12 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
         // client's re-score. Short TTL so a creative that only failed transiently (a timeout / 429)
         // comes back and scores fairly within the day instead of staying hidden.
         if (a._captureFail) { failBySig[creativeSig(a)] = true; writes.push(redis.set(keyOf(a), JSON.stringify({ _captureFail: true }), { ex: 60 * 60 * 12 })); continue; }
+        // No readable copy on the creative: remember it (it won't grow text) so it leaves `need`.
+        if (a.textless) { const o = { textless: true }; freshBySig[creativeSig(a)] = o; writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL })); continue; }
         if (typeof a.score !== 'number') continue;
         const o = { score: a.score, verdict: a.verdict, tags: Array.isArray(a.tags) ? a.tags.slice(0, 4) : [], title: a.title || null };
+        if (a.ocrHead) o.head = a.ocrHead;
+        if (a.ocrBody) o.body = a.ocrBody;
         freshBySig[creativeSig(a)] = o;
         writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL }));
       }
@@ -573,7 +598,9 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   const out = ads.map(a => {
     const o = cachedBySig[creativeSig(a)] || freshBySig[creativeSig(a)];
     if (failBySig[creativeSig(a)] || (o && o._captureFail)) return { ...a, _captureFail: true }; // our capture failed; isJunkCreative drops it
-    return o ? ({ ...a, score: o.score, verdict: cleanVerdict(o.verdict), tags: Array.isArray(o.tags) ? o.tags.filter((t) => !ARTIFACT_TAG.test(String(t))) : [], title: o.title || a.title || null, head: a.head || o.title || '' }) : a;
+    if (o && o.textless) return { ...a, textless: true }; // unscored, greyed, out of every average
+    // head/body: the ad's own copy, else the copy READ off its creative. Never a described title.
+    return o ? ({ ...a, score: o.score, verdict: cleanVerdict(o.verdict), tags: Array.isArray(o.tags) ? o.tags.filter((t) => !ARTIFACT_TAG.test(String(t))) : [], title: _ownWords(o.title) || a.title || null, head: a.head || o.head || _ownWords(o.title) || '', body: a.body || o.body || '' }) : a;
   });
   const outChecked = await enforceBrandFloor(out, redis);
   // scoredNew = creatives that ACTUALLY got a number this call (not what we tried). pending falls
