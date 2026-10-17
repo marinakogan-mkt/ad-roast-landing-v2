@@ -25,6 +25,7 @@ import {
 import { peekAccount } from './_tokens.js';
 import { onNewSignup } from './_welcome.js';
 import { fetchLinkedInAds } from './_adlibrary.js';
+import { handleProtectedResource, handleAuthServerMetadata, handleRegister, handleAuthorize, handleToken, safeNext } from './_oauth.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -564,6 +565,8 @@ async function handleVerify(req, res) {
   res.setHeader('Set-Cookie', buildSessionCookie(sessionToken));
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, must-revalidate');
+  const next = isRoast ? safeNext(magicData.next) : '';
+  if (next) return res.status(200).send(htmlRedirect(next, 'Signed in. Back to connecting AdRoast.'));
   return res.status(200).send(htmlRedirect(isRoast ? '/?signedin=1' : '/#portal', isRoast ? 'Signed in. Back to your roast.' : 'Welcome to the portal.'));
 }
 
@@ -577,8 +580,11 @@ async function handleGoogleStart(req, res) {
 
   const mode = (req.query?.mode === 'roast') ? 'roast' : 'portal';
   const state = randomToken(24);
+  /* An MCP connector sign-in passes next=/oauth/authorize?rid=... so Google brings the user back
+     to the consent screen. Stored as 'roast|<next>'; the callback splits it. */
+  const next = mode === 'roast' ? safeNext(req.query?.next) : '';
   try {
-    await redis.set(`auth:oauth_state:${state}`, mode, { ex: 600 });
+    await redis.set(`auth:oauth_state:${state}`, next ? `roast|${next}` : mode, { ex: 600 });
   } catch (e) {
     return res.status(500).send('Could not start Google sign-in. Please try again.');
   }
@@ -615,7 +621,8 @@ async function handleRoastLink(req, res) {
 
   const token = randomToken(24);
   try {
-    await redis.set(`auth:magic:${token}`, JSON.stringify({ email, mode: 'roast', createdAt: Date.now() }), { ex: 15 * 60 });
+    const next = safeNext(body.next);
+    await redis.set(`auth:magic:${token}`, JSON.stringify({ email, mode: 'roast', createdAt: Date.now(), ...(next ? { next } : {}) }), { ex: 15 * 60 });
   } catch (e) {
     return res.status(500).json({ error: 'Could not generate a sign-in link. Please try again.' });
   }
@@ -869,6 +876,16 @@ export default async function handler(req, res) {
       case 'google-start':
         if (req.method !== 'GET') return res.status(405).send('Method not allowed');
         return await handleGoogleStart(req, res);
+      case 'oauth-prm':
+        return handleProtectedResource(req, res);
+      case 'oauth-asm':
+        return handleAuthServerMetadata(req, res);
+      case 'oauth-register':
+        return await handleRegister(req, res);
+      case 'oauth-authorize':
+        return await handleAuthorize(req, res);
+      case 'oauth-token':
+        return await handleToken(req, res);
       default:
         return res.status(400).json({ error: 'Unknown auth action' });
     }

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AdRoast for Claude: MCP connector</title>
+<meta name="description" content="Connect AdRoast to Claude and roast B2B ads and landing pages from a conversation: score an ad against its buyer, pull a company's live ads, and read saved reports.">
+<link rel="canonical" href="https://www.adroast.in/mcp">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="AdRoast">
+<meta property="og:title" content="AdRoast for Claude: MCP connector">
+<meta property="og:description" content="Roast B2B ads and landing pages from inside Claude.">
+<meta property="og:url" content="https://www.adroast.in/mcp">
+<meta property="og:image" content="https://www.adroast.in/apple-touch-icon.png">
+<link rel="icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/teardowns/roast.css">
+<style>.prose code{background:rgba(127,127,127,.15);padding:1px 6px;border-radius:4px;font-size:.92em}.prose pre{background:rgba(127,127,127,.12);padding:12px 14px;border-radius:8px;overflow-x:auto;font-size:13px}</style>
+</head>
+<body>
+<header class="bar"><div class="bar-in"><a class="brand" href="/guides"><img src="/apple-touch-icon.png" alt="AdRoast" width="24" height="24">AdRoast<span class="slash">/</span><span class="sub">Claude connector</span></a><a class="btn btn-primary cta" href="/?library=1">Roast your ads free</a></div></header>
+<main>
+<div class="wrap hero">
+<span class="eyebrow">&#128268; MCP connector</span>
+<h1>AdRoast for Claude</h1>
+<p class="lede">Roast B2B ads and the landing pages behind them without leaving Claude. Ask Claude to score an ad against its buyer, pull a company's live LinkedIn and Google ads worst first, or open a report you already ran.</p>
+</div>
+
+<div class="wrap section">
+<p class="stitle">What you need</p>
+<div class="prose">
+<p>An AdRoast account. Sign-up is free with Google or a work email, and the free plan includes one full roast. Each <code>roast_ad</code> call uses one roast from your plan, the same as a roast on the website. Paid plans are on <a href="/">adroast.in</a>.</p>
+</div>
+</div>
+
+<div class="wrap section">
+<p class="stitle">Connect it</p>
+<div class="prose">
+<p><strong>From the Claude directory:</strong> open Settings, then Connectors, find AdRoast and click Connect. Claude opens an AdRoast sign-in page; sign in with Google or an emailed link, then click Allow.</p>
+<p><strong>As a custom connector:</strong> in Claude go to Settings, Connectors, Add custom connector, and use this URL. Claude takes you through the same sign-in.</p>
+<pre>https://www.adroast.in/api/mcp</pre>
+<p><strong>Claude Code:</strong></p>
+<pre>claude mcp add --transport http adroast https://www.adroast.in/api/mcp</pre>
+<p>Scripts and other MCP clients can skip the sign-in and send a personal API key instead (AdRoast, My Account, API &amp; MCP) as <code>Authorization: Bearer ak_...</code>.</p>
+<p>To disconnect, remove the connector in Claude. Regenerating your API key in My Account cuts off every script that uses it.</p>
+</div>
+</div>
+
+<div class="wrap section">
+<p class="stitle">Tools</p>
+<div class="prose">
+<p><strong>roast_ad</strong> (writes a report): scores an ad and its landing page against the buyer it should reach. Give it the <code>landing_url</code>, plus the ad image URL and/or ad copy if you have them, and either the <code>icp</code> or the company <code>website</code> so AdRoast can infer the buyer. It returns the overall score, the ICP mismatch, ranked issues, the landing page score, a recommendation, and a link to the full report. If there is no readable landing page, or no buyer can be inferred, it asks for that instead of guessing.</p>
+<p><strong>list_live_ads</strong> (read only): give it a company website and it pulls that company's live LinkedIn and Google ads, scores each one against the inferred buyer, and lists them worst first with the fix for each.</p>
+<p><strong>get_report</strong> (read only): opens a saved roast by its report id, the id in an <code>adroast.in/?id=...</code> link.</p>
+</div>
+</div>
+
+<div class="wrap section">
+<p class="stitle">Try asking</p>
+<div class="prose">
+<p>"Pull semgrep.dev's live ads and tell me which one wastes the most budget."</p>
+<p>"Roast this LinkedIn ad. Landing page https://example.com/demo, the copy is: ... It targets heads of AppSec at Series B SaaS."</p>
+<p>"Open report abc123 and turn the fixes into three new headlines."</p>
+</div>
+</div>
+
+<div class="wrap section">
+<p class="stitle">Privacy and support</p>
+<div class="prose">
+<p>What the connector reads and stores is in the <a href="/privacy">privacy policy</a>. It only receives what Claude sends in each tool call, never your chat history. Questions or problems: <a href="mailto:marina.kogan@adroast.in">marina.kogan@adroast.in</a>.</p>
+</div>
+</div>
+</main>
+<footer class="foot-bar"><div class="wrap"><span style="display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--ink)"><img src="/apple-touch-icon.png" alt="AdRoast" width="18" height="18" style="border-radius:5px;display:block">AdRoast</span><span class="sep">/</span><span>Ad and landing page roasts for B2B SaaS</span><span class="foot-links"><a href="/guides">Guides</a><a href="/teardowns">Teardowns</a><a href="/privacy">Privacy</a><a href="/?library=1">Roast your ads</a></span></div></footer>
+</body>
+</html>

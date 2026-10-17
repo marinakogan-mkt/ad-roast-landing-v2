@@ -8,7 +8,9 @@
 // api/icp.js delegates any mcp=1 request to mcpHandler() below. It calls the existing /api/roast
 // and /api/icp over our own origin, forwarding the key so a roast counts against the account's
 // tokens exactly like an in-app roast.
+import crypto from 'crypto';
 import { Redis } from '@upstash/redis';
+import { emailForAccessToken, PRM_URL } from './_oauth.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -17,6 +19,24 @@ const redis = new Redis({
 
 const ORIGIN = 'https://www.adroast.in';
 const PROTOCOL_VERSION = '2024-11-05';
+
+// OAuth (Claude Connectors Directory): Authorization: Bearer at_... issued by api/_oauth.js.
+function oauthTokenFrom(req) {
+  const authz = req.headers['authorization'] || req.headers['Authorization'] || '';
+  const m = /^Bearer\s+(at_[a-f0-9]+)/i.exec(authz);
+  return m ? m[1] : '';
+}
+// An OAuth user may never have opened My Account, so issue their API key on first use. Same
+// keys and format as getOrCreateApiKey in api/auth.js; /api/roast only understands ak_ keys.
+async function apiKeyForEmail(email) {
+  const fwd = `roast:apikeyfor:${email}`;
+  const have = await redis.get(fwd);
+  if (have) return String(have);
+  const key = 'ak_live_' + crypto.randomBytes(24).toString('hex');
+  await redis.set(fwd, key);
+  await redis.set(`roast:apikey:${key}`, email);
+  return key;
+}
 
 function keyFrom(req) {
   const authz = req.headers['authorization'] || req.headers['Authorization'] || '';
@@ -32,7 +52,9 @@ async function emailForKey(key) {
 const TOOLS = [
   {
     name: 'roast_ad',
-    description: 'Roast a B2B ad against a buyer/ICP: scores the ad creative and its landing page, finds where it loses the click, and returns fixes. Provide the landing page URL and, ideally, the ad creative image URL and/or ad copy. If you pass a company website but no ICP, AdRoast infers the buyer from the site.',
+    title: 'Roast an ad',
+    annotations: { title: 'Roast an ad', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    description: 'Roast a B2B ad against a buyer/ICP: scores the ad creative and its landing page, finds where it loses the click, and returns fixes. Provide the landing page URL and, ideally, the ad creative image URL and/or ad copy. If you pass a company website but no ICP, AdRoast infers the buyer from the site. Each call uses one roast from the account plan and saves a report.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -49,6 +71,8 @@ const TOOLS = [
   },
   {
     name: 'list_live_ads',
+    title: "List a company's live ads",
+    annotations: { title: "List a company's live ads", readOnlyHint: true, openWorldHint: true },
     description: "Pull a company's real live ads (LinkedIn + Google) and score each one against its buyer/ICP, worst first. Give the company website.",
     inputSchema: {
       type: 'object',
@@ -58,6 +82,8 @@ const TOOLS = [
   },
   {
     name: 'get_report',
+    title: 'Get a roast report',
+    annotations: { title: 'Get a roast report', readOnlyHint: true, openWorldHint: false },
     description: 'Fetch a previously generated roast report by its id (the id in an adroast.in/?id=<id> link).',
     inputSchema: {
       type: 'object',
@@ -147,18 +173,31 @@ function rpcError(id, code, message) { return { jsonrpc: '2.0', id, error: { cod
 
 export async function mcpHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'content-type, authorization, x-api-key, mcp-protocol-version');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type, authorization, x-api-key, mcp-protocol-version, mcp-session-id');
+  res.setHeader('Access-Control-Expose-Headers', 'WWW-Authenticate');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  const key = keyFrom(req);
-  const email = await emailForKey(key);
+  let key = keyFrom(req);
+  let email = await emailForKey(key);
+  const at = oauthTokenFrom(req);
+  if (!email && at) {
+    email = await emailForAccessToken(at);
+    if (email) key = await apiKeyForEmail(email);
+  }
+  // No valid credential: 401 + resource_metadata starts Claude's OAuth sign-in. A bad/expired
+  // bearer token gets the same answer so Claude refreshes it.
+  const unauthorized = () => {
+    res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${PRM_URL}", scope="roast"`);
+    return res.status(401).json({ error: 'unauthorized', error_description: 'Sign in to AdRoast (OAuth) or pass an AdRoast API key.' });
+  };
 
   // A browser GET (no JSON-RPC) returns a friendly status so pasting the URL confirms it works.
   if (req.method === 'GET') {
     return res.status(200).json({ server: 'AdRoast MCP', ok: !!email, authenticated: !!email, transport: 'streamable-http (JSON-RPC over POST)', tools: TOOLS.map(t => t.name) });
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!email) return unauthorized();
 
   const body = req.body && typeof req.body === 'object' ? req.body : (() => { try { return JSON.parse(req.body || '{}'); } catch (e) { return {}; } })();
   // A JSON-RPC notification (no id) needs no response body.
@@ -169,7 +208,7 @@ export async function mcpHandler(req, res) {
   try {
     if (method === 'initialize') {
       const pv = (body.params && body.params.protocolVersion) || PROTOCOL_VERSION;
-      return res.status(200).json(rpcResult(id, { protocolVersion: pv, capabilities: { tools: {} }, serverInfo: { name: 'AdRoast', version: '1.0.0' } }));
+      return res.status(200).json(rpcResult(id, { protocolVersion: pv, capabilities: { tools: {} }, serverInfo: { name: 'AdRoast', title: 'AdRoast', version: '1.1.0' } }));
     }
     if (method === 'notifications/initialized' || method === 'notifications/cancelled') {
       return res.status(202).end();
@@ -179,7 +218,6 @@ export async function mcpHandler(req, res) {
       return res.status(200).json(rpcResult(id, { tools: TOOLS }));
     }
     if (method === 'tools/call') {
-      if (!email) return res.status(200).json(rpcError(id, -32001, 'Invalid or missing AdRoast API key. Add ?key=ak_... to the connector URL (get it in AdRoast -> My Account -> API & MCP).'));
       const name = body.params && body.params.name;
       const args = (body.params && body.params.arguments) || {};
       try {

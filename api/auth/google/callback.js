@@ -14,6 +14,7 @@
 import { Redis } from '@upstash/redis';
 import { findRoleByEmail, buildSessionCookie, SESSION_TTL_SECONDS } from '../_allowlist.js';
 import { onNewSignup } from '../../_welcome.js';
+import { safeNext } from '../../_oauth.js';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -64,10 +65,12 @@ export default async function handler(req, res) {
 
   /* Verify CSRF state (value encodes the flow: 'roast' = public roast sign-up, else portal) */
   let oauthMode = 'portal';
+  let oauthNext = '';
   try {
     const stateVal = await redis.get(`auth:oauth_state:${state}`);
     if (!stateVal) return res.redirect(302, '/?auth=error#portal');
-    oauthMode = (stateVal === 'roast') ? 'roast' : 'portal';
+    oauthMode = (stateVal === 'roast' || String(stateVal).startsWith('roast|')) ? 'roast' : 'portal';
+    oauthNext = safeNext(String(stateVal).split('|')[1]);
     await redis.del(`auth:oauth_state:${state}`);
   } catch (e) {
     console.error('[auth/google/callback] state check error:', e.message);
@@ -148,6 +151,7 @@ export default async function handler(req, res) {
     res.setHeader('Set-Cookie', buildSessionCookie(roastToken));
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store, must-revalidate');
+    if (oauthNext) return res.status(200).send(htmlRedirect(oauthNext, 'Signed in. Back to connecting AdRoast.'));
     return res.status(200).send(htmlRedirect('/?signedin=1', 'Signed in. Back to your roast.'));
   }
 
