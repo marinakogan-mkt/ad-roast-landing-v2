@@ -627,7 +627,13 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
   // Force RESIDENTIAL proxies — datacenter proxies (the default/free) get blocked by LinkedIn's
   // Cloudflare, which is exactly why the actor's runs were failing. Residential IPs get through, and
   // a LinkedIn scrape is small (~MBs) so it stays within Apify's free monthly credits.
-  const input = { searchTerms: [q], searchMode: 'accountOwner', countries: ['US'], dateOption: 'last-year', maxResults: 20, fetchAdDetails: false, proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'] } };
+  // dateOption: 'last-30-days' (not 'last-year') so the board shows ads CURRENTLY LIVE, not a year of
+  // history. LinkedIn's ad library has no active/paused flag and the detail page exposes no run dates,
+  // so its date filter is the only recency signal: it keeps ads that were DELIVERED (had impressions)
+  // in a rolling 30-day window ending today, regardless of when they started. An ad still running shows;
+  // one that stopped >30 days ago drops. Without this we told a prospect "your live ads" and showed
+  // 6-month-dead campaigns (Softlandia: 83 historical ads vs 5 actually live). Same value as the Jina path.
+  const input = { searchTerms: [q], searchMode: 'accountOwner', countries: ['US'], dateOption: 'last-30-days', maxResults: 20, fetchAdDetails: false, proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'] } };
   try {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), 30000); // cap wasted time when LinkedIn blocks the actor's proxies; falls back to Jina after
@@ -675,7 +681,11 @@ export async function fetchLinkedInAds({ company, domain = '', limit = 12 } = {}
     if (ap.ok && ap.ads && ap.ads.length) { const owned = ownedByAdvertiser(ap.ads, { domain, company: q }); if (owned.length) return { ...ap, ads: owned, _apify: 'ok' }; }
     apifyReason = ap.reason || 'apify_empty';
   }
-  const target = 'https://www.linkedin.com/ad-library/search?accountOwner=' + encodeURIComponent(q);
+  // &dateOption=last-30-days => only ads DELIVERED in the last 30 days (LinkedIn's own filter), so the
+  // board reflects what is CURRENTLY LIVE instead of every ad the advertiser ever ran. See the Apify
+  // path above for why: no active flag / no per-ad run dates are exposed, this date filter is the only
+  // recency signal. Verified it cuts a stale advertiser from 83 ads to 5 and drops months-dead campaigns.
+  const target = 'https://www.linkedin.com/ad-library/search?accountOwner=' + encodeURIComponent(q) + '&dateOption=last-30-days';
   // A JINA_API_KEY lifts the anonymous rate limit. BUT a depleted/invalid key returns 401/402/403
   // and would make LinkedIn fail HARDER than no key at all — so if a keyed attempt hits one of
   // those, we DROP the key and fall back to Jina's anonymous pool for the remaining attempts.
