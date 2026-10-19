@@ -173,7 +173,11 @@ export async function boardOgHandler(req, res) {
         name: title,
         description: desc,
         url: boardUrl,
-        about: { '@type': 'Organization', name: company, url: 'https://' + domain }
+        // logo: the COMPANY's own logo, resolved + re-served by our logo proxy (declared-on-site icon,
+        // then Logo.dev / Google favicon). Without it the only Organization logo a crawler finds on a
+        // board is AdRoast's own (the global org schema in index.html), so the board reads as if AdRoast
+        // were the advertiser. This pins the board's subject logo to the company, never to our brand.
+        about: { '@type': 'Organization', name: company, url: 'https://' + domain, logo: 'https://www.adroast.in/api/icp?logo=' + encodeURIComponent(domain) }
       };
       const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
       html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
@@ -192,7 +196,9 @@ export async function boardOgHandler(req, res) {
         + `<p>Learn the method: the AdRoast <a href="/guides">guides</a> cover how to <a href="/guides/audit-linkedin-ads-icp">audit ads against your ICP</a> and how to <a href="/guides/what-is-an-ad-teardown">run an ad teardown</a>.</p>`
         + '</main>';
       html = injectRoot(html, content);
-      const ld = { '@context': 'https://schema.org', '@type': 'Organization', name: posdata.company, url: posdata.website || ('https://' + domain), description: posdata.summary || posdata.icp_text || '' };
+      // logo: the company's own logo via our resolver (see the board branch above), so this positioning
+      // page does not inherit AdRoast's logo as the only Organization logo on the page.
+      const ld = { '@context': 'https://schema.org', '@type': 'Organization', name: posdata.company, url: posdata.website || ('https://' + domain), description: posdata.summary || posdata.icp_text || '', logo: 'https://www.adroast.in/api/icp?logo=' + encodeURIComponent(domain) };
       const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
       html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
     }
