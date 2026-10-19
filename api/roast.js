@@ -230,8 +230,10 @@ export default async function handler(req, res) {
   /* Bumped whenever the scoring PROMPT changes in a way that should invalidate
      cached roasts. It is part of the dedupe hash only, so a prompt fix actually
      reaches old ads instead of re-serving a result scored under the old rules.
-     p2 (2026-10-05): LOCALIZATION hard rule + Visual-Copy Match gate for text ads. */
-  const PROMPT_VERSION = 'p2';
+     p2 (2026-10-05): LOCALIZATION hard rule + Visual-Copy Match gate for text ads.
+     p3 (2026-10-19): PERSONALIZATION TOKENS hard rule, never roast unresolved merge
+     tags (%FIRSTNAME%, {{company}}, etc.) from the ad library as a defect. */
+  const PROMPT_VERSION = 'p3';
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', _version: API_VERSION });
@@ -613,6 +615,7 @@ CRITICAL RULES:
 - NEVER state what you cannot do. No capability disclaimers ("can't assess visuals", "without seeing the screenshot", "no visual provided", etc.). If you can't analyze something, skip it silently. The user sees only confident findings.
 - PUNCTUATION: no em dashes or en dashes in any field. Use commas, colons, periods, or parentheses.
 - LOCALIZATION: an ad may be localized on purpose, written in another language and aimed at a specific country. That is deliberate, not a flaw. Do NOT lower the buyer-fit judgment for the language or the geo. Read and translate the ad, then judge fit to the SAME buyer role in its own market. Never make an issue, verdict, or fix about the ad being in another language or region-specific, and never claim it lacks ICP signal or a clear buyer when the signal is simply expressed in that language. Judge substance only: hook, clarity, proof, CTA, value for its intended local buyer. HARD RULE: no issue explanation, feedback line, verdict or fix may contain the words "language", "languages", "translated", "translation", "localized", "localised", "non-English", "English-language", "foreign", "multilingual" or "bilingual", and none may name a country or region as the reason something scores low. This holds even when one ad mixes two languages inside a single unit: a headline in one language and a body in another is NOT a defect you may score, mention, or write a fix about. If the only thing "off" about an ad is the language it is written in, or that it switches language, then nothing is off: score it on substance and write every field about the substance.
+- PERSONALIZATION TOKENS: ad copy pulled from an ad library may contain unresolved personalization / merge tokens, e.g. %FIRSTNAME%, %COMPANYNAME%, {{first_name}}, {company}, [[name]], *|FNAME|*, [first_name]. These are template placeholders the ad platform fills with the real recipient's name/company at delivery; the library only ever shows the raw template, never what the person sees. They are NOT a published defect. Read each token as if it were correctly filled (treat a first-name token as a first name, a company token as the company name) and judge the substance only. HARD RULE: no issue explanation, feedback line, verdict or fix may say or imply the ad has a broken, unresolved, missing, or malformed merge tag / placeholder / token / variable, or "broken personalization", and none may treat the literal token text as copy the reader will see or dock any score for it. If the only thing "off" is an unfilled token, then nothing is off: score on substance.
 
 PLATFORM TRUST-SIGNAL RULES:
 - Google Search RSAs and all Google extensions (sitelinks, callouts, structured snippets, seller ratings) are TEXT-ONLY: they never render customer logos, vendor/certification/security/compliance badges (SOC 2, ISO 27001, G2), or screenshots inside the ad.
