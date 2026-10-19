@@ -351,6 +351,8 @@ SEGMENT / VERTICAL FIT: the ICP often covers several industries, segments, or bu
 
 LOCALIZATION: ads may be localized on purpose, written in another language and aimed at a specific country. That is deliberate, not a defect. Do NOT lower the score for the language or the geo. Read and translate the ad, then judge how well it speaks to the SAME buyer ROLE in its own market. Never make the verdict about the ad being in another language or region-specific, and never say "no ICP signal" or "unclear buyer" when the signal is simply expressed in that language. Judge substance only: hook, clarity, proof, CTA, value for its intended local buyer. HARD RULE: the verdict must NOT contain the words "language", "translated", "translation", "localized", "non-English", "foreign", or a country/region named as the reason. If the only thing "off" about an ad is that it is written in another language, nothing is off: score it on substance and write the verdict about the substance.
 
+PERSONALIZATION TOKENS: ad copy from the ad library may contain unresolved personalization / merge tokens, e.g. %FIRSTNAME%, %COMPANYNAME%, {{first_name}}, {company}, [[name]], *|FNAME|*, [first_name]. The platform fills these with the real recipient's name/company at delivery; the library only shows the raw template, never what the person sees. They are NOT a defect and NOT a capture artifact. Read each token as if correctly filled (a first-name token is a first name, a company token is the company) and judge substance only. HARD RULE: the verdict and tags must NEVER say or imply the ad has a broken, unresolved, missing or malformed merge tag / placeholder / token / variable, or "broken personalization", and must never dock the score for it. If the only thing "off" is an unfilled token, nothing is off: score on substance.
+
 PLATFORM LENS: judge each ad by the RIGHT bar for its platform (given as [Google], [LinkedIn], or [Meta]). Intent differs, so the levers differ, and you must SUPPRESS levers that do not apply on a platform rather than score them low or invent a complaint about them.
 [Google]: search / text ads are HIGH INTENT (the buyer is already searching). Judge whether the copy matches the likely query and promises a clear, specific outcome, and whether the offer looks relevant to that search. A plain look is NORMAL (a text ad has no creative), and social proof lives on the landing page, so do NOT penalize a Google search ad for "no proof" or a weak visual, and do NOT use tags like "No Proof", "Generic Hook", "Stock Photo" or any creative tag here. Use query and offer tags instead, e.g. "Off Query", "Vague Offer", "Thin Outcome", "Weak CTA", "Weak Sitelinks". EXCEPTION: a Google display or banner ad that DOES carry a creative image is judged on its visual hook like a feed ad.
 [LinkedIn]: cold B2B feed, the buyer did not ask for this. Judge the first line hook, a real point of view (punish corporate speak), in feed proof (a named customer, a number, a logo, a real human), and a CTA fit for a cold audience. Proof and POV matter a LOT here. Tags like "Weak Hook", "No POV", "Corporate Speak", "No Proof", "Cold CTA", "No Role Signal".
@@ -545,7 +547,10 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // v14 (2026-10-16), GOOGLE ONLY: Google image ads now get their copy READ off the creative
   // (head/body by OCR) and a "textless" flag instead of a described title ("CDP Starter Kit Display
   // Ad"). LinkedIn/Meta carry their own copy, so their v13 scores stay valid and are NOT re-billed.
-  const keyOf = (a) => 'adscore:' + (/google/i.test(String(a.plat || '')) ? 'v14' : 'v13') + ':' + ih + ':' + creativeSig(a);
+  // v15 (2026-10-19), LINKEDIN/META: PERSONALIZATION TOKENS rule, unresolved merge tags
+  // (%FIRSTNAME%, %COMPANYNAME%, etc.) from the ad library are template, not a defect, so they are
+  // no longer roasted (e.g. Apollo.io "Hi %FIRSTNAME%..."). Google stays v14 (just re-billed 10-16).
+  const keyOf = (a) => 'adscore:' + (/google/i.test(String(a.plat || '')) ? 'v14' : 'v15') + ':' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
