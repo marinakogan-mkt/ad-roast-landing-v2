@@ -465,7 +465,7 @@ ${items}
     const detailUrl = String(body.detailUrl || '').trim();
     const adId = String(body.adId || '').trim();
     const adBody = String(body.body || '');
-    const cacheKey = adId ? 'adland:v2:' + plat + ':' + adId : null; // v2: drop entries poisoned by the pre-fix browser render resolving to w3.org/schema.org
+    const cacheKey = adId ? 'adland:v3:' + plat + ':' + adId : null; // v3: re-resolve now that we unwrap redirect/tracker wrappers and drop bot-walls (v2 cached raw tracker URLs)
     // Hosts that are the ad PLATFORM's own site/CDN/chrome — never the landing page. We do NOT
     // exclude link shorteners (lnkd.in) or the advertiser's social pages: lnkd.in is the real click
     // destination the advertiser used and redirects to the landing (roast follows it). Mirrors the
@@ -478,6 +478,40 @@ ${items}
     const trim = (u) => String(u).replace(/[.,)\]]+$/, '');
     const fromHtml = (html) => { for (const m of String(html).matchAll(/href="(https?:\/\/[^"]+)"/gi)) { if (isLanding(m[1])) return m[1]; } return null; };
     const fromText = (t) => { for (const u of (String(t).match(/https?:\/\/[^\s<>"')]+/gi) || [])) { const c = trim(u); if (isLanding(c)) return c; } return null; };
+    // --- Click-wrapper resolution. An ad's click destination is often a redirect/tracker, NOT the
+    // landing. Unwrap the ones we can; drop the ones we can't (a bot-wall carries no destination in the
+    // URL), so we never hand back a tracker stub to pre-fill or score as the advertiser's page. A real
+    // page that merely blocks our fetch is KEPT (the roast's own landing gate handles unreadable), so
+    // only CLEAR wrappers are dropped. Case in point: li.protechts.net/index.html?ts=... is a PerimeterX
+    // bot sensor (no content, no destination) that was being served as Softlandia's landing.
+    const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, '').toLowerCase(); } catch (e) { return ''; } };
+    const DEST_PARAMS = ['url', 'u', 'target', 'dest', 'destination', 'redirect', 'redirect_url', 'redirecturl', 'r', 'to', 'link'];
+    const unwrapQuery = (u) => { try { const q = new URL(u).searchParams; for (const k of DEST_PARAMS) { const v = q.get(k); if (v && /^https?:\/\//i.test(v) && isLanding(v)) return trim(v); } } catch (e) {} return null; };
+    const SENSOR_HOST = /(^|\.)(protechts\.net|perimeterx\.net|px-cdn\.net|px-cloud\.net|humansecurity\.com)$/i; // PerimeterX / HUMAN bot walls
+    const SENSOR_BODY = /_pxparam|_pxappid|client\.protechts|window\._px\b|perimeterx|px-captcha|local sensor injection/i;
+    const WRAPPED = (u) => { try { const x = new URL(u); return SENSOR_HOST.test(hostOf(u)) || /^(li|lnk|click|clk|go|track|trk|ad|ads|r|t|e|link|redir|redirect)\./i.test(x.hostname) || /\/(redirect|redir|click|r)(\/|$)/i.test(x.pathname) || (/^\/(index\.html)?$/i.test(x.pathname) && !!x.search) || DEST_PARAMS.some(k => x.searchParams.has(k)); } catch (e) { return false; } };
+    const resolveTracker = async (u, depth = 0) => {
+      if (!u || depth > 2) return u || null;
+      const q = unwrapQuery(u); if (q) return resolveTracker(q, depth + 1);        // destination carried in the query
+      if (SENSOR_HOST.test(hostOf(u))) return null;                                // bot-wall host, nothing to follow
+      if (!WRAPPED(u)) return u;                                                    // looks like a real page: keep, don't fetch
+      try {
+        const c = new AbortController(); const tt = setTimeout(() => c.abort(), 6000);
+        const r = await fetch(u, { redirect: 'follow', signal: c.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', Accept: 'text/html,*/*' } });
+        clearTimeout(tt);
+        const finalUrl = r.url && r.url !== u ? r.url : null;
+        const html = await r.text().catch(() => '');
+        if (SENSOR_BODY.test(html)) return null;                                    // PerimeterX / sensor stub: unresolvable
+        const mref = html.match(/http-equiv=["']refresh["'][^>]*content=["'][^"']*url=([^"'>]+)/i);
+        const js = html.match(/(?:window\.)?location(?:\.href)?\s*=\s*["'](https?:\/\/[^"']+)["']/i) || html.match(/location\.replace\(\s*["'](https?:\/\/[^"']+)["']/i);
+        const lit = (mref && mref[1]) || (js && js[1]);
+        if (lit && isLanding(lit)) return resolveTracker(trim(lit), depth + 1);     // meta/JS redirect to a real page
+        if (finalUrl && isLanding(finalUrl) && hostOf(finalUrl) !== hostOf(u)) return trim(finalUrl); // HTTP-redirected to a real page
+        const text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (text.length < 40 && /<script/i.test(html)) return null;                 // script-only redirect/sensor stub
+        return u;                                                                   // real content (or a page that blocks us): keep
+      } catch (e) { return u; }                                                     // network hiccup: keep, never drop a real page
+    };
     try {
       if (_redis && cacheKey) {
         try { const c = await _redis.get(cacheKey); if (c != null) { res.setHeader('Cache-Control', 'no-store'); return res.status(200).json({ landingUrl: c === '__none__' ? null : c, source: 'cache' }); } } catch (e) {}
@@ -500,6 +534,9 @@ ${items}
       // 2. Fallback: a URL the advertiser printed in the ad copy (lead-gen ads expose no href). This
       //    is always a definitive read (it comes from data we already hold, not a live fetch).
       if (!landing && adBody) { const b = fromText(adBody); if (b) { landing = b; source = 'body'; definitive = true; } }
+      // Unwrap/resolve redirect & tracker wrappers, and drop unresolvable bot-walls (PerimeterX etc.)
+      // so we never hand back a tracker stub as the landing. A real page that only blocks our read is kept.
+      if (landing) { const resolved = await resolveTracker(landing); if (!resolved) { landing = null; source = null; } else if (resolved !== landing) { landing = resolved; source = (source || 'detail') + '+resolved'; } }
       // Cache only a definitive result (found, or a real page that genuinely had none). A transient
       // fetch failure returns null WITHOUT caching, so the next click retries instead of asking for 7d.
       if (_redis && cacheKey && definitive) { try { await _redis.set(cacheKey, landing || '__none__', { ex: 60 * 60 * 24 * 7 }); } catch (e) {} }
