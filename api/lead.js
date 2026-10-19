@@ -79,6 +79,61 @@ const generateId = () => {
   return id;
 };
 
+/* ---- Anti-fake lead capture: reject junk emails + placeholder LinkedIn ----
+   The booking/report forms used to accept any non-empty string, so leads like
+   abc@gmail.com + linkedin.com/in/yourname sailed through. These are a cheap,
+   zero-friction first gate (format + disposable domains + obvious placeholders);
+   they do NOT prove the mailbox exists (that is the verify step on booking). */
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  'mailinator.com', 'guerrillamail.com', 'guerrillamailblock.com', '10minutemail.com',
+  'tempmail.com', 'temp-mail.org', 'throwawaymail.com', 'yopmail.com', 'trashmail.com',
+  'getnada.com', 'maildrop.cc', 'sharklasers.com', 'dispostable.com', 'fakeinbox.com',
+  'mailnesia.com', 'mintemail.com', 'mohmal.com', 'emailondeck.com', 'spam4.me',
+  'tempr.email', 'discard.email', 'mailcatch.com', 'inboxbear.com', 'tmpmail.org'
+]);
+// Local-parts that are obvious placeholders / test junk, not a real person.
+const PLACEHOLDER_LOCALPARTS = new Set([
+  'test', 'tests', 'testing', 'abc', 'abcd', 'asdf', 'asd', 'qwe', 'qwerty', 'example',
+  'sample', 'noreply', 'no-reply', 'donotreply', 'none', 'null', 'na', 'xxx', 'aaa', 'fake',
+  'foo', 'bar', 'baz', 'user', 'username', 'email', 'mail', 'name', 'yourname', 'your', 'me',
+  'admin', 'demo', 'xyz', '123', '1234', 'abc123', 'nobody', 'anonymous', 'hello'
+]);
+function isValidEmail(raw) {
+  const email = String(raw || '').trim().toLowerCase();
+  if (email.length > 254) return false;
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(email)) return false;
+  const at = email.lastIndexOf('@');
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  if (!local || !domain || domain.indexOf('..') !== -1) return false;
+  if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) return false;
+  // Strip +tag and dots to catch "a.b.c" / "test+1" placeholder spellings.
+  const core = local.split('+')[0].replace(/\./g, '');
+  if (PLACEHOLDER_LOCALPARTS.has(core)) return false;
+  // A single repeated character (aaaa@, xxxx@) is never a real mailbox.
+  if (/^(.)\1{2,}$/.test(core)) return false;
+  return true;
+}
+// Placeholder LinkedIn slugs people type to get past a required field.
+const LI_PLACEHOLDER_SLUGS = new Set([
+  'yourname', 'your-name', 'yourprofile', 'your-profile', 'username', 'user-name', 'name',
+  'fullname', 'full-name', 'firstname-lastname', 'profile', 'me', 'in', 'example', 'test',
+  'johndoe', 'john-doe', 'janedoe', 'jane-doe', 'user', 'company', 'yourcompany', 'your-company'
+]);
+/* Normalize a LinkedIn URL. '' => blank (LinkedIn is OPTIONAL). null => junk/placeholder
+   the caller should reject. Otherwise a clean canonical linkedin.com URL. */
+function cleanLinkedIn(raw) {
+  const v = String(raw || '').trim();
+  if (!v) return '';
+  const m = v.match(/linkedin\.com\/(in|company|pub|school)\/([A-Za-z0-9\-_%.]+)/i);
+  if (!m) return null;
+  const kind = m[1].toLowerCase();
+  const slug = decodeURIComponent(m[2]).toLowerCase().replace(/\/+$/, '');
+  if (!slug || slug.length < 3) return null;
+  if (LI_PLACEHOLDER_SLUGS.has(slug)) return null;
+  return 'https://www.linkedin.com/' + kind + '/' + m[2].replace(/\/+$/, '');
+}
+
 export default async function handler(req, res) {
   // ---- Booking-flow lead capture (Redis) — handled before the Notion report path ----
   const action = req.method === 'GET' ? (req.query && req.query.action) : (req.body && req.body.action);
@@ -113,10 +168,13 @@ export default async function handler(req, res) {
     // Leads are keyed by email (the auto-nudge channel); LinkedIn is stored alongside.
     const email = String((req.body && req.body.email) || '').trim().toLowerCase();
     if (!email) return res.status(400).json({ error: 'email required' });
+    if (!isValidEmail(email)) return res.status(400).json({ error: 'invalid email', field: 'email', message: 'Please enter a real work email.' });
+    const linkedin = cleanLinkedIn(req.body && req.body.linkedin);
+    if (linkedin === null) return res.status(400).json({ error: 'invalid linkedin', field: 'linkedin', message: 'That LinkedIn link does not look right. Paste your profile URL or leave it blank.' });
     const key = BI_PREFIX + email;
     try {
       if (action === 'book-intent') {
-        const rec = { email, linkedin: (req.body.linkedin || '').trim(), ts: Date.now(), booked: false, followedUp: false };
+        const rec = { email, linkedin, ts: Date.now(), booked: false, followedUp: false };
         await redis.set(key, rec, { ex: RECORD_TTL });
         await redis.sadd(BI_PENDING, email);
       } else {
@@ -182,7 +240,7 @@ export default async function handler(req, res) {
     // Explicit, unticked-by-default consent from the roast report form.
     if (req.body && req.body.subscribeNewsletter) {
       const em = String(req.body.email || '').trim().toLowerCase();
-      if (em && em.includes('@')) await storeNewsletterOptIn(em, 'roast-report');
+      if (em && isValidEmail(em)) await storeNewsletterOptIn(em, 'roast-report');
     }
     
     const reportId = generateId();
