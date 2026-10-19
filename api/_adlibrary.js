@@ -21,6 +21,17 @@
 // NOTE: if ANTHROPIC_ICP_MODEL is set in the env it overrides this; unset it to use Sonnet 4.6.
 const SCORE_MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 
+// One compact line per Anthropic call so prompt-cache hits can be checked in Vercel runtime logs
+// (grep "[claude-usage]"). in = uncached input, cw = cache write, cr = cache read. Never throws.
+export function logClaudeUsage(site, model, data, extra) {
+  try {
+    const u = (data && data.usage) || null;
+    if (!u) return;
+    const cc = u.cache_creation || {};
+    console.log('[claude-usage] site=' + site + ' model=' + model + ' in=' + (u.input_tokens || 0) + ' cw=' + (u.cache_creation_input_tokens || 0) + (cc.ephemeral_1h_input_tokens ? ' cw1h=' + cc.ephemeral_1h_input_tokens : '') + ' cr=' + (u.cache_read_input_tokens || 0) + ' out=' + (u.output_tokens || 0) + ' stop=' + ((data && data.stop_reason) || '') + (extra ? ' ' + extra : ''));
+  } catch (e) { /* logging only */ }
+}
+
 function decodeHtml(s) {
   return (s || '')
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
@@ -371,9 +382,15 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
       // above real need rather than at it. Billing is by actual output, so the cap is not a cost.
       // 3000 (2026-10-16): Google rows now also carry the OCR'd head/body, and an admin re-score
       // sends up to 18 rows in one call, which could truncate at 2000.
-      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 3000, temperature: 0, system: sys, messages: [{ role: 'user', content }] }),
+      // Prompt caching (2026-10-19): `sys` is byte-identical for every board and every user (~2.9K
+      // tokens, above Sonnet 4.6's 1024 minimum), and every per-request piece (ICP, ad lines,
+      // images) lives in the user message after it. So the system block is the cache breakpoint.
+      // 1h TTL: a board scores in several batches seconds apart (limit 3/6/8) and boards from
+      // different users arrive minutes apart, so one 2x write is read many times inside the hour.
+      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 3000, temperature: 0, system: [{ type: 'text', text: sys, cache_control: { type: 'ephemeral', ttl: '1h' } }], messages: [{ role: 'user', content }] }),
     });
     const d = await r.json().catch(() => null);
+    logClaudeUsage('board-score', SCORE_MODEL, d, 'ads=' + ads.length);
     // HARD FAILURE: the API returned an error (rate limit, no credit, overloaded) or no content.
     // Previously this fell through to `return ads` (unscored) and looked identical to success, so
     // scoreAdsCached reported scoredNew and the board just never filled. THROW so the caller knows
@@ -493,9 +510,12 @@ async function classifyAdKinds(ads, redis) {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      // No cache_control: the ~100-token system prompt is far below Haiku 4.5's 4096-token
+      // cacheable minimum, so a marker would do nothing. Usage is still logged.
       body: JSON.stringify({ model: KIND_MODEL, max_tokens: 200, temperature: 0, system: sys, messages: [{ role: 'user', content: list }] }),
     });
     const d = await r.json().catch(() => null);
+    logClaudeUsage('ad-kind', KIND_MODEL, d, 'ads=' + need.length);
     const txt = d && Array.isArray(d.content) ? d.content.map(c => c.text || '').join('') : '';
     const m = txt.match(/\[[\s\S]*\]/);
     const arr = m ? JSON.parse(m[0]) : null;

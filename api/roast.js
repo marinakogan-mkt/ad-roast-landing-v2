@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { readSessionCookie } from './auth/_allowlist.js';
 import { consumeToken, peekAccount, companyKey, checkCompanyAllowed, addCompany } from './_tokens.js';
 import { videoStoryboard } from './_vframes.js';
-import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser } from './_adlibrary.js';
+import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, logClaudeUsage } from './_adlibrary.js';
 
 const _redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -771,7 +771,11 @@ Return the JSON object defined in the output contract. All fields required.`;
         // so after the first call the whole prefix bills at ~0.1x (cache read) instead
         // of full input price. Moving the ~500-token schema out of the (uncached) user
         // message and into this cached prefix is the bulk of the per-roast saving.
-        system: [{ type: 'text', text: systemPrompt + '\n\n' + OUTPUT_CONTRACT, cache_control: { type: 'ephemeral' } }],
+        // 1h TTL (2026-10-19): roasts arrive minutes apart, not seconds, so the default 5-minute entry
+        // expired between most roasts and every call paid a fresh 1.25x write (low hit rate). One 2x
+        // write per hour pays back from the 2nd roast in that hour (reads are 0.1x). Prefix (~3.3K
+        // tokens) is static: no ICP, platform or date interpolated; all of that is in userPrompt.
+        system: [{ type: 'text', text: systemPrompt + '\n\n' + OUTPUT_CONTRACT, cache_control: { type: 'ephemeral', ttl: '1h' } }],
         messages: [{ role: 'user', content: effShot
           ? [{ type: 'text', text: userPrompt }, { type: 'image', source: { type: 'base64', media_type: (effShotType || 'image/png'), data: effShot } }]
           : userPrompt }]
@@ -780,18 +784,8 @@ Return the JSON object defined in the output contract. All fields required.`;
 
     const data = await response.json();
 
-    // Per-roast token accounting so we can see real cost per roast in Vercel logs
-    // (grep "[AdRoast][usage]"). Zero effect on the response; purely observational.
-    if (data && data.usage) {
-      console.log('[AdRoast][usage]', JSON.stringify({
-        model: 'claude-sonnet-5',
-        in: data.usage.input_tokens,
-        out: data.usage.output_tokens,
-        cache_read: data.usage.cache_read_input_tokens || 0,
-        cache_write: data.usage.cache_creation_input_tokens || 0,
-        stop: data.stop_reason
-      }));
-    }
+    // Per-roast token accounting (grep "[claude-usage] site=roast" in Vercel logs). Observational only.
+    logClaudeUsage('roast', 'claude-sonnet-5', data, effShot ? 'img=1' : 'img=0');
 
     if (data.error) {
       /* Never leak the upstream provider error (billing, rate limits, model

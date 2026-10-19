@@ -16,6 +16,7 @@
 
 import { Redis } from '@upstash/redis';
 import { isPrivateSynth, readSessionCookie } from './auth/_allowlist.js';
+import { logClaudeUsage } from './_adlibrary.js';
 
 const NOTION_DATABASE_ID = 'ca2dbc99d48c4ca8ab59375cf76d62cb';
 const redis = new Redis({
@@ -382,12 +383,14 @@ PLATFORM TRUST-SIGNAL RULES (don't recommend trust signals the ad format can't a
       body: JSON.stringify({
         model: 'claude-sonnet-5',
         max_tokens: 8000,
-        // Optimization #1: prompt-cache the large static synthesis system prompt.
+        // Optimization #1: prompt-cache the synthesis system prompt. NOTE: it interpolates clientName
+        // and today's date, so the cache only hits for re-runs of the same client on the same day.
         system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: userPrompt }]
       })
     });
     const llmData = await llmRes.json();
+    logClaudeUsage('synthesize', 'claude-sonnet-5', llmData, 'audits=' + fetched.length);
     if (llmData.error) {
       return res.status(500).json({ error: llmData.error.message || 'LLM error', failures });
     }

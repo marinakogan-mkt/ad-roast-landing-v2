@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups, logClaudeUsage } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { pingNewBoard } from './_indexnow.js';
@@ -827,12 +827,15 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
         // came back slightly different). Pin it so a given site always yields the same buyer
         // and therefore the same, reproducible scores. Mirrors scoreAds() which is already 0.
         temperature: 0,
+        // No cache_control: systemPrompt is static but ~850 tokens, under Sonnet 4.6's 1024-token
+        // cacheable minimum, so a marker would not cache. ICP results are already cached 60 days per URL.
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),
     });
 
     const data = await response.json();
+    logClaudeUsage('icp', MODEL, data);
     if (data.error) {
       return res.status(500).json({ error: data.error.message || 'API error' });
     }
