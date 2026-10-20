@@ -33,6 +33,10 @@ const ACCOUNTS_SET = 'roast:accounts';
 /* Accounts with unlimited roasts (owner / internal). These never consume a
    token and always pass the entitlement gate, regardless of Redis state. */
 const UNLIMITED_EMAILS = new Set(['marina.kogan@adroast.in']);
+/* Claude Connectors Directory reviewers sign in with their own @anthropic.com Google account and
+   need every tool to work, so that domain gets the same unlimited treatment. */
+const UNLIMITED_DOMAINS = ['@anthropic.com'];
+const isUnlimited = (email) => UNLIMITED_EMAILS.has(email) || UNLIMITED_DOMAINS.some(d => String(email || '').endsWith(d));
 const UNLIMITED_BALANCE = 999999;
 
 function normEmail(email) { return String(email || '').trim().toLowerCase(); }
@@ -91,7 +95,7 @@ async function emailRenewalOnce(redis, email, acct) {
 export async function peekAccount(redis, rawEmail) {
   const email = normEmail(rawEmail);
   if (!email) return null;
-  if (UNLIMITED_EMAILS.has(email)) return { plan: 'unlimited', tokens: UNLIMITED_BALANCE };
+  if (isUnlimited(email)) return { plan: 'unlimited', tokens: UNLIMITED_BALANCE };
   const acct = await readAccount(redis, email);
   const refilled = applyReset(acct, Date.now());
   await saveAccount(redis, email, acct);
@@ -105,7 +109,7 @@ export async function peekAccount(redis, rawEmail) {
 export async function consumeToken(redis, rawEmail) {
   const email = normEmail(rawEmail);
   if (!email) return { authed: false, full: false, remaining: 0, plan: null };
-  if (UNLIMITED_EMAILS.has(email)) return { authed: true, full: true, remaining: UNLIMITED_BALANCE, plan: 'unlimited' };
+  if (isUnlimited(email)) return { authed: true, full: true, remaining: UNLIMITED_BALANCE, plan: 'unlimited' };
   const acct = await readAccount(redis, email);
   const refilled = applyReset(acct, Date.now());
   await trackPaid(redis, email, acct);
@@ -131,7 +135,7 @@ export function companyKey(company, website) {
 }
 export async function checkCompanyAllowed(redis, rawEmail, key, plan) {
   const email = normEmail(rawEmail);
-  if (UNLIMITED_EMAILS.has(email)) return { allowed: true, count: 0, limit: 999 };
+  if (isUnlimited(email)) return { allowed: true, count: 0, limit: 999 };
   const limit = PLAN_COMPANIES[plan] || 1;
   let members = [];
   try { members = (await redis.smembers(`roast:companies:${email}`)) || []; } catch (e) { members = []; }
@@ -141,7 +145,7 @@ export async function checkCompanyAllowed(redis, rawEmail, key, plan) {
 }
 export async function addCompany(redis, rawEmail, key) {
   const email = normEmail(rawEmail);
-  if (!email || !key || UNLIMITED_EMAILS.has(email)) return;
+  if (!email || !key || isUnlimited(email)) return;
   try { await redis.sadd(`roast:companies:${email}`, key); } catch (e) {}
 }
 
