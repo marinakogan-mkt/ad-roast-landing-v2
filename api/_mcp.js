@@ -93,19 +93,19 @@ const TOOLS = [
   },
 ];
 
-async function detectSite(website, key) {
+async function detectSite(website, key, asHdr) {
   const url = /^https?:\/\//i.test(website) ? website : 'https://' + website;
-  const r = await fetch(`${ORIGIN}/api/icp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key }, body: JSON.stringify({ url }) });
+  const r = await fetch(`${ORIGIN}/api/icp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, ...(asHdr ? { 'x-adroast-as': asHdr } : {}) }, body: JSON.stringify({ url }) });
   const d = await r.json().catch(() => ({}));
   return { company: d.company || d.brand || '', domain: d.domain || '', icp: d.icp_text || '' };
 }
 
-async function callTool(name, args, key) {
+async function callTool(name, args, key, asHdr) {
   args = args || {};
   if (name === 'list_live_ads') {
     if (!args.website) throw new Error('website is required');
-    const site = await detectSite(args.website, key);
-    const r = await fetch(`${ORIGIN}/api/icp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key }, body: JSON.stringify({ action: 'ads-fetch', company: site.company, domain: site.domain || args.website, icp: site.icp }) });
+    const site = await detectSite(args.website, key, asHdr);
+    const r = await fetch(`${ORIGIN}/api/icp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, ...(asHdr ? { 'x-adroast-as': asHdr } : {}) }, body: JSON.stringify({ action: 'ads-fetch', company: site.company, domain: site.domain || args.website, icp: site.icp }) });
     const d = await r.json().catch(() => ({}));
     const ads = (d.ads || []).map(a => ({ platform: a.plat, headline: a.head || a.title || '', score: a.score, verdict: a.verdict || '', fix: a.fix || '', creative: a.img || null, detail_url: a.detailUrl || null }));
     return { company: site.company || args.website, buyer: site.icp || null, count: ads.length, ads };
@@ -121,7 +121,7 @@ async function callTool(name, args, key) {
     if (!args.landing_url) throw new Error('landing_url is required');
     let icp = (args.icp || '').trim();
     let company = args.company || '';
-    if (!icp && args.website) { const site = await detectSite(args.website, key); icp = site.icp; company = company || site.company; }
+    if (!icp && args.website) { const site = await detectSite(args.website, key, asHdr); icp = site.icp; company = company || site.company; }
     if (!icp) throw new Error('Provide an icp, or a website so the buyer can be inferred.');
     const payload = {
       platform: (args.platform || 'linkedin').toLowerCase(),
@@ -133,7 +133,7 @@ async function callTool(name, args, key) {
       website: args.website || '',
       offerType: 'other',
     };
-    const r = await fetch(`${ORIGIN}/api/roast`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key }, body: JSON.stringify(payload) });
+    const r = await fetch(`${ORIGIN}/api/roast`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, ...(asHdr ? { 'x-adroast-as': asHdr } : {}) }, body: JSON.stringify(payload) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error((d && d.error) || 'Roast failed');
     // The landing and ICP gates in api/roast.js answer 200 with needsLanding /
@@ -221,7 +221,7 @@ export async function mcpHandler(req, res) {
       const name = body.params && body.params.name;
       const args = (body.params && body.params.arguments) || {};
       try {
-        const out = await callTool(name, args, key);
+        const out = await callTool(name, args, key, String(req.headers['x-adroast-as'] || '').toLowerCase() === 'apify' ? 'apify' : '');
         return res.status(200).json(rpcResult(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] }));
       } catch (e) {
         return res.status(200).json(rpcResult(id, { content: [{ type: 'text', text: 'Error: ' + (e && e.message || e) }], isError: true }));

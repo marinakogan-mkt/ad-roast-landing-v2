@@ -22,6 +22,9 @@ async function roastAccountEmail(req) {
     const apiKey = (bearer && bearer[1]) || req.headers['x-api-key'] || (req.query && req.query.key) || '';
     if (apiKey && /^ak_[A-Za-z0-9_]+$/.test(String(apiKey))) {
       const em = await _redis.get(`roast:apikey:${apiKey}`);
+      // The Apify Store Actor runs on the owner's key and sends x-adroast-as: apify, so its customers'
+      // roasts land in the service account instead of Marina's own roast list. Owner key only.
+      if (em && String(em).trim().toLowerCase() === 'marina.kogan@adroast.in' && String(req.headers['x-adroast-as'] || '').toLowerCase() === 'apify') return 'marina.kogan@brandswithpurpose.us';
       if (em) return String(em).trim().toLowerCase();
     }
     const token = readSessionCookie(req);
