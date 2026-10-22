@@ -493,9 +493,16 @@ export default async function handler(req, res) {
       // Optimization #3: trim the raw page dump to ~3.5K chars. The key elements
       // (title / H1s / meta) are extracted separately below, so a shorter body
       // keeps the signal while cutting input tokens per roast substantially.
-      landingPageContent = html
+      // Read the page body, not the site chrome: a big nav/mega-menu can fill the whole 3.5K window
+      // and push the real offer (event date, form, proof) out of what the model sees (Semgrep event
+      // page, Oct 2026: the date sat at char ~4.2K). Prefer <main>, drop nav/header/footer, and keep
+      // a one-line note that the nav exists so "menu competes with the offer" can still be judged.
+      const _mainM = html.match(/<main[\s\S]*?<\/main>/i);
+      const _navLinks = ((html.match(/<(nav|header)\b[\s\S]*?<\/\1>/gi) || []).join(' ').match(/<a\b/gi) || []).length;
+      landingPageContent = ((_mainM && _mainM[0].length > 500) ? _mainM[0] : html)
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<(nav|header|footer|svg|noscript)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
@@ -509,6 +516,7 @@ export default async function handler(req, res) {
       if (titleMatch) extractedElements.push(`Page Title: ${titleMatch[1]}`);
       if (h1Match) extractedElements.push(`H1 Headlines: ${h1Match.slice(0, 3).map(h => h.replace(/<[^>]+>/g, '')).join(' | ')}`);
       if (metaDesc) extractedElements.push(`Meta Description: ${metaDesc[1]}`);
+      if (_navLinks) extractedElements.push(`Site navigation: present (${_navLinks} links in header/nav, not shown below)`);
       
       if (extractedElements.length > 0) {
         landingPageContent = `EXTRACTED ELEMENTS:\n${extractedElements.join('\n')}\n\nPAGE CONTENT:\n${landingPageContent}`;
