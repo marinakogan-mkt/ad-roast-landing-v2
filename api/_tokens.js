@@ -32,9 +32,9 @@ const ACCOUNTS_SET = 'roast:accounts';
 
 /* Accounts with unlimited roasts (owner / internal). These never consume a
    token and always pass the entitlement gate, regardless of Redis state. */
-// marina.kogan+apify@ is the service account behind the Apify Store Actor (adroast/adroast-apify),
+// marina.kogan@brandswithpurpose.us is the service account behind the Apify Store Actor (adroast/adroast-apify),
 // so Apify customers' roasts stay out of Marina's own roast list.
-const UNLIMITED_EMAILS = new Set(['marina.kogan@adroast.in', 'marina.kogan+apify@adroast.in']);
+const UNLIMITED_EMAILS = new Set(['marina.kogan@adroast.in', 'marina.kogan@brandswithpurpose.us']);
 /* Claude Connectors Directory reviewers sign in with their own @anthropic.com Google account and
    need every tool to work, so that domain gets the same unlimited treatment. */
 const UNLIMITED_DOMAINS = ['@anthropic.com'];
