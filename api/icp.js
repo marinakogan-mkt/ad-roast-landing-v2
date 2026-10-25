@@ -337,7 +337,7 @@ ${items}
   if (req.method === 'GET' && req.query && req.query.logo !== undefined) {
     const domain = normDomain(Array.isArray(req.query.logo) ? req.query.logo[0] : req.query.logo);
     if (!domain) return res.status(400).json({ error: 'No domain' });
-    const winKey = 'logo:winner:v1:' + domain;
+    const winKey = 'logo:winner:v2:' + domain; // v2: re-resolve now that Logo.dev ranks above a tiny declared favicon (v1 cached the favicon winner)
     const tryFetch = async (u) => {
       const c = new AbortController();
       const t = setTimeout(() => c.abort(), 8000);

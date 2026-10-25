@@ -34,15 +34,16 @@ export function fallbackLogoUrls(domain) {
   ];
 }
 
-// Parse the site's <head> for the logos it declares, in quality order:
-//   1. apple-touch-icon  (usually a clean 180x180 PNG of the real logo)
-//   2. schema.org Organization.logo  (the logo the company itself points crawlers at)
-//   3. rel="icon" / "shortcut icon"  (favicon, prefer the largest declared size)
-//   4. og:image  (social banner; last resort, often not just the logo)
+// Parse the site's <head> for the logos it declares, split into two tiers so a caller can rank
+// Logo.dev's brand mark BETWEEN them (see logoCandidates):
+//   STRONG (the real brand mark): 1. apple-touch-icon (clean 180x180 PNG)  2. schema.org Organization.logo
+//   WEAK   (often tiny / not the logo): 3. rel="icon"/"shortcut icon" favicon  4. og:image social banner
+// A bare 32px favicon is worse than Logo.dev's 400px logo, so it must NOT win just for being declared.
 export function extractDeclaredLogos(html, baseUrl) {
-  const out = [];
+  const strong = [];
+  const weak = [];
   let base;
-  try { base = new URL(baseUrl); } catch (e) { return out; }
+  try { base = new URL(baseUrl); } catch (e) { return { strong, weak }; }
   // href values in HTML attributes are entity-encoded (e.g. ?w=180&amp;h=180). Decode the few
   // entities that legally appear in a URL before parsing, or the query string breaks on fetch.
   const deEntity = (s) => String(s || '').replace(/&amp;/gi, '&').replace(/&#(?:38|x26);/gi, '&').replace(/&#(?:47|x2f);/gi, '/');
@@ -53,15 +54,16 @@ export function extractDeclaredLogos(html, baseUrl) {
   const relOf = (t) => (t.match(/\brel=["']([^"']+)["']/i)?.[1] || '').toLowerCase();
   const hrefOf = (t) => t.match(/\bhref=["']([^"']+)["']/i)?.[1] || '';
   const sizeOf = (t) => { const n = parseInt(t.match(/\bsizes=["']([^"']+)["']/i)?.[1] || '', 10); return isNaN(n) ? 0 : n; };
-  const push = (u) => { if (u && !out.includes(u)) out.push(u); };
+  const seen = new Set();
+  const push = (arr, u) => { if (u && !seen.has(u)) { seen.add(u); arr.push(u); } };
 
-  // 1. apple-touch-icon(-precomposed), largest declared size first
+  // 1. apple-touch-icon(-precomposed), largest declared size first -> STRONG
   links.filter((t) => /apple-touch-icon/.test(relOf(t)))
     .map((t) => ({ url: abs(hrefOf(t)), size: sizeOf(t) || 180 }))
     .filter((x) => x.url).sort((a, b) => b.size - a.size)
-    .forEach((x) => push(x.url));
+    .forEach((x) => push(strong, x.url));
 
-  // 2. schema.org Organization.logo (from any JSON-LD block)
+  // 2. schema.org Organization.logo (from any JSON-LD block) -> STRONG
   const ld = head.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
   for (const block of ld) {
     const json = block.replace(/^<script[^>]*>/i, '').replace(/<\/script>\s*$/i, '');
@@ -72,23 +74,23 @@ export function extractDeclaredLogos(html, baseUrl) {
         if (!node || typeof node !== 'object') continue;
         const logo = node.logo;
         const url = typeof logo === 'string' ? logo : (logo && (logo.url || logo['@id']));
-        if (url) push(abs(url));
+        if (url) push(strong, abs(url));
       }
     } catch (e) { /* malformed JSON-LD: skip */ }
   }
 
-  // 3. rel="icon" / "shortcut icon", largest declared size first
+  // 3. rel="icon" / "shortcut icon" favicon, largest declared size first -> WEAK
   links.filter((t) => /(^|\s)icon(\s|$)|shortcut icon/.test(relOf(t)))
     .map((t) => ({ url: abs(hrefOf(t)), size: sizeOf(t) }))
     .filter((x) => x.url).sort((a, b) => b.size - a.size)
-    .forEach((x) => push(x.url));
+    .forEach((x) => push(weak, x.url));
 
-  // 4. og:image (last resort)
+  // 4. og:image (last resort) -> WEAK
   const og = head.match(/<meta[^>]*property=["']og:image(?::url)?["'][^>]*content=["']([^"']+)["']/i)?.[1]
     || head.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image(?::url)?["']/i)?.[1];
-  if (og) push(abs(og));
+  if (og) push(weak, abs(og));
 
-  return out;
+  return { strong, weak };
 }
 
 async function fetchHomeHtml(domain) {
@@ -110,23 +112,26 @@ async function fetchHomeHtml(domain) {
 // declares nothing — callers then fall back to fallbackLogoUrls(). refresh:true forces a re-fetch.
 export async function declaredLogoUrls(domain, { refresh = false } = {}) {
   const d = normDomain(domain);
-  if (!d) return [];
-  const key = 'logo:declared:v1:' + d;
+  if (!d) return { strong: [], weak: [] };
+  const key = 'logo:declared:v2:' + d; // v2: {strong, weak} split (v1 cached a flat array)
   if (_redis && !refresh) {
-    try { const c = await _redis.get(key); if (c != null) return typeof c === 'string' ? JSON.parse(c) : c; } catch (e) {}
+    try { const c = await _redis.get(key); if (c != null) { const v = typeof c === 'string' ? JSON.parse(c) : c; if (v && Array.isArray(v.strong) && Array.isArray(v.weak)) return v; } } catch (e) {}
   }
-  let urls = [];
+  let logos = { strong: [], weak: [] };
   try {
     const html = await fetchHomeHtml(d);
-    if (html) urls = extractDeclaredLogos(html, 'https://' + d + '/');
-  } catch (e) { urls = []; }
-  if (_redis) { try { await _redis.set(key, JSON.stringify(urls), { ex: DECLARED_TTL }); } catch (e) {} }
-  return urls;
+    if (html) logos = extractDeclaredLogos(html, 'https://' + d + '/');
+  } catch (e) { logos = { strong: [], weak: [] }; }
+  if (_redis) { try { await _redis.set(key, JSON.stringify(logos), { ex: DECLARED_TTL }); } catch (e) {} }
+  return logos;
 }
 
-// The full ordered candidate list for a domain: what the site declares, then the safety net.
-// One place, works for every domain, no list to maintain.
+// The full ordered candidate list for a domain. Strong declared marks (apple-touch-icon / schema.org
+// logo) first; then Logo.dev's brand logo, which beats a tiny declared favicon (cycode/semgrep declare
+// only a 32px favicon, so without this they resolved to a pixelated icon while Logo.dev had a 400px
+// logo); then the weak declared sources (favicon / og:image); Google's favicon as the final net.
 export async function logoCandidates(domain, opts) {
-  const declared = await declaredLogoUrls(domain, opts);
-  return [...declared, ...fallbackLogoUrls(domain)];
+  const { strong, weak } = await declaredLogoUrls(domain, opts);
+  const [logoDev, googleFav] = fallbackLogoUrls(domain);
+  return [...strong, ...(logoDev ? [logoDev] : []), ...weak, ...(googleFav ? [googleFav] : [])];
 }
