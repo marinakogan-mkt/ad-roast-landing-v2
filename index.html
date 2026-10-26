@@ -5661,6 +5661,40 @@
           {/* WHAT YOU GET: interactive showcase (screen cycles beside the explanation) */}
           <RoastShowcase />
 
+          {/* NAMED PROOF (home copy) - logo wall of SaaS we've roasted; each links to its live board.
+              Same section as the services page, surfaced on the home page as social proof. */}
+          <section className="max-w-5xl mx-auto px-4 pb-10 sm:pb-16 w-full">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide mb-4" style={{ backgroundColor: '#eef2ff', color: '#0a66c2' }}>Public teardowns of SaaS you know</div>
+            <h2 className="text-gray-900 mb-2" style={{ fontSize: 'clamp(26px, 6vw, 38px)', fontWeight: 300, letterSpacing: '-0.3px', lineHeight: 1.15 }}>We roasted ads you've seen.</h2>
+            <p className="text-gray-400 mb-7" style={{ fontSize: 15, lineHeight: 1.6, maxWidth: 560 }}>Real campaigns from well-known B2B SaaS, scored against their buyer. Hover a logo for its buyer fit, or tap to open the board.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {[
+                { name: 'Notion', domain: 'notion.so', slug: 'notion', fit: 6.7 },
+                { name: 'monday.com', domain: 'monday.com', slug: 'monday', fit: 6.2 },
+                { name: 'ClickUp', domain: 'clickup.com', slug: 'clickup', fit: 6.3 },
+                { name: 'HubSpot', domain: 'hubspot.com', slug: 'hubspot', fit: 6.4 },
+                { name: 'Canva', domain: 'canva.com', slug: 'canva', fit: 6.2 },
+                { name: 'Webflow', domain: 'webflow.com', slug: 'webflow', fit: 5.9 },
+                { name: 'Figma', domain: 'figma.com', slug: 'figma', fit: 5.8 },
+                { name: 'Asana', domain: 'asana.com', slug: 'asana', fit: 7.1 },
+              ].map((t) => {
+                const fc = t.fit <= 3 ? '#dc2626' : t.fit <= 6 ? '#d97706' : '#0a66c2';
+                return (
+                  <a key={t.slug} href={"/b/" + t.slug} title={"See the " + t.name + " ad board"} className="group relative flex items-center gap-3 rounded-2xl border bg-white no-underline transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg" style={{ height: 74, padding: '0 16px', borderColor: '#e8ecf3' }}>
+                    <span className="flex items-center gap-3 transition-all duration-200 grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100">
+                      <BrandLogo domain={t.domain} name={t.name} initial={t.name.charAt(0)} color="#334155" size={30} radius={7} />
+                      <span className="font-bold text-gray-900" style={{ fontSize: 15 }}>{t.name}</span>
+                    </span>
+                    <span className="absolute inline-flex items-center gap-1 rounded-full bg-white transition-all duration-200 opacity-0 -translate-y-1.5 group-hover:opacity-100 group-hover:translate-y-0" style={{ top: -10, right: -8, padding: '3px 5px 3px 8px', border: '1px solid ' + fc + '55', boxShadow: '0 5px 14px -4px rgba(11,15,26,.3)', pointerEvents: 'none' }}>
+                      <span style={{ fontSize: 8, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: fc }}>Buyer fit</span>
+                      <span className="grid place-items-center text-white" style={{ minWidth: 26, height: 16, borderRadius: 5, background: fc, fontSize: 10.5, fontWeight: 800, padding: '0 5px' }}>{t.fit}</span>
+                    </span>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+
           </>)}
           {/* ==== SERVICES PAGE ( /services ): work with us, pricing, results, testimonials, FAQ ==== */}
           {isServicesPage() && (<>
@@ -5718,14 +5752,14 @@
             <p className="text-gray-400 mb-7" style={{ fontSize: 15, lineHeight: 1.6, maxWidth: 560 }}>The same read we run on your campaign, on ads you already know: the real ad, the real landing page, and exactly where the right buyer slips away.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
-                { slug: 'monday', name: 'monday.com', color: '#ff3d57', initial: 'm', score: 6, hook: 'The ad promised a demo. The page opened a signup.' },
-                { slug: 'klaviyo', name: 'Klaviyo', color: '#1a1a1a', initial: 'K', score: 6, hook: 'The pun landed. The reason to switch did not.' },
-                { slug: 'webflow', name: 'Webflow', color: '#146ef5', initial: 'W', score: 7, hook: 'A sharp ad, then a vague "Learn more."' },
-                { slug: 'clickup', name: 'ClickUp', color: '#7b68ee', initial: 'C', score: 6, hook: 'The headline named the pain. The creative changed the subject.' },
+                { slug: 'monday', name: 'monday.com', domain: 'monday.com', color: '#ff3d57', initial: 'm', score: 6, hook: 'The ad promised a demo. The page opened a signup.' },
+                { slug: 'klaviyo', name: 'Klaviyo', domain: 'klaviyo.com', color: '#1a1a1a', initial: 'K', score: 6, hook: 'The pun landed. The reason to switch did not.' },
+                { slug: 'webflow', name: 'Webflow', domain: 'webflow.com', color: '#146ef5', initial: 'W', score: 7, hook: 'A sharp ad, then a vague "Learn more."' },
+                { slug: 'clickup', name: 'ClickUp', domain: 'clickup.com', color: '#7b68ee', initial: 'C', score: 6, hook: 'The headline named the pain. The creative changed the subject.' },
               ].map((t) => (
                 <a key={t.slug} href={"/teardowns/" + t.slug} className="group block rounded-2xl border bg-white no-underline p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg" style={{ borderColor: '#e8ecf3' }}>
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="grid place-items-center text-white font-bold flex-shrink-0" style={{ width: 36, height: 36, borderRadius: 9, background: t.color, fontSize: 16 }}>{t.initial}</span>
+                    <BrandLogo domain={t.domain} name={t.name} initial={t.initial} color={t.color} size={36} radius={9} />
                     <span className="font-bold text-gray-900 flex-1" style={{ fontSize: 15 }}>{t.name}</span>
                     <span className="inline-flex items-center rounded-full font-bold" style={{ background: '#fff7ed', color: '#d97706', fontSize: 12, padding: '3px 9px' }}>{t.score}/10</span>
                   </div>
