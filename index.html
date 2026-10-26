@@ -7143,21 +7143,39 @@
                       about. The deeper context (ICP, site, offer) stays in the expandable. */}
                   {showcaseVisible && (
                     <div className="mt-6 rounded-2xl border border-gray-200 bg-white overflow-hidden max-w-2xl">
-                      <div className="flex flex-col sm:flex-row">
-                        {adImg && (
-                          <div className="sm:w-44 flex-shrink-0 bg-gray-50 border-b sm:border-b-0 sm:border-r border-gray-100 flex items-center justify-center p-3">
-                            <img src={adImg} alt="The ad being roasted" className="rounded-lg object-contain" style={{ maxHeight: '11rem', maxWidth: '100%' }} />
+                      {/* The ad and the page it lands on, side by side like a teardown: the real creative
+                          next to a live screenshot of the landing page the ad sends clicks to. */}
+                      <div className="px-4 pt-4 pb-1">
+                        <div className="text-[11px] font-bold uppercase tracking-wide text-gray-400">The ad, and the page it lands on</div>
+                        <div className="font-semibold text-gray-900 mt-0.5">{roastedName || 'This ad'}{platform ? <span className="text-gray-400 font-normal capitalize"> · {platform}</span> : null}</div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-4 pt-2 pb-3">
+                        {/* THE AD */}
+                        <div className="rounded-xl border border-gray-200 overflow-hidden flex flex-col">
+                          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
+                            <span className="flex gap-1 flex-none"><span style={{ width: 7, height: 7, borderRadius: 99, background: '#f87171' }} /><span style={{ width: 7, height: 7, borderRadius: 99, background: '#fbbf24' }} /><span style={{ width: 7, height: 7, borderRadius: 99, background: '#34d399' }} /></span>
+                            <span className="text-[11px] font-semibold text-gray-500">The ad</span>
                           </div>
-                        )}
-                        <div className="p-4 flex-1 min-w-0">
-                          <div className="text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1.5">The ad we roasted</div>
-                          <div className="font-semibold text-gray-900 mb-2">{roastedName || 'This ad'}{platform ? <span className="text-gray-400 font-normal capitalize"> · {platform}</span> : null}</div>
-                          <div className="flex flex-col items-start gap-1.5">
-                            {adLink && <div className="min-w-0"><div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">The ad</div><a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:underline break-all"><Icon name="link" className="w-3.5 h-3.5 flex-shrink-0" /> View the live ad ↗</a></div>}
-                            {landingLink && <div className="min-w-0"><div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">The landing page we scored</div><a href={_href(landingLink)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:underline break-all"><Icon name="globe" className="w-3.5 h-3.5 flex-shrink-0" /> {landingLink.replace(/^https?:\/\//, '')} ↗</a></div>}
-                            {!adLink && !landingLink && <span className="text-sm text-gray-400">Ad copy pasted directly</span>}
+                          <div className="flex-1 bg-gray-50 flex items-center justify-center p-3" style={{ minHeight: 150 }}>
+                            {adImg
+                              ? <img src={adImg} alt="The ad being roasted" className="rounded-lg object-contain" style={{ maxHeight: 240, maxWidth: '100%', display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; } catch (err) {} }} />
+                              : <div className="text-center text-sm text-gray-400 px-4">{adLink ? <a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5" /> View the live ad ↗</a> : 'Ad copy pasted directly'}</div>}
                           </div>
                         </div>
+                        {/* THE LANDING PAGE */}
+                        {landingLink ? (
+                          <a href={_href(landingLink)} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-gray-200 overflow-hidden flex flex-col no-underline group" title={"Open " + landingLink.replace(/^https?:\/\//, '')}>
+                            <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
+                              <span className="flex gap-1 flex-none"><span style={{ width: 7, height: 7, borderRadius: 99, background: '#f87171' }} /><span style={{ width: 7, height: 7, borderRadius: 99, background: '#fbbf24' }} /><span style={{ width: 7, height: 7, borderRadius: 99, background: '#34d399' }} /></span>
+                              <span className="text-[11px] font-semibold text-gray-500 truncate">{landingLink.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+                            </div>
+                            <div className="flex-1 bg-gray-50 overflow-hidden" style={{ minHeight: 150, maxHeight: 260 }}>
+                              <img src={'https://image.thum.io/get/width/1000/crop/1200/' + _href(landingLink)} alt="The landing page we scored" loading="lazy" className="w-full block transition-transform duration-700 ease-out group-hover:-translate-y-2" style={{ display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; } catch (err) {} }} />
+                            </div>
+                          </a>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-gray-200 flex items-center justify-center p-6 text-center text-sm text-gray-400" style={{ minHeight: 150 }}>No landing page scored</div>
+                        )}
                       </div>
                       {roastMetaRows.length > 0 && (
                         <details className="group border-t border-gray-100">
