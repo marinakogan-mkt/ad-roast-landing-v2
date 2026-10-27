@@ -9,9 +9,7 @@ const kv = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.e
      pro     -> up to 5 companies, 100 roasts/cycle ($79/mo or $790/yr)
      lifetime-> $482 one-time, 20 roasts/cycle for life (kept as-is)
      monthly -> legacy $24/mo (kept so existing subscribers keep renewing)
-   TODO(Marina): replace the four price_REPLACE_* IDs with the real Stripe Price IDs
-   (Dashboard -> Products -> AdRoast Starter / AdRoast Pro, monthly + yearly). Until
-   then the Starter/Pro buttons will 400 at Stripe; Lifetime and legacy monthly work. */
+   Starter/Pro Price IDs are the real live ones, created 6 sep 2026. */
 const PLANS = {
   starter_monthly: { mode: 'subscription', price: 'price_1UCdppCiAk9fSDtoKEftOL59', grant: 'starter' },
   starter_yearly:  { mode: 'subscription', price: 'price_1UCdppCiAk9fSDtollHlpP0f', grant: 'starter' },
@@ -41,6 +39,8 @@ export default async function handler(req, res) {
     'line_items[0][price]': p.price,
     'line_items[0][quantity]': '1',
     'customer_email': email,
+    // Founding-agency offer (27 oct 2026): lets a buyer type a Stripe promotion code (FOUNDING39).
+    'allow_promotion_codes': 'true',
     'success_url': `${siteUrl}?payment=success&plan=${grantKey}&session_id={CHECKOUT_SESSION_ID}`,
     'cancel_url': `${siteUrl}?payment=cancelled`,
     'metadata[email]': email,
