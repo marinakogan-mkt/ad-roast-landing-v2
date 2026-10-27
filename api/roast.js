@@ -236,7 +236,7 @@ export default async function handler(req, res) {
      p2 (2026-10-05): LOCALIZATION hard rule + Visual-Copy Match gate for text ads.
      p3 (2026-10-19): PERSONALIZATION TOKENS hard rule, never roast unresolved merge
      tags (%FIRSTNAME%, {{company}}, etc.) from the ad library as a defect. */
-  const PROMPT_VERSION = 'p3';
+  const PROMPT_VERSION = 'p4';
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', _version: API_VERSION });
@@ -643,6 +643,11 @@ PLATFORM INTENT LENS: weight the score by the buyer's intent on this platform, a
 - Google Search / text ads are HIGH intent: the buyer typed a query, and the click is cheap because the real selling happens on the landing page. Weight query-to-headline match, offer relevance, and ad-to-landing match HEAVILY; weight in-ad proof and hook cleverness LIGHTLY. A plain text ad with no creative and no in-ad proof can still score 7-8 if it nails the query and the outcome. Do NOT dock a Google Search ad for lacking a visual or in-ad social proof.
 - LinkedIn is COLD B2B: the buyer did not ask for you, so the first-line hook, a real point of view (not corporate speak), in-feed proof, and a cold-audience-appropriate CTA all carry heavy weight.
 - Meta is COLD consumer-context: the creative and its first 2 to 3 seconds or first words carry the most weight; judge thumb-stop, native feel, vertical framing, and sound-off readability.
+
+EVENT / PRESENCE AD LENS: some ads exist to drive presence at an event, not a direct product conversion. Detect one when the ad's main ask is to meet, visit, attend, register, or watch around a named event: a conference or trade show name, a booth or stand number, "meet us at" / "join us at" / "see you at" / "stop by" / "we'll be at", a city paired with a date, a webinar / roundtable / panel / live-session invite, or a speaking-slot callout. Judge an event ad by ITS job, not by direct-sale buyer-fit.
+- What makes it work: a concrete REASON to show up (a specific talk or topic, a live demo, a named speaker or expert, a meeting slot, an exclusive or giveaway) tied to the buyer's pain, plus the essential logistics (event name, date, where / booth, how to engage). An event ad that nails the draw and the logistics is a 7-9 even with no product-capability dump, no in-ad proof metric, and a soft CTA (Register / Attend / Learn More is the correct ask here, not a demo).
+- What holds it back: a venue-only or "we're here" ad that names the event but gives NO reason to meet, no topic, no draw, no logistics. That is the real failure of an event ad, and it scores 4-5. Write the issues and fixes about the MISSING REASON TO SHOW UP and the missing logistics (add the talk / topic, the demo, the person, the meeting slot, the date / booth), NOT about a missing product value prop, in-ad proof metric, or a harder CTA.
+HARD RULE: when an ad's job is event presence, no issue explanation, feedback line, verdict or fix may dock it, or be written, for lacking a direct product value proposition, a hard conversion CTA (Request Demo / Sign Up), in-ad proof metrics, or product-capability detail. Score the draw and the logistics; recommend Register / Attend / Learn More on LinkedIn, Learn More / Sign Up on Meta or Google.
 
 CTA RULES — three separate CTA surfaces, never blur them:
   1. PRE-SET CTA BUTTON: on LinkedIn/Meta a fixed dropdown from a closed list (not free text; you cannot invent a label).
