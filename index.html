@@ -7179,7 +7179,7 @@
                               <span className="text-[11px] font-semibold text-gray-500 truncate">{landingLink.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
                             </div>
                             <div className="flex-1 bg-gray-50 overflow-hidden" style={{ minHeight: 150, maxHeight: 260 }}>
-                              <img src={'https://image.thum.io/get/width/1000/crop/1200/' + _href(landingLink)} alt="The landing page we scored" loading="lazy" className="w-full block transition-transform duration-700 ease-out group-hover:-translate-y-2" style={{ display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; } catch (err) {} }} />
+                              <img src={'/api/icp?shot=' + encodeURIComponent(_href(landingLink))} alt="The landing page we scored" loading="lazy" className="w-full block transition-transform duration-700 ease-out group-hover:-translate-y-2" style={{ display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; } catch (err) {} }} />
                             </div>
                           </a>
                         ) : (

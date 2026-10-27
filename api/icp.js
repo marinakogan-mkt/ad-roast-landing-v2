@@ -327,6 +327,63 @@ ${items}
     }
   }
 
+  /* Landing-page screenshot (GET /api/icp?shot=<url>), for the report showcase's "the page it
+     lands on" window. thum.io renders the live page as-is, so a cookie wall (Cookiebot etc.) ends
+     up in the shot instead of the hero. With SCREENSHOTONE_ACCESS_KEY set we render via ScreenshotOne
+     with cookie banners / ads / chat widgets blocked and only the viewport captured (the hero, not
+     the full page), cached 30d in Redis and on ScreenshotOne's own CDN (cached renders don't burn the
+     quota). Without a key we redirect to thum.io, so there is no regression until the key is set.
+     Folded in here (not a new function) to stay under the Hobby 12-function cap. */
+  if (req.method === 'GET' && req.query && req.query.shot) {
+    const rawShot = Array.isArray(req.query.shot) ? req.query.shot[0] : req.query.shot;
+    let target;
+    try { target = new URL(/^https?:\/\//i.test(rawShot) ? rawShot : 'https://' + rawShot); } catch (e) { return res.status(400).json({ error: 'Bad url' }); }
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') return res.status(400).json({ error: 'Bad url' });
+    const thumb = 'https://image.thum.io/get/width/1000/crop/1200/' + target.toString();
+    const redirectThumb = (maxAge) => { res.setHeader('Cache-Control', 'public, max-age=' + maxAge); res.setHeader('Location', thumb); return res.status(302).end(); };
+    const SHOT_KEY = process.env.SCREENSHOTONE_ACCESS_KEY;
+    if (!SHOT_KEY) return redirectThumb(3600);
+    const cacheKey = 'shot:v1:' + target.toString();
+    try {
+      if (_redis) {
+        const hit = await _redis.get(cacheKey);
+        if (hit && typeof hit === 'string') {
+          res.setHeader('Content-Type', 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000, immutable');
+          return res.status(200).send(Buffer.from(hit, 'base64'));
+        }
+      }
+    } catch (e) { /* miss -> render */ }
+    try {
+      const so = new URL('https://api.screenshotone.com/take');
+      so.searchParams.set('access_key', SHOT_KEY);
+      so.searchParams.set('url', target.toString());
+      so.searchParams.set('format', 'jpg');
+      so.searchParams.set('viewport_width', '1280');
+      so.searchParams.set('viewport_height', '900');
+      so.searchParams.set('image_quality', '82');
+      so.searchParams.set('block_cookie_banners', 'true');
+      so.searchParams.set('block_ads', 'true');
+      so.searchParams.set('block_chats', 'true');
+      so.searchParams.set('cache', 'true');
+      so.searchParams.set('cache_ttl', '2592000');
+      so.searchParams.set('timeout', '30');
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 28000);
+      let up;
+      try { up = await fetch(so.toString(), { signal: controller.signal }); } finally { clearTimeout(t); }
+      const ct = up.headers.get('content-type') || '';
+      if (!up.ok || !/^image\//i.test(ct)) return redirectThumb(600);
+      const buf = Buffer.from(await up.arrayBuffer());
+      try { if (_redis && buf.length && buf.length < 800000) await _redis.set(cacheKey, buf.toString('base64'), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
+      res.setHeader('Content-Type', ct);
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000, immutable');
+      return res.status(200).send(buf);
+    } catch (e) {
+      return redirectThumb(600);
+    }
+  }
+
   /* Company-logo resolver + proxy (GET /api/icp?logo=<domain>). The real logo of a company is the
      one it declares on its OWN site (apple-touch-icon / schema.org logo / favicon); the browser can't
      read another domain's HTML because of CORS, so the board calls this instead. We resolve the
