@@ -8,6 +8,30 @@ async function stripeGet(path) {
   return r.json();
 }
 
+const GRANTABLE = new Set(['starter', 'pro', 'monthly', 'lifetime']);
+
+/* Grant the plan of a paid checkout session exactly once. Both the success-page
+   redirect and the checkout.session.completed webhook call this, often at the same
+   moment, so the claim is an atomic SET NX: whoever wins grants, the other no-ops.
+   If the grant itself fails the claim is released so the other path can retry. */
+async function grantSessionOnce(session) {
+  if (!session || session.payment_status !== 'paid') return false;
+  const email = (session.metadata && session.metadata.email) || session.customer_email
+    || (session.customer_details && session.customer_details.email);
+  const plan = session.metadata && session.metadata.plan;
+  if (!email || !GRANTABLE.has(plan)) return false;
+  const key = `roast:granted:${session.id}`;
+  const claimed = await kv.set(key, '1', { nx: true, ex: 60 * 60 * 24 * 90 });
+  if (!claimed) return false;
+  try {
+    await grantPlan(kv, email, plan);
+    return true;
+  } catch (e) {
+    try { await kv.del(key); } catch (e2) {}
+    throw e;
+  }
+}
+
 export default async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') try { body = JSON.parse(body); } catch(e) { body = {}; }
@@ -52,6 +76,11 @@ export default async function handler(req, res) {
             }
             return email;
           };
+          /* Paid checkout: grant the plan even if the buyer closed the tab before
+             the success redirect (that redirect used to be the only grant path). */
+          if (evt.type === 'checkout.session.completed' || evt.type === 'checkout.session.async_payment_succeeded') {
+            try { await grantSessionOnce(obj); } catch (e) { console.error('[webhook] grant failed:', e.message); }
+          }
           /* Cancellation / failed payment: stop future refills. */
           if (evt.type === 'customer.subscription.deleted' || evt.type === 'invoice.payment_failed') {
             const email = await resolveEmail();
@@ -83,18 +112,9 @@ export default async function handler(req, res) {
     if (session.payment_status === 'paid') {
       const email = (session.metadata && session.metadata.email) || session.customer_email;
       const plan = session.metadata && session.metadata.plan;
-      // metadata.plan is the base entitlement (starter/pro/monthly/lifetime); grantPlan validates it.
-      if (email && (plan === 'starter' || plan === 'pro' || plan === 'monthly' || plan === 'lifetime')) {
-        /* Idempotent per checkout session: refreshing /?payment=success must NOT
-           re-grant 20 tokens. We only grant once per session id. */
-        try {
-          const already = await kv.get(`roast:granted:${sessionId}`);
-          if (!already) {
-            await grantPlan(kv, email, plan);
-            await kv.set(`roast:granted:${sessionId}`, '1', { ex: 60 * 60 * 24 * 90 });
-          }
-        } catch (e) { console.error('[verify-payment] grantPlan failed:', e.message); }
-      }
+      /* Idempotent per checkout session: refreshing /?payment=success, or the
+         webhook having granted first, must NOT re-grant the tokens. */
+      try { await grantSessionOnce(session); } catch (e) { console.error('[verify-payment] grantPlan failed:', e.message); }
       return res.status(200).json({ ok: true, paid: true, email, plan: plan || null });
     }
     return res.status(200).json({ ok: true, paid: false });
