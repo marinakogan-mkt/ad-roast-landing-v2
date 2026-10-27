@@ -7076,6 +7076,10 @@
           (siteUrl || '').trim() ? { label: 'Website', value: siteUrl.trim(), href: _href(siteUrl.trim()) } : null
         ].filter(Boolean);
         const adImg = inputs.adScreenshotPreview || '';
+        // Board roasts don't save a base64 preview, but the report keeps the live creative URL
+        // (adImageUrl). /api/roast-view?action=creative serves it by report id, so the ad window
+        // shows the real creative instead of the bare "View the live ad" fallback.
+        const adCreativeId = currentReportId || (result && result._reportId) || '';
         const landingLink = (inputs.url || landingInput || '').trim();
         const showcaseVisible = !!(adImg || adLink || landingLink || roastMetaRows.length > 0);
         /* Can we re-run the roast from here? Always on the live roaster's own view; on
@@ -7159,7 +7163,12 @@
                           <div className="flex-1 bg-gray-50 flex items-center justify-center p-3" style={{ minHeight: 150 }}>
                             {adImg
                               ? <img src={adImg} alt="The ad being roasted" className="rounded-lg object-contain" style={{ maxHeight: 240, maxWidth: '100%', display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; } catch (err) {} }} />
-                              : <div className="text-center text-sm text-gray-400 px-4">{adLink ? <a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5" /> View the live ad ↗</a> : 'Ad copy pasted directly'}</div>}
+                              : adCreativeId
+                                ? <React.Fragment>
+                                    <img src={'/api/roast-view?action=creative&id=' + encodeURIComponent(adCreativeId)} alt="The ad being roasted" className="rounded-lg object-contain" style={{ maxHeight: 240, maxWidth: '100%', display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; const n = e.currentTarget.nextElementSibling; if (n) n.style.display = 'block'; } catch (err) {} }} />
+                                    <div className="text-center text-sm text-gray-400 px-4" style={{ display: 'none' }}>{adLink ? <a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5" /> View the live ad ↗</a> : 'Ad copy pasted directly'}</div>
+                                  </React.Fragment>
+                                : <div className="text-center text-sm text-gray-400 px-4">{adLink ? <a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5" /> View the live ad ↗</a> : 'Ad copy pasted directly'}</div>}
                           </div>
                         </div>
                         {/* THE LANDING PAGE */}
