@@ -342,7 +342,8 @@ ${items}
     const thumb = 'https://image.thum.io/get/width/1000/crop/1200/' + target.toString();
     const redirectThumb = (maxAge) => { res.setHeader('Cache-Control', 'public, max-age=' + maxAge); res.setHeader('Location', thumb); return res.status(302).end(); };
     const SHOT_KEY = process.env.SCREENSHOTONE_ACCESS_KEY;
-    if (!SHOT_KEY) return redirectThumb(3600);
+    const debugShot = Array.isArray(req.query.debug) ? req.query.debug[0] : req.query.debug;
+    if (!SHOT_KEY) { if (debugShot) return res.status(200).json({ ok: false, reason: 'no_key_env' }); return redirectThumb(3600); }
     const cacheKey = 'shot:v1:' + target.toString();
     try {
       if (_redis) {
@@ -365,21 +366,28 @@ ${items}
       so.searchParams.set('block_cookie_banners', 'true');
       so.searchParams.set('block_ads', 'true');
       so.searchParams.set('block_chats', 'true');
-      so.searchParams.set('cache', 'true');
-      so.searchParams.set('cache_ttl', '2592000');
       so.searchParams.set('timeout', '30');
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 28000);
       let up;
       try { up = await fetch(so.toString(), { signal: controller.signal }); } finally { clearTimeout(t); }
       const ct = up.headers.get('content-type') || '';
-      if (!up.ok || !/^image\//i.test(ct)) return redirectThumb(600);
+      if (!up.ok || !/^image\//i.test(ct)) {
+        if (debugShot) {
+          let body = '';
+          try { body = (await up.text()).slice(0, 400); } catch (e) {}
+          try { body = body.split(SHOT_KEY).join('<key>'); } catch (e) {}
+          return res.status(200).json({ ok: false, upstream_status: up.status, content_type: ct, body });
+        }
+        return redirectThumb(600);
+      }
       const buf = Buffer.from(await up.arrayBuffer());
       try { if (_redis && buf.length && buf.length < 800000) await _redis.set(cacheKey, buf.toString('base64'), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
       res.setHeader('Content-Type', ct);
       res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000, immutable');
       return res.status(200).send(buf);
     } catch (e) {
+      if (debugShot) return res.status(200).json({ ok: false, error: String((e && e.message) || e) });
       return redirectThumb(600);
     }
   }
