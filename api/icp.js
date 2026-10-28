@@ -782,7 +782,15 @@ ${items}
     const _toRank = pull.ads.slice(0, SCORE_CAP);
     const _extras = pull.ads.slice(SCORE_CAP);
     const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
-    const scAds = collapseTemplateGroups(dropJunkCreatives(sc.ads)).concat(_extras); // scored batch (template-folded) + unscored extras, shown greyed/locked
+    // Drop capture_fail ads (homonym / wrong-advertiser / scrape artifact) from the board ENTIRELY,
+    // not just from the OG image and worst-pick: a different company that merely shares the name
+    // (a conveyor-belt maker under "Conveyor" the SaaS, a trademark-filing firm under "Clutch") must
+    // never appear on this company's board or inflate its metrics. The scorer flags these; here we
+    // remove them. Unscored extras carry no flag yet and stay as greyed teasers; they clear as the
+    // board finishes scoring (the client re-calls ads-fetch until pending hits 0).
+    const scAds = collapseTemplateGroups(dropJunkCreatives(sc.ads))
+      .filter(a => a.flag !== 'capture_fail' && !a._captureFail)
+      .concat(_extras); // scored batch (template-folded, homonyms removed) + unscored extras, shown greyed/locked
     // Persist a compact stats snapshot for the link-preview image (og:image). The pull cache stores
     // UNSCORED ads, so the preview can't derive metrics from it; write the scored numbers + the worst
     // creative here, on every board render, so the shared card is always current. Cheap single set.

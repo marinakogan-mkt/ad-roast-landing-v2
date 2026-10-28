@@ -107,7 +107,12 @@ async function callTool(name, args, key, asHdr) {
     const site = await detectSite(args.website, key, asHdr);
     const r = await fetch(`${ORIGIN}/api/icp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, ...(asHdr ? { 'x-adroast-as': asHdr } : {}) }, body: JSON.stringify({ action: 'ads-fetch', company: site.company, domain: site.domain || args.website, icp: site.icp }) });
     const d = await r.json().catch(() => ({}));
-    const ads = (d.ads || []).map(a => ({ platform: a.plat, headline: a.head || a.title || '', score: a.score, verdict: a.verdict || '', fix: a.fix || '', creative: a.img || null, detail_url: a.detailUrl || null }));
+    // Never surface a wrong-advertiser / homonym ad (a conveyor-belt maker under "Conveyor" the SaaS,
+    // a trademark-filing firm under "Clutch"). icp.js already drops these, but filter here too so an
+    // older contaminated board cache can never leak one through the MCP.
+    const ads = (d.ads || [])
+      .filter(a => a.flag !== 'capture_fail' && !a._captureFail)
+      .map(a => ({ platform: a.plat, headline: a.head || a.title || '', score: a.score, verdict: a.verdict || '', fix: a.fix || '', creative: a.img || null, detail_url: a.detailUrl || null }));
     return { company: site.company || args.website, buyer: site.icp || null, count: ads.length, ads };
   }
   if (name === 'get_report') {
