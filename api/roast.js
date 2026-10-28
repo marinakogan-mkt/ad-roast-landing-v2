@@ -235,8 +235,13 @@ export default async function handler(req, res) {
      reaches old ads instead of re-serving a result scored under the old rules.
      p2 (2026-10-05): LOCALIZATION hard rule + Visual-Copy Match gate for text ads.
      p3 (2026-10-19): PERSONALIZATION TOKENS hard rule, never roast unresolved merge
-     tags (%FIRSTNAME%, {{company}}, etc.) from the ad library as a defect. */
-  const PROMPT_VERSION = 'p4';
+     tags (%FIRSTNAME%, {{company}}, etc.) from the ad library as a defect.
+     p4 (2026-10-27): EVENT / PRESENCE AD LENS, judge event-presence ads by draw +
+     logistics, not product-fit.
+     p5 (2026-10-28): SECONDARY AUDIENCE / SUB-BRAND LENS, never score an enterprise /
+     partner / white-label / developer ad as off-ICP against the homepage buyer; judge
+     it for its own audience. */
+  const PROMPT_VERSION = 'p5';
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', _version: API_VERSION });
@@ -648,6 +653,8 @@ EVENT / PRESENCE AD LENS: some ads exist to drive presence at an event, not a di
 - What makes it work: a concrete REASON to show up (a specific talk or topic, a live demo, a named speaker or expert, a meeting slot, an exclusive or giveaway) tied to the buyer's pain, plus the essential logistics (event name, date, where / booth, how to engage). An event ad that nails the draw and the logistics is a 7-9 even with no product-capability dump, no in-ad proof metric, and a soft CTA (Register / Attend / Learn More is the correct ask here, not a demo).
 - What holds it back: a venue-only or "we're here" ad that names the event but gives NO reason to meet, no topic, no draw, no logistics. That is the real failure of an event ad, and it scores 4-5. Write the issues and fixes about the MISSING REASON TO SHOW UP and the missing logistics (add the talk / topic, the demo, the person, the meeting slot, the date / booth), NOT about a missing product value prop, in-ad proof metric, or a harder CTA.
 HARD RULE: when an ad's job is event presence, no issue explanation, feedback line, verdict or fix may dock it, or be written, for lacking a direct product value proposition, a hard conversion CTA (Request Demo / Sign Up), in-ad proof metrics, or product-capability detail. Score the draw and the logistics; recommend Register / Attend / Learn More on LinkedIn, Learn More / Sign Up on Meta or Google.
+
+SECONDARY AUDIENCE / SUB-BRAND LENS: a company often advertises to a deliberate SECONDARY audience its homepage-derived ICP does not describe: an ENTERPRISE or large-org tier (when the default buyer is SMB, or the reverse), a PARTNER / reseller / affiliate / agency program, a WHITE-LABEL / embedded / OEM offer, or a DEVELOPER / API / build-on-us ecosystem. The ad signals it plainly (Enterprise, for partners / resellers / agencies, white-label, embedded, OEM, developers, API, build on, SSO / SCIM / FedRAMP / procurement, portfolio / multi-site / manage hundreds of sites). This is a real, deliberate audience, NOT a targeting miss. When the ad coherently serves such an audience and its landing matches, judge clarity, proof, benefit and CTA against THAT audience, and set icp_mismatch to acknowledge it (e.g. "Enterprise-tier ad, judged for that buyer, not the SMB default"). HARD RULE: no issue explanation, feedback line, verdict, icp_mismatch or fix may say or imply the ad reaches the wrong audience, is off-ICP, misses the buyer, or should speak to the primary / homepage buyer, when the ad is a coherent enterprise / partner / white-label / developer play with a matching destination. It can still score low on its OWN audience's terms (vague benefit, no proof, weak hook). This does NOT cover an ordinary product ad that merely reaches the wrong person with no distinct program behind it (e.g. a consumer-perk ad aimed at end users): that stays off-ICP and is judged normally.
 
 CTA RULES — three separate CTA surfaces, never blur them:
   1. PRE-SET CTA BUTTON: on LinkedIn/Meta a fixed dropdown from a closed list (not free text; you cannot invent a label).
