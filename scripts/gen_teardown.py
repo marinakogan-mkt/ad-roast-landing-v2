@@ -65,11 +65,13 @@ def ring(score):
 def finding(f):
     icon = CHECK if f["good"] else TRI
     c = color(f["score"])
+    fix = f.get("fix", "")
+    fixblock = (f'<div class="lbl2" style="color:#0f6e56">The fix</div><p>{typo(fix)}</p>') if fix else ""
     return (f'<div class="finding"><button class="fh"><span class="tag tag-{f["tag"]}">{"Ad" if f["tag"]=="ad" else "Page"}</span>'
             f'{icon}<span class="ftitle">{typo(f["title"])}</span>'
             f'<span class="fscore" style="background:{c}1a;color:{c}">{f["score"]}/10</span>{FCHEV}</button>'
             f'<div class="fd"><div class="lbl2">What{chr(0x2019)}s happening</div><p>{typo(f["what"])}</p>'
-            f'<div class="lbl2" style="color:#0f6e56">The fix</div><p>{typo(f["fix"])}</p></div></div>')
+            f'{fixblock}</div></div>')
 
 def scitem(s):
     c = color(s["score"])
@@ -172,9 +174,119 @@ def build(d):
 </body></html>'''
     return html
 
+# ---------------------------------------------------------------------------
+# v2: build straight from a roast_ad output + a small voice layer, and
+# integrate the page into the hub, sitemap and /work-with-us proof.
+# Input JSON (v2): {"meta": {...}, "voice": {...}, "roast": <roast_ad output>}.
+# Legacy flat JSON (no "roast" key) still works as before.
+# ---------------------------------------------------------------------------
+def logo_for(domain):
+    return "https://icons.duckduckgo.com/ip3/%s.ico" % domain
+
+def lp_for(url):
+    return "https://image.thum.io/get/width/1200/crop/1150/wait/8/" + url
+
+def from_roast(cfg):
+    """Turn {meta, voice, roast} into the flat dict build() expects. The 5-axis
+    scorecard comes straight from the roast (authentic, no retyping); the voice
+    layer carries only what needs judgment: hook, lede, findings, fixes, faq."""
+    meta, voice, roast = cfg["meta"], cfg.get("voice", {}), cfg.get("roast", {})
+    d = dict(meta)
+    d["score"] = roast.get("overall_score", meta.get("score"))
+    rid = meta.get("roast_id", "")
+    if not rid and meta.get("roast_link"):
+        m = re.search(r"id=([A-Za-z0-9]+)", meta["roast_link"])
+        rid = m.group(1) if m else ""
+    d["roast_id"] = rid
+    d.setdefault("logo_url", logo_for(meta["domain"]))
+    d.setdefault("lp_shot", lp_for(meta.get("lp_url", "https://%s/" % meta["domain"])))
+    d["hook"], d["lede"], d["faq"] = voice["hook"], voice["lede"], voice["faq"]
+    # scorecard: straight from the roast issues, unless voice overrides/reorders
+    if voice.get("scorecard"):
+        d["scorecard"] = voice["scorecard"]
+    else:
+        d["scorecard"] = [{"label": i["title"], "score": i["score"], "note": i["explanation"]}
+                           for i in roast.get("issues", [])]
+    # findings: voice-authored (punchy) if given, else auto from the issues
+    if voice.get("findings"):
+        d["findings"] = voice["findings"]
+    else:
+        fs = []
+        for i in roast.get("issues", []):
+            blob = (i["title"] + " " + i.get("explanation", "")).lower()
+            tag = "page" if re.search(r"landing|the page|homepage|lands on", blob) else "ad"
+            fs.append({"tag": tag, "good": i["score"] >= 6, "title": i["title"],
+                       "what": i.get("explanation", ""), "fix": ""})
+        d["findings"] = fs
+    return d
+
+def integrate(d, repo="."):
+    """Add the page to teardowns/index.html (card + JSON-LD), sitemap.xml and the
+    /work-with-us proof list in api/_board-og.js. Idempotent: skips a file that
+    already references the slug."""
+    import os
+    slug, name, dom = d["slug"], d["name"], d["domain"]
+    score, date = d["score"], d.get("human_date", d["date"])
+    initial = d.get("initial", name[0])
+    badge = d.get("badge_color", "#0a66c2")
+    sev = "sev-red" if score <= 4 else "sev-amber"
+    hook = " ".join(typo(l) for l in d["hook"])
+    desc = d.get("card_desc") or typo(d["lede"])[:180]
+    done = []
+    # 1) hub card (prepended as newest) + JSON-LD ItemList (renumbered)
+    hub = os.path.join(repo, "teardowns/index.html")
+    h = open(hub, encoding="utf-8").read()
+    if ("/teardowns/%s" % slug) not in h:
+        card = (f'<a class="tcard" href="/teardowns/{slug}"><div class="tcard-top">'
+                f'<div class="tcard-badge" style="background:{badge}">{initial}</div>'
+                f'<div><div class="tcard-co">{name}</div><div class="tcard-date">{date}</div></div>'
+                f'<span class="mini {sev}">{score}/10</span></div>'
+                f'<h3>{hook}</h3><p>{desc}</p>'
+                f'<div class="foot">Read the teardown<span class="go">&rarr;</span></div></a>')
+        h = h.replace('<div class="grid">', '<div class="grid">' + card, 1)
+        li = (f'{{"@type": "ListItem", "position": 0, '
+              f'"url": "https://www.adroast.in/teardowns/{slug}", "name": "{name} ad teardown"}}, ')
+        h = h.replace('"itemListElement": [', '"itemListElement": [' + li, 1)
+        mi = h.find('"itemListElement": ['); me = h.find("]", mi)
+        c = [0]
+        def rn(m):
+            c[0] += 1; return '"position": %d' % c[0]
+        h = h[:mi] + re.sub(r'"position": \d+', rn, h[mi:me]) + h[me:]
+        open(hub, "w", encoding="utf-8").write(h); done.append("hub")
+    # 2) sitemap
+    sm = os.path.join(repo, "sitemap.xml")
+    s = open(sm, encoding="utf-8").read()
+    if ("/teardowns/%s<" % slug) not in s:
+        block = ("  <url>\n    <loc>https://www.adroast.in/teardowns/%s</loc>\n"
+                 "    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n" % slug)
+        anchor = "  <url>\n    <loc>https://www.adroast.in/teardowns/monday</loc>"
+        if anchor not in s:
+            anchor = "  <url>\n    <loc>https://www.adroast.in/teardowns/cycode</loc>"
+        s = s.replace(anchor, block + anchor, 1)
+        open(sm, "w", encoding="utf-8").write(s); done.append("sitemap")
+    # 3) /work-with-us proof list
+    og = os.path.join(repo, "api/_board-og.js")
+    o = open(og, encoding="utf-8").read()
+    if ("/teardowns/%s" % slug) not in o:
+        li = f'<ul><li><a href="/teardowns/{slug}">{name} ad teardown</a></li>'
+        o = o.replace("<ul><li><a href=\"/teardowns/", li + '<li><a href="/teardowns/', 1)
+        open(og, "w", encoding="utf-8").write(o); done.append("proof")
+    return done
+
 if __name__ == "__main__":
-    data = json.load(open(sys.argv[2]))
-    html = build(data)
-    out = sys.argv[3]
-    open(out, "w", encoding="utf-8").write(html)
-    sys.stderr.write("wrote %s (%d KB)\n" % (out, len(html.encode()) // 1024))
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("template"); ap.add_argument("input"); ap.add_argument("out")
+    ap.add_argument("--integrate", action="store_true")
+    ap.add_argument("--repo", default=".")
+    a = ap.parse_args()
+    cfg = json.load(open(a.input))
+    d = from_roast(cfg) if "roast" in cfg or "meta" in cfg else cfg
+    html = build(d)
+    import os
+    os.makedirs(os.path.dirname(a.out), exist_ok=True)
+    open(a.out, "w", encoding="utf-8").write(html)
+    sys.stderr.write("wrote %s (%d KB)\n" % (a.out, len(html.encode()) // 1024))
+    if a.integrate:
+        done = integrate(d, a.repo)
+        sys.stderr.write("integrated into: %s\n" % (", ".join(done) if done else "(already present everywhere)"))
