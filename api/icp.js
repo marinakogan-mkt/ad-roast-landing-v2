@@ -302,7 +302,7 @@ ${items}
         raw = Array.isArray(req.query.img) ? req.query.img[0] : req.query.img;
       }
       const u = new URL(raw);
-      const ALLOW = /(^|\.)licdn\.com$|(^|\.)googlesyndication\.com$|(^|\.)gstatic\.com$|(^|\.)ggpht\.com$/i;
+      const ALLOW = /(^|\.)licdn\.com$|(^|\.)googlesyndication\.com$|(^|\.)gstatic\.com$|(^|\.)ggpht\.com$|(^|\.)fbcdn\.net$/i;
       if (u.protocol !== 'https:' || !ALLOW.test(u.hostname)) {
         return res.status(400).json({ error: 'Host not allowed' });
       }

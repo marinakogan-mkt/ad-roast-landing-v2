@@ -928,7 +928,90 @@ async function _fetchMetaSnapshot(url) {
   } catch (e) { return {}; }
 }
 
+// ---- Meta via Apify's Facebook Ads Scraper (the PUBLIC Ad Library web view) ------------------
+// The official API above needs a Meta identity confirmation tied to residency in the chosen country
+// (Marina is abroad, so every ID was refused) and even when granted only returns EU/UK commercial
+// ads, which is near-empty for US B2B SaaS. The public Ad Library web view shows every ACTIVE ad in
+// any country with no verification; Apify's official scraper (apify/facebook-ads-scraper, pay per
+// ad, ~$0.006 on the free plan) reads it for us. Uses the same APIFY_TOKEN as LinkedIn. Set
+// APIFY_META=0 in Vercel to switch it off. Best-effort: any failure returns ok:false and the
+// caller falls back to the official API / "coming soon".
+async function fetchMetaAdsViaApify({ company, domain, limit = 12 } = {}) {
+  const token = process.env.APIFY_TOKEN;
+  if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
+  if (process.env.APIFY_META === '0') return { ok: false, reason: 'apify_meta_disabled', ads: [] };
+  const term = (company || String(domain || '').replace(/\.[a-z.]+$/i, '') || '').trim();
+  if (!term) return { ok: false, reason: 'no_query', ads: [] };
+  const libUrl = 'https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&media_type=all&search_type=keyword_unordered&q=' + encodeURIComponent(term);
+  const input = { startUrls: [{ url: libUrl }], resultsLimit: 30, activeStatus: 'active', isDetailsPerAd: false, includeAboutPage: false, enrichWithEcommerceData: false };
+  let items;
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 42000);
+    let r;
+    try {
+      r = await fetch('https://api.apify.com/v2/acts/apify~facebook-ads-scraper/run-sync-get-dataset-items?timeout=40&token=' + encodeURIComponent(token), {
+        method: 'POST', signal: c.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+      });
+    } finally { clearTimeout(t); }
+    if (!r.ok) return { ok: false, reason: 'apify_meta_' + r.status, ads: [] };
+    items = await r.json();
+  } catch (e) { return { ok: false, reason: 'apify_meta_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
+  if (!Array.isArray(items) || !items.length) return { ok: false, reason: 'apify_meta_no_ads', ads: [] };
+  // The scraper's snapshot comes camelCase; older runs/actors used snake_case. Read both.
+  const g = (o, ...ks) => { for (const k of ks) { if (o && o[k] != null && o[k] !== '') return o[k]; } return null; };
+  const seen = new Set();
+  const out = [];
+  for (const it of items) {
+    if (it && (it.isActive === false || it.is_active === false)) continue;
+    const s = g(it, 'snapshot') || {};
+    const cards = Array.isArray(s.cards) ? s.cards : [];
+    const imgs = Array.isArray(s.images) ? s.images : [];
+    const vids = Array.isArray(s.videos) ? s.videos : [];
+    const c0 = cards[0] || {};
+    const img = g(imgs[0], 'originalImageUrl', 'original_image_url', 'resizedImageUrl', 'resized_image_url')
+      || g(c0, 'originalImageUrl', 'original_image_url', 'resizedImageUrl', 'resized_image_url')
+      || g(vids[0], 'videoPreviewImageUrl', 'video_preview_image_url')
+      || g(c0, 'videoPreviewImageUrl', 'video_preview_image_url');
+    const bodyRaw = g(s, 'body') || g(c0, 'body');
+    const body = String((bodyRaw && typeof bodyRaw === 'object' ? bodyRaw.text : bodyRaw) || '').trim();
+    const title = String(g(s, 'title') || g(c0, 'title') || g(s, 'linkDescription', 'link_description') || '').trim();
+    // Collapse exact duplicates (Meta advertisers run the same creative in many ad sets).
+    const sig = (img ? String(img).split('?')[0] : '') + '|' + body.slice(0, 120);
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    const adId = String(g(it, 'adArchiveID', 'adArchiveId', 'ad_archive_id', 'adId') || '') || null;
+    const page = g(it, 'pageName', 'page_name') || g(s, 'pageName', 'page_name');
+    out.push({
+      plat: 'Meta',
+      head: title || (body ? body.slice(0, 80) : '(untitled ad)'),
+      body,
+      img: img || null,
+      cta: g(s, 'ctaText', 'cta_text') || g(c0, 'ctaText', 'cta_text'),
+      ctaUrl: g(s, 'linkUrl', 'link_url') || g(c0, 'linkUrl', 'link_url'),
+      dom: null,
+      advertiser: page || null,
+      region: 'US',
+      detailUrl: adId ? ('https://www.facebook.com/ads/library/?id=' + adId) : libUrl,
+      adId,
+    });
+  }
+  // Keyword search also returns other advertisers that mention the name: keep the company's own.
+  const owned = ownedByAdvertiser(out, { domain, company });
+  if (!owned.length) return { ok: false, reason: 'apify_meta_not_owned', ads: [] };
+  return { ok: true, ads: owned.slice(0, limit), total: owned.length, reason: 'ok', via: 'apify' };
+}
+
 export async function fetchMetaAds({ company, domain, limit = 12 } = {}) {
+  // Apify (US + every country, no verification) first; the official EU/UK API is the fallback.
+  const ap = await fetchMetaAdsViaApify({ company, domain, limit });
+  if (ap.ok) return ap;
+  const official = await fetchMetaAdsOfficial({ company, domain, limit });
+  if (!official.ok && ap.reason && ap.reason !== 'apify_meta_disabled') official.reason = ap.reason + ' | ' + official.reason;
+  return official;
+}
+
+async function fetchMetaAdsOfficial({ company, domain, limit = 12 } = {}) {
   const token = process.env.META_ADLIBRARY_TOKEN;
   if (!token) return { ok: false, reason: 'no_token', ads: [] };
   const term = (company || domain || '').trim();
