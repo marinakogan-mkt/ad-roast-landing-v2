@@ -1,0 +1,69 @@
+{
+  "meta": {
+    "slug": "pipedrive",
+    "name": "Pipedrive",
+    "domain": "pipedrive.com",
+    "date": "2026-10-29",
+    "human_date": "October 29, 2026",
+    "initial": "P",
+    "badge_color": "#017737",
+    "platform": "linkedin",
+    "ad_img": "https://media.licdn.com/dms/image/v2/D4D10AQFct8MimZpgPw/videocover-high/B4DaFYlkAvK0BQ-/0/1792487606690?e=2147483647&v=beta&t=zNNWUNa9ujhiOCDGbWxviF3PPm_clWuZgN0Lf5FBMgY",
+    "lp_url": "https://www.pipedrive.com/",
+    "roast_link": "https://www.adroast.in/?id=e991caee",
+    "title": "Pipedrive LinkedIn ads teardown: a thought-leader quote with no product behind it",
+    "meta_desc": "A teardown of Pipedrive's live LinkedIn ad: a vague thought-leader quote and a logo-only creative that never names the CRM, the feature, or a reason to sign up.",
+    "og_desc": "The copy promised recall. The creative showed a logo.",
+    "keywords": "pipedrive linkedin ads, pipedrive ads, pipedrive ad teardown, crm ads, sales crm ads, how to audit linkedin ads, ad teardown",
+    "card_desc": "Pipedrive's ad leads with a thought-leader quote and a logo on green, never naming the CRM, the feature, or a reason to sign up. The homepage is fine; the ad never earns the click.",
+    "related": [
+      {"slug": "monday", "name": "monday.com", "q": "A sharp PMO hook, a demo the page never delivers."},
+      {"slug": "klaviyo", "name": "Klaviyo", "q": "A clever pun with no case behind it."},
+      {"slug": "clickup", "name": "ClickUp", "q": "The headline named the pain. The creative changed the subject."}
+    ]
+  },
+  "voice": {
+    "hook": ["The copy promised recall.", "The creative showed a logo."],
+    "lede": "Pipedrive's ad opens with a quote from George Vlasyev about the scramble after a sales call to remember what mattered. It hints at notes, or AI recall. But the video thumbnail is just the Pipedrive logo on green, the name carries no title, no feature or number is offered, and the button says Sign Up with nothing explaining what for. The homepage it reaches is solid. The ad never earns the click that gets there.",
+    "findings": [
+      {"tag": "ad", "good": false, "score": 2, "title": "The creative is a logo, not an ad",
+       "what": "The copy implies meeting notes or AI recall after a call, but the video thumbnail is just the Pipedrive logo on a green background. Zero visual support for the idea being sold.",
+       "fix": "Show the payoff: a deal record filling in with call notes, or the AI summary the quote hints at. Let the creative carry the promise."},
+      {"tag": "ad", "good": false, "score": 3, "title": "A name with no credential",
+       "what": "George Vlasyev is cited as the source, with no title, company, or role. On a cold LinkedIn feed a bare name adds no authority, so the quote reads as filler.",
+       "fix": "Give the name a reason to matter, a title and company, or drop it and lead with the pain itself."},
+      {"tag": "ad", "good": false, "score": 3, "title": "A feeling, not a benefit",
+       "what": "“Walk away knowing what mattered” is a mood, not an outcome a sales manager can act on. No feature, no number, no concrete result tied to Pipedrive.",
+       "fix": "Name what Pipedrive does: every call logged to the deal automatically, so nothing from the conversation gets lost."},
+      {"tag": "ad", "good": false, "score": 5, "title": "Sign up for what, exactly?",
+       "what": "Sign Up is the right button for a free-trial product, but nothing in the copy or the creative says what you are signing up for or why now. The click has to be taken on faith.",
+       "fix": "Tie the CTA to the payoff, for example: Start free, keep every call on the record."},
+      {"tag": "page", "good": true, "score": 6, "title": "The homepage holds up",
+       "what": "The page the ad reaches, the easy and effective CRM for closing deals, is clear and on-message for the sales buyer. The gap is upstream, not here.",
+       "fix": "Keep the page. Rebuild the ad so the promise it makes matches what the homepage pays off."}
+    ],
+    "faq": [
+      {"q": "Is Pipedrive's ad good?",
+       "a": "The pain it gestures at is real, the scramble to remember what mattered after a sales call. But the ad scores 4/10 because it never names the product, the feature, or a reason to act. The creative is just a logo, and the quote comes from a name with no credential."},
+      {"q": "What is actually wrong with it?",
+       "a": "Three things pull the same way: the creative shows a logo instead of the payoff, the benefit is a feeling rather than an outcome, and the CTA asks for a sign-up the ad never earns. The homepage is fine; the ad in front of it is the leak."},
+      {"q": "Does the Pipedrive landing page work?",
+       "a": "Yes. The homepage, the easy and effective CRM for closing deals, is clear and on-message for the sales buyer, scoring 6/10. The problem is upstream: the ad never sets up what the page delivers."},
+      {"q": "How do I check my own ad for this?",
+       "a": "Read your copy, then look at your creative and your CTA: do they name the same concrete payoff? If the visual is just a logo and the benefit is a mood, the click has to be taken on faith. AdRoast scores this automatically, and the first roast is free."}
+    ]
+  },
+  "roast": {
+    "report_id": "e991caee",
+    "overall_score": 4,
+    "icp_mismatch": "Names a specific person, no pain or CRM context stated",
+    "landing_page_score": 6,
+    "issues": [
+      {"title": "Headline Clarity", "score": 3, "explanation": "Creative is just the Pipedrive logo on green, no headline at all. Ad copy is a vague quote about calls and scrambling, not a claim."},
+      {"title": "CTA Friction", "score": 5, "explanation": "Sign Up is the right button for a free-trial product, but nothing in the copy or creative earns that click or explains what's being signed up for."},
+      {"title": "Visual-Copy Match", "score": 2, "explanation": "Copy talks about scrambling after calls to remember what mattered, implying meeting notes or AI recall, but the creative shows only a static logo, zero visual support."},
+      {"title": "Benefit Specificity", "score": 3, "explanation": "No feature, number, or outcome named. 'Walk away knowing what mattered' is a feeling, not a benefit a sales manager can act on."},
+      {"title": "Trust Signals", "score": 3, "explanation": "George Vlasyev is cited as a source but given no title or credential, so the name-drop adds zero credibility on a cold LinkedIn feed."}
+    ]
+  }
+}
