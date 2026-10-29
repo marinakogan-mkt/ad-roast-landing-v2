@@ -342,7 +342,6 @@ ${items}
     const thumb = 'https://image.thum.io/get/width/1000/crop/1200/' + target.toString();
     const redirectThumb = (maxAge) => { res.setHeader('Cache-Control', 'public, max-age=' + maxAge); res.setHeader('Location', thumb); return res.status(302).end(); };
     const SHOT_KEY = process.env.SCREENSHOTONE_ACCESS_KEY;
-    const debugShot = Array.isArray(req.query.debug) ? req.query.debug[0] : req.query.debug;
     // A ?report=<id> pins this render to that report, so the landing shot is frozen alongside the
     // roast text and the ad creative (both already frozen at roast time). The first time a report is
     // viewed the current render is pinned to its id and then never changes again, even if the page
@@ -367,7 +366,7 @@ ${items}
         if (pinned && typeof pinned === 'string') return sendImg(Buffer.from(pinned, 'base64'), 'image/jpeg');
       }
     } catch (e) { /* miss -> render/cache */ }
-    if (!SHOT_KEY) { if (debugShot) return res.status(200).json({ ok: false, reason: 'no_key_env' }); return redirectThumb(3600); }
+    if (!SHOT_KEY) { return redirectThumb(3600); }
     const cacheKey = 'shot:v1:' + target.toString();
     try {
       if (_redis) {
@@ -397,12 +396,6 @@ ${items}
       try { up = await fetch(so.toString(), { signal: controller.signal }); } finally { clearTimeout(t); }
       const ct = up.headers.get('content-type') || '';
       if (!up.ok || !/^image\//i.test(ct)) {
-        if (debugShot) {
-          let body = '';
-          try { body = (await up.text()).slice(0, 400); } catch (e) {}
-          try { body = body.split(SHOT_KEY).join('<key>'); } catch (e) {}
-          return res.status(200).json({ ok: false, upstream_status: up.status, content_type: ct, body });
-        }
         return redirectThumb(600);
       }
       const buf = Buffer.from(await up.arrayBuffer());
@@ -410,7 +403,6 @@ ${items}
       await pin(buf); // freeze this fresh render to the report id too
       return sendImg(buf, ct);
     } catch (e) {
-      if (debugShot) return res.status(200).json({ ok: false, error: String((e && e.message) || e) });
       return redirectThumb(600);
     }
   }
