@@ -1012,9 +1012,12 @@ async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null,
       || g(c0, 'originalImageUrl', 'original_image_url', 'resizedImageUrl', 'resized_image_url')
       || g(vids[0], 'videoPreviewImageUrl', 'video_preview_image_url')
       || g(c0, 'videoPreviewImageUrl', 'video_preview_image_url');
-    const bodyRaw = g(s, 'body') || g(c0, 'body');
-    const body = String((bodyRaw && typeof bodyRaw === 'object' ? bodyRaw.text : bodyRaw) || '').trim();
-    const title = String(g(s, 'title') || g(c0, 'title') || g(s, 'linkDescription', 'link_description') || '').trim();
+    // Catalog / dynamic ads carry template tokens ("{{product.name}}") in the snapshot; the real
+    // text lives on the cards. Skip any value that is still a template.
+    const txt = (v) => { const t = String((v && typeof v === 'object' ? v.text : v) || '').trim(); return /\{\{[^}]*\}\}/.test(t) ? '' : t; };
+    const firstTxt = (...vs) => { for (const v of vs) { const t = txt(v); if (t) return t; } return ''; };
+    const body = firstTxt(g(s, 'body'), ...cards.map(c => g(c, 'body')));
+    const title = firstTxt(g(s, 'title'), ...cards.map(c => g(c, 'title')), g(s, 'linkDescription', 'link_description'), ...cards.map(c => g(c, 'linkDescription', 'link_description')));
     // Collapse exact duplicates (Meta advertisers run the same creative in many ad sets).
     const sig = (img ? String(img).split('?')[0] : '') + '|' + body.slice(0, 120);
     if (seen.has(sig)) continue;
