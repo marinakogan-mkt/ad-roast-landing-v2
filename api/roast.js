@@ -4,6 +4,7 @@ import { readSessionCookie } from './auth/_allowlist.js';
 import { consumeToken, peekAccount, companyKey, checkCompanyAllowed, addCompany } from './_tokens.js';
 import { videoStoryboard } from './_vframes.js';
 import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, logClaudeUsage } from './_adlibrary.js';
+import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
 
 const _redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -120,7 +121,8 @@ function snapButtonCta(label, platform) {
 const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all fields required; no markdown, no backticks, no text before or after). For landing_page_roast and ad_landing_mismatch scores: use real 1-10 numbers when landing page content is available, otherwise 0.
 {
   "icp_mismatch": "string",
-  "overall_score": <number 1-10>,
+  "ad_job": {"job": "demand_gen|lead_magnet|content|brand|social_proof|launch|comparison|event|talent", "audience_kind": "primary|secondary|segment|localized", "content_kind": "product_led|educational|search_traffic, only for content, else empty", "evidence": "the quoted words, format or destination signal that mark the job", "dims": {"<each dimension key of that job>": <1-10>}},
+  "overall_score": <number 1-10, consistent with ad_job.dims>,
   "issues": [
     {"category": "headline_clarity", "title": "Headline Clarity", "score": <1-10>, "explanation": "string"},
     {"category": "cta_friction", "title": "CTA Friction", "score": <1-10>, "explanation": "string"},
@@ -240,8 +242,13 @@ export default async function handler(req, res) {
      logistics, not product-fit.
      p5 (2026-10-28): SECONDARY AUDIENCE / SUB-BRAND LENS, never score an enterprise /
      partner / white-label / developer ad as off-ICP against the homepage buyer; judge
-     it for its own audience. */
-  const PROMPT_VERSION = 'p6';
+     it for its own audience.
+     p6 (2026-10-29): PURPOSE BEFORE FIT parity with the board.
+     p7 (2026-10-29): AD TAXONOMY (api/_rubrics.js, shared with the board). The roast
+     classifies the ad's job, scores that job's dimensions in ad_job, overall_score follows
+     their weighted mean (within 1 point), no floors, and the fix kit is written for the job.
+     The landing page is used to classify and to judge destination dimensions. */
+  const PROMPT_VERSION = 'p7';
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', _version: API_VERSION });
@@ -623,7 +630,10 @@ Voice: direct, sarcastic but not mean. Apply the "barbecue test" (would this cop
 
 Scoring (1-10): 1-3 hurting conversions, 4-6 generic, 7-8 solid, 9-10 best-in-class.
 
-PURPOSE BEFORE FIT (decide this for EVERY ad before you score it, including kinds not named below): an ad's score measures how well it does ITS OWN job for ITS OWN intended reader, not how well it pitches the product to the primary ICP buyer. First read the ad on its own terms and settle two things: its JOB (the response it is actually built to get) and its intended AUDIENCE (who it truly targets, which may be a deliberate reader the homepage ICP does not describe). Then judge it against that job and that reader. The ICP-mismatch / buyer-fit penalty is CONDITIONAL, not automatic: lower overall_score and write icp_mismatch as a miss ONLY when the ad is a genuine demand-gen product pitch aimed at the primary buyer and it fails that buyer. When the ad coherently does another job (brand or non-demand-gen: culture, hiring, founder or origin story, mission, award or customer celebration, a past-event recap, thought-leadership with no offer; event presence; a secondary enterprise / partner / white-label / developer audience; a specific in-ICP segment; a localized market), do NOT apply the primary-ICP match: judge it on its own job's rubric, set icp_mismatch to NAME that job or reader plainly (never to dock it for not being the primary buyer), and let overall_score reflect how well it serves its own reader, with a floor of 5 for an audience or job mismatch alone. GUARDRAILS so this never inflates a weak ad: (a) treating an ad as anything other than a primary-buyer demand-gen pitch REQUIRES a positive, coherent signal quoted from the ad itself inside icp_mismatch, never a charitable guess; (b) with no such signal, or when unsure, the DEFAULT holds, it is a demand-gen pitch to the primary buyer judged strictly, so a vague, generic or lazy ad to the right buyer still scores 1-4; (c) reclassifying changes the RUBRIC, not immunity: an ad still scores low when it does its OWN job badly, and a low overall_score still names the specific failing lever. The EVENT and SECONDARY AUDIENCE lenses below, and the LOCALIZATION rule in the critical rules, are WORKED EXAMPLES of this one rule, the detailed rubric for the most common non-primary jobs, not the whole list; reason the same way for any job not named.
+PURPOSE BEFORE FIT (decide this for EVERY ad before you score it, including kinds not named below): an ad's score measures how well it does ITS OWN job for ITS OWN intended reader, not how well it pitches the product to the primary ICP buyer. First read the ad on its own terms and settle two things: its JOB (the response it is actually built to get) and its intended AUDIENCE (who it truly targets, which may be a deliberate reader the homepage ICP does not describe). Then judge it against that job and that reader. The ICP-mismatch / buyer-fit penalty is CONDITIONAL, not automatic: lower overall_score and write icp_mismatch as a miss ONLY when the ad is a genuine demand-gen product pitch aimed at the primary buyer and it fails that buyer. When the ad coherently does another job (brand or non-demand-gen: culture, hiring, founder or origin story, mission, award or customer celebration, a past-event recap, thought-leadership with no offer; event presence; a secondary enterprise / partner / white-label / developer audience; a specific in-ICP segment; a localized market), do NOT apply the primary-ICP match: judge it on its own job's rubric, set icp_mismatch to NAME that job or reader plainly (never to dock it for not being the primary buyer), and let overall_score reflect how well it serves its own reader on that job's dimensions, with NO floor: an ad that does its own job badly scores low for that job's reasons. GUARDRAILS so this never inflates a weak ad: (a) treating an ad as anything other than a primary-buyer demand-gen pitch REQUIRES a positive, coherent signal quoted from the ad itself inside icp_mismatch, never a charitable guess; (b) with no such signal, or when unsure, the DEFAULT holds, it is a demand-gen pitch to the primary buyer judged strictly, so a vague, generic or lazy ad to the right buyer still scores 1-4; (c) reclassifying changes the RUBRIC, not immunity: an ad still scores low when it does its OWN job badly, and a low overall_score still names the specific failing lever. The EVENT and SECONDARY AUDIENCE lenses below, and the LOCALIZATION rule in the critical rules, are WORKED EXAMPLES of this one rule, the detailed rubric for the most common non-primary jobs, not the whole list; reason the same way for any job not named.
+
+${rubricPrompt()}
+FOR THIS ROAST: fill ad_job with the job, the audience_kind, content_kind (content only), the evidence, and EVERY dimension of that job scored 1-10. You also have the landing page: use it to classify (a /blog or article page, a gated form, a pricing or demo page, the homepage) and to judge the destination-dependent dimensions (content promise and bridge: does the page deliver what the ad promised in its first screen, and how central is the product inside it; lead_magnet friction: count the form fields you can see). The issue explanations, quick wins and fix kit must be written for THAT job: never recommend a demo CTA, a value proposition or in-ad proof to a job that does not ask for them, and for content, brand and event the fix improves the job's own weak dimension.
 
 CRITICAL RULES:
 - BREVITY: read on screen, skimmable in under a minute. Every explanation, feedback line, and verdict = 1-2 tight sentences (max ~30 words), point first, no preamble, no filler. Fix-kit headlines and CTAs stay short. One sharp sentence beats three vague ones.
@@ -826,6 +836,19 @@ Return the JSON object defined in the output contract. All fields required.`;
       const jsonMatch = modelText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
+
+        // AD TAXONOMY (p7): normalize the job, keep only that job's dimensions, and hold overall_score
+        // within 1 point of their weighted mean so the headline number follows the breakdown. A hiring
+        // post the user chose to roast keeps the model's own score (talent has no dimensions).
+        try {
+          const aj = parsed.ad_job && typeof parsed.ad_job === 'object' ? parsed.ad_job : {};
+          const job = normalizeJob(aj.job);
+          const audK = /^(secondary|segment|localized)$/.test(String(aj.audience_kind || '')) ? aj.audience_kind : 'primary';
+          const dims = cleanDims(job, aj.dims, platform);
+          parsed.ad_job = { job, label: JOBS[job].label, stage: JOBS[job].stage, conversion: isConversionJob(job), audience_kind: audK, content_kind: job === 'content' ? (aj.content_kind || null) : null, evidence: typeof aj.evidence === 'string' ? aj.evidence.slice(0, 240) : '', dims };
+          const fs = scoreFromDims(job, dims, parsed.overall_score, platform);
+          if (typeof fs === 'number') parsed.overall_score = fs;
+        } catch (e) { console.error('[AdRoast] ad_job normalize failed:', e.message); }
         
         console.log('[AdRoast] Meta:', JSON.stringify(meta));
         console.log('[AdRoast] hasAnyLandingContent:', hasAnyLandingContent);

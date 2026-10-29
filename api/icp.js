@@ -814,7 +814,7 @@ ${items}
     // remove them. Unscored extras carry no flag yet and stay as greyed teasers; they clear as the
     // board finishes scoring (the client re-calls ads-fetch until pending hits 0).
     const scAds = collapseTemplateGroups(dropJunkCreatives(sc.ads))
-      .filter(a => a.flag !== 'capture_fail' && !a._captureFail)
+      .filter(a => a.flag !== 'capture_fail' && !a._captureFail) // talent (hiring) posts already dropped by dropJunkCreatives
       .concat(_extras); // scored batch (template-folded, homonyms removed) + unscored extras, shown greyed/locked
     // Persist a compact stats snapshot for the link-preview image (og:image). The pull cache stores
     // UNSCORED ads, so the preview can't derive metrics from it; write the scored numbers + the worst
@@ -823,7 +823,8 @@ ${items}
       try {
         const scoredAll = scAds.filter(a => typeof a.score === 'number');
         if (scoredAll.length) {
-          const worst = scoredAll.filter(a => a.img && /^https?:\/\//.test(String(a.img))).sort((a, b) => a.score - b.score)[0] || null;
+          const _conv = scoredAll.filter(a => a.conversion !== false); // worst = a conversion ad when there is one
+          const worst = (_conv.length ? _conv : scoredAll).filter(a => a.img && /^https?:\/\//.test(String(a.img))).sort((a, b) => a.score - b.score)[0] || null;
           // Same numbers the board overview cards show, so the link preview mirrors them exactly:
           // off = ads reaching the wrong buyer (score <= 6, "ads to fix"), crit = badly off (<= 4).
           const cnt = scoredAll.length;
