@@ -343,15 +343,39 @@ ${items}
     const redirectThumb = (maxAge) => { res.setHeader('Cache-Control', 'public, max-age=' + maxAge); res.setHeader('Location', thumb); return res.status(302).end(); };
     const SHOT_KEY = process.env.SCREENSHOTONE_ACCESS_KEY;
     const debugShot = Array.isArray(req.query.debug) ? req.query.debug[0] : req.query.debug;
+    // A ?report=<id> pins this render to that report, so the landing shot is frozen alongside the
+    // roast text and the ad creative (both already frozen at roast time). The first time a report is
+    // viewed the current render is pinned to its id and then never changes again, even if the page
+    // rotates its hero or the url cache expires. This is what stops the ad / LP / roast drifting out
+    // of sync. Each roast has its own id, so a re-roast (new id) gets its own fresh pin.
+    const repRaw = Array.isArray(req.query.report) ? req.query.report[0] : req.query.report;
+    const reportId = (typeof repRaw === 'string' && /^[a-z0-9]{4,40}$/i.test(repRaw)) ? repRaw : null;
+    const pinKey = reportId ? ('shot:report:' + reportId) : null;
+    const sendImg = (buf, ct) => {
+      res.setHeader('Content-Type', ct || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000, immutable');
+      return res.status(200).send(buf);
+    };
+    const pin = async (buf) => {
+      try { if (pinKey && _redis && buf.length && buf.length < 800000) await _redis.set(pinKey, buf.toString('base64'), { ex: 60 * 60 * 24 * 90 }); } catch (e) {}
+    };
+    // A frozen per-report copy wins over the url cache and the live render, and is served even if the
+    // key is now unset (the pin is a stored image, independent of the current key).
+    try {
+      if (pinKey && _redis) {
+        const pinned = await _redis.get(pinKey);
+        if (pinned && typeof pinned === 'string') return sendImg(Buffer.from(pinned, 'base64'), 'image/jpeg');
+      }
+    } catch (e) { /* miss -> render/cache */ }
     if (!SHOT_KEY) { if (debugShot) return res.status(200).json({ ok: false, reason: 'no_key_env' }); return redirectThumb(3600); }
     const cacheKey = 'shot:v1:' + target.toString();
     try {
       if (_redis) {
         const hit = await _redis.get(cacheKey);
         if (hit && typeof hit === 'string') {
-          res.setHeader('Content-Type', 'image/jpeg');
-          res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000, immutable');
-          return res.status(200).send(Buffer.from(hit, 'base64'));
+          const buf = Buffer.from(hit, 'base64');
+          await pin(buf); // first view of this report freezes the current render to its id
+          return sendImg(buf, 'image/jpeg');
         }
       }
     } catch (e) { /* miss -> render */ }
@@ -383,9 +407,8 @@ ${items}
       }
       const buf = Buffer.from(await up.arrayBuffer());
       try { if (_redis && buf.length && buf.length < 800000) await _redis.set(cacheKey, buf.toString('base64'), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
-      res.setHeader('Content-Type', ct);
-      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000, immutable');
-      return res.status(200).send(buf);
+      await pin(buf); // freeze this fresh render to the report id too
+      return sendImg(buf, ct);
     } catch (e) {
       if (debugShot) return res.status(200).json({ ok: false, error: String((e && e.message) || e) });
       return redirectThumb(600);
