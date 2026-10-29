@@ -282,7 +282,11 @@ async function _fetchImgB64(url) {
       if (b.length >= 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
       return null;
     };
-    if (!/^image\/(png|jpe?g|gif|webp)$/.test(ct)) { const m = sniff(buf); if (!m) return null; ct = m; }
+    // The bytes win even when the header names a valid type: LinkedIn served a PNG labeled image/jpeg
+    // (Superwise, 2026-10-29) and Anthropic rejected the WHOLE batch over that one image.
+    const m = sniff(buf);
+    if (m) ct = m;
+    else if (!/^image\/(png|jpe?g|gif|webp)$/.test(ct)) return null;
     return { media_type: ct, data: buf.toString('base64') };
   } catch (e) { return null; }
 }
@@ -334,7 +338,7 @@ async function scoreAds(ads, icp) {
     // The ad library cuts copy with a trailing ellipsis; the live ad is complete. The prompt
     // says never to flag truncation, but the model still did (Infiterra, 2026-09-20: "Truncated
     // Body", scored 6). Strip the cut marker so it never SEES a truncation to complain about.
-    lines.push(`#${i} [${a.plat}]${a.isVideo ? ' [VIDEO AD - only a still thumbnail is shown below, NOT the full video]' : ''}${a.doc ? ' [DOCUMENT AD]' : ''}${a.tl ? ' [THOUGHT-LEADER AD - fronted by a person]' : ''} advertiser="${(a.advertiser || '').slice(0, 60)}" headline="${stripCut(a.head).slice(0, 140)}" body="${stripCut(a.body).slice(0, 220)}"`);
+    lines.push(`#${i} [${a.plat}]${a.isVideo ? ' [VIDEO AD - only a still thumbnail is shown below, NOT the full video]' : ''}${(a.doc || /document-cover-images/.test(String(a.img || ''))) ? ' [DOCUMENT AD]' : ''}${a.tl ? ' [THOUGHT-LEADER AD - fronted by a person]' : ''} advertiser="${(a.advertiser || '').slice(0, 60)}" headline="${stripCut(a.head).slice(0, 140)}" body="${stripCut(a.body).slice(0, 220)}"`);
     const imgLabel = a.isVideo ? `Thumbnail (one still frame) of VIDEO ad #${i}: this is NOT the full video, often just an intro/logo frame:` : `Creative image for ad #${i}:`;
     if (imgByIdx[i]) {
       content.push({ type: 'text', text: imgLabel });

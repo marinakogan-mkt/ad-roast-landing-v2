@@ -173,9 +173,9 @@ export function scoreFromDims(job, dims, overall, plat) {
     sw += d.w; sv += d.w * Math.min(10, Math.max(1, v));
   }
   if (!sw) return Number.isFinite(ov) ? Math.min(10, Math.max(1, Math.round(ov))) : null;
-  const mean = sv / sw;
-  const s = Number.isFinite(ov) ? Math.min(mean + 1, Math.max(mean - 1, ov)) : mean;
-  return Math.min(10, Math.max(1, Math.round(s)));
+  const base = Math.round(sv / sw);
+  const s = Number.isFinite(ov) ? Math.min(base + 1, Math.max(base - 1, Math.round(ov))) : base;
+  return Math.min(10, Math.max(1, s));
 }
 
 // Keep only the dimension keys of the ad's job, as integers 1-10 (what the board caches and the UI shows).
