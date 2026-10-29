@@ -221,7 +221,7 @@ export function collapseTemplateGroups(ads) {
   for (const k of Object.keys(groups)) {
     const g = groups[k];
     const scored = g.filter(a => typeof a.score === 'number');
-    const real = scored.filter(a => a.flag !== 'capture_fail' && !_BRAND_VERDICT.test(String(a.verdict || '')));
+    const real = scored.filter(a => a.flag !== 'capture_fail' && a.fit !== false && !_BRAND_VERDICT.test(String(a.verdict || '')));
     const pool = real.length ? real : (scored.length ? scored : g);
     const best = pool.reduce((m, a) => ((typeof a.score === 'number' ? a.score : 99) < (typeof m.score === 'number' ? m.score : 99) ? a : m), pool[0]);
     pick[k] = { ...best, variants: g.length };
@@ -337,7 +337,7 @@ async function scoreAds(ads, icp) {
     }
   }
   content[0].text = `ICP: ${icp}\n\nScore each ad 1-10 for how well it fits this ICP and earns the click (1 = severe mismatch, 10 = excellent). Several ads include their creative image below; READ the copy/text rendered on each creative and judge it as the ad's copy. Ads:\n${lines.join('\n')}`;
-  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"title":"3 to 6 word name for the ad","verdict":"one short diagnosis line","tags":["2 to 4 short labels"],"flag":"OMIT normally; set to \"capture_fail\" ONLY when what was captured is NOT the advertiser's real ad, per the CAPTURE ARTIFACT rule below"}. The title names the ad in a list using the ad's OWN words (its headline or the main line printed on the creative, shortened if needed), under 6 words, no trailing period. NEVER describe the ad instead of quoting it: no invented category labels and never end the title with "Ad", "Display Ad", "Banner" or "Creative" (WRONG: "CDP Starter Kit Display Ad", "M365 Management Tool Ad"; RIGHT: "CDP Starter Kit", "Microsoft 365 management tool").
+  const sys = `You are a B2B ad auditor. Return ONLY a JSON array, one object per ad index (include EVERY index you are given, none skipped), shape: {"i":0,"score":5,"title":"3 to 6 word name for the ad","verdict":"one short diagnosis line","tags":["2 to 4 short labels"],"job":"demand_gen|event|brand|secondary_audience|segment|localized|other","audience":"who this ad is actually for, a short phrase","fit_applies":true,"evidence":"the exact words in the ad that mark its job and reader, quoted","flag":"OMIT normally; set to \"capture_fail\" ONLY when what was captured is NOT the advertiser's real ad, per the CAPTURE ARTIFACT rule below"}. The job, audience, fit_applies and evidence fields are REQUIRED on every scored row and are set per the PURPOSE BEFORE FIT rule below (fit_applies = is this a demand-gen pitch to the primary ICP buyer, so that buyer-fit may lower the score). The title names the ad in a list using the ad's OWN words (its headline or the main line printed on the creative, shortened if needed), under 6 words, no trailing period. NEVER describe the ad instead of quoting it: no invented category labels and never end the title with "Ad", "Display Ad", "Banner" or "Creative" (WRONG: "CDP Starter Kit Display Ad", "M365 Management Tool Ad"; RIGHT: "CDP Starter Kit", "Microsoft 365 management tool").
 
 READ THE CREATIVE (OCR): when an ad's text line has an EMPTY headline AND an EMPTY body (Google image ads come this way), its copy exists only on the creative image. For those ads ONLY, also return "head" = the ad's headline (the most prominent line of ad copy) and "body" = the rest of its ad copy (description, offer, CTA text), both transcribed VERBATIM from the image, exactly as printed: no paraphrase, no summary, no description of the visual. Leave out the advertiser name, the display URL/domain and UI chrome ("Sponsored", menus, the logo). Use "" for body when only one line of copy exists. Omit "head"/"body" for ads whose text line already has copy. If such an ad's creative has NO readable ad copy at all (pure imagery or illustration, nothing to read besides at most a logo or brand name), do NOT invent a title or copy and do NOT judge it: return {"i":N,"textless":true,"score":null,"title":"","verdict":"","tags":[]} so it is shown unscored and left out of every average (a capture artifact per the CAPTURE ARTIFACT rule still takes "flag" instead). The verdict is ONE short scannable line (max ~14 words) naming the single biggest reason this ad wins or loses the intended buyer: a diagnosis, not a prescription. Do NOT write a paragraph, and do NOT include a fix or an instruction verb (add, make, change, use, swap, put, rewrite); the fix is delivered separately in the full roast. The tags are 2 to 4 VERY short labels (1 to 3 words each, Title Case, no punctuation) that name the specific levers behind the score, so the reader scans them like chips: for a weak ad the missing/broken levers (e.g. "No proof", "Generic hook", "No differentiator", "Weak CTA", "Vague offer", "Wrong buyer"); for a strong ad what it does well (e.g. "Sharp hook", "Clear proof", "Strong CTA"). Base everything on the ad's actual copy (from the text line and, when present, the words on its creative image).
 
@@ -356,11 +356,13 @@ CAPTURE ARTIFACT (OUR problem, NOT the advertiser's ad): sometimes what was capt
 
 NOT A DEFECT (preview / dynamic artifacts, judge the REAL ad, never flag): (a) DYNAMIC KEYWORD INSERTION: the preview shows placeholder tokens like "{keyword}", "{City}", "{Country}", "{location}", or "<dynamically generated location>"; the LIVE ad fills them, so a real user sees "Chicago", not the token. Read PAST the token and judge the ad as if filled. Never call this broken, a typo, or placeholder text. (b) TRUNCATION: the preview often CUTS OFF the copy with an ellipsis or mid-word; the live ad is complete. Never flag "cut off", "incomplete", or "truncated" as a defect. The ONLY real technical defect is a genuine misspelling in the advertiser's OWN words (tag "Typo", name it plainly) - never invent one, and never treat a dynamic token or a preview truncation as one.
 
-BRAND / NON-DEMAND-GEN: some ads are NOT trying to sell the product to a buyer: employer branding, company culture, life-at-company, hiring or recruiting, team or award celebrations, event recaps, thought-leadership with no offer, CSR. These are brand or talent plays, not demand-gen, and that is BY DESIGN. Their low buyer-fit is intentional, NOT a failure, so they must NEVER sit at the bottom of the board or be the "fix this first". HARD RULE: a brand / non-demand-gen post scores EXACTLY 5, never 1-4, no matter how little it speaks to the buyer. Set its verdict to name it plainly, e.g. "Brand / culture post, not a demand-gen ad; judge it on brand lift, not buyer fit." Only a genuine demand-gen ad (offering the product, a demo, trial, or download) that misses the buyer earns a 1-4. When unsure whether an ad is demand-gen or brand, treat a clear product offer or demo/trial/download CTA as demand-gen.
+PURPOSE BEFORE FIT (decide this for EVERY ad before you score it, including kinds not listed below): a score measures how well an ad does ITS OWN job for ITS OWN intended reader, not how well it pitches the product to the primary ICP buyer. First read the ad on its own terms and set two things: (1) its JOB, the response it is actually built to get, and (2) its intended AUDIENCE, who it truly targets, which may be a deliberate reader the ICP does not describe. Then score it against that job and that reader. The ICP-mismatch / buyer-fit penalty is CONDITIONAL, not automatic: set fit_applies=true and lower the score for wrong-buyer / off-ICP / weak-buyer-fit ONLY when the ad is a genuine demand-gen product pitch aimed at the primary buyer and it misses. When the ad coherently does another job or targets another deliberate reader, set fit_applies=false, do NOT apply the primary-ICP match, judge it on its own job's rubric, and let the verdict DESCRIBE the reader, never dock it or write it for not being the primary buyer. GUARDRAILS so this never becomes an excuse to inflate: (a) treating an ad as anything other than a primary-buyer demand-gen pitch REQUIRES a positive, coherent signal in the ad itself, quoted in evidence, never a charitable guess; (b) when there is no such signal or you are unsure, the DEFAULT holds, fit_applies=true, it is a demand-gen pitch to the primary buyer judged strictly, so a vague, generic or lazy ad to the right buyer still scores 1-4; (c) reclassifying changes the RUBRIC, not immunity: an ad still scores low when it does its OWN job badly, and any score of 1-4 MUST name the specific failing lever in the verdict. The blocks below are WORKED EXAMPLES of this one rule, the detailed rubric for the most common non-primary jobs, not the whole list; reason the same way for any job not named.
 
-EVENT / PRESENCE AD (upcoming, judge by its job, NOT product-fit): an ad whose main ask is to meet, visit, attend, register or watch around an UPCOMING event: a conference or trade-show name, a booth or stand number, "meet us at" / "join us at" / "see you at" / "stop by" / "we'll be at", a city paired with a date, or a webinar / roundtable / panel / live-session / speaking-slot invite. This is NOT an event RECAP (a past event, which is brand, floored at 5 per the rule above). An event ad's job is presence, not a product sale, so judge the DRAW and the LOGISTICS and never a product pitch. Strong (7-9): a concrete reason to show up (a specific talk or topic, a live demo, a named speaker or expert, a meeting slot, an exclusive or giveaway) tied to the buyer's pain, plus the essentials (event, date, where / booth, how to engage); it scores high even with no product-capability detail, no proof metric, and a soft attend/register CTA. Weak (4-5): a venue-only or "we're here" ad that names the event but gives NO reason to meet, no topic, no draw, no logistics; the verdict and tags name the MISSING DRAW / LOGISTICS (e.g. "No Reason to Meet", "No Draw", "Venue Only", "No Logistics"), never a missing product offer. HARD RULE: for an event-presence ad the verdict and tags must NEVER dock it, or be written, for lacking a product value proposition, product-capability detail, in-ad proof metrics, or a hard demo/sign-up CTA; attend/register is the correct ask, so judge draw and logistics only. An event ad is NOT floored at 5 like a brand post: score it on how well it does its own job.
+BRAND / NON-DEMAND-GEN (worked example of PURPOSE BEFORE FIT; fit_applies=false): some ads are NOT trying to sell the product to a buyer: employer branding, company culture, life-at-company, hiring or recruiting, team or award celebrations, event recaps, thought-leadership with no offer, CSR. These are brand or talent plays, not demand-gen, and that is BY DESIGN. Their low buyer-fit is intentional, NOT a failure, so they must NEVER sit at the bottom of the board or be the "fix this first". HARD RULE: a brand / non-demand-gen post scores AT LEAST 5, never 1-4, no matter how little it speaks to the buyer; judge it on brand lift (is the brand message clear, memorable, credible), so it MAY score above 5 when it does that brand job well, and is never pinned to a low 5. Set its verdict to name it plainly, e.g. "Brand / culture post, not a demand-gen ad; judge it on brand lift, not buyer fit." Only a genuine demand-gen ad (offering the product, a demo, trial, or download) that misses the buyer earns a 1-4. When unsure whether an ad is demand-gen or brand, treat a clear product offer or demo/trial/download CTA as demand-gen.
 
-SECONDARY AUDIENCE / SUB-BRAND (judge for THAT audience, not the homepage buyer): a company often runs ads to a deliberate SECONDARY audience its homepage-derived ICP does not describe: an ENTERPRISE or large-org tier (when the default is SMB, or the reverse), a PARTNER / reseller / affiliate / agency program, a WHITE-LABEL / embedded / OEM offer, or a DEVELOPER / API / build-on-us ecosystem. The ad signals it plainly: Enterprise, for partners / resellers / agencies, white-label, embedded, OEM, developers, API, build on, SSO / SCIM / FedRAMP / procurement, portfolio / multi-site / manage hundreds of sites. This is a real, deliberate audience, NOT a targeting miss. HARD RULE: a coherent secondary-audience ad scores AT LEAST 5, NEVER 1-4, for not matching the homepage / primary buyer, exactly the way a brand / non-demand-gen post is floored at 5; the audience mismatch ALONE can never put it below 5, no matter how little it speaks to the primary buyer. It MAY score ABOVE 5 when it serves its own audience well (clear draw, proof, CTA for the enterprise / partner / developer buyer). Its verdict / tags must NOT dock it, or be written, for missing the primary / homepage buyer; name the audience plainly instead (e.g. "Enterprise-tier ad, judged for that buyer, not the SMB default", "Partner / white-label ad, not the primary buyer", "Developer-ecosystem ad, not the core buyer"). This floor applies even when the Enterprise / partner / white-label signal is inferred from the pitch (multi-site / portfolio / "manage hundreds of sites" / "for software companies" / reseller / agency) rather than spelled out. This does NOT cover an ordinary product ad that simply reaches the wrong person with no distinct program behind it (e.g. a consumer-perk ad aimed at end users): that stays off-ICP and is judged normally.
+EVENT / PRESENCE AD (worked example of PURPOSE BEFORE FIT; fit_applies=false; upcoming, judge by its job, NOT product-fit): an ad whose main ask is to meet, visit, attend, register or watch around an UPCOMING event: a conference or trade-show name, a booth or stand number, "meet us at" / "join us at" / "see you at" / "stop by" / "we'll be at", a city paired with a date, or a webinar / roundtable / panel / live-session / speaking-slot invite. This is NOT an event RECAP (a past event, which is brand, floored at 5 per the rule above). An event ad's job is presence, not a product sale, so judge the DRAW and the LOGISTICS and never a product pitch. Strong (7-9): a concrete reason to show up (a specific talk or topic, a live demo, a named speaker or expert, a meeting slot, an exclusive or giveaway) tied to the buyer's pain, plus the essentials (event, date, where / booth, how to engage); it scores high even with no product-capability detail, no proof metric, and a soft attend/register CTA. Weak (4-5): a venue-only or "we're here" ad that names the event but gives NO reason to meet, no topic, no draw, no logistics; the verdict and tags name the MISSING DRAW / LOGISTICS (e.g. "No Reason to Meet", "No Draw", "Venue Only", "No Logistics"), never a missing product offer. HARD RULE: for an event-presence ad the verdict and tags must NEVER dock it, or be written, for lacking a product value proposition, product-capability detail, in-ad proof metrics, or a hard demo/sign-up CTA; attend/register is the correct ask, so judge draw and logistics only. An event ad is NOT floored at 5 like a brand post: score it on how well it does its own job.
+
+SECONDARY AUDIENCE / SUB-BRAND (worked example of PURPOSE BEFORE FIT; fit_applies=false; judge for THAT audience, not the homepage buyer): a company often runs ads to a deliberate SECONDARY audience its homepage-derived ICP does not describe: an ENTERPRISE or large-org tier (when the default is SMB, or the reverse), a PARTNER / reseller / affiliate / agency program, a WHITE-LABEL / embedded / OEM offer, or a DEVELOPER / API / build-on-us ecosystem. The ad signals it plainly: Enterprise, for partners / resellers / agencies, white-label, embedded, OEM, developers, API, build on, SSO / SCIM / FedRAMP / procurement, portfolio / multi-site / manage hundreds of sites. This is a real, deliberate audience, NOT a targeting miss. HARD RULE: a coherent secondary-audience ad scores AT LEAST 5, NEVER 1-4, for not matching the homepage / primary buyer, exactly the way a brand / non-demand-gen post is floored at 5; the audience mismatch ALONE can never put it below 5, no matter how little it speaks to the primary buyer. It MAY score ABOVE 5 when it serves its own audience well (clear draw, proof, CTA for the enterprise / partner / developer buyer). Its verdict / tags must NOT dock it, or be written, for missing the primary / homepage buyer; name the audience plainly instead (e.g. "Enterprise-tier ad, judged for that buyer, not the SMB default", "Partner / white-label ad, not the primary buyer", "Developer-ecosystem ad, not the core buyer"). This floor applies even when the Enterprise / partner / white-label signal is inferred from the pitch (multi-site / portfolio / "manage hundreds of sites" / "for software companies" / reseller / agency) rather than spelled out. This does NOT cover an ordinary product ad that simply reaches the wrong person with no distinct program behind it (e.g. a consumer-perk ad aimed at end users): that stays off-ICP and is judged normally.
 
 SEGMENT / VERTICAL FIT: the ICP often covers several industries, segments, or buyer roles. An ad aimed at just ONE of them (e.g. a retail ad from a vendor whose ICP includes retail, finance, healthcare, and more) is ON-target for that segment, NOT off-target for being vertical-specific. Judge whether it speaks well to that segment's buyer and pain. Only score it low as a mismatch if the segment or buyer it targets is genuinely OUTSIDE the ICP, never merely because it is narrower than the whole ICP. When the ICP names sweet-spot segments, treat an ad to any of them as in-market.
 
@@ -443,7 +445,7 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
       if (byI[i].textless === true && !(a.head || '').trim() && !(a.body || '').trim()) return { ...a, textless: true };
       if (typeof byI[i].score !== 'number') return a;
       const t = _ownWords(byI[i].title);
-      return { ...a, score: byI[i].score, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.filter((t) => !ARTIFACT_TAG.test(String(t))).slice(0, 4) : [], title: t || null, ocrHead: _ocr(byI[i].head), ocrBody: _ocr(byI[i].body), head: a.head || _ocr(byI[i].head) || t || '', body: a.body || _ocr(byI[i].body) || '' };
+      return { ...a, score: byI[i].score, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.filter((t) => !ARTIFACT_TAG.test(String(t))).slice(0, 4) : [], title: t || null, job: byI[i].job || null, audience: byI[i].audience || null, fit: byI[i].fit_applies === false ? false : true, evidence: byI[i].evidence || null, ocrHead: _ocr(byI[i].head), ocrBody: _ocr(byI[i].body), head: a.head || _ocr(byI[i].head) || t || '', body: a.body || _ocr(byI[i].body) || '' };
     });
   } catch (e) {
     // A parse error or a thrown hard-failure: re-throw so scoreAdsCached reports it instead of
@@ -494,56 +496,74 @@ function icpHash(icp) {
 const _OFFER_SIGNAL = /\b(demo|trial|free|download|sign[\s-]?up|signup|register|webinar|webcast|event|summit|conference|book|get started|try|pricing|quote|guide|report|e-?book|whitepaper|white paper|checklist|template|playbook|toolkit|course|workshop|learn more|read more|see how|get the|get your|claim|discount|introducing|announc)/i;
 const KIND_MODEL = process.env.ANTHROPIC_KIND_MODEL || 'claude-haiku-4-5-20251001';
 const BRAND_VERDICT_TEXT = 'Thought-leadership or brand post with no product pitch, not a demand-gen ad; judge it on brand lift, not buyer fit.';
-async function classifyAdKinds(ads, redis) {
+// VERIFY LOW SCORES (adversarial false-positive catcher, pipeline #3): the Sonnet scorer applies
+// PURPOSE BEFORE FIT but unevenly, so an ad doing a non-primary job (brand, event, a secondary
+// enterprise/partner/developer audience, an in-ICP segment, a localized market) can still slip
+// through with a 1-4 scored on buyer-fit, the wrong yardstick. Every social ad that scored 1-4 gets
+// ONE cheap Haiku adversarial recheck: is this truly a demand-gen pitch to the primary buyer that
+// misses (score stands), or was buyer-fit the wrong lens (rescore on its OWN job, never below 5 for
+// an audience/job mismatch alone)? This replaces the old brand-only floor-at-5: a reclassified ad is
+// now scored on its own job (5 if adequate, higher if it does that job well), not pinned to 5. Cached
+// per creative + ICP (adverify) so the verdict never flips between runs. Google lows are left to the
+// Sonnet rule for now (their copy is thin and most non-primary ads run on LinkedIn).
+async function recheckLows(ads, icp, redis) {
   const out = {};
   if (!ads.length) return out;
-  const keyOf = (a) => 'adkind:v1:' + creativeSig(a);
+  const keyOf = (a) => 'adverify:v1:' + icpHash(icp) + ':' + creativeSig(a);
   let need = ads;
   if (redis) {
     try {
       const vals = await redis.mget(...ads.map(keyOf));
       need = [];
-      ads.forEach((a, i) => { const v = vals && vals[i]; if (v === 'brand' || v === 'demand') out[creativeSig(a)] = v; else if (v !== 'retry') need.push(a); });
+      ads.forEach((a, i) => { const v = vals && vals[i]; const o = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null; if (o && typeof o.score === 'number') out[creativeSig(a)] = o; else need.push(a); });
     } catch (e) { need = ads; }
   }
   const key = process.env.ANTHROPIC_API_KEY;
   if (!need.length || !key) return out;
-  const list = need.map((a, i) => `${i + 1}. Advertiser: ${a.advertiser || 'unknown'}\n${[a.head, a.title, a.body].filter(Boolean).join(' | ').slice(0, 600)}`).join('\n\n');
-  const sys = 'You classify paid social ads. DEMAND = the ad promotes the advertiser\'s product, service, feature, platform or an offer (even without a button). BRAND = employer branding, culture, hiring, team or award news, event recaps, or an opinion / thought-leadership post that does not pitch the product. Answer only with a JSON array of strings, one per ad, each "DEMAND" or "BRAND".';
+  const list = need.map((a, i) => `${i + 1}. [score ${a.score}] Advertiser: ${a.advertiser || 'unknown'}\n${[a.head, a.title, a.body].filter(Boolean).join(' | ').slice(0, 600)}`).join('\n\n');
+  const sys = `You re-check LOW-scored B2B ads (each was scored 1-4) for FALSE POSITIVES against this ICP:\n${String(icp || '').slice(0, 1200)}\n\nA 1-4 is CORRECT only when the ad is a genuine demand-gen product pitch aimed at THIS ICP buyer and it misses (vague, generic, no proof, weak hook or CTA). It is a FALSE POSITIVE when the ad is actually doing another job or targeting another deliberate reader, where buyer-fit is the wrong yardstick: BRAND / non-demand-gen (culture, hiring, founder or origin story, mission or manifesto, brand film, award or customer celebration, a PAST-event recap, a named content series, thought-leadership with no offer); EVENT / presence (meet, visit, attend, register or watch an UPCOMING event); SECONDARY AUDIENCE (a deliberate enterprise tier, a partner / reseller / affiliate / agency program, a white-label / embedded / OEM offer, or a developer / API ecosystem); a specific IN-ICP segment, or a localized market. Decide each ONLY from a positive signal in the ad itself. Return ONLY a JSON array, one object per ad IN ORDER, shape: {"i":0,"primary_pitch":true,"job":"demand_gen|brand|event|secondary_audience|segment|localized","score":5,"verdict":"one short line, max 14 words, no fix, no instruction verb","evidence":"the quoted signal"}. Scoring: if primary_pitch is true, KEEP the original score and set job demand_gen. If primary_pitch is false, the job or audience mismatch ALONE must NEVER sit below 5: score how well it does ITS OWN job (5 if merely adequate, 6-8 if it does its own job well), and the verdict must DESCRIBE the job or reader (e.g. "Enterprise-tier ad, judged for that buyer", "Brand post, judged on brand lift"), NEVER say off-ICP, wrong buyer, misses the buyer, or no value prop. When unsure, treat it as a demand_gen primary pitch and keep the low score. No em or en dashes.`;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      // No cache_control: the ~100-token system prompt is far below Haiku 4.5's 4096-token
-      // cacheable minimum, so a marker would do nothing. Usage is still logged.
-      body: JSON.stringify({ model: KIND_MODEL, max_tokens: 200, temperature: 0, system: sys, messages: [{ role: 'user', content: list }] }),
+      body: JSON.stringify({ model: KIND_MODEL, max_tokens: 1500, temperature: 0, system: sys, messages: [{ role: 'user', content: list }] }),
     });
     const d = await r.json().catch(() => null);
-    logClaudeUsage('ad-kind', KIND_MODEL, d, 'ads=' + need.length);
+    logClaudeUsage('ad-verify', KIND_MODEL, d, 'ads=' + need.length);
     const txt = d && Array.isArray(d.content) ? d.content.map(c => c.text || '').join('') : '';
     const m = txt.match(/\[[\s\S]*\]/);
     const arr = m ? JSON.parse(m[0]) : null;
-    if (!Array.isArray(arr) || arr.length !== need.length) return out;
+    if (!Array.isArray(arr)) return out;
+    const byI = {};
+    for (const s of arr) if (typeof s.i === 'number') byI[s.i] = s;
     const writes = [];
     need.forEach((a, i) => {
-      const v = /brand/i.test(String(arr[i])) ? 'brand' : 'demand';
-      out[creativeSig(a)] = v;
-      if (redis) writes.push(redis.set(keyOf(a), v, { ex: ADSCORE_TTL }));
+      const s = byI[i]; if (!s) return;
+      const primary = s.primary_pitch !== false;
+      let score = typeof s.score === 'number' ? s.score : a.score;
+      if (primary) score = a.score;          // a real primary-buyer miss keeps its original low score
+      else if (score < 5) score = 5;          // audience/job mismatch alone never sits below 5
+      const o = { primary, job: s.job || (primary ? 'demand_gen' : null), score, verdict: typeof s.verdict === 'string' ? s.verdict : a.verdict, evidence: s.evidence || null };
+      out[creativeSig(a)] = o;
+      if (redis) writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL }));
     });
     try { await Promise.all(writes); } catch (e) { /* best-effort */ }
   } catch (e) {
-    // Safety net only: on failure the score stands as the model gave it. Remember the failure for
-    // an hour so a broken API doesn't trigger a new call on every board open.
-    if (redis) { try { await Promise.all(need.map(a => redis.set(keyOf(a), 'retry', { ex: 60 * 60 }))); } catch (e2) {} }
+    // Safety net: on failure the Sonnet score stands. Remember the failure for an hour so a broken
+    // API does not re-fire the recheck on every board open.
+    if (redis) { try { await Promise.all(need.map(a => redis.set(keyOf(a), JSON.stringify({ primary: true, job: 'demand_gen', score: a.score, verdict: a.verdict }), { ex: 60 * 60 }))); } catch (e2) {} }
   }
   return out;
 }
-async function enforceBrandFloor(ads, redis) {
-  const cands = ads.filter(a => a && typeof a.score === 'number' && a.score < 5 && !/google/i.test(String(a.plat || ''))
-    && !_BRAND_VERDICT.test(String(a.verdict || '')) && !_OFFER_SIGNAL.test([a.head, a.title, a.body].filter(Boolean).join(' ')));
+async function verifyLowScores(ads, icp, redis) {
+  const cands = ads.filter(a => a && typeof a.score === 'number' && a.score < 5 && !/google/i.test(String(a.plat || '')));
   if (!cands.length) return ads;
-  const kinds = await classifyAdKinds(cands, redis);
-  return ads.map(a => (kinds[creativeSig(a)] === 'brand' && cands.includes(a)) ? { ...a, score: 5, verdict: BRAND_VERDICT_TEXT, tags: [] } : a);
+  const fixes = await recheckLows(cands, icp, redis);
+  return ads.map(a => {
+    const f = fixes[creativeSig(a)];
+    if (!f || f.primary) return a; // a true primary-buyer miss keeps the low score the scorer gave it
+    return { ...a, score: f.score, verdict: f.verdict || a.verdict, job: f.job || a.job || null, fit: false, tags: [] };
+  });
 }
 
 export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0 } = {}) {
@@ -587,7 +607,15 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // v18 (2026-10-28), LINKEDIN/META: the secondary-audience rule now FLOORS at 5 (never 1-4) like the
   // brand rule, and the floor holds even when Enterprise/partner is inferred from the pitch (multi-site,
   // "for software companies", reseller) not spelled out. v17's soft wording left Wix Enterprise at 2.
-  const keyOf = (a) => 'adscore:' + (/google/i.test(String(a.plat || '')) ? 'v14' : 'v18') + ':' + ih + ':' + creativeSig(a);
+  // v19 (2026-10-28), BOTH PLATFORMS (Google bumped v14->v15 too): the ad-hoc lenses (brand, event,
+  // secondary audience, segment, localization) are now WORKED EXAMPLES under one governing rule,
+  // PURPOSE BEFORE FIT: the scorer first decides each ad's JOB and intended AUDIENCE and emits
+  // job/audience/fit_applies/evidence, and the buyer-fit penalty is CONDITIONAL (only a demand-gen
+  // pitch to the primary buyer that misses may score 1-4). Unseen non-primary jobs are covered by the
+  // rule, not by a new lens. The old brand floor-at-5 re-check (classifyAdKinds/enforceBrandFloor) is
+  // replaced by verifyLowScores: an adversarial Haiku recheck of every social 1-4 that rescores a
+  // false positive on its OWN job (>=5, not pinned to 5). Google re-scores under the same rule.
+  const keyOf = (a) => 'adscore:' + (/google/i.test(String(a.plat || '')) ? 'v15' : 'v19') + ':' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
   if (!force) {
     try {
@@ -622,7 +650,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
         // No readable copy on the creative: remember it (it won't grow text) so it leaves `need`.
         if (a.textless) { const o = { textless: true }; freshBySig[creativeSig(a)] = o; writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL })); continue; }
         if (typeof a.score !== 'number') continue;
-        const o = { score: a.score, verdict: a.verdict, tags: Array.isArray(a.tags) ? a.tags.slice(0, 4) : [], title: a.title || null };
+        const o = { score: a.score, verdict: a.verdict, tags: Array.isArray(a.tags) ? a.tags.slice(0, 4) : [], title: a.title || null, job: a.job || null, audience: a.audience || null, fit: a.fit === false ? false : true };
         if (a.ocrHead) o.head = a.ocrHead;
         if (a.ocrBody) o.body = a.ocrBody;
         freshBySig[creativeSig(a)] = o;
@@ -642,9 +670,9 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
     if (failBySig[creativeSig(a)] || (o && o._captureFail)) return { ...a, _captureFail: true }; // our capture failed; isJunkCreative drops it
     if (o && o.textless) return { ...a, textless: true }; // unscored, greyed, out of every average
     // head/body: the ad's own copy, else the copy READ off its creative. Never a described title.
-    return o ? ({ ...a, score: o.score, verdict: cleanVerdict(o.verdict), tags: Array.isArray(o.tags) ? o.tags.filter((t) => !ARTIFACT_TAG.test(String(t))) : [], title: _ownWords(o.title) || a.title || null, head: a.head || o.head || _ownWords(o.title) || '', body: a.body || o.body || '' }) : a;
+    return o ? ({ ...a, score: o.score, verdict: cleanVerdict(o.verdict), tags: Array.isArray(o.tags) ? o.tags.filter((t) => !ARTIFACT_TAG.test(String(t))) : [], title: _ownWords(o.title) || a.title || null, job: o.job || null, audience: o.audience || null, fit: o.fit === false ? false : true, head: a.head || o.head || _ownWords(o.title) || '', body: a.body || o.body || '' }) : a;
   });
-  const outChecked = await enforceBrandFloor(out, redis);
+  const outChecked = await verifyLowScores(out, icp, redis);
   // scoredNew = creatives that ACTUALLY got a number this call (not what we tried). pending falls
   // by real scores AND by capture-failures (resolved: dropped), so a board with an uncapturable
   // creative doesn't loop the client's re-score forever waiting on an ad that can never score.
