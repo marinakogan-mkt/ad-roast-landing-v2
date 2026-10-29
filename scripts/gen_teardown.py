@@ -118,7 +118,7 @@ def build(d):
 {CSS}
 </style></head>
 <body>
-<header class="bar"><div class="bar-in"><a class="brand" href="/teardowns"><span class="lg"></span><b>AdRoast</b><span class="sl">/ Teardowns</span></a><a class="btn" href="/?library=1">Roast your ads free</a></div></header>
+<header class="bar"><div class="bar-in"><a class="brand" href="/teardowns"><img class="lg" src="/apple-touch-icon.png" alt="AdRoast" width="22" height="22"><b>AdRoast</b><span class="sl">/ Teardowns</span></a><a class="btn" href="/?library=1">Roast your ads free</a></div></header>
 <main>
   <div class="eyebrow">Ad teardown &middot; B2B SaaS</div>
   <h1>{h1}</h1>
@@ -238,7 +238,7 @@ def integrate(d, repo="."):
     h = open(hub, encoding="utf-8").read()
     if ("/teardowns/%s" % slug) not in h:
         card = (f'<a class="tcard" href="/teardowns/{slug}"><div class="tcard-top">'
-                f'<div class="tcard-badge" style="background:{badge}">{initial}</div>'
+                f'<div class="tcard-badge" style="background:{badge}"><img src="/api/icp?logo={dom}" alt="" loading="lazy" onerror="this.remove()">{initial}</div>'
                 f'<div><div class="tcard-co">{name}</div><div class="tcard-date">{date}</div></div>'
                 f'<span class="mini {sev}">{score}/10</span></div>'
                 f'<h3>{hook}</h3><p>{desc}</p>'
