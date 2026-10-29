@@ -36,6 +36,31 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.adroast.in/teardowns/monday</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/klaviyo</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/webflow</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/clickup</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/pipedrive</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.adroast.in/teardowns/cycode</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
