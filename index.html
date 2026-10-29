@@ -3031,7 +3031,7 @@
             </>)}
             </>)}
 
-            {(usingReal || !attemptedReal) && <p className="text-gray-400 mt-8" style={{ fontSize: 12.5, maxWidth: '70ch' }}>{usingReal ? 'Real live ads pulled from the LinkedIn Ad Library and Google Ads Transparency Center. Meta is coming next.' : 'Sample data for the preview. Enter a website above to pull that company’s real live ads.'}</p>}
+            {(usingReal || !attemptedReal) && <p className="text-gray-400 mt-8" style={{ fontSize: 12.5, maxWidth: '70ch' }}>{usingReal ? (ads.some(a => a.plat === 'Meta') ? 'Real live ads pulled from the LinkedIn Ad Library, Google Ads Transparency Center and Meta Ad Library.' : 'Real live ads pulled from the LinkedIn Ad Library and Google Ads Transparency Center. Meta is coming next.') : 'Sample data for the preview. Enter a website above to pull that company’s real live ads.'}</p>}
           </main>
 
           {/* "Coming soon" detail for a platform we don't pull yet (e.g. Meta): clickable, not a
