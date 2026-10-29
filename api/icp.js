@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups, logClaudeUsage } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups, logClaudeUsage } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { pingNewBoard } from './_indexnow.js';
@@ -740,15 +740,25 @@ ${items}
     if ((!refresh && cacheFresh) || (adminRescore && cachedCopy && cachedCopy.ads && cachedCopy.ads.length)) {
       // Fresh enough (< a week), OR an admin re-score: show the last-seen list instantly, no live pull.
       pull = cachedCopy; listCached = true; lastChecked = cachedCopy._checkedAt;
+      // Meta comes from an async Apify run that often outlives the pull that started it (notes.meta =
+      // 'apify_meta_pending'). Collect the finished run here and fold it into the cached board.
+      if (String((cachedCopy.notes || {}).meta || '').startsWith('apify_meta_pending')) {
+        const mt = await fetchMetaAds({ company: body.company, domain: body.domain, limit: 12, redis: _redis, pickupOnly: true }).catch(() => ({ ok: false, ads: [] }));
+        if (mt.reason !== 'apify_meta_pending') {
+          const got = !!(mt.ok && mt.ads && mt.ads.length);
+          pull = { ...cachedCopy, ads: [...(cachedCopy.ads || []).filter(a => (a.plat || '') !== 'Meta'), ...(got ? mt.ads : [])], sources: { ...(cachedCopy.sources || {}), meta: got ? mt.ads.length : 0 }, notes: { ...(cachedCopy.notes || {}), meta: got ? 'ok' : (mt.reason || 'no_ads') } };
+          if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(pull), { ex: CACHE_TTL }); } catch (e) {} }
+        }
+      }
     } else {
       // Go live: the user asked to refresh, or the copy is stale (>1 week), or we've never pulled.
-      const r = await fetchAllAds({ company: body.company, domain: body.domain });
+      const r = await fetchAllAds({ company: body.company, domain: body.domain, redis: _redis });
       if (r && r.ok && r.ads && r.ads.length) {
         // Preserve last-seen ads PER PLATFORM: a pull that got Google but not LinkedIn (LinkedIn
         // flaky this run) must not wipe the LinkedIn ads we already had — otherwise the LinkedIn card
         // would flip back to an error. Carry forward each platform we lost from the previous copy.
         if (prevCopy && Array.isArray(prevCopy.ads)) {
-          for (const plat of ['LinkedIn', 'Google']) {
+          for (const plat of ['LinkedIn', 'Google', 'Meta']) {
             const gotNow = r.ads.some(a => (a.plat || '') === plat);
             if (!gotNow) {
               const prev = prevCopy.ads.filter(a => (a.plat || '') === plat);

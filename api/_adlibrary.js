@@ -936,7 +936,7 @@ async function _fetchMetaSnapshot(url) {
 // ad, ~$0.006 on the free plan) reads it for us. Uses the same APIFY_TOKEN as LinkedIn. Set
 // APIFY_META=0 in Vercel to switch it off. Best-effort: any failure returns ok:false and the
 // caller falls back to the official API / "coming soon".
-async function fetchMetaAdsViaApify({ company, domain, limit = 12 } = {}) {
+async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null, pickupOnly = false } = {}) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
   if (process.env.APIFY_META === '0') return { ok: false, reason: 'apify_meta_disabled', ads: [] };
@@ -944,18 +944,57 @@ async function fetchMetaAdsViaApify({ company, domain, limit = 12 } = {}) {
   if (!term) return { ok: false, reason: 'no_query', ads: [] };
   const libUrl = 'https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&media_type=all&search_type=keyword_unordered&q=' + encodeURIComponent(term);
   const input = { startUrls: [{ url: libUrl }], resultsLimit: 30, activeStatus: 'active', isDetailsPerAd: false, includeAboutPage: false, enrichWithEcommerceData: false };
-  let items;
-  try {
+  const api = 'https://api.apify.com/v2';
+  const tk = 'token=' + encodeURIComponent(token);
+  const call = async (url, opts = {}, ms = 10000) => {
     const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 42000);
-    let r;
-    try {
-      r = await fetch('https://api.apify.com/v2/acts/apify~facebook-ads-scraper/run-sync-get-dataset-items?timeout=40&token=' + encodeURIComponent(token), {
-        method: 'POST', signal: c.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
-      });
-    } finally { clearTimeout(t); }
-    if (!r.ok) { let why = ''; try { const j = await r.json(); why = (j && j.error && (j.error.type || '') + ':' + String(j.error.message || '').slice(0, 120)) || ''; } catch (e) {} return { ok: false, reason: 'apify_meta_' + r.status + (why ? ':' + why : ''), ads: [] }; }
-    items = await r.json();
+    const t = setTimeout(() => c.abort(), ms);
+    try { return await fetch(url, { ...opts, signal: c.signal }); } finally { clearTimeout(t); }
+  };
+  // The scraper needs 40-90s, longer than a board pull can wait. So the run is started async and its
+  // id parked in Redis: if it finishes inside our wait we use it now; otherwise the NEXT board load (we wait only ~25s so the pull plus scoring stays under Vercel's 60s)
+  // (or icp.js's pickup on a cached board) collects the finished run. No Redis: wait and hope.
+  const runKey = 'meta:apify:run:' + norm(term);
+  let run = null;
+  try { const v = redis ? await redis.get(runKey) : null; run = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null; } catch (e) { run = null; }
+  try {
+    if (run && run.id) {
+      const r = await call(api + '/actor-runs/' + run.id + '?' + tk);
+      const j = r.ok ? await r.json() : null;
+      const st = j && j.data && j.data.status;
+      if (st === 'RUNNING' || st === 'READY') {
+        if (Date.now() - (run.at || 0) < 6 * 60 * 1000) return { ok: false, reason: 'apify_meta_pending', ads: [] };
+        run = null; // stuck: start over
+      } else if (st === 'SUCCEEDED') {
+        run = { ...run, dataset: j.data.defaultDatasetId };
+      } else { run = null; }
+      if (!run || !run.dataset) { try { if (redis) await redis.del(runKey); } catch (e) {} }
+    }
+    if (pickupOnly && !(run && run.dataset)) return { ok: false, reason: 'apify_meta_none', ads: [] };
+    if (!run || !run.dataset) {
+      const r = await call(api + '/acts/apify~facebook-ads-scraper/runs?timeout=240&waitForFinish=25&' + tk, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+      }, 30000);
+      if (!r.ok) {
+        let why = '';
+        try { const j = await r.json(); why = (j && j.error && (j.error.type || '') + ':' + String(j.error.message || '').slice(0, 120)) || ''; } catch (e) {}
+        return { ok: false, reason: 'apify_meta_' + r.status + (why ? ':' + why : ''), ads: [] };
+      }
+      const j = await r.json();
+      const d = (j && j.data) || {};
+      if (d.status !== 'SUCCEEDED') {
+        if ((d.status === 'RUNNING' || d.status === 'READY') && redis && d.id) {
+          try { await redis.set(runKey, JSON.stringify({ id: d.id, at: Date.now() }), { ex: 60 * 30 }); } catch (e) {}
+          return { ok: false, reason: 'apify_meta_pending', ads: [] };
+        }
+        return { ok: false, reason: 'apify_meta_run_' + String(d.status || 'unknown').toLowerCase(), ads: [] };
+      }
+      run = { id: d.id, dataset: d.defaultDatasetId };
+    }
+    try { if (redis) await redis.del(runKey); } catch (e) {}
+    const r = await call(api + '/datasets/' + run.dataset + '/items?clean=true&' + tk, {}, 15000);
+    if (!r.ok) return { ok: false, reason: 'apify_meta_dataset_' + r.status, ads: [] };
+    var items = await r.json();
   } catch (e) { return { ok: false, reason: 'apify_meta_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
   if (!Array.isArray(items) || !items.length) return { ok: false, reason: 'apify_meta_no_ads', ads: [] };
   // The scraper's snapshot comes camelCase; older runs/actors used snake_case. Read both.
@@ -1002,10 +1041,10 @@ async function fetchMetaAdsViaApify({ company, domain, limit = 12 } = {}) {
   return { ok: true, ads: owned.slice(0, limit), total: owned.length, reason: 'ok', via: 'apify' };
 }
 
-export async function fetchMetaAds({ company, domain, limit = 12 } = {}) {
+export async function fetchMetaAds({ company, domain, limit = 12, redis = null, pickupOnly = false } = {}) {
   // Apify (US + every country, no verification) first; the official EU/UK API is the fallback.
-  const ap = await fetchMetaAdsViaApify({ company, domain, limit });
-  if (ap.ok) return ap;
+  const ap = await fetchMetaAdsViaApify({ company, domain, limit, redis, pickupOnly });
+  if (ap.ok || pickupOnly || ap.reason === 'apify_meta_pending') return ap;
   const official = await fetchMetaAdsOfficial({ company, domain, limit });
   if (!official.ok && ap.reason && ap.reason !== 'apify_meta_disabled') official.reason = ap.reason + ' | ' + official.reason;
   return official;
@@ -1072,13 +1111,13 @@ async function fetchMetaAdsOfficial({ company, domain, limit = 12 } = {}) {
 // set in one pass, and return one list. Each source is best-effort: one failing never sinks the
 // others. Meta only returns data when META_ADLIBRARY_TOKEN is set and the advertiser ran ads in
 // the EU/UK; otherwise the UI keeps Meta as "coming soon".
-export async function fetchAllAds({ company, domain, icp, limit = 80 } = {}) {
+export async function fetchAllAds({ company, domain, icp, limit = 80, redis = null } = {}) {
   // Pull MANY creatives (cheap): the board shows the most-urgent few in full and the rest greyed/locked
   // for upsell, and the "X of N" count needs the real volume. Only a bounded batch gets scored (icp.js).
   const [li, gg, mt] = await Promise.all([
     fetchLinkedInAds({ company, domain, limit: 30 }).catch(() => ({ ok: false, ads: [] })),
     fetchGoogleAds({ domain, company, limit: 40 }).catch(() => ({ ok: false, ads: [] })),
-    fetchMetaAds({ company, domain, limit: 12 }).catch(() => ({ ok: false, ads: [], reason: 'meta_fetch_failed' })),
+    fetchMetaAds({ company, domain, limit: 12, redis }).catch(() => ({ ok: false, ads: [], reason: 'meta_fetch_failed' })),
   ]);
   const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length, meta: (mt.ads || []).length };
   // Surface why a source came back empty (e.g. LinkedIn Jina rate-limit, Meta no-token) even when
