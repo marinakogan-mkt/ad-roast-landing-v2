@@ -954,7 +954,7 @@ async function fetchMetaAdsViaApify({ company, domain, limit = 12 } = {}) {
         method: 'POST', signal: c.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
       });
     } finally { clearTimeout(t); }
-    if (!r.ok) return { ok: false, reason: 'apify_meta_' + r.status, ads: [] };
+    if (!r.ok) { let why = ''; try { const j = await r.json(); why = (j && j.error && (j.error.type || '') + ':' + String(j.error.message || '').slice(0, 120)) || ''; } catch (e) {} return { ok: false, reason: 'apify_meta_' + r.status + (why ? ':' + why : ''), ads: [] }; }
     items = await r.json();
   } catch (e) { return { ok: false, reason: 'apify_meta_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
   if (!Array.isArray(items) || !items.length) return { ok: false, reason: 'apify_meta_no_ads', ads: [] };
