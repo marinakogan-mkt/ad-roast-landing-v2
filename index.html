@@ -7090,6 +7090,16 @@
         const adCreativeId = currentReportId || (result && result._reportId) || '';
         const landingLink = (inputs.url || landingInput || '').trim();
         const showcaseVisible = !!(adImg || adLink || landingLink || roastMetaRows.length > 0);
+        // When there's no ad creative (a copy-only roast, or the live creative didn't load),
+        // fill the ad window with the ACTUAL pasted ad copy instead of an empty gray box.
+        // inputs.copy holds the copy both on the live roaster and on an opened /?id= report
+        // (restored from data.adCopy). A pasted LINK lives in inputs.copy too, so skip URLs.
+        const adCopyText = (!isValidUrl((inputs.copy || '').trim()) ? (inputs.copy || '').trim() : '');
+        const adFallback = adLink
+          ? <div className="text-center text-sm px-4"><a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5" /> View the live ad ↗</a></div>
+          : adCopyText
+            ? <div className="text-left text-gray-700 px-1" style={{ fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5, maxHeight: 230, overflow: 'auto' }}>{adCopyText}</div>
+            : <div className="text-center text-sm text-gray-400 px-4">Ad copy pasted directly</div>;
         /* Can we re-run the roast from here? Always on the live roaster's own view; on
            an opened report link, only when a signed-in owner has the inputs restored
            (ad copy or creative present) so a re-roast isn't empty. */
@@ -7169,14 +7179,12 @@
                             <span className="text-[11px] font-semibold text-gray-500">The ad</span>
                           </div>
                           <div className="flex-1 bg-gray-50 flex items-center justify-center p-3" style={{ minHeight: 150 }}>
-                            {adImg
-                              ? <img src={adImg} alt="The ad being roasted" className="rounded-lg object-contain" style={{ maxHeight: 240, maxWidth: '100%', display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; } catch (err) {} }} />
-                              : adCreativeId
-                                ? <React.Fragment>
-                                    <img src={'/api/roast-view?action=creative&id=' + encodeURIComponent(adCreativeId)} alt="The ad being roasted" className="rounded-lg object-contain" style={{ maxHeight: 240, maxWidth: '100%', display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; const n = e.currentTarget.nextElementSibling; if (n) n.style.display = 'block'; } catch (err) {} }} />
-                                    <div className="text-center text-sm text-gray-400 px-4" style={{ display: 'none' }}>{adLink ? <a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5" /> View the live ad ↗</a> : 'Ad copy pasted directly'}</div>
+                            {(adImg || adCreativeId)
+                              ? <React.Fragment>
+                                    <img src={adImg || ('/api/roast-view?action=creative&id=' + encodeURIComponent(adCreativeId))} alt="The ad being roasted" className="rounded-lg object-contain" style={{ maxHeight: 240, maxWidth: '100%', display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; const n = e.currentTarget.nextElementSibling; if (n) n.style.display = 'block'; } catch (err) {} }} />
+                                    <div className="w-full" style={{ display: 'none' }}>{adFallback}</div>
                                   </React.Fragment>
-                                : <div className="text-center text-sm text-gray-400 px-4">{adLink ? <a href={_href(adLink)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1.5"><Icon name="link" className="w-3.5 h-3.5" /> View the live ad ↗</a> : 'Ad copy pasted directly'}</div>}
+                              : <div className="w-full">{adFallback}</div>}
                           </div>
                         </div>
                         {/* THE LANDING PAGE */}
@@ -7187,7 +7195,8 @@
                               <span className="text-[11px] font-semibold text-gray-500 truncate">{landingLink.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
                             </div>
                             <div className="flex-1 bg-gray-50 overflow-hidden" style={{ minHeight: 150, maxHeight: 260 }}>
-                              <img src={'/api/icp?shot=' + encodeURIComponent(_href(landingLink)) + (adCreativeId ? '&report=' + encodeURIComponent(adCreativeId) : '')} alt="The landing page we scored" loading="lazy" className="w-full block transition-transform duration-700 ease-out group-hover:-translate-y-2" style={{ display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; } catch (err) {} }} />
+                              <img src={'/api/icp?shot=' + encodeURIComponent(_href(landingLink)) + (adCreativeId ? '&report=' + encodeURIComponent(adCreativeId) : '')} alt="The landing page we scored" className="w-full block transition-transform duration-700 ease-out group-hover:-translate-y-2" style={{ display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; const n = e.currentTarget.nextElementSibling; if (n) n.style.display = 'block'; } catch (err) {} }} />
+                              <div className="text-center text-sm text-gray-400 px-4 py-12" style={{ display: 'none' }}>Open {landingLink.replace(/^https?:\/\//, '').replace(/\/$/, '')} ↗</div>
                             </div>
                           </a>
                         ) : (
