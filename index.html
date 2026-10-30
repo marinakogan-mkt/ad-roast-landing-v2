@@ -2260,7 +2260,7 @@
         const landing = (landingOverride || a.ctaUrl || '').trim();
         try {
           localStorage.setItem('adroast_library_roast', JSON.stringify({
-            ad: { plat: a.plat, head: a.head || '', body: a.body || '', img: a.img || null, detailUrl: a.detailUrl || '', adId: a.adId || '', ctaUrl: landing, dom: a.dom || '', score: (typeof a.score === 'number' ? a.score : null) },
+            ad: { plat: a.plat, head: a.head || '', body: a.body || '', img: a.img || null, isVideo: !!a.isVideo, detailUrl: a.detailUrl || '', adId: a.adId || '', ctaUrl: landing, dom: a.dom || '', score: (typeof a.score === 'number' ? a.score : null) },
             co: { name: (co && co.name) || '', domain: (co && co.domain) || '' },
             icp: icpText || ''
           }));
