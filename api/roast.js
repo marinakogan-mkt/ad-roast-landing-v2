@@ -53,6 +53,7 @@ const LOCKED_SAMPLE = {
     { category: 'benefit_specificity', title: 'Benefit Specificity', score: 5, explanation: 'Unlock to reveal.' },
     { category: 'trust_signals', title: 'Trust Signals', score: 5, explanation: 'Unlock to reveal.' }
   ],
+  policy_flags: [],
   landing_page_roast: {
     overall_score: 0, headline_score: 0, headline_feedback: '', value_prop_score: 0, value_prop_feedback: '',
     cta_score: 0, cta_feedback: '', trust_score: 0, trust_feedback: '', top_issues: [], quick_wins: []
@@ -130,6 +131,7 @@ const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all f
     {"category": "benefit_specificity", "title": "Benefit Specificity", "score": <1-10>, "explanation": "string"},
     {"category": "trust_signals", "title": "Trust Signals", "score": <1-10>, "explanation": "string"}
   ],
+  "policy_flags": [{"type": "char_limit|editorial|trademark|prohibited|format", "severity": "hard|soft", "field": "headline|description|intro|display_path|cta|image|url|overall", "detail": "string: what breaks which platform rule + the consequence (rejected / cut off / disapproval risk), <=22 words"}],
   "landing_page_roast": {
     "overall_score": <1-10 if landing content available, else 0>,
     "headline_score": <1-10 or 0>,
@@ -661,6 +663,13 @@ PLATFORM INTENT LENS: weight the score by the buyer's intent on this platform, a
 - LinkedIn is COLD B2B: the buyer did not ask for you, so the first-line hook, a real point of view (not corporate speak), in-feed proof, and a cold-audience-appropriate CTA all carry heavy weight.
 - Meta is COLD consumer-context: the creative and its first 2 to 3 seconds or first words carry the most weight; judge thumb-stop, native feel, vertical framing, and sound-off readability.
 
+PLATFORM FORMAT & POLICY RISK (fill the policy_flags array; this is SEPARATE from the quality scores above): check the ad against the CURRENT platform's hard limits and editorial/content policies and list every real compliance or format risk in policy_flags. These answer "would this ad be rejected, disapproved or cut off", NOT how good the ad is, so they never change the issue scores; a clean ad returns policy_flags: []. The opposite rule also holds: never let a format FACT (listed below) become an issue or lower a score.
+- GOOGLE SEARCH (RSA): HARD char limits = a headline over 30 chars, a description over 90, or a display path over 15 (rejected / will not save; spaces, punctuation and symbols all count, and CJK double-width characters count as 2). HARD editorial (disapproval risk): gimmicky or ALL-CAPS / MiXeD-case capitalization (allowed: trademarks, accepted abbreviations like ASAP); punctuation or symbol misuse, repeated "!", invalid characters; omitted, extra or gimmicky spacing (s p a c e d-out letters); gimmicky repetition of a word or phrase (including the same text repeated across the ad's assets); a phone number in the ad text (belongs in a call extension); non-standard spelling or grammar, or copy that does not make sense; not naming the business or product promoted.
+- LINKEDIN SINGLE IMAGE: HARD char limits = intro over 3000, headline over 200, or description over 300 (hard-cut). SOFT (truncation, the buyer never sees the tail) = intro over 150 ("see more" cutoff), headline over 70, or description over 100. HARD policy: breaking the Professional Community Policies or a prohibited category (illegal products, drugs, adult, counterfeit, gambling or sweepstakes, political, affiliate, weapons, misleading health or weight-loss, unsafe behavior); misinformation or an unsupported claim; implied affiliation or endorsement without permission; a shortened or vanity URL in the link; a third-party trademark without authorization; non-standard formatting (excessive emojis beyond ~10, excessive capitalization except valid acronyms, unrelated hashtags); clickbait or aggressive sales language (LinkedIn enforces a professional tone strictly).
+- TRADEMARK (both platforms): a DIRECT COMPETITOR using a rival's registered name in the ad TEXT is restricted (complaint-triggered disapproval): flag it, type trademark. NEVER a fault, never flag: the rival as a keyword, in the display-URL domain, or anywhere on the landing page. Exception: a reseller, an informational or comparison site, or a maker/seller of compatible components MAY name the mark in ad text when the landing page is primarily about those products, so weigh the advertiser type and the LP before flagging.
+- FORMAT FACTS, never score as a fault and never put in policy_flags: a Google RSA serving with as few as 1 headline + 1 description, or assets not showing or copy trimmed (normal, never "missing headline / CTA"); a Google search ad having no image; a LinkedIn description showing only in some placements; a LinkedIn in-text URL over 23 chars auto-converting to a LinkedIn short link (the platform does this, it is NOT a shortened-URL violation); a LinkedIn image serving as a thumbnail under 401px.
+- VISUAL-COPY MATCH on Google: for a Google SEARCH ad this dimension is headline-to-description-to-path coherence, never a visual. It stays that way EVEN when the ad arrives as a text-rendered search-result CARD image (a screenshot of the search result): that card IS the text ad, not a visual creative, so never score it "no product shot", "just text", or "static card", and never dock it for lacking imagery. Only a true Google Display or Demand Gen banner (real photography, illustration or product imagery) has a visual creative to score.
+
 EVENT / PRESENCE AD LENS (worked example of PURPOSE BEFORE FIT): some ads exist to drive presence at an event, not a direct product conversion. Detect one when the ad's main ask is to meet, visit, attend, register, or watch around a named event: a conference or trade show name, a booth or stand number, "meet us at" / "join us at" / "see you at" / "stop by" / "we'll be at", a city paired with a date, a webinar / roundtable / panel / live-session invite, or a speaking-slot callout. Judge an event ad by ITS job, not by direct-sale buyer-fit.
 - What makes it work: a concrete REASON to show up (a specific talk or topic, a live demo, a named speaker or expert, a meeting slot, an exclusive or giveaway) tied to the buyer's pain, plus the essential logistics (event name, date, where / booth, how to engage). An event ad that nails the draw and the logistics is a 7-9 even with no product-capability dump, no in-ad proof metric, and a soft CTA (Register / Attend / Learn More is the correct ask here, not a demo).
 - What holds it back: a venue-only or "we're here" ad that names the event but gives NO reason to meet, no topic, no draw, no logistics. That is the real failure of an event ad, and it scores 4-5. Write the issues and fixes about the MISSING REASON TO SHOW UP and the missing logistics (add the talk / topic, the demo, the person, the meeting slot, the date / booth), NOT about a missing product value prop, in-ad proof metric, or a harder CTA.
@@ -990,6 +999,11 @@ Return the JSON object defined in the output contract. All fields required.`;
             ? 'This ad is a video. The full video could not be analyzed this time, so its creative is not scored here. The copy and targeting are still scored above.'
             : 'This ad is a video. Video analysis (the hook, the demo, and the end card scored like the rest) is a Pro feature. The copy and targeting are still scored above.';
         }
+
+        // Platform format/policy risks are a separate compliance surface; never let a missing
+        // field break the contract, and keep only well-formed flags.
+        if (!Array.isArray(parsed.policy_flags)) parsed.policy_flags = [];
+        else parsed.policy_flags = parsed.policy_flags.filter(f => f && typeof f === 'object' && f.detail).slice(0, 8);
 
         /* Token consume + entitlement. We only reach here when `entitled` was true
            at the gate above (account has tokens, or Redis was down and we failed
