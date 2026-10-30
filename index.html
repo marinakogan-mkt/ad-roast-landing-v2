@@ -1816,6 +1816,8 @@
       // state instead of the static sample (whose LinkedIn tiles aren't the real creatives yet).
       const [bootLoading, setBootLoading] = useState(true);
       const [soon, setSoon] = useState(null);          // platform whose "coming soon" detail is open
+      const [metaBusy, setMetaBusy] = useState(false); // on-demand Meta pull running
+      const [metaFailed, setMetaFailed] = useState(false);
       const [specHi, setSpecHi] = useState(null);      // hovered node in the ad spectrum (index into scored)
       const [barReady, setBarReady] = useState(false); // false on mount -> the urgency bar grows from 0 on load
       const [railCos, setRailCos] = useState(null); // the account's roasted companies, for the left sidebar
@@ -2110,6 +2112,25 @@
           pending = (res.fresh && res.fresh.pending) || 0;
         }
       };
+      // Meta costs per ad, so it only runs from the board's button (paid accounts). The server folds the
+      // ads into the cached board; re-reading it scores them through the normal progressive path.
+      const loadMeta = async () => {
+        if (!real || !real.co || metaBusy) return;
+        const mySeq = loadSeqRef.current;
+        const post = (extra) => fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'ads-fetch', company: real.co.name, domain: real.co.domain, icp: real.icp, ...extra }) }).then(r => r.json()).catch(() => null);
+        setMetaBusy(true); setMetaFailed(false);
+        try {
+          const m = await post({ only: 'meta' });
+          if (!m || !m.ok) { setMetaFailed(true); return; }
+          const res = await post({});
+          if (loadSeqRef.current !== mySeq || !res || !res.ok || !Array.isArray(res.ads)) return;
+          const realObj = { ...real, ads: _cleanBoardAds(res.ads), notes: res.notes || {}, fresh: res.fresh || null, totals: res.totals || real.totals || null };
+          cachePut([real.co.domain, siteInput], realObj);
+          setReal(realObj);
+          const pending = (res.fresh && res.fresh.pending) || 0;
+          if (pending) scoreRemaining(real.co, real.icp, siteInput, mySeq, pending);
+        } finally { setMetaBusy(false); }
+      };
       const loadReal = async (s, opts = {}) => {
         const siteRaw = (s || '').trim();
         if (!siteRaw) return;
@@ -2122,7 +2143,7 @@
             const res = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ads-fetch', company: real.co.name, domain: real.co.domain, icp: real.icp, refresh: true, only: 'linkedin' }) }).then(r => r.json()).catch(() => ({}));
             if (res && res.ok && Array.isArray(res.ads)) {
               const cleanAds = _cleanBoardAds(res.ads);
-              const realObj = { ...real, ads: cleanAds, notes: res.notes || real.notes || {}, fresh: res.fresh || null, totals: res.totals || (real && real.totals) || null };
+              const realObj = { ...real, ads: cleanAds, notes: { ...(real.notes || {}), ...(res.notes || {}) }, fresh: res.fresh || null, totals: res.totals || (real && real.totals) || null };
               cachePut([real.co.domain, siteInput], realObj);
               setReal(realObj);
             }
@@ -2905,22 +2926,34 @@
                   {/* State C - Meta: not a "you have none" state, a "we can't pull these yet" state.
                       Clearly framed as a platform WE are adding, so it never reads as the advertiser
                       lacking Meta ads. We can't fetch Meta creatives (bot-walled), so no image. */}
-                  {SOON_SOURCES.filter(p => !ads.some(a => a.plat === p)).map(p => (
-                    <button key={p} onClick={() => setSoon(p)} title={'See what is coming for ' + p} className="group rounded-2xl border overflow-hidden flex flex-col text-left cursor-pointer p-0 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg" style={{ borderColor: '#dbe4ef', borderStyle: 'dashed', background: '#fafbfc' }}>
+                  {SOON_SOURCES.filter(p => !ads.some(a => a.plat === p)).map(p => {
+                    const notes = (real && real.notes) || {};
+                    const canPull = p === 'Meta' && notes.meta_on && acct.signedIn && acct.plan !== 'free';
+                    const none = canPull && notes.meta === 'no_ads';
+                    return (
+                    <button key={p} disabled={none || metaBusy} onClick={() => canPull ? loadMeta() : setSoon(p)} title={canPull ? 'Pull live ' + p + ' ads' : 'See what is coming for ' + p} className={'group rounded-2xl border overflow-hidden flex flex-col text-left p-0 transition-all duration-200 ' + (none || metaBusy ? '' : 'cursor-pointer hover:-translate-y-1 hover:shadow-lg')} style={{ borderColor: '#dbe4ef', borderStyle: 'dashed', background: '#fafbfc' }}>
                       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                         <span style={{ opacity: 0.7 }}><PlatLogo plat={p} size={18} /></span>
                         <span className="font-bold text-gray-500" style={{ fontSize: 15 }}>{p}</span>
-                        <span className="ml-auto inline-flex items-center gap-1 uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#0a66c2', background: '#eef2ff', border: '1px solid #dbe4fb', padding: '3px 8px', borderRadius: 6 }}><Icon name="sparkles" className="w-3 h-3" />Coming soon</span>
+                        {!canPull && <span className="ml-auto inline-flex items-center gap-1 uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#0a66c2', background: '#eef2ff', border: '1px solid #dbe4fb', padding: '3px 8px', borderRadius: 6 }}><Icon name="sparkles" className="w-3 h-3" />Coming soon</span>}
                       </div>
                       <div className="grid place-items-center" style={{ height: 250, background: 'repeating-linear-gradient(45deg,#f6f8fb,#f6f8fb 10px,#eef1f6 10px,#eef1f6 20px)' }}>
                         <span style={{ opacity: 0.45 }}><PlatLogo plat={p} size={40} /></span>
                       </div>
                       <div className="px-4 py-3 flex items-center justify-between gap-2">
-                        <span className="text-gray-400" style={{ fontSize: 12 }}>We're adding {p} ads next.</span>
-                        <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>What's coming <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>
+                        {!canPull && <>
+                          <span className="text-gray-400" style={{ fontSize: 12 }}>We're adding {p} ads next.</span>
+                          <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>What's coming <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>
+                        </>}
+                        {canPull && none && <span className="text-gray-400" style={{ fontSize: 12 }}>No active {p} ads found.</span>}
+                        {canPull && !none && <>
+                          <span className="text-gray-400" style={{ fontSize: 12 }}>{metaBusy ? 'Reading the Ad Library, about 30 seconds.' : metaFailed ? "Couldn't pull them this time." : 'Pulled when you ask.'}</span>
+                          {!metaBusy && <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>{metaFailed ? 'Try again' : 'Pull ' + p + ' ads'} <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>}
+                        </>}
                       </div>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             ) : (<>

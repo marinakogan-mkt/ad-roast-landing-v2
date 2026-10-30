@@ -29,9 +29,10 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups, logClaudeUsage } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups, logClaudeUsage } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
+import { peekAccount } from './_tokens.js';
 import { pingNewBoard } from './_indexnow.js';
 
 // Admin emails (the portal master role) — the only accounts allowed to force a re-score of a board.
@@ -43,6 +44,19 @@ async function icpIsAdmin(req, redis) {
     const s = await redis.get('auth:session:' + tok);
     const sess = s ? (typeof s === 'string' ? JSON.parse(s) : s) : null;
     return !!(sess && sess.email && ADMIN_EMAILS.has(String(sess.email).toLowerCase()));
+  } catch (e) { return false; }
+}
+
+// Meta costs per ad, so only a paying roast account can trigger a pull.
+async function icpIsPaid(req, redis) {
+  try {
+    const tok = readSessionCookie(req);
+    if (!tok || !redis) return false;
+    const s = await redis.get('auth:session:' + tok);
+    const sess = s ? (typeof s === 'string' ? JSON.parse(s) : s) : null;
+    if (!sess || !sess.email || sess.mode !== 'roast') return false;
+    const bal = await peekAccount(redis, sess.email);
+    return !!(bal && bal.plan && bal.plan !== 'free');
   } catch (e) { return false; }
 }
 
@@ -704,6 +718,7 @@ ${items}
         sources: { ...(cachedCopy.sources || {}), linkedin: liAds.length },
         notes: { ...(cachedCopy.notes || {}), linkedin: gotLi ? 'ok' : (liPull.reason || 'no_ads'), linkedin_apify: liPull._apify || null },
         _checkedAt: Date.now(),
+        _metaAt: cachedCopy._metaAt,
       };
       const scM = await scoreAdsCached(merged.ads, body.icp, _redis, { force: false, limit: 3 });
       const mergedAll = dropJunkCreatives(scM.ads); // keep every template variant in the cache; collapse only what we return
@@ -728,20 +743,25 @@ ${items}
       return res.status(200).json({ ok: true, ads: scGads, sources: { google: scGads.length }, notes: { google: 'ok' }, _fast: true, fresh: { checked: Date.now(), checkedAt: null, stale: false, listCached: false, count: scGads.length, scoredNew: scG.scoredNew, reused: scG.reused, pending: scG.pending, scoreError: scG.scoreError || null, rateLimited: !!scG.rateLimited } });
     }
 
+    // On-demand Meta: the board's button, paid accounts only. Folds the result into the pull cache
+    // and answers with just the count; the client then re-reads the board, which scores the new ads.
+    // A company with no Meta ads is remembered too, so nobody pays to find that out twice.
+    if (body.only === 'meta') {
+      if (!META_ON) return res.status(200).json({ ok: false, reason: 'meta_off' });
+      if (!await icpIsPaid(req, _redis)) return res.status(402).json({ ok: false, reason: 'paid_only' });
+      if (cachedCopy && cachedCopy._metaAt && Date.now() - cachedCopy._metaAt < META_TTL_MS) return res.status(200).json({ ok: true, cached: true });
+      const mt = await fetchMetaAds({ company: body.company, domain: body.domain, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
+      if (!mt.ok) return res.status(200).json({ ok: false, reason: mt.reason });
+      const base = cachedCopy || { ok: true, ads: [], sources: {}, notes: {}, _checkedAt: Date.now() };
+      const merged = { ...base, ads: [...base.ads.filter(a => (a.plat || '') !== 'Meta'), ...mt.ads], sources: { ...(base.sources || {}), meta: mt.ads.length }, notes: { ...(base.notes || {}), meta: mt.ads.length ? 'ok' : 'no_ads' }, _metaAt: Date.now() };
+      if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(merged), { ex: CACHE_TTL }); } catch (e) {} }
+      return res.status(200).json({ ok: true, count: mt.ads.length });
+    }
+
     let pull = null, listCached = false, stale = false, lastChecked = null;
     if ((!refresh && cacheFresh) || (adminRescore && cachedCopy && cachedCopy.ads && cachedCopy.ads.length)) {
       // Fresh enough (< a week), OR an admin re-score: show the last-seen list instantly, no live pull.
       pull = cachedCopy; listCached = true; lastChecked = cachedCopy._checkedAt;
-      // Meta comes from an async Apify run that often outlives the pull that started it (notes.meta =
-      // 'apify_meta_pending'). Collect the finished run here and fold it into the cached board.
-      if (META_ON && String((cachedCopy.notes || {}).meta || '').startsWith('apify_meta_pending')) {
-        const mt = await fetchMetaAds({ company: body.company, domain: body.domain, limit: 12, redis: _redis, pickupOnly: true }).catch(() => ({ ok: false, ads: [] }));
-        if (mt.reason !== 'apify_meta_pending') {
-          const got = !!(mt.ok && mt.ads && mt.ads.length);
-          pull = { ...cachedCopy, ads: [...(cachedCopy.ads || []).filter(a => (a.plat || '') !== 'Meta'), ...(got ? mt.ads : [])], sources: { ...(cachedCopy.sources || {}), meta: got ? mt.ads.length : 0 }, notes: { ...(cachedCopy.notes || {}), meta: got ? 'ok' : (mt.reason || 'no_ads') } };
-          if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(pull), { ex: CACHE_TTL }); } catch (e) {} }
-        }
-      }
     } else {
       // Go live: the user asked to refresh, or the copy is stale (>1 week), or we've never pulled.
       const r = await fetchAllAds({ company: body.company, domain: body.domain, redis: _redis });
@@ -763,6 +783,8 @@ ${items}
           }
         }
         r._checkedAt = Date.now();
+        r._metaAt = prevCopy && prevCopy._metaAt;
+        if (r._metaAt && r.notes && r.notes.meta === 'on_demand') r.notes.meta = (prevCopy.notes || {}).meta;
         pull = r; lastChecked = r._checkedAt;
         if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(r), { ex: CACHE_TTL }); } catch (e) {} }
       } else if (cachedCopy) {
@@ -784,8 +806,11 @@ ${items}
     if (pull && Array.isArray(pull.ads)) {
       pull.ads = dropJunkCreatives(pull.ads);
       pull.ads = ownedByAdvertiser(pull.ads, { domain: body.domain, company: body.company });
-      // Meta is off: hide what's already cached without rewriting the cache, so it can come back.
-      if (!META_ON) { pull.ads = pull.ads.filter(a => (a.plat || '') !== 'Meta'); pull.sources = { ...(pull.sources || {}), meta: 0 }; }
+      // Meta off, or its image links about to die: hide what's cached (the cache isn't rewritten) and
+      // the board goes back to Coming soon / the button. meta_on tells the client which of the two.
+      const metaLive = META_ON && pull._metaAt && Date.now() - pull._metaAt < META_TTL_MS;
+      if (!metaLive) { pull.ads = pull.ads.filter(a => (a.plat || '') !== 'Meta'); pull.sources = { ...(pull.sources || {}), meta: 0 }; }
+      pull.notes = { ...(pull.notes || {}), meta: metaLive ? (pull.notes || {}).meta : 'on_demand', meta_on: META_ON };
     }
 
     // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.
@@ -806,8 +831,11 @@ ${items}
     // UNSCORED for the greyed/locked gallery, so a big board (60+ ads) never scores -- and bills -- all of
     // them. The client's progressive re-call scores the unscored ones WITHIN this batch, not the extras.
     const SCORE_CAP = 18;
-    const _toRank = pull.ads.slice(0, SCORE_CAP);
-    const _extras = pull.ads.slice(SCORE_CAP);
+    // Meta ads are few and were asked for by hand, so they don't compete for the cap with a big board.
+    const _meta = pull.ads.filter(a => (a.plat || '') === 'Meta');
+    const _notMeta = pull.ads.filter(a => (a.plat || '') !== 'Meta');
+    const _toRank = [..._notMeta.slice(0, SCORE_CAP), ..._meta];
+    const _extras = _notMeta.slice(SCORE_CAP);
     const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
     // Drop capture_fail ads (homonym / wrong-advertiser / scrape artifact) from the board ENTIRELY,
     // not just from the OG image and worst-pick: a different company that merely shares the name
@@ -826,7 +854,7 @@ ${items}
         const scoredAll = scAds.filter(a => typeof a.score === 'number');
         if (scoredAll.length) {
           const _conv = scoredAll.filter(a => a.conversion !== false); // worst = a conversion ad when there is one
-          const worst = (_conv.length ? _conv : scoredAll).filter(a => a.img && /^https?:\/\//.test(String(a.img))).sort((a, b) => a.score - b.score)[0] || null;
+          const worst = (_conv.length ? _conv : scoredAll).filter(a => a.img && /^https?:\/\//.test(String(a.img)) && a.plat !== 'Meta').sort((a, b) => a.score - b.score)[0] || null;
           // Same numbers the board overview cards show, so the link preview mirrors them exactly:
           // off = ads reaching the wrong buyer (score <= 6, "ads to fix"), crit = badly off (<= 4).
           const cnt = scoredAll.length;
