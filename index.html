@@ -7497,6 +7497,27 @@
                   ))}
                 </div>
               </div>
+              {/* PLATFORM POLICY & FORMAT RISKS - separate compliance surface (would the ad be
+                  rejected, cut off, or disapproved), distinct from the quality scores above. */}
+              {Array.isArray(result.policy_flags) && result.policy_flags.length > 0 && (
+                <div id="sec-policy" className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-6 scroll-mt-20 mt-4">
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-1">
+                    <h2 className="font-bold text-gray-900 flex items-center gap-2"><Icon name="alertCircle" className="w-5 h-5" style={{ color: '#d97706' }} /> Platform policy &amp; format risks</h2>
+                    <span className="text-xs text-gray-400">would it get rejected, cut off, or disapproved</span>
+                  </div>
+                  <div className="space-y-2">
+                    {result.policy_flags.map((f, i) => (
+                      <div key={i} className="flex items-start gap-3 p-3 rounded-xl" style={{ background: f.severity === 'hard' ? '#fef2f2' : '#fffbeb' }}>
+                        <span className="flex-shrink-0 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide" style={{ background: f.severity === 'hard' ? '#fee2e2' : '#fef3c7', color: f.severity === 'hard' ? '#b91c1c' : '#b45309' }}>{f.severity === 'hard' ? 'Rejects' : 'Warning'}</span>
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{String(f.type || '').replace(/_/g, ' ')}{f.field ? ' · ' + f.field : ''}</div>
+                          <p className="text-sm text-gray-700" style={{ lineHeight: 1.5 }}>{f.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               </>)}
 
               {/* LANDING PAGE - mismatch + LP analysis */}
