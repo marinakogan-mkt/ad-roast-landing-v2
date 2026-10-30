@@ -3027,7 +3027,7 @@
                   </div>
                 );
               })}
-              {shown.length === 0 && <div className="text-gray-400 text-sm p-5">No ads on this platform.</div>}
+              {shown.length === 0 && <div className="text-gray-400 text-sm p-5">{SOON_SOURCES.indexOf(fP) !== -1 ? fP + ' ads are coming soon.' : 'No ads on this platform.'}</div>}
             </div>
             {!_paidView && shownOrdered.length > FREE_LIMIT && (
               <div className="mt-5 rounded-2xl border text-center mx-auto" style={{ borderColor: '#cfe0f5', background: '#f0f6fd', padding: '18px 20px', maxWidth: 640 }}>
