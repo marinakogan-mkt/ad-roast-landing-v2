@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups, logClaudeUsage } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups, logClaudeUsage } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { pingNewBoard } from './_indexnow.js';
@@ -734,7 +734,7 @@ ${items}
       pull = cachedCopy; listCached = true; lastChecked = cachedCopy._checkedAt;
       // Meta comes from an async Apify run that often outlives the pull that started it (notes.meta =
       // 'apify_meta_pending'). Collect the finished run here and fold it into the cached board.
-      if (String((cachedCopy.notes || {}).meta || '').startsWith('apify_meta_pending')) {
+      if (META_ON && String((cachedCopy.notes || {}).meta || '').startsWith('apify_meta_pending')) {
         const mt = await fetchMetaAds({ company: body.company, domain: body.domain, limit: 12, redis: _redis, pickupOnly: true }).catch(() => ({ ok: false, ads: [] }));
         if (mt.reason !== 'apify_meta_pending') {
           const got = !!(mt.ok && mt.ads && mt.ads.length);
@@ -784,6 +784,8 @@ ${items}
     if (pull && Array.isArray(pull.ads)) {
       pull.ads = dropJunkCreatives(pull.ads);
       pull.ads = ownedByAdvertiser(pull.ads, { domain: body.domain, company: body.company });
+      // Meta is off: hide what's already cached without rewriting the cache, so it can come back.
+      if (!META_ON) { pull.ads = pull.ads.filter(a => (a.plat || '') !== 'Meta'); pull.sources = { ...(pull.sources || {}), meta: 0 }; }
     }
 
     // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.

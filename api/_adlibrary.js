@@ -972,13 +972,14 @@ async function _fetchMetaSnapshot(url) {
 // (Marina is abroad, so every ID was refused) and even when granted only returns EU/UK commercial
 // ads, which is near-empty for US B2B SaaS. The public Ad Library web view shows every ACTIVE ad in
 // any country with no verification; Apify's official scraper (apify/facebook-ads-scraper, pay per
-// ad, ~$0.006 on the free plan) reads it for us. Uses the same APIFY_TOKEN as LinkedIn. Set
-// APIFY_META=0 in Vercel to switch it off. Best-effort: any failure returns ok:false and the
-// caller falls back to the official API / "coming soon".
+// ad, ~$0.006 on the free plan) reads it for us. Uses the same APIFY_TOKEN as LinkedIn.
+// OFF unless APIFY_META=1 in Vercel: pulled from live 30 oct (each board paid up to $0.15, often
+// for nothing) until Meta is on-demand. Off, no run starts and icp.js hides cached Meta ads.
+// Best-effort: any failure returns ok:false and the caller falls back to the official API.
+export const META_ON = process.env.APIFY_META === '1';
 async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null, pickupOnly = false } = {}) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
-  if (process.env.APIFY_META === '0') return { ok: false, reason: 'apify_meta_disabled', ads: [] };
   const term = (company || String(domain || '').replace(/\.[a-z.]+$/i, '') || '').trim();
   if (!term) return { ok: false, reason: 'no_query', ads: [] };
   const libUrl = 'https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&media_type=all&search_type=keyword_unordered&q=' + encodeURIComponent(term);
@@ -1084,11 +1085,12 @@ async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null,
 }
 
 export async function fetchMetaAds({ company, domain, limit = 12, redis = null, pickupOnly = false } = {}) {
+  if (!META_ON) return { ok: false, reason: 'meta_off', ads: [] };
   // Apify (US + every country, no verification) first; the official EU/UK API is the fallback.
   const ap = await fetchMetaAdsViaApify({ company, domain, limit, redis, pickupOnly });
   if (ap.ok || pickupOnly || ap.reason === 'apify_meta_pending') return ap;
   const official = await fetchMetaAdsOfficial({ company, domain, limit });
-  if (!official.ok && ap.reason && ap.reason !== 'apify_meta_disabled') official.reason = ap.reason + ' | ' + official.reason;
+  if (!official.ok && ap.reason) official.reason = ap.reason + ' | ' + official.reason;
   return official;
 }
 
