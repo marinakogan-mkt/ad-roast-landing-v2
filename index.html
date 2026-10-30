@@ -7100,6 +7100,12 @@
           : adCopyText
             ? <div className="text-left text-gray-700 px-1" style={{ fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5, maxHeight: 230, overflow: 'auto' }}>{adCopyText}</div>
             : <div className="text-center text-sm text-gray-400 px-4">Ad copy pasted directly</div>;
+        // The ad window is clickable like the landing window: open the live ad when we have its
+        // library URL (adLink/data.adUrl), else the ad creative itself (the same image shown, full
+        // size). A copy-only roast with no creative has nothing to open, so it stays a plain card.
+        const adCreativeHref = adCreativeId ? ('/api/roast-view?action=creative&id=' + encodeURIComponent(adCreativeId)) : (adImg || '');
+        const adHref = adLink ? _href(adLink) : adCreativeHref;
+        const adHrefTitle = adLink ? 'Open the live ad' : (adCreativeHref ? 'Open the ad creative' : '');
         /* Can we re-run the roast from here? Always on the live roaster's own view; on
            an opened report link, only when a signed-in owner has the inputs restored
            (ad copy or creative present) so a re-roast isn't empty. */
@@ -7172,21 +7178,28 @@
                         <div className="font-semibold text-gray-900 mt-0.5">{roastedName || 'This ad'}{platform ? <span className="text-gray-400 font-normal capitalize"> · {platform}</span> : null}</div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-4 pt-2 pb-3">
-                        {/* THE AD */}
-                        <div className="rounded-xl border border-gray-200 overflow-hidden flex flex-col">
-                          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
-                            <span className="flex gap-1 flex-none"><span style={{ width: 7, height: 7, borderRadius: 99, background: '#f87171' }} /><span style={{ width: 7, height: 7, borderRadius: 99, background: '#fbbf24' }} /><span style={{ width: 7, height: 7, borderRadius: 99, background: '#34d399' }} /></span>
-                            <span className="text-[11px] font-semibold text-gray-500">The ad</span>
-                          </div>
-                          <div className="flex-1 bg-gray-50 flex items-center justify-center p-3" style={{ minHeight: 150 }}>
-                            {(adImg || adCreativeId)
-                              ? <React.Fragment>
-                                    <img src={adImg || ('/api/roast-view?action=creative&id=' + encodeURIComponent(adCreativeId))} alt="The ad being roasted" className="rounded-lg object-contain" style={{ maxHeight: 240, maxWidth: '100%', display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; const n = e.currentTarget.nextElementSibling; if (n) n.style.display = 'block'; } catch (err) {} }} />
-                                    <div className="w-full" style={{ display: 'none' }}>{adFallback}</div>
-                                  </React.Fragment>
-                              : <div className="w-full">{adFallback}</div>}
-                          </div>
-                        </div>
+                        {/* THE AD - clickable like the landing card: the live ad URL if known, else the creative */}
+                        {(() => {
+                          const adCardInner = (
+                            <React.Fragment>
+                              <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
+                                <span className="flex gap-1 flex-none"><span style={{ width: 7, height: 7, borderRadius: 99, background: '#f87171' }} /><span style={{ width: 7, height: 7, borderRadius: 99, background: '#fbbf24' }} /><span style={{ width: 7, height: 7, borderRadius: 99, background: '#34d399' }} /></span>
+                                <span className="text-[11px] font-semibold text-gray-500">The ad</span>
+                              </div>
+                              <div className="flex-1 bg-gray-50 flex items-center justify-center p-3" style={{ minHeight: 150 }}>
+                                {(adImg || adCreativeId)
+                                  ? <React.Fragment>
+                                        <img src={adImg || ('/api/roast-view?action=creative&id=' + encodeURIComponent(adCreativeId))} alt="The ad being roasted" className="rounded-lg object-contain" style={{ maxHeight: 240, maxWidth: '100%', display: 'block' }} onError={(e) => { try { e.currentTarget.style.display = 'none'; const n = e.currentTarget.nextElementSibling; if (n) n.style.display = 'block'; } catch (err) {} }} />
+                                        <div className="w-full" style={{ display: 'none' }}>{adFallback}</div>
+                                      </React.Fragment>
+                                  : <div className="w-full">{adFallback}</div>}
+                              </div>
+                            </React.Fragment>
+                          );
+                          return adHref
+                            ? <a href={adHref} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-gray-200 overflow-hidden flex flex-col no-underline group" title={adHrefTitle}>{adCardInner}</a>
+                            : <div className="rounded-xl border border-gray-200 overflow-hidden flex flex-col">{adCardInner}</div>;
+                        })()}
                         {/* THE LANDING PAGE */}
                         {landingLink ? (
                           <a href={_href(landingLink)} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-gray-200 overflow-hidden flex flex-col no-underline group" title={"Open " + landingLink.replace(/^https?:\/\//, '')}>
