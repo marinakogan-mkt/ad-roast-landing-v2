@@ -249,8 +249,10 @@ export default async function handler(req, res) {
      p7 (2026-10-29): AD TAXONOMY (api/_rubrics.js, shared with the board). The roast
      classifies the ad's job, scores that job's dimensions in ad_job, overall_score follows
      their weighted mean (within 1 point), no floors, and the fix kit is written for the job.
-     The landing page is used to classify and to judge destination dimensions. */
-  const PROMPT_VERSION = 'p7';
+     The landing page is used to classify and to judge destination dimensions.
+     p8 (2026-10-30): PLATFORM FORMAT & POLICY RISK + policy_flags (c1373e4), which shipped
+     without a bump, so a repeat roast kept serving the p7 result with no flags. */
+  const PROMPT_VERSION = 'p8';
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', _version: API_VERSION });
