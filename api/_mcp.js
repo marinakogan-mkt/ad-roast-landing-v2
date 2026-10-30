@@ -65,6 +65,7 @@ const TOOLS = [
         website: { type: 'string', description: 'Company website, used to infer the ICP when icp is not given (optional).' },
         platform: { type: 'string', description: 'linkedin | google | meta (optional, default linkedin).' },
         company: { type: 'string', description: 'Company/advertiser name (optional).' },
+        ad_url: { type: 'string', description: 'The ad-library detail URL of the ad (e.g. https://www.linkedin.com/ad-library/detail/NNN). For a VIDEO ad, pass this so AdRoast fetches and analyzes the clip frame-by-frame instead of judging only its still thumbnail.' },
       },
       required: ['landing_url'],
     },
@@ -128,12 +129,19 @@ async function callTool(name, args, key, asHdr) {
     let company = args.company || '';
     if (!icp && args.website) { const site = await detectSite(args.website, key, asHdr); icp = site.icp; company = company || site.company; }
     if (!icp) throw new Error('Provide an icp, or a website so the buyer can be inferred.');
+    // A LinkedIn video ad only exposes a still "videocover" thumbnail. Flag it as video so api/roast
+    // analyzes the clip (a 6-frame storyboard, when ad_url points at the ad-library detail page) or
+    // honestly skips the visual, instead of judging the cover frame and calling it a static logo.
+    const adUrl = (args.ad_url || '').trim();
+    const isVideo = /videocover/i.test(args.ad_image_url || '') || /\/ad-library\/detail\/\d+/.test(adUrl);
     const payload = {
       platform: (args.platform || 'linkedin').toLowerCase(),
       icpDescription: icp,
       landingUrl: args.landing_url,
       adCopy: args.ad_copy || '',
       adImageUrl: args.ad_image_url || '',
+      adUrl,
+      isVideo,
       company,
       website: args.website || '',
       offerType: 'other',
