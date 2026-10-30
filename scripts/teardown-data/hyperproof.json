@@ -1,0 +1,40 @@
+{
+  "embed": true,
+  "meta": {
+    "slug": "hyperproof", "name": "Hyperproof", "domain": "hyperproof.io",
+    "date": "2026-08-17", "human_date": "August 17, 2026", "initial": "H",
+    "badge_color": "#1f6fd6", "score": 6,
+    "eyebrow": "Ad teardown &middot; GRC / TPRM",
+    "urn": "urn:li:ugcPost:7495132830339858432",
+    "post_url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7495132830339858432",
+    "lp_url": "https://hyperproof.io/",
+    "title": "Hyperproof ad teardown: a precise privacy hook, a generic compliance page",
+    "meta_desc": "A teardown of Hyperproof's live LinkedIn ad: one of the sharpest hooks in the series, built for a DPO, lands on a broad GRC page where the words that made the ad work disappear.",
+    "og_desc": "Built for a DPO. The page was built for everyone.",
+    "keywords": "hyperproof linkedin ads, hyperproof ad teardown, GRC ads, TPRM ads, DPO ads, privacy ads, sub-processor, ad teardown",
+    "related": [
+      {"slug": "descope", "name": "Descope", "q": "A sharp CIAM ad, sent to the wrong page."},
+      {"slug": "silverfort", "name": "Silverfort", "q": "The right message, in the wrong order."},
+      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The page hid them."}
+    ]
+  },
+  "voice": {
+    "hook": ["The ad spoke to one person.", "The page spoke to everyone."],
+    "lede": "The ad is built for one very specific person, a DPO or privacy lead responsible for sub-processors, personal data and GDPR exposure, and its hook is one of the sharpest in the series. Then the landing page switches to a broad GRC story for CISOs, compliance and internal audit. The words that made the ad work, sub-processor, personal data, disappear. The ad has focus, the page has assets, the funnel just needs alignment.",
+    "findings": [
+      {"tag": "ad", "good": true, "title": "A hook built for exactly one buyer",
+       "what": "“You approved the vendor. Who approved their sub-processors?” is clear in under 12 words and gives a privacy team a concrete reason to click. It speaks to one buyer, the privacy lead, and does not try to speak to anyone else."},
+      {"tag": "page", "good": true, "title": "The page itself is not weak",
+       "what": "Strong structure, credible customer logos (Reddit, Nutanix, Fortinet, Appian), a genuinely low-friction four-field form, no credit card and no vendor logins. As a page, it has real assets."},
+      {"tag": "page", "good": false, "title": "The words that earned the click disappear",
+       "what": "The page switches to a broad TPRM and GRC story for CISOs and audit. “Sub-processor” and “personal data,” the exact words that made the privacy lead click, are gone. A precise privacy click lands on a generic compliance page.",
+       "fix": "Build a privacy-lead version of the page, or at least a section above the fold that keeps the sub-processor and personal-data language the ad used, so the buyer sees their own problem continue."}
+    ],
+    "faq": [
+      {"q": "Is Hyperproof's ad good?", "a": "Yes, the hook is one of the sharpest in the series: under 12 words, aimed at exactly one buyer, the DPO or privacy lead, with a concrete reason to click. It scores 6 overall because the funnel loses that focus after the click, not because the ad is weak."},
+      {"q": "Where does the funnel break?", "a": "On the landing page. The ad speaks to a privacy lead about sub-processors and personal data; the page switches to a broad GRC and TPRM story for CISOs, compliance and audit, and the specific privacy language disappears. The page has good assets, just aimed at a different buyer."},
+      {"q": "How would you fix it?", "a": "Keep the buyer the ad chose. Carry the sub-processor and personal-data language onto the page, at least above the fold, so the privacy lead sees their own problem continue instead of landing on a generic compliance pitch."},
+      {"q": "How do I check my own ad for this?", "a": "Find the two or three words in your ad that make your buyer click, then check the page: are those words still there above the fold? If a tightly-targeted ad lands on a broad page, the focus that earned the click leaks away. AdRoast scores this automatically, and the first roast is free."}
+    ]
+  }
+}

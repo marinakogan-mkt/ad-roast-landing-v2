@@ -1,0 +1,37 @@
+{
+  "embed": true,
+  "meta": {
+    "slug": "endor-labs", "name": "Endor Labs", "domain": "endorlabs.com",
+    "date": "2026-06-15", "human_date": "June 15, 2026", "initial": "E",
+    "badge_color": "#0f766e", "verdict": "Out of order",
+    "eyebrow": "Ad teardown &middot; SCA / AppSec",
+    "urn": "urn:li:share:7472302256227328001",
+    "post_url": "https://www.linkedin.com/feed/update/urn:li:share:7472302256227328001",
+    "title": "Endor Labs ad teardown: the strongest AppSec story of the quarter, buried",
+    "meta_desc": "A teardown of Endor Labs's live LinkedIn ad: a Rubrik case study with a named exec and real numbers (a 24-hour SLA, 187 npm packages cleared in 30 minutes) turned into soft adjectives in the ad body.",
+    "og_desc": "The best AppSec story of the quarter. Buried.",
+    "keywords": "endor labs linkedin ads, endor labs ad teardown, SCA ads, software supply chain, case study ads, npm, ad teardown",
+    "related": [
+      {"slug": "apiiro", "name": "Apiiro", "q": "A sharp hook that dies on a blog post."},
+      {"slug": "semgrep", "name": "Semgrep", "q": "A comparison page that argues with its own numbers."},
+      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The page hid them."}
+    ]
+  },
+  "voice": {
+    "hook": ["The best AppSec story of the quarter.", "Told in the wrong order."],
+    "lede": "One of the strongest B2B AppSec case studies this quarter, arranged in the wrong order. The Rubrik story has a named company, a named executive and real numbers, a 24-hour SLA and 187 compromised npm packages cleared in 30 minutes. The ad body mentions none of it and turns every hard number into a soft adjective, so “tight SLAs” replaces “24-hour SLA.” The operator quote that would stop the scroll sits unused.",
+    "findings": [
+      {"tag": "ad", "good": true, "title": "The raw material is elite",
+       "what": "A named customer (Rubrik), a named executive, and hard numbers: a 24-hour SLA and 187 compromised npm packages cleared in 30 minutes. This is the kind of proof most B2B ads never get to use."},
+      {"tag": "ad", "good": false, "title": "Every hard number turned into a soft adjective",
+       "what": "The ad body turns the real figures into mush, “tight SLAs” instead of “24-hour SLA,” and leaves the operator quote that would stop the scroll completely unused. The strongest assets are in the story but not in the ad.",
+       "fix": "Lead with the numbers and the quote: 187 packages in 30 minutes, the named exec's words, verbatim. Let the proof do the work it was built for."}
+    ],
+    "faq": [
+      {"q": "Is Endor Labs's ad good?", "a": "The material behind it is elite, a named customer, a named exec and real numbers. The verdict is “out of order” because the ad buries all of it: it turns hard figures into soft adjectives and leaves the best quote unused, so the strongest AppSec story of the quarter never actually shows up in the ad."},
+      {"q": "What is actually wrong with it?", "a": "Sequencing. “24-hour SLA” becomes “tight SLAs,” “187 packages cleared in 30 minutes” goes missing, and the operator quote that would stop a scroll sits unused. The assets exist; they are just not the first thing the reader sees."},
+      {"q": "How would you fix it?", "a": "Put the proof first. Lead the ad with the hardest number (187 packages in 30 minutes) and the named exec's quote, verbatim. The case study is strong enough to carry the ad if you stop softening it."},
+      {"q": "How do I check my own ad for this?", "a": "Look at your best customer story and your ad side by side: did the real numbers and the real quote make it into the ad, or did they get softened into adjectives? Burying your strongest proof is the most expensive edit you can make. AdRoast scores this automatically, and the first roast is free."}
+    ]
+  }
+}

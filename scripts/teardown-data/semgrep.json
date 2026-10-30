@@ -1,0 +1,40 @@
+{
+  "embed": true,
+  "meta": {
+    "slug": "semgrep", "name": "Semgrep", "domain": "semgrep.dev",
+    "date": "2026-07-13", "human_date": "July 13, 2026", "initial": "S",
+    "badge_color": "#12805c", "score": 6,
+    "eyebrow": "Ad teardown &middot; AppSec / SAST",
+    "urn": "urn:li:share:7482449221108039680",
+    "post_url": "https://www.linkedin.com/feed/update/urn:li:share:7482449221108039680",
+    "title": "Semgrep ad teardown: a comparison page that contradicts its own numbers",
+    "meta_desc": "A teardown of Semgrep's live LinkedIn ad: a screenshotable stat and an elite logo wall, landing on a Snyk comparison page that cites a different number and a $100 gift card that pulls the wrong crowd.",
+    "og_desc": "A page selling accuracy that can't keep its own numbers straight.",
+    "keywords": "semgrep linkedin ads, semgrep ad teardown, SAST ads, snyk comparison, competitive displacement, appsec ads, ad teardown",
+    "related": [
+      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The page hid them."},
+      {"slug": "apiiro", "name": "Apiiro", "q": "A sharp hook that dies on a blog post."},
+      {"slug": "endor-labs", "name": "Endor Labs", "q": "The best AppSec story of the quarter, buried."}
+    ]
+  },
+  "voice": {
+    "hook": ["A page that sells accuracy.", "And can't keep its own numbers straight."],
+    "lede": "The Snyk comparison page has the right strategy and fights its own execution. The ad leads with a screenshotable stat, 17.5 hours vs 26 minutes, plus an elite logo wall (Dropbox, Snowflake, Figma, GitLab) and a real third-party benchmark. Then the landing page says 2.5 hours, not 26 minutes, so a page selling accuracy cannot keep its own numbers straight. And a $100 gift card pulls gift-card hunters, not AppSec leaders.",
+    "findings": [
+      {"tag": "ad", "good": true, "title": "A screenshotable stat and an elite logo wall",
+       "what": "The ad leads with a number you could screenshot, 17.5 hours vs 26 minutes, backs it with recognizable logos (Dropbox, Snowflake, Figma, GitLab), and cites a real third-party benchmark. For a competitive-displacement play against Snyk, that is the right opening."},
+      {"tag": "page", "good": false, "title": "The page contradicts the ad's own number",
+       "what": "The ad says 26 minutes. The landing page says 2.5 hours. A page whose entire argument is accuracy cannot keep its own headline number straight between the ad and the destination, and a skeptical AppSec buyer will notice.",
+       "fix": "Make every number match. Pick the real figure and use it identically in the ad, the page and the benchmark, so the accuracy claim survives the click."},
+      {"tag": "page", "good": false, "title": "A $100 gift card pulls the wrong crowd",
+       "what": "The incentive attracts gift-card hunters, not AppSec leaders. It inflates form fills with people who will never buy and buries the real buyers in the noise.",
+       "fix": "Drop the gift card, or gate it behind a qualifying step, so the page measures intent instead of rewarding tourists."}
+    ],
+    "faq": [
+      {"q": "Is Semgrep's ad good?", "a": "The ad is strong: a screenshotable stat (17.5 hours vs 26 minutes), an elite logo wall and a real third-party benchmark, which is exactly the right opening for a comparison play against Snyk. It scores 6 because the page it lands on undercuts the ad's own argument."},
+      {"q": "Where does the funnel break?", "a": "On the comparison page. The ad says 26 minutes; the page says 2.5 hours. A page selling accuracy cannot keep its own number straight between the ad and the destination, and a $100 gift card pulls gift-card hunters instead of AppSec leaders."},
+      {"q": "How would you fix it?", "a": "Make the numbers match everywhere, pick the real figure and use it identically in the ad, the page and the benchmark, and drop or gate the gift card so the page attracts buyers, not tourists."},
+      {"q": "How do I check my own ad for this?", "a": "Put your ad and your landing page next to each other and check the headline number: is it identical? If a page built on a metric cites a different metric one click later, you are arguing against yourself. AdRoast scores this automatically, and the first roast is free."}
+    ]
+  }
+}

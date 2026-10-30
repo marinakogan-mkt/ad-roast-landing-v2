@@ -1,0 +1,40 @@
+{
+  "embed": true,
+  "meta": {
+    "slug": "descope", "name": "Descope", "domain": "descope.com",
+    "date": "2026-08-03", "human_date": "August 3, 2026", "initial": "D",
+    "badge_color": "#3f4b66", "verdict": "Wrong page",
+    "eyebrow": "Ad teardown &middot; CIAM / Identity",
+    "urn": "urn:li:ugcPost:7490059256344297472",
+    "post_url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7490059256344297472",
+    "title": "Descope ad teardown: a strategic CIAM ad, an implementation tutorial",
+    "meta_desc": "A teardown of Descope's live LinkedIn ad: strong, category-aware CIAM copy sends paid traffic into a 3,000-word DevRel tutorial full of Python and MCP snippets. Right buyer, wrong page.",
+    "og_desc": "A sharp CIAM ad, sent to the wrong page.",
+    "keywords": "descope linkedin ads, descope ad teardown, CIAM ads, agentic identity, non-human identity, developer vs buyer, ad teardown",
+    "related": [
+      {"slug": "silverfort", "name": "Silverfort", "q": "The right message, in the wrong order."},
+      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The page hid them."},
+      {"slug": "hyperproof", "name": "Hyperproof", "q": "A privacy hook that lands on a compliance page."}
+    ]
+  },
+  "voice": {
+    "hook": ["The ad was written for a buyer.", "The page was written for a developer."],
+    "lede": "The ad copy is genuinely strong and category-aware, written for CIAM leaders with a real strategic problem around agentic identity. Then the click lands on a 3,000-word DevRel tutorial full of Python and MCP snippets. Descope clearly has two ICPs, developers and CIAM leaders, and paid traffic is being pushed into the wrong experience. You do not need more traffic when the conversation after the click falls apart this badly.",
+    "findings": [
+      {"tag": "ad", "good": true, "title": "Specific, category-aware, written for the buyer",
+       "what": "Every line earns attention: “Auth stops at token issuance,” “NHIs outnumber humans 20:1,” “57% of CIAM leaders fear agents sharing data.” It is concrete, it names the problem, and it speaks the CIAM leader's language."},
+      {"tag": "ad", "good": false, "title": "No proof the buyer can hold on to",
+       "what": "The copy is sharp, but there are no customer logos and no Descope-specific proof points. The stats frame the problem well; nothing yet shows Descope is the answer.",
+       "fix": "Add one named customer or a Descope-specific result so the strategic frame has a payoff attached to it."},
+      {"tag": "page", "good": false, "title": "A strategic click lands on an implementation tutorial",
+       "what": "The CTA “See the strategic read” lands on “Monitoring and Auditing Agentic Identities,” a 3,000-word technical post with Python, MCP and Snowflake snippets, bylined by a Developer Relations Engineer. Zero customer logos, zero testimonials, zero named customers. The buyer who clicked for strategy gets handed code.",
+       "fix": "Send the paid CIAM-leader click to a strategic page, the executive read the ad promised, and keep the DevRel tutorial for the developer funnel it was written for."}
+    ],
+    "faq": [
+      {"q": "Is Descope's ad good?", "a": "The ad is one of the sharpest in the series: specific, category-aware copy written for CIAM leaders, with real stats on agentic identity. Its only gap is proof, no named customers or Descope-specific results. The real problem is not the ad, it is the page it sends you to."},
+      {"q": "Where does the funnel break?", "a": "At the click. A strategic ad written for a CIAM buyer lands on a 3,000-word DevRel tutorial full of Python and MCP snippets, written by a Developer Relations Engineer. Descope has two ICPs, developers and CIAM leaders, and the paid traffic is going into the developer experience."},
+      {"q": "How would you fix it?", "a": "Match the page to the buyer the ad targeted. Send the paid CIAM-leader click to the strategic executive read it promised, and reserve the implementation tutorial for the developer funnel. The traffic is fine; the destination is wrong."},
+      {"q": "How do I check my own ad for this?", "a": "If you sell to more than one ICP, click your own ad as the buyer it targets and ask: is this page written for me, or for someone else in the org? Paid traffic landing in the wrong experience wastes the best copy you have. AdRoast scores this automatically, and the first roast is free."}
+    ]
+  }
+}

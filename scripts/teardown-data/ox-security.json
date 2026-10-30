@@ -1,0 +1,38 @@
+{
+  "embed": true,
+  "meta": {
+    "slug": "ox-security", "name": "OX Security", "domain": "ox.security",
+    "date": "2026-07-06", "human_date": "July 6, 2026", "initial": "O",
+    "badge_color": "#0b6bcb", "score": 5,
+    "eyebrow": "Ad teardown &middot; ASPM / CNAPP",
+    "urn": "urn:li:share:7479912636642598912",
+    "post_url": "https://www.linkedin.com/feed/update/urn:li:share:7479912636642598912",
+    "lp_url": "https://ox.security/",
+    "title": "OX Security ad teardown: a single-product ad that lands on a page selling eight",
+    "meta_desc": "A teardown of OX Security's live LinkedIn ad: one product (OX.Cloud) behind an elite logo wall and a real proof stat, landing on a page selling four products and eight capabilities under a headline that reads like a typo.",
+    "og_desc": "One product in the ad. Eight on the page.",
+    "keywords": "ox security linkedin ads, ox security ad teardown, ASPM ads, CNAPP ads, message continuity, ad to landing page, ad teardown",
+    "related": [
+      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The page hid them."},
+      {"slug": "silverfort", "name": "Silverfort", "q": "The right message, in the wrong order."},
+      {"slug": "semgrep", "name": "Semgrep", "q": "A comparison page that argues with its own numbers."}
+    ]
+  },
+  "voice": {
+    "hook": ["One product in the ad.", "Eight on the page."],
+    "lede": "The ad sells one product, OX.Cloud, behind an elite logo wall (IBM, Microsoft, Intel, Swisscom) and a real proof stat, 11,237 alerts reduced to 123 actionable ones. Then the click lands on a page selling four products and eight capabilities, under an H1, “Prompt to Run-time Security,” that reads like a typo and means nothing outside the category. Specific intent, generic destination.",
+    "findings": [
+      {"tag": "ad", "good": true, "title": "One product, elite logos, a real number",
+       "what": "The ad does the hard part well: it sells a single product (OX.Cloud), backs it with an elite logo wall (IBM, Microsoft, Intel, Swisscom), and carries a concrete proof stat, 11,237 alerts reduced to 123 actionable ones. That is specific intent."},
+      {"tag": "page", "good": false, "title": "A specific ad, a generic destination",
+       "what": "The click lands on a page selling four products and eight capabilities, under an H1, “Prompt to Run-time Security,” that reads like a typo and means nothing outside the category. The single-product promise dissolves into a platform overview.",
+       "fix": "Send the OX.Cloud click to an OX.Cloud page: the same product, the same stat, the same logos, so the specific intent the ad built gets a specific place to land."}
+    ],
+    "faq": [
+      {"q": "Is OX Security's ad good?", "a": "The ad is strong: it sells one product, OX.Cloud, with an elite logo wall and a real, specific proof stat (11,237 alerts down to 123). It scores 5 because of what happens after the click, not because of the ad itself."},
+      {"q": "Where does the funnel break?", "a": "On the landing page. A single-product ad lands on a page selling four products and eight capabilities, under a headline, “Prompt to Run-time Security,” that reads like a typo. The specific intent the ad created has nowhere specific to go."},
+      {"q": "How would you fix it?", "a": "Match the page to the product. Point the OX.Cloud click at an OX.Cloud page that keeps the same stat and the same logos, instead of a platform overview that restarts the sales conversation from zero."},
+      {"q": "How do I check my own ad for this?", "a": "If your ad sells one product, click it and ask: does the page sell that one product, or the whole platform? A specific ad landing on a generic page makes the buyer do the narrowing you already did for them. AdRoast scores this automatically, and the first roast is free."}
+    ]
+  }
+}

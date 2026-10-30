@@ -199,7 +199,10 @@ def logo_for(domain):
     return "https://icons.duckduckgo.com/ip3/%s.ico" % domain
 
 def lp_for(url):
-    return "https://image.thum.io/get/width/1200/crop/1150/wait/8/" + url
+    # Use AdRoast's own screenshot endpoint (ScreenshotOne, blocks until rendered)
+    # instead of thum.io directly, which sometimes returns a cold-render spinner.
+    import urllib.parse
+    return "https://www.adroast.in/api/icp?shot=" + urllib.parse.quote(url, safe="")
 
 def from_roast(cfg):
     """Turn {meta, voice, roast} into the flat dict build() expects. The 5-axis
@@ -303,6 +306,7 @@ EMBED_CSS = (
     ".win.embedwin .liopen{display:block;text-align:center;padding:11px 12px;font-size:13px;font-weight:700;color:var(--blue);border-top:1px solid var(--line);text-decoration:none}"
     ".win.embedwin .liopen:hover{background:#eef4ff}"
     ".vchip{display:inline-flex;align-items:center;font-weight:800;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;padding:8px 14px;border-radius:999px;white-space:nowrap}"
+    ".embedstage.embed-only{max-width:600px;margin:0 auto;display:block}"
     "@media(max-width:720px){.win.embedwin iframe.liembed{height:470px}}"
 )
 
@@ -321,9 +325,10 @@ def finding_embed(f):
             f'{fixblock}</div></div>')
 
 def build_embed(d):
-    lp_uri, lp_n = img_datauri(d["lp_shot"])
+    has_lp = bool(d.get("lp_shot"))
+    lp_uri, lp_n = (img_datauri(d["lp_shot"]) if has_lp else ("", 0))
     logo_uri, logo_n = datauri(d["logo_url"], min_bytes=300)
-    sys.stderr.write("  landing %d KB, logo %d KB (embed mode)\n" % (lp_n // 1024, logo_n // 1024))
+    sys.stderr.write("  landing %d KB, logo %d KB (embed mode%s)\n" % (lp_n // 1024, logo_n // 1024, "" if has_lp else ", embed-only"))
     ld_article = {"@context": "https://schema.org", "@type": "AnalysisNewsArticle",
         "headline": d["title"], "description": d["meta_desc"], "datePublished": d["date"],
         "author": {"@type": "Person", "name": "Marina Kogan", "url": "https://koganmarina.com"},
@@ -346,6 +351,22 @@ def build_embed(d):
                    else f'{vchip(d["verdict"])}<span class="cap">Verdict</span>')
     post_url = d.get("post_url") or ("https://www.linkedin.com/feed/update/" + d["urn"])
     embed_src = "https://www.linkedin.com/embed/feed/update/" + d["urn"]
+    embed_win = (
+        '<div class="win ad embedwin"><div class="wl">The ad, torn apart</div>'
+        '<div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>LinkedIn post</span></div>'
+        f'<div class="liwrap"><iframe class="liembed" src="{embed_src}" title="{esc(d["name"])} ad teardown on LinkedIn" frameborder="0" allowfullscreen loading="lazy"></iframe></div>'
+        f'<a class="liopen" href="{post_url}" target="_blank" rel="noopener">Open on LinkedIn &rarr;</a></div>')
+    if has_lp:
+        landing_win = (
+            f'<a class="win lp" href="{d.get("lp_url") or ("https://%s/" % d["domain"])}" target="_blank" rel="noopener" title="Open {d["domain"]}">'
+            '<div class="wl">The landing page</div>'
+            f'<div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>{d["domain"]}/</span></div>'
+            f'<div class="shot"><img src="{lp_uri}" alt="{esc(d["name"])} landing page screenshot"></div></a>')
+        stage_inner = embed_win + '<div class="arr">&rarr;</div>' + landing_win
+        stitle, stage_cls = "The ad, and the page it lands on", "twostage embedstage"
+    else:
+        stage_inner, stitle, stage_cls = embed_win, "The teardown, on LinkedIn", "twostage embedstage embed-only"
+    stage_sec = f'<div class="sec"><p class="stitle">{stitle}</p><div class="{stage_cls}">{stage_inner}</div></div>'
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(d["title"])} | AdRoast</title>
 <meta name="description" content="{esc(d["meta_desc"])}">
@@ -369,23 +390,7 @@ def build_embed(d):
     <div class="score">{score_block}</div>
   </div>
 
-  <div class="sec">
-    <p class="stitle">The ad, and the page it lands on</p>
-    <div class="twostage embedstage">
-      <div class="win ad embedwin">
-        <div class="wl">The ad, torn apart</div>
-        <div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>LinkedIn post</span></div>
-        <div class="liwrap"><iframe class="liembed" src="{embed_src}" title="{esc(d["name"])} ad teardown on LinkedIn" frameborder="0" allowfullscreen loading="lazy"></iframe></div>
-        <a class="liopen" href="{post_url}" target="_blank" rel="noopener">Open on LinkedIn &rarr;</a>
-      </div>
-      <div class="arr">&rarr;</div>
-      <a class="win lp" href="{d.get("lp_url") or ("https://%s/" % d["domain"])}" target="_blank" rel="noopener" title="Open {d["domain"]}">
-        <div class="wl">The landing page</div>
-        <div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>{d["domain"]}/</span></div>
-        <div class="shot"><img src="{lp_uri}" alt="{esc(d["name"])} landing page screenshot"></div>
-      </a>
-    </div>
-  </div>
+  {stage_sec}
 
   <div class="sec">
     <p class="stitle">What the teardown found &middot; tap to open each one</p>
@@ -428,7 +433,8 @@ if __name__ == "__main__":
         d = dict(cfg["meta"]); v = cfg.get("voice", {})
         d["hook"], d["lede"], d["findings"], d["faq"] = v["hook"], v["lede"], v["findings"], v["faq"]
         d.setdefault("logo_url", logo_for(d["domain"]))
-        d.setdefault("lp_shot", lp_for(d.get("lp_url", "https://%s/" % d["domain"])))
+        if d.get("lp_url"):
+            d.setdefault("lp_shot", lp_for(d["lp_url"]))
         html = build_embed(d)
         d = {}  # embed pages are already in the hub/sitemap/proof; never integrate
     else:
