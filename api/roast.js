@@ -2,7 +2,7 @@ import { Redis } from '@upstash/redis';
 import crypto from 'node:crypto';
 import { readSessionCookie } from './auth/_allowlist.js';
 import { consumeToken, peekAccount, companyKey, checkCompanyAllowed, addCompany } from './_tokens.js';
-import { videoStoryboard } from './_vframes.js';
+import { videoStoryboard, adIsVideo } from './_vframes.js';
 import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, logClaudeUsage } from './_adlibrary.js';
 import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
 import { platformRulesPrompt, RULES_VERSION } from './_platform-rules.js';
@@ -297,7 +297,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, warmed: sb ? 1 : 0, ad: { adId: target.adId || null, score: (typeof target.score === 'number' ? target.score : null), head: (target.head || '').slice(0, 80) } });
   }
 
-  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, adImageUrl, company, website, adUrl, forceFresh, isVideo } = body;
+  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, adImageUrl, company, website, adUrl, forceFresh, isVideo: isVideoIn } = body;
+  let isVideo = isVideoIn;
 
   // Working creative vars: a roast started from the "Your Live Ads" dashboard sends the
   // real creative as a hotlinkable URL (adImageUrl) instead of an uploaded base64 image.
@@ -716,7 +717,14 @@ NO CLICHE COPY — the fix_kit rewrites (headlines, body, ctas, landing_page_hea
   // Board roasts pass the ad-library detail URL as adUrl; on success the storyboard becomes the
   // attached creative and the creative is scored normally. Cached per ad, best-effort: any failure
   // leaves effShot empty so the copy-only / "not analyzed" path below takes over, never a guess.
-  if (!effShot && isVideo && videoAllowed && typeof adUrl === 'string' && /\/ad-library\/detail\/\d+/.test(adUrl)) {
+  // A re-roast of a report saved before isVideo was recorded sends null: ask the ad's own page.
+  // A storyboard outranks any adScreenshot here: on a re-roast that is only the old creative.
+  const _isAdLibrary = typeof adUrl === 'string' && /\/ad-library\/detail\/\d+/.test(adUrl);
+  if (isVideo === null && _isAdLibrary) {
+    try { isVideo = (await adIsVideo({ detailUrl: adUrl.trim(), redis: redisDown ? null : _redis })) === true; }
+    catch (e) { isVideo = false; console.log('[AdRoast] video detection failed:', e.message); }
+  }
+  if (isVideo && videoAllowed && _isAdLibrary) {
     try {
       const sb = await videoStoryboard({ detailUrl: adUrl.trim(), redis: redisDown ? null : _redis });
       if (sb && sb.b64) {
@@ -1031,7 +1039,7 @@ Return the JSON object defined in the output contract. All fields required.`;
             parsed._reportId = reportId;
             const { _entitlement, _meta, ...cleanResult } = parsed; // don't persist per-request entitlement/debug
             const ts = Date.now();
-            const record = { result: cleanResult, icp: icpDescription || '', platform: platform || '', offerType: offerType || '', offerDetail: offerDetail || '', company: company || '', website: website || '', landingUrl: landingUrl || '', adUrl: adUrl || '', adCopy: adCopy || '', visualDescription: visualDescription || '', email: acctEmail, ts, landingStatus };
+            const record = { result: cleanResult, icp: icpDescription || '', platform: platform || '', offerType: offerType || '', offerDetail: offerDetail || '', company: company || '', website: website || '', landingUrl: landingUrl || '', adUrl: adUrl || '', adCopy: adCopy || '', visualDescription: visualDescription || '', email: acctEmail, ts, landingStatus, isVideo: !!isVideo };
             /* Persist the ad creative so a shared/cold report shows the actual ad being
                roasted. Downscaled JPEG (~800px) is small; cap defensively so an oversized
                image never blows the Redis value limit (the roast still saves without it). */

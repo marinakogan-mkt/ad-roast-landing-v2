@@ -3239,6 +3239,8 @@
       const siteUrlRef = React.useRef(null); // focus this when the ad page can't be read, so the user types the advertiser's site
       const [companyName, setCompanyName] = useState(''); // advertiser name from ICP auto-detect, shown atop the roast
       const [adLink, setAdLink] = useState(''); // the ad-library URL being roasted, shown in the "what's being roasted" showcase
+      const [adVideo, setAdVideo] = useState(null); // is the roasted ad a video? null = unknown (a report saved before this was recorded), the server then checks the ad-library page
+      const [adPoster, setAdPoster] = useState(''); // the ad's hotlinked creative (adImageUrl), so a re-roast keeps it as the fallback when no storyboard can be built
       const [landingInput, setLandingInput] = useState(''); // landing URL for the roasted ad's report; board roasts set it via payload.landingUrl (fixes a crash: these were referenced in AdRoastApp but only declared in AdLibraryView)
       const [lpCopyInput, setLpCopyInput] = useState(''); // manual landing-page copy when the auto-scrape couldn't read the page
       const [landingGate, setLandingGate] = useState(null); // { status:'unreadable'|'missing', url } when the roast stopped to ask for a readable landing
@@ -3625,6 +3627,8 @@
           setCompanyName(payload.company); setSiteUrl(payload.website);
           setInputs(prev => ({ ...prev, copy: adText }));
           setAdLink(payload.adUrl || '');
+          setAdVideo(payload.isVideo);
+          setAdPoster(payload.adImageUrl || '');
           setLandingInput(payload.landingUrl || '');
           setGateAd({ img: a.img || null, plat: a.plat || '', score: (typeof a.score === 'number' ? a.score : null), head: a.head || '' });
           fetch('/api/auth?action=me', { credentials: 'same-origin' })
@@ -3882,6 +3886,8 @@
                 if (data.offerType) setOfferType(data.offerType);
                 if (data.offerDetail) setOfferDetail(data.offerDetail);
                 if (data.adUrl) setAdLink(data.adUrl);
+                setAdVideo(typeof data.isVideo === 'boolean' ? data.isVideo : null);
+                setAdPoster(data.adImageUrl || '');
                 // Restore the FULL inputs (ad copy, visual, creative) too, so a signed-in
                 // owner opening their own report link can re-roast / paste LP copy from here.
                 setInputs(p => ({
@@ -4149,7 +4155,7 @@
         setResult(null); setError(null);
         setIsUnlocked(false); setNeedsPayment(false); setPaymentVerified(false); setShowUnlockModal(false);
         setReportEmail(''); setReportEmailErr(null); setPdfStatus(null); setShareableLink(''); setCurrentReportId(null); setIsSharedView(false);
-        setIcp(''); setSiteUrl(''); setCompanyName(''); setAdLink(''); setIcpTags([]); setIcpAuto({ loading: false, err: '', done: false });
+        setIcp(''); setSiteUrl(''); setCompanyName(''); setAdLink(''); setAdVideo(null); setAdPoster(''); setIcpTags([]); setIcpAuto({ loading: false, err: '', done: false });
         setInputs({ url: '', copy: v, visual: '', adScreenshot: null, adScreenshotPreview: null });
         setPlatform(platformFromLink(v));
         setGuidedHadCopyAtStart(true); setGuidedStep(0);
@@ -4427,8 +4433,16 @@
       };
 
       const generate = async (extraLandingCopy, forceFresh, opts) => {
-        const payload = { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: (typeof extraLandingCopy === 'string' ? extraLandingCopy : ''), adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '', adUrl: (isValidUrl(inputs.copy) ? inputs.copy.trim() : ''), forceFresh: !!forceFresh, allowNoLanding: !!(opts && opts.allowNoLanding) };
+        /* Re-roast fresh of a board roast: resend that roast's exact payload. Its landing, creative
+           and video flag live there, never in the guided form's state (same reason as resubmitRoast). */
+        const _base = pendingRoastRef.current;
+        const _rerunBoard = !!(forceFresh && _base && _base.source === 'ad-library' && _base.adCopy === inputs.copy);
+        /* Re-roast fresh of an opened report: carry the ad's origin so a video reaches the storyboard. */
+        const _adOrigin = forceFresh ? { isVideo: adVideo, adImageUrl: adPoster || null } : {};
+        const payload = _rerunBoard ? { ..._base, forceFresh: true } : { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: (typeof extraLandingCopy === 'string' ? extraLandingCopy : ''), adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '', adUrl: (isValidUrl(inputs.copy) ? inputs.copy.trim() : (forceFresh ? adLink : '')), forceFresh: !!forceFresh, allowNoLanding: !!(opts && opts.allowNoLanding), ..._adOrigin };
         setAdLink(payload.adUrl || '');
+        // The stored preview is the old creative; the fresh report's creative replaces it in the showcase.
+        if (forceFresh && /\/ad-library\/detail\/\d+/.test(payload.adUrl || '')) setInputs(p => ({ ...p, adScreenshotPreview: null }));
 
         /* Monetization 2b: require a roast-tool account before running the roast.
            Stash the pending roast so we can resume it after sign-in (?signedin=1). */

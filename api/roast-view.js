@@ -326,6 +326,8 @@ export default async function handler(req, res) {
         website: rec.website || '',
         landingUrl: rec.landingUrl || '',
         adUrl: rec.adUrl || '',
+        isVideo: typeof rec.isVideo === 'boolean' ? rec.isVideo : null,
+        adImageUrl: rec.adImageUrl || '',
         adCopy: rec.adCopy || '',
         visualDescription: rec.visualDescription || '',
         offerType: rec.offerType || '',
