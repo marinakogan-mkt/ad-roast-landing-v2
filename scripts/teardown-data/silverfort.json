@@ -1,52 +1,124 @@
 {
-  "embed": true,
-  "meta": {
-    "slug": "silverfort",
-    "name": "Silverfort",
-    "domain": "silverfort.com",
-    "date": "2026-07-27",
-    "human_date": "July 27, 2026",
-    "initial": "S",
-    "badge_color": "#0b4aa2",
-    "eyebrow": "Ad teardown &middot; Identity security",
-    "urn": "urn:li:ugcPost:7487522512273289216",
-    "post_url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7487522512273289216",
-    "verdict": "Out of order",
-    "lp_url": "https://silverfort.com/",
-    "title": "Silverfort ad teardown: the right message, in the wrong order",
-    "meta_desc": "A teardown of Silverfort's live LinkedIn ad: the body names Mythos and runtime enforcement in a frame a CISO recognizes, then the image and the landing page bury the strongest message below the fold.",
-    "og_desc": "The message was right. The order was wrong.",
-    "keywords": "silverfort linkedin ads, silverfort ad teardown, identity security ads, runtime enforcement, CISO ads, ad teardown, how to audit linkedin ads",
-    "related": [
-      {"slug": "descope", "name": "Descope", "q": "A sharp CIAM ad, sent to the wrong page."},
-      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The landing page hid them."},
-      {"slug": "semgrep", "name": "Semgrep", "q": "A comparison page that argues with its own numbers."}
-    ]
-  },
-  "voice": {
-    "hook": ["The message was right.", "The order was wrong."],
-    "lede": "Silverfort has solid raw material arranged in the wrong order. The ad body does one smart thing: it names Mythos and runtime enforcement in the same beat, a frame a CISO recognizes. Then the image throws it away with vague superlatives, and the page keeps its most convincing copy farthest from first read. This is not a copy-quality problem, it is a sequencing problem. When the strongest message shows up first, the buyer leans in.",
-    "findings": [
-      {"tag": "ad", "good": true, "title": "The body names the frame a CISO recognizes",
-       "what": "The ad copy names Mythos and runtime enforcement in the same beat. That is a specific, category-aware frame the buyer recognizes instantly, and it is the thing that earns the click."},
-      {"tag": "ad", "good": false, "title": "The image speaks in superlatives, not proof",
-       "what": "“Attacks stopped. Identities protected.” and “the most advanced AI meets the strongest identity defense” could belong to any identity vendor. The image leads with drama instead of the Mythos and runtime-enforcement frame the body just earned attention with.",
-       "fix": "Put the specific frame on the image too: name runtime enforcement and what it stops, so the strongest message is the first thing the eye lands on."},
-      {"tag": "page", "good": true, "title": "The page gets stronger on scroll",
-       "what": "The landing page has a good H1 and a concrete sub-pillar (service accounts, NTLM, legacy apps, OT). FAQ #1 is the best asset on the page, because it answers the buyer's real fear about rip-and-replace."},
-      {"tag": "page", "good": false, "title": "The best copy sits farthest from first read",
-       "what": "The strongest message is buried below the fold, while an anonymous testimonial up top raises over-blocking fear instead of reducing it. The bottom of the page then widens into eight sub-products and dilutes the runtime-control story.",
-       "fix": "Move the rip-and-replace answer above the fold, drop the anonymous testimonial, and add the real homepage logo strip (GM, Singtel, Rio Tinto) so the proof shows up before the buyer has to scroll."}
-    ],
-    "faq": [
-      {"q": "Is Silverfort's ad good?",
-       "a": "The ad body does one genuinely smart thing: it names Mythos and runtime enforcement in the same beat, a frame a CISO recognizes instantly. The problem is sequencing, not quality. The image then trades that specificity for vague superlatives, and the landing page keeps its most convincing copy farthest from first read."},
-      {"q": "Where does the funnel break?",
-       "a": "The strongest message shows up last. The ad image leads with category language instead of the Mythos and runtime frame that earned the click. On the page, the best asset, the FAQ that answers the rip-and-replace fear, sits below the fold, while an anonymous testimonial raises over-blocking fear up top."},
-      {"q": "How would you fix it?",
-       "a": "Lead with the strongest message, everywhere. Put the Mythos and runtime-enforcement frame on the image, move the rip-and-replace answer above the fold, drop the anonymous testimonial, and add the real logo strip (GM, Singtel, Rio Tinto) so the proof shows up before the buyer scrolls."},
-      {"q": "How do I check my own ad for this?",
-       "a": "Read your ad and your page in order and ask: does the strongest, most specific message show up first? If your best proof sits below the fold or your image speaks in superlatives, the sequence is working against you. AdRoast scores this automatically, and the first roast is free."}
-    ]
-  }
+ "embed": false,
+ "meta": {
+  "slug": "silverfort",
+  "name": "Silverfort",
+  "domain": "silverfort.com",
+  "date": "2026-07-27",
+  "human_date": "July 27, 2026",
+  "initial": "S",
+  "badge_color": "#0b4aa2",
+  "eyebrow": "Ad teardown &middot; Identity security",
+  "urn": "urn:li:ugcPost:7487522512273289216",
+  "post_url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7487522512273289216",
+  "verdict": "Out of order",
+  "lp_url": "https://silverfort.com/",
+  "title": "Silverfort ad teardown: the right message, in the wrong order",
+  "meta_desc": "A teardown of Silverfort's live LinkedIn ad: the body names Mythos and runtime enforcement in a frame a CISO recognizes, then the image and the landing page bury the strongest message below the fold.",
+  "og_desc": "The message was right. The order was wrong.",
+  "keywords": "silverfort linkedin ads, silverfort ad teardown, identity security ads, runtime enforcement, CISO ads, ad teardown, how to audit linkedin ads",
+  "related": [
+   {
+    "slug": "descope",
+    "name": "Descope",
+    "q": "A sharp CIAM ad, sent to the wrong page."
+   },
+   {
+    "slug": "cycode",
+    "name": "Cycode",
+    "q": "Four analysts sold the click. The landing page hid them."
+   },
+   {
+    "slug": "semgrep",
+    "name": "Semgrep",
+    "q": "A comparison page that argues with its own numbers."
+   }
+  ],
+  "ad_img": "https://media.licdn.com/dms/image/v2/D5610AQE7jn4AsaYVvw/image_627_1200/B56Z9xPVQ9GoAU-/0/1784311272685?e=2147483647&v=beta&t=b3BT-JHnWFF_2VDWCaioAU97EDqDhj5LC1Vjx41zKFw",
+  "roast_id": "00645924"
+ },
+ "voice": {
+  "hook": [
+   "The message was right.",
+   "The order was wrong."
+  ],
+  "lede": "Silverfort has solid raw material arranged in the wrong order. The ad body does one smart thing: it names Mythos and runtime enforcement in the same beat, a frame a CISO recognizes. Then the image throws it away with vague superlatives, and the page keeps its most convincing copy farthest from first read. This is not a copy-quality problem, it is a sequencing problem. When the strongest message shows up first, the buyer leans in.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "title": "The body names the frame a CISO recognizes",
+    "what": "The ad copy names Mythos and runtime enforcement in the same beat. That is a specific, category-aware frame the buyer recognizes instantly, and it is the thing that earns the click."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "title": "The image speaks in superlatives, not proof",
+    "what": "“Attacks stopped. Identities protected.” and “the most advanced AI meets the strongest identity defense” could belong to any identity vendor. The image leads with drama instead of the Mythos and runtime-enforcement frame the body just earned attention with.",
+    "fix": "Put the specific frame on the image too: name runtime enforcement and what it stops, so the strongest message is the first thing the eye lands on."
+   },
+   {
+    "tag": "page",
+    "good": true,
+    "title": "The page gets stronger on scroll",
+    "what": "The landing page has a good H1 and a concrete sub-pillar (service accounts, NTLM, legacy apps, OT). FAQ #1 is the best asset on the page, because it answers the buyer's real fear about rip-and-replace."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "title": "The best copy sits farthest from first read",
+    "what": "The strongest message is buried below the fold, while an anonymous testimonial up top raises over-blocking fear instead of reducing it. The bottom of the page then widens into eight sub-products and dilutes the runtime-control story.",
+    "fix": "Move the rip-and-replace answer above the fold, drop the anonymous testimonial, and add the real homepage logo strip (GM, Singtel, Rio Tinto) so the proof shows up before the buyer has to scroll."
+   }
+  ],
+  "faq": [
+   {
+    "q": "Is Silverfort's ad good?",
+    "a": "The ad body does one genuinely smart thing: it names Mythos and runtime enforcement in the same beat, a frame a CISO recognizes instantly. The problem is sequencing, not quality. The image then trades that specificity for vague superlatives, and the landing page keeps its most convincing copy farthest from first read."
+   },
+   {
+    "q": "Where does the funnel break?",
+    "a": "The strongest message shows up last. The ad image leads with category language instead of the Mythos and runtime frame that earned the click. On the page, the best asset, the FAQ that answers the rip-and-replace fear, sits below the fold, while an anonymous testimonial raises over-blocking fear up top."
+   },
+   {
+    "q": "How would you fix it?",
+    "a": "Lead with the strongest message, everywhere. Put the Mythos and runtime-enforcement frame on the image, move the rip-and-replace answer above the fold, drop the anonymous testimonial, and add the real logo strip (GM, Singtel, Rio Tinto) so the proof shows up before the buyer scrolls."
+   },
+   {
+    "q": "How do I check my own ad for this?",
+    "a": "Read your ad and your page in order and ask: does the strongest, most specific message show up first? If your best proof sits below the fold or your image speaks in superlatives, the sequence is working against you. AdRoast scores this automatically, and the first roast is free."
+   }
+  ],
+  "scorecard": [
+   {
+    "label": "Headline clarity",
+    "score": 5,
+    "note": "“When the most advanced AI meets the strongest identity defense” sounds like a movie trailer, not a security claim a CISO can evaluate or forward internally."
+   },
+   {
+    "label": "CTA friction",
+    "score": 4,
+    "note": "“Learn more” button undersells a demo-intent offer and mismatches the sales-led ask; no urgency or specificity about what happens after the click."
+   },
+   {
+    "label": "Visual-copy match",
+    "score": 4,
+    "note": "Generic humanoid robot glowing with particles reads as stock sci-fi, not identity security; nothing in the visual depicts runtime controls, access, or attack chains."
+   },
+   {
+    "label": "Benefit specificity",
+    "score": 4,
+    "note": "“Attacks stopped. Identities protected.” is a slogan, not a benefit; the creative carries none of the runtime-enforcement or Mythos specifics the body names, and no measurable outcome."
+   },
+   {
+    "label": "Trust signals",
+    "score": 3,
+    "note": "No named customers, no proof points, no callout extension with a stat or certification anywhere in the ad text or creative."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 5,
+  "landing_page_score": 6
+ }
 }

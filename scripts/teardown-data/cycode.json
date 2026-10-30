@@ -1,44 +1,125 @@
 {
-  "embed": true,
-  "meta": {
-    "slug": "cycode", "name": "Cycode", "domain": "cycode.com",
-    "date": "2026-08-24", "human_date": "August 24, 2026", "initial": "C",
-    "badge_color": "#6b4ef2", "score": 6,
-    "eyebrow": "Ad teardown &middot; AppSec / ASPM",
-    "urn": "urn:li:share:7497669510192259073",
-    "post_url": "https://www.linkedin.com/feed/update/urn:li:share:7497669510192259073",
-    "lp_url": "https://cycode.com/get-a-demo/",
-    "title": "Cycode ad teardown: analyst proof up front, gone after the click",
-    "meta_desc": "A teardown of Cycode's live LinkedIn ad: it wins the click with four named analysts, then the landing page drops that exact proof for internal jargon like ADLC and Software Supply Chain Security.",
-    "og_desc": "Four analysts sold the click. The landing page hid them.",
-    "keywords": "cycode linkedin ads, cycode ad teardown, ASPM ads, application security ads, analyst proof ads, CISO ads, ad teardown",
-    "related": [
-      {"slug": "silverfort", "name": "Silverfort", "q": "The right message, in the wrong order."},
-      {"slug": "ox-security", "name": "OX Security", "q": "A single-product ad on a page selling eight."},
-      {"slug": "semgrep", "name": "Semgrep", "q": "A comparison page that argues with its own numbers."}
-    ]
-  },
-  "voice": {
-    "hook": ["Four analysts sold the click.", "The landing page hid them."],
-    "lede": "The ad wins the click with credible analyst proof, Gartner, IDC, GigaOm and Frost & Sullivan, aimed straight at CISO and AppSec buyers. Then the landing page walks away from that exact argument and swaps it for internal jargon like ADLC and Software Supply Chain Security. The message that earned attention gets replaced by the message the company wants to explain, and that is where the momentum dies.",
-    "findings": [
-      {"tag": "ad", "good": true, "title": "Four analysts, named and shown",
-       "what": "Gartner, IDC, GigaOm and Frost & Sullivan are named in the copy and shown as logos on the creative. That is strong, specific, third-party validation, and it is rare for a LinkedIn ad. It is exactly what a consolidation-minded security buyer wants to see."},
-      {"tag": "ad", "good": false, "title": "A headline you read twice",
-       "what": "“The Leader Four Analysts Agree On” reads like a garbled Yoda quote. The layout is clean, but the syntax makes you reread it, and it never says leader in what.",
-       "fix": "Say it straight: name the category the four analysts rank Cycode in, so the proof lands on the first read."},
-      {"tag": "ad", "good": false, "title": "Names the threat, not the save",
-       "what": "“Cannot keep pace with the risk agentic development creates” names the threat but never says what Cycode actually stops, or how fast. The buyer gets the fear without the fix.",
-       "fix": "Add one concrete outcome: what Cycode catches that the buyer's current stack misses."},
-      {"tag": "page", "good": false, "title": "The proof that earned the click disappears",
-       "what": "The page opens on “#1 AI Native Agentic Development Security Platform.” The four analyst badges that sold the click are gone above the fold, replaced by internal language (ADLC, Software Supply Chain Security). Real logos are there (UBS, Broadcom, Nutanix), but they are disconnected from the ad's promise.",
-       "fix": "Lead the page with the same four analysts the ad used. Keep the argument that earned the click alive above the fold."}
-    ],
-    "faq": [
-      {"q": "Is Cycode's ad good?", "a": "The ad is strong where it counts: four independent analyst firms, named in copy and shown as logos, is credible third-party proof aimed straight at the CISO and AppSec buyer. The weak points are a headline you have to read twice and a benefit that names the threat without naming the save."},
-      {"q": "Where does the funnel break?", "a": "After the click. The ad earns attention with analyst validation, then the landing page drops those badges above the fold and swaps the argument for internal jargon like ADLC and Software Supply Chain Security. The message that won the click is replaced by the one the company wants to explain."},
-      {"q": "How would you fix it?", "a": "Carry the proof through. Lead the landing page with the same four analysts the ad used, keep that argument above the fold, and add one concrete outcome to the ad so the benefit is a save, not just a threat."},
-      {"q": "How do I check my own ad for this?", "a": "Click your own ad and ask: is the single strongest reason I clicked still the first thing I see on the page? If your best proof lives in the ad and vanishes on the landing, you are paying to build momentum and then dropping it. AdRoast scores this automatically, and the first roast is free."}
-    ]
-  }
+ "embed": false,
+ "meta": {
+  "slug": "cycode",
+  "name": "Cycode",
+  "domain": "cycode.com",
+  "date": "2026-08-24",
+  "human_date": "August 24, 2026",
+  "initial": "C",
+  "badge_color": "#6b4ef2",
+  "score": 6,
+  "eyebrow": "Ad teardown &middot; AppSec / ASPM",
+  "urn": "urn:li:share:7497669510192259073",
+  "post_url": "https://www.linkedin.com/feed/update/urn:li:share:7497669510192259073",
+  "lp_url": "https://cycode.com/get-a-demo/",
+  "title": "Cycode ad teardown: analyst proof up front, gone after the click",
+  "meta_desc": "A teardown of Cycode's live LinkedIn ad: it wins the click with four named analysts, then the landing page drops that exact proof for internal jargon like ADLC and Software Supply Chain Security.",
+  "og_desc": "Four analysts sold the click. The landing page hid them.",
+  "keywords": "cycode linkedin ads, cycode ad teardown, ASPM ads, application security ads, analyst proof ads, CISO ads, ad teardown",
+  "related": [
+   {
+    "slug": "silverfort",
+    "name": "Silverfort",
+    "q": "The right message, in the wrong order."
+   },
+   {
+    "slug": "ox-security",
+    "name": "OX Security",
+    "q": "A single-product ad on a page selling eight."
+   },
+   {
+    "slug": "semgrep",
+    "name": "Semgrep",
+    "q": "A comparison page that argues with its own numbers."
+   }
+  ],
+  "ad_img": "https://media.licdn.com/dms/image/v2/D4E10AQFeJUf7ntZ4ug/image-shrink_1280/B4EZ9IifCsHMAc-/0/1783628427747/Ads202627png?e=2147483647&v=beta&t=TOT9W9gNap9G4LdyLwgts0JrHaWG35FKEaofC0ynwds",
+  "roast_id": "aea4ce48"
+ },
+ "voice": {
+  "hook": [
+   "Four analysts sold the click.",
+   "The landing page hid them."
+  ],
+  "lede": "The ad wins the click with credible analyst proof, Gartner, IDC, GigaOm and Frost & Sullivan, aimed straight at CISO and AppSec buyers. Then the landing page walks away from that exact argument and swaps it for internal jargon like ADLC and Software Supply Chain Security. The message that earned attention gets replaced by the message the company wants to explain, and that is where the momentum dies.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "title": "Four analysts, named and shown",
+    "what": "Gartner, IDC, GigaOm and Frost & Sullivan are named in the copy and shown as logos on the creative. That is strong, specific, third-party validation, and it is rare for a LinkedIn ad. It is exactly what a consolidation-minded security buyer wants to see."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "title": "A headline you read twice",
+    "what": "“The Leader Four Analysts Agree On” reads like a garbled Yoda quote. The layout is clean, but the syntax makes you reread it, and it never says leader in what.",
+    "fix": "Say it straight: name the category the four analysts rank Cycode in, so the proof lands on the first read."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "title": "Names the threat, not the save",
+    "what": "“Cannot keep pace with the risk agentic development creates” names the threat but never says what Cycode actually stops, or how fast. The buyer gets the fear without the fix.",
+    "fix": "Add one concrete outcome: what Cycode catches that the buyer's current stack misses."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "title": "The proof that earned the click disappears",
+    "what": "The page opens on “#1 AI Native Agentic Development Security Platform.” The four analyst badges that sold the click are gone above the fold, replaced by internal language (ADLC, Software Supply Chain Security). Real logos are there (UBS, Broadcom, Nutanix), but they are disconnected from the ad's promise.",
+    "fix": "Lead the page with the same four analysts the ad used. Keep the argument that earned the click alive above the fold."
+   }
+  ],
+  "faq": [
+   {
+    "q": "Is Cycode's ad good?",
+    "a": "The ad is strong where it counts: four independent analyst firms, named in copy and shown as logos, is credible third-party proof aimed straight at the CISO and AppSec buyer. The weak points are a headline you have to read twice and a benefit that names the threat without naming the save."
+   },
+   {
+    "q": "Where does the funnel break?",
+    "a": "After the click. The ad earns attention with analyst validation, then the landing page drops those badges above the fold and swaps the argument for internal jargon like ADLC and Software Supply Chain Security. The message that won the click is replaced by the one the company wants to explain."
+   },
+   {
+    "q": "How would you fix it?",
+    "a": "Carry the proof through. Lead the landing page with the same four analysts the ad used, keep that argument above the fold, and add one concrete outcome to the ad so the benefit is a save, not just a threat."
+   },
+   {
+    "q": "How do I check my own ad for this?",
+    "a": "Click your own ad and ask: is the single strongest reason I clicked still the first thing I see on the page? If your best proof lives in the ad and vanishes on the landing, you are paying to build momentum and then dropping it. AdRoast scores this automatically, and the first roast is free."
+   }
+  ],
+  "scorecard": [
+   {
+    "label": "Headline clarity",
+    "score": 6,
+    "note": "“The Leader Four Analysts Agree On” reads like a garbled Yoda quote. Clean layout, but the syntax makes you reread it twice."
+   },
+   {
+    "label": "CTA friction",
+    "score": 6,
+    "note": "“Request a Demo” on the creative and “Request Demo” in copy is a high-commitment ask with zero context on what happens after clicking, common for sales-led but still friction."
+   },
+   {
+    "label": "Visual-copy match",
+    "score": 8,
+    "note": "Five analyst badges from four firms (Gartner twice, plus IDC, GigaOm and Frost & Sullivan) visually back up the “four analysts agree” claim. Clear, on-brand, credible."
+   },
+   {
+    "label": "Benefit specificity",
+    "score": 4,
+    "note": "“Cannot keep pace with the risk agentic development creates” names the threat but never says what Cycode actually stops or how fast."
+   },
+   {
+    "label": "Trust signals",
+    "score": 8,
+    "note": "Four independent analyst firms named in copy and shown as logos on the creative is strong, specific third-party validation, rare for LinkedIn ads."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 6,
+  "landing_page_score": 4
+ }
 }

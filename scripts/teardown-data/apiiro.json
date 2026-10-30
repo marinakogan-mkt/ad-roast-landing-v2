@@ -1,40 +1,117 @@
 {
-  "embed": true,
-  "meta": {
-    "slug": "apiiro", "name": "Apiiro", "domain": "apiiro.com",
-    "date": "2026-06-22", "human_date": "June 22, 2026", "initial": "A",
-    "badge_color": "#6d28d9", "score": 5,
-    "eyebrow": "Ad teardown &middot; ASPM",
-    "urn": "urn:li:share:7474839120536690688",
-    "post_url": "https://www.linkedin.com/feed/update/urn:li:share:7474839120536690688",
-    "title": "Apiiro ad teardown: a sharp hook that dies on a CEO blog post",
-    "meta_desc": "A teardown of Apiiro's live LinkedIn ad: a provocative three-layer hook with zero proof and no product shown, landing on a 1,000-word CEO blog with the product buried in paragraph seven.",
-    "og_desc": "A sharp hook. A click that dies on a blog post.",
-    "keywords": "apiiro linkedin ads, apiiro ad teardown, ASPM ads, application security ads, guardian agent, ad to landing page, ad teardown",
-    "related": [
-      {"slug": "endor-labs", "name": "Endor Labs", "q": "The best AppSec story of the quarter, buried."},
-      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The page hid them."},
-      {"slug": "semgrep", "name": "Semgrep", "q": "A comparison page that argues with its own numbers."}
-    ]
-  },
-  "voice": {
-    "hook": ["A sharp hook.", "A click that dies on a blog post."],
-    "lede": "The hook is sharp and the click promise dies on impact. The ad announces three brand layers, Shift Left Is Dead, Continuous Threat Modeling, Guardian Agent, with zero numbers, zero proof and no product shown. Then the click lands on a 1,000-word CEO blog post with the product buried in paragraph seven. The strongest capability never appears in the ad, and the Guardian Agent is named four times but never shown.",
-    "findings": [
-      {"tag": "ad", "good": true, "title": "A provocative, category-aware hook",
-       "what": "“Shift Left Is Dead,” “Continuous Threat Modeling,” “Guardian Agent”: three brand layers that stop an AppSec scroll and signal a point of view. The attention is earned."},
-      {"tag": "ad", "good": false, "title": "Three layers, zero proof, no product",
-       "what": "The hook names three big ideas with no numbers, no proof and no product shown. The Guardian Agent is named four times but never once shown, so the single strongest capability stays invisible.",
-       "fix": "Show the Guardian Agent doing one concrete thing, and attach one number, so the provocation has something to land on."},
-      {"tag": "page", "good": false, "title": "The click lands on a CEO essay",
-       "what": "The destination is a 1,000-word CEO blog post with the product buried in paragraph seven. A reader who clicked a punchy three-word hook has to read an essay to find out what Apiiro actually does.",
-       "fix": "Send the click to the Guardian Agent itself, a page that shows the capability the ad kept naming, not a thought-leadership post."}
-    ],
-    "faq": [
-      {"q": "Is Apiiro's ad good?", "a": "The hook is genuinely sharp, three brand layers that earn an AppSec scroll. It scores 5 because the ad names big ideas without a single number, proof point or product shot, and the strongest capability it keeps naming, the Guardian Agent, is never actually shown."},
-      {"q": "Where does the funnel break?", "a": "At the click. A punchy, provocative ad lands on a 1,000-word CEO blog post with the product buried in paragraph seven. The energy of the hook dissolves into an essay before the reader finds out what Apiiro does."},
-      {"q": "How would you fix it?", "a": "Show, then send. Put the Guardian Agent and one real number in the ad, and point the click at a page that demonstrates that capability, not a founder essay. The hook is strong enough to carry a concrete payoff."},
-      {"q": "How do I check my own ad for this?", "a": "If your ad names a capability, ask: do I show it, and does the click land on it? A sharp hook that never shows the product, pointed at a blog post, spends attention it cannot cash. AdRoast scores this automatically, and the first roast is free."}
-    ]
-  }
+ "embed": false,
+ "meta": {
+  "slug": "apiiro",
+  "name": "Apiiro",
+  "domain": "apiiro.com",
+  "date": "2026-06-22",
+  "human_date": "June 22, 2026",
+  "initial": "A",
+  "badge_color": "#6d28d9",
+  "score": 5,
+  "eyebrow": "Ad teardown &middot; ASPM",
+  "urn": "urn:li:share:7474839120536690688",
+  "post_url": "https://www.linkedin.com/feed/update/urn:li:share:7474839120536690688",
+  "title": "Apiiro ad teardown: a sharp hook that dies on a CEO blog post",
+  "meta_desc": "A teardown of Apiiro's live LinkedIn ad: a provocative three-layer hook with zero proof and no product shown, landing on a 1,000-word CEO blog with the product buried in paragraph seven.",
+  "og_desc": "A sharp hook. A click that dies on a blog post.",
+  "keywords": "apiiro linkedin ads, apiiro ad teardown, ASPM ads, application security ads, guardian agent, ad to landing page, ad teardown",
+  "related": [
+   {
+    "slug": "endor-labs",
+    "name": "Endor Labs",
+    "q": "The best AppSec story of the quarter, buried."
+   },
+   {
+    "slug": "cycode",
+    "name": "Cycode",
+    "q": "Four analysts sold the click. The page hid them."
+   },
+   {
+    "slug": "semgrep",
+    "name": "Semgrep",
+    "q": "A comparison page that argues with its own numbers."
+   }
+  ],
+  "ad_img": "https://media.licdn.com/dms/image/v2/D4E10AQEHrSCwtCcz1w/image-shrink_1280/B4EZ1xSco3IMAc-/0/1775722155384/Ad122jpg?e=2147483647&v=beta&t=UHE-K1s6WL4eZ2MkEciL6M_tGRqZmR2EclOZsSiXuF8",
+  "roast_id": "ccb8f0e2"
+ },
+ "voice": {
+  "hook": [
+   "A sharp hook.",
+   "A click that dies on a blog post."
+  ],
+  "lede": "The hook is sharp and the click promise dies on impact. The ad announces three brand layers, Shift Left Is Dead, Continuous Threat Modeling, Guardian Agent, with zero numbers, zero proof and no product shown. Then the click lands on a 1,000-word CEO blog post with the product buried in paragraph seven. The strongest capability never appears in the ad: the Guardian Agent is named four times and shown only as a cartoon mascot.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "title": "A provocative, category-aware hook",
+    "what": "“Shift Left Is Dead,” “Continuous Threat Modeling,” “Guardian Agent”: three brand layers that stop an AppSec scroll and signal a point of view. The attention is earned."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "title": "Three layers, zero proof, no product",
+    "what": "The hook names three big ideas with no numbers, no proof and no product shown. The Guardian Agent is named four times and appears only as a cartoon mascot, never as the working product, so the single strongest capability stays invisible.",
+    "fix": "Show the Guardian Agent doing one concrete thing, and attach one number, so the provocation has something to land on."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "title": "The click lands on a CEO essay",
+    "what": "The destination is a 1,000-word CEO blog post with the product buried in paragraph seven. A reader who clicked a punchy three-word hook has to read an essay to find out what Apiiro actually does.",
+    "fix": "Send the click to the Guardian Agent itself, a page that shows the capability the ad kept naming, not a thought-leadership post."
+   }
+  ],
+  "faq": [
+   {
+    "q": "Is Apiiro's ad good?",
+    "a": "The hook is genuinely sharp, three brand layers that earn an AppSec scroll. It scores 5 because the ad names big ideas without a single number, proof point or product shot, and the strongest capability it keeps naming, the Guardian Agent, appears only as a cartoon mascot."
+   },
+   {
+    "q": "Where does the funnel break?",
+    "a": "At the click. A punchy, provocative ad lands on a 1,000-word CEO blog post with the product buried in paragraph seven. The energy of the hook dissolves into an essay before the reader finds out what Apiiro does."
+   },
+   {
+    "q": "How would you fix it?",
+    "a": "Show, then send. Put the Guardian Agent and one real number in the ad, and point the click at a page that demonstrates that capability, not a founder essay. The hook is strong enough to carry a concrete payoff."
+   },
+   {
+    "q": "How do I check my own ad for this?",
+    "a": "If your ad names a capability, ask: do I show it, and does the click land on it? A sharp hook that never shows the product, pointed at a blog post, spends attention it cannot cash. AdRoast scores this automatically, and the first roast is free."
+   }
+  ],
+  "scorecard": [
+   {
+    "label": "Headline clarity",
+    "score": 6,
+    "note": "“Shift Left Is Dead” grabs attention and the ad body explains why with specifics like code-to-runtime, but the creative headline alone is vague without the body copy."
+   },
+   {
+    "label": "CTA friction",
+    "score": 5,
+    "note": "“Learn more” is fine for content offers, but it drops AppSec leaders into a 1,000-word CEO essay instead of the Guardian Agent itself, killing any goodwill the copy built."
+   },
+   {
+    "label": "Visual-copy match",
+    "score": 6,
+    "note": "Cute robot mascot (Guardian Agent) undercuts the serious, technical tone of the copy talking about architecture and prompt-triggered risk analysis."
+   },
+   {
+    "label": "Benefit specificity",
+    "score": 7,
+    "note": "Concrete mechanics cited: “Runs on real architecture (code to runtime)”, “Triggers on every design, prompt, or change” beats generic AI security fluff."
+   },
+   {
+    "label": "Trust signals",
+    "score": 3,
+    "note": "No named customers, no proof numbers, no callout extensions in the ad text itself; claims like “real prevention” are asserted, not backed."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 5,
+  "landing_page_score": 1
+ }
 }
