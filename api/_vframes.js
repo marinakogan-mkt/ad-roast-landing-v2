@@ -81,6 +81,38 @@ function probeDurationSec(bin, vpath) {
   } catch (e) { return 0; }
 }
 
+// Signals that the ad-library detail page is showing a VIDEO creative. Broader than the mp4
+// extraction on purpose: the page HTML varies, so any of these is enough to say "video", and only
+// their complete absence on a page we actually read means "static".
+const VIDEO_MARKS = /data-sources=|<video\b|videocover|video[-_]?preview[-_]?image[-_]?url/i;
+
+/**
+ * Is this ad-library ad a video? Answers from the ad's own detail page, read through Jina exactly
+ * like the storyboard reads it, so callers that have no scraper (the MCP tool) get the same signal
+ * the board gets instead of guessing from the URL shape.
+ *
+ * Returns true (the page shows a video), false (the page shows a static creative) or null (we could
+ * not read the page, so the caller must not conclude either way). Cached per ad id for 30 days; an
+ * unreadable page is not cached, so it retries next time.
+ */
+export async function adIsVideo({ detailUrl, adId, redis }) {
+  const id = adId || adIdFromUrl(detailUrl);
+  const key = 'vdetect:v1:' + (id || String(detailUrl || '').replace(/\W+/g, '').slice(-32));
+  if (redis) {
+    try {
+      const cached = await redis.get(key);
+      const v = typeof cached === 'string' ? JSON.parse(cached) : cached;
+      if (v && typeof v.video === 'boolean') return v.video;
+    } catch (e) {}
+  }
+  if (!detailUrl && !id) return null;
+  const html = await jinaHtml(detailUrl || ('https://www.linkedin.com/ad-library/detail/' + id));
+  if (!html) return null;
+  const video = VIDEO_MARKS.test(html);
+  if (redis) { try { await redis.set(key, JSON.stringify({ video }), { ex: 60 * 60 * 24 * 30 }); } catch (e) {} }
+  return video;
+}
+
 /**
  * Build a 6-frame storyboard for a video ad. Returns { b64, mime } or null.
  * Cached in Redis by ad id (vframes:v1:<id>): the storyboard for 30 days, a miss for 12 hours so a

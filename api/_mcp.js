@@ -66,6 +66,7 @@ const TOOLS = [
         platform: { type: 'string', description: 'linkedin | google | meta (optional, default linkedin).' },
         company: { type: 'string', description: 'Company/advertiser name (optional).' },
         ad_url: { type: 'string', description: 'The ad-library detail URL of the ad (e.g. https://www.linkedin.com/ad-library/detail/NNN). For a VIDEO ad, pass this so AdRoast fetches and analyzes the clip frame-by-frame instead of judging only its still thumbnail.' },
+        is_video: { type: 'boolean', description: 'Set true if the ad is a video, false if you know it is a static image or carousel. Leave it out when unsure: AdRoast works it out from the creative URL or the ad-library page. A video is never judged on its thumbnail.' },
       },
       required: ['landing_url'],
     },
@@ -129,11 +130,29 @@ async function callTool(name, args, key, asHdr) {
     let company = args.company || '';
     if (!icp && args.website) { const site = await detectSite(args.website, key, asHdr); icp = site.icp; company = company || site.company; }
     if (!icp) throw new Error('Provide an icp, or a website so the buyer can be inferred.');
-    // A LinkedIn video ad only exposes a still "videocover" thumbnail. Flag it as video so api/roast
-    // analyzes the clip (a 6-frame storyboard, when ad_url points at the ad-library detail page) or
-    // honestly skips the visual, instead of judging the cover frame and calling it a static logo.
+    // A LinkedIn video ad only exposes a still "videocover" thumbnail, never the clip, so judging
+    // that frame head-on produces exactly the false "logo-only" critique api/roast.js is built to
+    // avoid. Flag it as video and api/roast either analyzes the clip (a 6-frame storyboard, when
+    // ad_url points at the ad-library detail page) or honestly skips the visual.
+    //
+    // The flag has to come from a signal, never from the shape of ad_url: a static image ad has an
+    // ad-library detail URL too, so treating any detail URL as video threw that ad's real creative
+    // away and reported "video not analyzed" for a creative we could see perfectly well. In order:
+    // an explicit is_video, the videocover path LinkedIn uses for a video poster, then the detail
+    // page itself (via _vframes, the same Jina read the storyboard does). Only a page we actually
+    // read may rule an ad static; a page we could not read stays video, because an unanalyzed
+    // visual is a far cheaper mistake than an invented one.
     const adUrl = (args.ad_url || '').trim();
-    const isVideo = /videocover/i.test(args.ad_image_url || '') || /\/ad-library\/detail\/\d+/.test(adUrl);
+    const flag = args.is_video;
+    const flagged = typeof flag === 'boolean' || /^(?:1|0|true|false|yes|no)$/i.test(String(flag ?? ''));
+    let isVideo = flag === true || /^(?:1|true|yes)$/i.test(String(flag ?? ''))
+      || /videocover/i.test(args.ad_image_url || '');
+    if (!isVideo && !flagged && /\/ad-library\/detail\/\d+/.test(adUrl)) {
+      try {
+        const { adIsVideo } = await import('./_vframes.js');
+        isVideo = (await adIsVideo({ detailUrl: adUrl, redis })) !== false;
+      } catch (e) { isVideo = true; }
+    }
     const payload = {
       platform: (args.platform || 'linkedin').toLowerCase(),
       icpDescription: icp,
