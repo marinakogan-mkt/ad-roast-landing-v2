@@ -32,6 +32,21 @@ def datauri(url, mime=None, min_bytes=1500):
         else: mime = "image/jpeg"
     return "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()), len(data)
 
+def img_datauri(url, max_w=1000, quality=82, min_bytes=1500):
+    """Fetch a screenshot and re-encode it as a right-sized JPEG, so a heavy
+    thum.io PNG (2 MB+) inlines at ~200 KB instead of bloating the page."""
+    from PIL import Image
+    data = fetch(url, min_bytes=min_bytes)
+    im = Image.open(io.BytesIO(data))
+    if im.mode != "RGB":
+        im = im.convert("RGB")
+    if im.width > max_w:
+        im = im.resize((max_w, round(im.height * max_w / im.width)), Image.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, format="JPEG", quality=quality, optimize=True)
+    b = buf.getvalue()
+    return "data:image/jpeg;base64,%s" % base64.b64encode(b).decode(), len(b)
+
 def esc(t):
     return (t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
              .replace('"', "&quot;"))
@@ -273,6 +288,134 @@ def integrate(d, repo="."):
         open(og, "w", encoding="utf-8").write(o); done.append("proof")
     return done
 
+# ---------------------------------------------------------------------------
+# Embed mode (approach B): restyle an older embed-centric teardown into the new
+# look WITHOUT a fresh roast. The "ad" window is the real LinkedIn teardown post
+# (iframe, clickable), beside a live screenshot of the landing page. No 5-axis
+# scorecard (there is no roast); a verdict word shows as a chip instead of a ring.
+# Input JSON: {"embed": true, "meta": {...}, "voice": {...}}.
+
+EMBED_CSS = (
+    ".twostage.embedstage{align-items:start}"
+    ".win.embedwin{overflow:visible}"
+    ".win.embedwin .liwrap{padding:12px;background:#f7f8fa;flex:1}"
+    ".win.embedwin iframe.liembed{width:100%;height:560px;border:0;border-radius:10px;display:block;background:#fff}"
+    ".win.embedwin .liopen{display:block;text-align:center;padding:11px 12px;font-size:13px;font-weight:700;color:var(--blue);border-top:1px solid var(--line);text-decoration:none}"
+    ".win.embedwin .liopen:hover{background:#eef4ff}"
+    ".vchip{display:inline-flex;align-items:center;font-weight:800;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;padding:8px 14px;border-radius:999px;white-space:nowrap}"
+    "@media(max-width:720px){.win.embedwin iframe.liembed{height:470px}}"
+)
+
+def vchip(verdict):
+    red = any(w in verdict.lower() for w in ["wrong", "broken", "dead", "fail", "mismatch"])
+    c = "#dc2626" if red else "#d97706"
+    return f'<span class="vchip" style="background:{c}1a;color:{c}">{esc(verdict)}</span>'
+
+def finding_embed(f):
+    icon = CHECK if f["good"] else TRI
+    fix = f.get("fix", "")
+    fixblock = (f'<div class="lbl2" style="color:#0f6e56">The fix</div><p>{typo(fix)}</p>') if fix else ""
+    return (f'<div class="finding"><button class="fh"><span class="tag tag-{f["tag"]}">{"Ad" if f["tag"]=="ad" else "Page"}</span>'
+            f'{icon}<span class="ftitle">{typo(f["title"])}</span>{FCHEV}</button>'
+            f'<div class="fd"><div class="lbl2">What{chr(0x2019)}s happening</div><p>{typo(f["what"])}</p>'
+            f'{fixblock}</div></div>')
+
+def build_embed(d):
+    lp_uri, lp_n = img_datauri(d["lp_shot"])
+    logo_uri, logo_n = datauri(d["logo_url"], min_bytes=300)
+    sys.stderr.write("  landing %d KB, logo %d KB (embed mode)\n" % (lp_n // 1024, logo_n // 1024))
+    ld_article = {"@context": "https://schema.org", "@type": "AnalysisNewsArticle",
+        "headline": d["title"], "description": d["meta_desc"], "datePublished": d["date"],
+        "author": {"@type": "Person", "name": "Marina Kogan", "url": "https://koganmarina.com"},
+        "publisher": {"@type": "Organization", "name": "AdRoast", "url": "https://www.adroast.in"},
+        "about": {"@type": "Organization", "name": d["name"], "url": "https://" + d["domain"]},
+        "keywords": d["keywords"]}
+    ld_faq = {"@context": "https://schema.org", "@type": "FAQPage",
+        "mainEntity": [{"@type": "Question", "name": q["q"],
+            "acceptedAnswer": {"@type": "Answer", "text": q["a"]}} for q in d["faq"]]}
+    findings = "".join(finding_embed(f) for f in d["findings"])
+    faqs = "".join(qa(q) for q in d["faq"])
+    related = "".join(
+        f'<a class="rcard" href="/teardowns/{r["slug"]}"><div class="rco">{r["name"]}</div>'
+        f'<div class="rq">{typo(r["q"])}</div><div class="rgo">Read the teardown &rarr;</div></a>'
+        for r in d["related"])
+    h1 = "<br>".join(typo(l) for l in d["hook"])
+    eyebrow = typo(d.get("eyebrow", "Ad teardown &middot; B2B SaaS"))
+    has_score = isinstance(d.get("score"), int)
+    score_block = (f'{ring(d["score"])}<span class="cap">Ad-to-page<br>score</span>' if has_score
+                   else f'{vchip(d["verdict"])}<span class="cap">Verdict</span>')
+    post_url = d.get("post_url") or ("https://www.linkedin.com/feed/update/" + d["urn"])
+    embed_src = "https://www.linkedin.com/embed/feed/update/" + d["urn"]
+    html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{esc(d["title"])} | AdRoast</title>
+<meta name="description" content="{esc(d["meta_desc"])}">
+<link rel="canonical" href="https://www.adroast.in/teardowns/{d["slug"]}">
+<meta property="og:title" content="{esc(d["name"])} LinkedIn ads teardown | AdRoast">
+<meta property="og:description" content="{esc(d["og_desc"])}">
+<script type="application/ld+json">{json.dumps(ld_article, ensure_ascii=False)}</script>
+<script type="application/ld+json">{json.dumps(ld_faq, ensure_ascii=False)}</script>
+<style>
+{CSS}
+{EMBED_CSS}
+</style></head>
+<body>
+<header class="bar"><div class="bar-in"><a class="brand" href="/teardowns"><img class="lg" src="/apple-touch-icon.png" alt="AdRoast" width="22" height="22"><b>AdRoast</b><span class="sl">/ Teardowns</span></a><a class="btn" href="/?library=1">Roast your ads free</a></div></header>
+<main>
+  <div class="eyebrow">{eyebrow}</div>
+  <h1>{h1}</h1>
+  <p class="lede">{typo(d["lede"])}</p>
+  <div class="meta">
+    <div class="co"><div class="co-badge"><img src="{logo_uri}" alt="{esc(d["name"])}"></div><div><div class="co-name">{d["name"]}</div><div class="co-dom">{d["domain"]} &middot; LinkedIn</div></div></div>
+    <div class="score">{score_block}</div>
+  </div>
+
+  <div class="sec">
+    <p class="stitle">The ad, and the page it lands on</p>
+    <div class="twostage embedstage">
+      <div class="win ad embedwin">
+        <div class="wl">The ad, torn apart</div>
+        <div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>LinkedIn post</span></div>
+        <div class="liwrap"><iframe class="liembed" src="{embed_src}" title="{esc(d["name"])} ad teardown on LinkedIn" frameborder="0" allowfullscreen loading="lazy"></iframe></div>
+        <a class="liopen" href="{post_url}" target="_blank" rel="noopener">Open on LinkedIn &rarr;</a>
+      </div>
+      <div class="arr">&rarr;</div>
+      <a class="win lp" href="{d.get("lp_url") or ("https://%s/" % d["domain"])}" target="_blank" rel="noopener" title="Open {d["domain"]}">
+        <div class="wl">The landing page</div>
+        <div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>{d["domain"]}/</span></div>
+        <div class="shot"><img src="{lp_uri}" alt="{esc(d["name"])} landing page screenshot"></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="stitle">What the teardown found &middot; tap to open each one</p>
+    <div class="findings">{findings}</div>
+  </div>
+
+  <div class="sec">
+    <p class="stitle">Questions, answered</p>
+    <div class="faq">{faqs}</div>
+    <p style="margin-top:16px;font-size:14px;color:#64748b">This is Marina Kogan{chr(0x2019)}s original teardown of {d["name"]}{chr(0x2019)}s live ad. <a href="{post_url}" target="_blank" rel="noopener">See the full infographic on LinkedIn &rarr;</a></p>
+  </div>
+
+  <div class="sec">
+    <p class="stitle">More teardowns</p>
+    <div class="related">{related}</div>
+  </div>
+
+  <div class="band"><div><h2>Your ads, roasted the same way</h2><p>Pull your live ads, score each against your buyer, see where the click leaks.</p></div><a class="btn-white" href="/?library=1">Roast your ads free &rarr;</a></div>
+</main>
+<script>
+(function(){{
+  [].slice.call(document.querySelectorAll('.finding .fh')).forEach(function(b){{b.addEventListener('click',function(){{b.parentElement.classList.toggle('open');}});}});
+  [].slice.call(document.querySelectorAll('.qa button')).forEach(function(b){{b.addEventListener('click',function(){{var qa=b.parentElement;qa.classList.toggle('open');b.querySelector('span').textContent=qa.classList.contains('open')?'–':'+';}});}});
+  function ring(){{var a=document.querySelector('.ring-arc');if(a)a.style.strokeDashoffset='0';}}
+  setTimeout(ring,220);
+}})();
+</script>
+</body></html>'''
+    return html
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
@@ -281,12 +424,20 @@ if __name__ == "__main__":
     ap.add_argument("--repo", default=".")
     a = ap.parse_args()
     cfg = json.load(open(a.input))
-    d = from_roast(cfg) if "roast" in cfg or "meta" in cfg else cfg
-    html = build(d)
+    if cfg.get("embed"):
+        d = dict(cfg["meta"]); v = cfg.get("voice", {})
+        d["hook"], d["lede"], d["findings"], d["faq"] = v["hook"], v["lede"], v["findings"], v["faq"]
+        d.setdefault("logo_url", logo_for(d["domain"]))
+        d.setdefault("lp_shot", lp_for(d.get("lp_url", "https://%s/" % d["domain"])))
+        html = build_embed(d)
+        d = {}  # embed pages are already in the hub/sitemap/proof; never integrate
+    else:
+        d = from_roast(cfg) if "roast" in cfg or "meta" in cfg else cfg
+        html = build(d)
     import os
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     open(a.out, "w", encoding="utf-8").write(html)
     sys.stderr.write("wrote %s (%d KB)\n" % (a.out, len(html.encode()) // 1024))
-    if a.integrate:
+    if a.integrate and d:
         done = integrate(d, a.repo)
         sys.stderr.write("integrated into: %s\n" % (", ".join(done) if done else "(already present everywhere)"))
