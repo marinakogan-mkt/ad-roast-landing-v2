@@ -3,9 +3,21 @@
    a rule change reaches repeat roasts without touching PROMPT_VERSION.
    The JSON between the markers is rewritten by scripts/refresh_platform_rules.py, which
    checks the Google and LinkedIn spec pages once a month: keep it strict JSON. To change the
-   wording of a rule, edit "prompt" by hand; "{google.headline}" style tokens read "limits". */
+   wording of a rule, edit "prompt" by hand; "{google.headline}" style tokens read "limits".
+   source_urls is the single source of truth for those spec-page URLs: the refresh script reads
+   them from here, so do not keep a second copy elsewhere. version is the rule content's date;
+   last_checked is the day the limits were last confirmed against the pages (the script bumps
+   both when it applies a change). */
 const RULES = /*RULES-JSON-START*/{
   "version": "2026-10-30",
+  "last_checked": "2026-10-31",
+  "source_urls": {
+    "google-rsa": "https://support.google.com/google-ads/answer/7684791?hl=en",
+    "google-editorial": "https://support.google.com/adspolicy/answer/6021546?hl=en",
+    "google-trademarks": "https://support.google.com/adspolicy/answer/6118?hl=en",
+    "linkedin-single-image": "https://www.linkedin.com/help/lms/answer/a426534",
+    "linkedin-ads-policy": "https://www.linkedin.com/legal/ads-policy"
+  },
   "limits": {
     "google": {
       "headline": 30,

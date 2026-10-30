@@ -39,19 +39,19 @@ USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
 
 # Each fact is one number in one fixed sentence. If the sentence moves, the fact reads as
 # unreadable and goes to the report: a rewritten page must never be guessed at.
+# The page URLs are NOT here: they live in source_urls in api/_platform-rules.js (one source
+# of truth) and are read at runtime, keyed by the page names below.
 PAGES = {
     'google-rsa': {
-        'url': 'https://support.google.com/google-ads/answer/7684791?hl=en',
         'facts': {
             ('google', 'headline'): r'headline fields for responsive search ads support up to ([\d,]+) characters',
             ('google', 'description'): r'description fields support up to ([\d,]+) characters',
             ('google', 'display_path'): r'path fields support up to ([\d,]+) each',
         },
     },
-    'google-editorial': {'url': 'https://support.google.com/adspolicy/answer/6021546?hl=en'},
-    'google-trademarks': {'url': 'https://support.google.com/adspolicy/answer/6118?hl=en'},
+    'google-editorial': {},
+    'google-trademarks': {},
     'linkedin-single-image': {
-        'url': 'https://www.linkedin.com/help/lms/answer/a426534',
         'facts': {
             ('linkedin', 'intro_truncate'): r'Use up to ([\d,]+) characters including spaces, emojis, and punctuation to avoid truncation',
             ('linkedin', 'intro_max'): r'emojis, and punctuation to avoid truncation \(([\d,]+) character maximum\)',
@@ -62,7 +62,7 @@ PAGES = {
             ('linkedin', 'description_max'): r'Use [\d,]+ characters to avoid truncation \(([\d,]+) character maximum\)',
         },
     },
-    'linkedin-ads-policy': {'url': 'https://www.linkedin.com/legal/ads-policy'},
+    'linkedin-ads-policy': {},
 }
 
 # Guard: a bad scrape must not reach production. These platforms move limits rarely and
@@ -211,15 +211,20 @@ def main():
         sync_clone()
     source, match, rules = read_rules()
     limits = rules['limits']
+    source_urls = rules.get('source_urls', {})
 
     found, unreadable, diffs, snapshots = {}, [], [], {}
     for name, page in PAGES.items():
+        url = source_urls.get(name)
+        if not url:
+            unreadable.append('%s: falta la URL en source_urls de %s' % (name, RULES_RELATIVE))
+            continue
         try:
             if args.fixtures:
                 with open(os.path.join(args.fixtures, name + '.html'), encoding='utf-8') as f:
                     html = f.read()
             else:
-                html = fetch(page['url'])
+                html = fetch(url)
             text = page_text(html)
         except Exception as e:
             unreadable.append('%s: no se pudo bajar (%s)' % (name, e))
@@ -241,7 +246,7 @@ def main():
         snapshots[snap] = text
         if old is not None and old != text:
             diff = difflib.unified_diff(old.splitlines(), text.splitlines(), lineterm='', n=1)
-            diffs.append((name, page['url'], list(diff)[2:]))
+            diffs.append((name, url, list(diff)[2:]))
 
     changes, held = judge(limits, found)
     if unreadable and changes:
@@ -258,6 +263,7 @@ def main():
         for (platform, key), (_, new) in changes.items():
             rules['limits'][platform][key] = new
         rules['version'] = today
+        rules['last_checked'] = today
         write_rules(source, match, rules)
         try:
             applied = publish(changes) if args.push else 'sin push'
