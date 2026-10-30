@@ -131,9 +131,9 @@ def build(d):
   <div class="sec">
     <p class="stitle">The ad and the page it lands on</p>
     <div class="twostage">
-      <div class="win ad"><div class="wl">The ad</div><div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>LinkedIn &middot; sponsored</span></div><div class="shot"><img src="{ad_uri}" alt="{esc(d["name"])} LinkedIn ad"></div></div>
+      <a class="win ad" href="{d.get("ad_detail_url") or ("https://www.adroast.in/?id=" + d["roast_id"])}" target="_blank" rel="noopener" title="See the ad"><div class="wl">The ad</div><div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>LinkedIn &middot; sponsored</span></div><div class="shot"><img src="{ad_uri}" alt="{esc(d["name"])} LinkedIn ad"></div></a>
       <div class="arr">&rarr;</div>
-      <div class="win lp"><div class="wl">The landing page</div><div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>{d["domain"]}/</span></div><div class="shot"><img src="{lp_uri}" alt="{esc(d["name"])} landing page screenshot"></div></div>
+      <a class="win lp" href="{d.get("lp_url") or ("https://%s/" % d["domain"])}" target="_blank" rel="noopener" title="Open {d["domain"]}"><div class="wl">The landing page</div><div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>{d["domain"]}/</span></div><div class="shot"><img src="{lp_uri}" alt="{esc(d["name"])} landing page screenshot"></div></a>
     </div>
   </div>
 
