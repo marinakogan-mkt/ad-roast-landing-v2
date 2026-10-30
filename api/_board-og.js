@@ -254,7 +254,7 @@ export async function servicesOgHandler(req, res) {
       + '<li><strong>Done-For-You Rebuild</strong> (3-month): the same diagnosis, then our team builds it, launches it and optimizes it live.</li>'
       + '</ul>'
       + `<h2 style="${h2}">Proof: public ad teardowns of SaaS you know</h2>`
-      + '<ul><li><a href="/teardowns/monday">monday.com ad teardown</a></li><li><a href="/teardowns/klaviyo">Klaviyo ad teardown</a></li><li><a href="/teardowns/webflow">Webflow ad teardown</a></li><li><a href="/teardowns/clickup">ClickUp ad teardown</a></li><li><a href="/teardowns/pipedrive">Pipedrive ad teardown</a></li><li><a href="/teardowns/silverfort">Silverfort ad teardown</a></li><li><a href="/teardowns/semgrep">Semgrep ad teardown</a></li><li><a href="/teardowns/descope">Descope ad teardown</a></li><li><a href="/teardowns/cycode">Cycode ad teardown</a></li></ul>'
+      + '<ul><li><a href="/teardowns/monday">monday.com ad teardown</a></li><li><a href="/teardowns/klaviyo">Klaviyo ad teardown</a></li><li><a href="/teardowns/webflow">Webflow ad teardown</a></li><li><a href="/teardowns/clickup">ClickUp ad teardown</a></li><li><a href="/teardowns/silverfort">Silverfort ad teardown</a></li><li><a href="/teardowns/semgrep">Semgrep ad teardown</a></li><li><a href="/teardowns/descope">Descope ad teardown</a></li><li><a href="/teardowns/cycode">Cycode ad teardown</a></li></ul>'
       + '<p><a href="/teardowns">See every ad teardown</a>.</p>'
       + '<p>Across 50+ B2B teams we have repositioned paid campaigns to earn up to 3x more demos from the same ad spend.</p>'
       + '<p><a href="https://calendly.com/marina-kogan-adroast/30min">Book a 30-minute call</a> to see if it is a fit, or <a href="/">roast one ad free</a> first.</p>'
