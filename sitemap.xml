@@ -51,6 +51,31 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.adroast.in/teardowns/databricks</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/cato-networks</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/drata</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/cyberhaven</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.adroast.in/teardowns/kanopy-security</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.adroast.in/teardowns/monday</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

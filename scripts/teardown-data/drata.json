@@ -1,0 +1,145 @@
+{
+ "embed": false,
+ "meta": {
+  "slug": "drata",
+  "name": "Drata",
+  "domain": "drata.com",
+  "initial": "D",
+  "badge_color": "#2b3a8c",
+  "lp_url": "https://drata.com/resources/webinars/eu-ai-act-iso-42001-ai-governance",
+  "ad_detail_url": "https://www.linkedin.com/ad-library/detail/1662741546",
+  "title": "Drata ad teardown: three strong logos, six fields for a replay",
+  "meta_desc": "A teardown of Drata’s live LinkedIn ad: A-LIGN, AWS and Drata make a credible webinar offer, then the page buries the sharp headline and asks six fields for an on-demand replay.",
+  "og_desc": "Three strong logos. Six fields for a replay.",
+  "keywords": "drata linkedin ads, drata ad teardown, compliance software ads, EU AI Act ads, ISO 42001, webinar landing page, ad teardown",
+  "card_desc": "A-LIGN, AWS and Drata make a credible offer, then a clunky headline and six fields sit in front of a replay.",
+  "related": [
+   {
+    "slug": "cato-networks",
+    "name": "Cato Networks",
+    "q": "A strong read that never mentions what Cato sells."
+   },
+   {
+    "slug": "databricks",
+    "name": "Databricks",
+    "q": "A near-perfect match that ends in a dead end."
+   },
+   {
+    "slug": "cycode",
+    "name": "Cycode",
+    "q": "Four analysts sold the click. The page hid them."
+   }
+  ],
+  "platform": "LinkedIn",
+  "date": "2026-11-02",
+  "human_date": "November 2, 2026",
+  "ad_img": "roast",
+  "roast_id": "d346cea8",
+  "logo_url": "https://www.adroast.in/api/icp?logo=drata.com"
+ },
+ "voice": {
+  "hook": [
+   "Three strong logos earned the click.",
+   "Six fields stand in front of the replay."
+  ],
+  "lede": "This is a well-built ad. A-LIGN, AWS and Drata on one creative give a GRC buyer a real reason to care, and the page keeps the same speakers and the same topic. The friction arrives at the end: the sharp creative headline turns into a clunky page title, and an on-demand webinar sits behind six required fields and a 190-country dropdown.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 8,
+    "title": "Three brands a GRC buyer trusts",
+    "what": "A-LIGN, AWS and Drata appear as logos on the creative. For this audience that is real credibility, and it matches the promise of expert speakers in the copy."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 7,
+    "title": "The creative beats the headline",
+    "what": "“A practical framework for using ISO 42001 to support EU AI Act compliance” is on the creative. “Simplify Your AI Compliance Strategy” is the vaguer line above it.",
+    "fix": "Use the creative’s line as the ad headline too."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 6,
+    "title": "A generic hook over real topics",
+    "what": "The topics are specific, but “without doubling your compliance workload” could sit on any compliance ad. There is no concrete finding to tease.",
+    "fix": "Tease one thing the webinar reveals about where the EU AI Act and ISO overlap."
+   },
+   {
+    "tag": "page",
+    "good": true,
+    "score": 8,
+    "title": "The message survives the click",
+    "what": "Same speakers, same topics, same EU AI Act and ISO 42001 framing. The reader lands exactly where the ad said they would."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 6,
+    "title": "A clunky title replaces the sharp one",
+    "what": "“Best Practices: Aligning EU AI Act, ISO Standards & AI Governance for Scalable Compliance” is accurate, and it buries the sharper line from the creative.",
+    "fix": "Open the page with the creative’s headline."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 5,
+    "title": "Six fields for a replay",
+    "what": "Six required fields and a 190-country dropdown is heavy for an on-demand watch, even with the right audience.",
+    "fix": "Cut the form to what sales actually uses, and let the replay do the qualifying."
+   }
+  ],
+  "faq": [
+   {
+    "q": "What works in Drata’s LinkedIn ad?",
+    "a": "The proof. A-LIGN, AWS and Drata together on the creative carry real weight with a GRC audience, and the page keeps the same message."
+   },
+   {
+    "q": "How many fields should a webinar replay form have?",
+    "a": "As few as sales actually uses. An on-demand replay is a low-commitment offer, so a long form makes the trade feel uneven."
+   },
+   {
+    "q": "What should Drata change first?",
+    "a": "Cut the form and carry the creative’s headline onto the page. The ad and the message are already working."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 7,
+  "landing_page_score": 6,
+  "issues": [
+   {
+    "category": "headline_clarity",
+    "title": "Headline Clarity",
+    "score": 7,
+    "explanation": "'A practical framework for using ISO 42001 to support EU AI Act compliance' on the creative is sharper than the ad copy's vaguer 'Simplify Your AI Compliance Strategy.'"
+   },
+   {
+    "category": "cta_friction",
+    "title": "CTA Friction",
+    "score": 6,
+    "explanation": "'Watch Now' on the creative is clear and fits an on-demand asset, but the LP form has six fields plus a giant country dropdown, more friction than a webinar replay needs."
+   },
+   {
+    "category": "visual_copy_match",
+    "title": "Visual-Copy Match",
+    "score": 8,
+    "explanation": "Creative headline, 'on-demand webinar' tag and three logos (A-LIGN, AWS, Drata) match the ad body's promise of experts covering EU AI Act and ISO overlap."
+   },
+   {
+    "category": "benefit_specificity",
+    "title": "Benefit Specificity",
+    "score": 6,
+    "explanation": "Ad lists real topics (overlap, scalable framework, high-risk prep) but 'how to keep up without doubling your compliance workload' is a generic hook, not a concrete teaser finding."
+   },
+   {
+    "category": "trust_signals",
+    "title": "Trust Signals",
+    "score": 8,
+    "explanation": "Three named co-presenting brands (A-LIGN, AWS, Drata) shown as logos on the creative give strong credibility for a LinkedIn asset."
+   }
+  ]
+ }
+}

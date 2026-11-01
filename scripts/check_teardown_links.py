@@ -5,7 +5,11 @@ A published teardown is a snapshot: the copy, the scores and the screenshots nev
 after the fact. The one thing that rots is its links. Each teardowns/<slug>/index.html points
 out at (a) the advertiser's landing page and (b) either the saved roast report on adroast.in
 or the original ad post on LinkedIn. When one of those dies, the page should stop sending
-people to a 404 WITHOUT losing a word of the teardown: the anchor becomes a <span> carrying
+people to a 404 WITHOUT losing a word of the teardown. The two windows (ad and landing page) are
+screenshots stored inside the page, so a changed or dead destination never changes what they show.
+A dead window stays clickable: it is repointed to the page's saved roast report, which keeps the
+creative and the analysis, and the dead URL is kept in data-dead-link. Any other dead link, or a
+window on a page with no roast, is unlinked: the anchor becomes a <span> carrying
 the same classes, the same inline style and the same text, so it reads identically and simply
 is not clickable any more. The dead URL is kept in data-dead-link, so a later run can tell the
 span apart from hand-written markup and can turn it back into a link if the URL comes back.
@@ -267,7 +271,7 @@ def outgoing_links(html):
     found = []
     for m in re.finditer(r"<a\b[^>]*>", html, re.I):
         a = attrs_of(m.group(0))
-        url = a.get("href", "")
+        url = a.get("data-dead-link") or a.get("href", "")
         if not url.lower().startswith(("http://", "https://")) or SELF_RE.match(url):
             continue
         found.append(("a", url, m.start(), m.end(), m.group(0)))
@@ -300,6 +304,28 @@ def relink(html, start, open_end, tag):
     body = re.sub(r"^<span\b", "<a", body, flags=re.I)
     body = re.sub(r"\s*>$", ' href="%s" target="_blank" rel="noopener">' % url, body)
     return html[:start] + body + html[open_end:close] + "</a>" + html[close + len("</span>"):], True
+
+
+def report_of(html):
+    """The saved roast this page links to, the fallback for a dead window."""
+    m = re.search(r'href="(https?://(?:www\.)?adroast\.in/\?id=[A-Za-z0-9_-]+)"', html)
+    return m.group(1) if m else ""
+
+
+def repoint(html, start, open_end, tag, report):
+    """A dead window keeps its screenshot and its click: href -> the saved roast report."""
+    url = attrs_of(tag).get("href", "")
+    body = strip_attrs(tag, ["href"])
+    body = re.sub(r"\s*>$", ' href="%s" data-dead-link="%s">' % (report, url.replace('"', "&quot;")), body)
+    return html[:start] + body + html[open_end:], True
+
+
+def restore(html, start, open_end, tag):
+    """The window's real destination came back: href -> that URL again."""
+    url = attrs_of(tag).get("data-dead-link", "")
+    body = strip_attrs(tag, ["href", "data-dead-link"])
+    body = re.sub(r"\s*>$", ' href="%s">' % url, body)
+    return html[:start] + body + html[open_end:], True
 
 
 def main():
@@ -347,7 +373,17 @@ def main():
         edits = 0
         for kind, url, start, open_end, tag in sorted(links, key=lambda x: -x[2]):
             verdict = cache[url][0]
-            if kind == "a" and verdict == DEAD:
+            window = 'class="win ' in tag
+            parked = kind == "a" and "data-dead-link" in tag
+            if parked and verdict == ALIVE:
+                new, ok = restore(new, start, open_end, tag)
+                edits += 1 if ok else 0
+            elif parked:
+                pass
+            elif kind == "a" and verdict == DEAD and window and report_of(html) and url != report_of(html):
+                new, ok = repoint(new, start, open_end, tag, report_of(html))
+                edits += 1 if ok else 0
+            elif kind == "a" and verdict == DEAD:
                 new, ok = unlink(new, start, open_end, tag)
                 edits += 1 if ok else 0
             elif kind == "span" and verdict == ALIVE:
@@ -364,7 +400,7 @@ def main():
     print("Summary: %d alive, %d dead, %d ambiguous (ambiguous stays clickable)"
           % (tally[ALIVE], tally[DEAD], tally[AMBIG]))
     if dead_urls:
-        print("\nDead, unlinked:")
+        print("\nDead, repointed to the roast or unlinked:")
         for url, slugs in dead_urls.items():
             print("  %s  on %s" % (url, ", ".join(slugs)))
     if ambig_urls:

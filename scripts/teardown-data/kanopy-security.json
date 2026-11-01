@@ -1,0 +1,146 @@
+{
+ "embed": false,
+ "meta": {
+  "slug": "kanopy-security",
+  "name": "Kanopy Security",
+  "domain": "kanopysecurity.com",
+  "initial": "K",
+  "badge_color": "#14532d",
+  "lp_url": "https://kanopysecurity.com/shadow-ai-governance/",
+  "ad_detail_url": "https://www.linkedin.com/ad-library/detail/1578208304",
+  "title": "Kanopy Security ad teardown: a free assessment that turns into a demo",
+  "meta_desc": "A teardown of Kanopy Security’s live LinkedIn ad: it offers a free 90-day Shadow AI assessment, then the landing page only offers “Book a demo” and shows no customer proof.",
+  "og_desc": "A free assessment in the ad. A demo on the page.",
+  "keywords": "kanopy security linkedin ads, kanopy ad teardown, shadow AI ads, AI governance ads, offer mismatch, ad teardown",
+  "card_desc": "The ad offers a free 90-day assessment. The page only offers “Book a demo.”",
+  "related": [
+   {
+    "slug": "cyberhaven",
+    "name": "Cyberhaven",
+    "q": "A sharp DLP hook, then an essay with no next step."
+   },
+   {
+    "slug": "orca-security",
+    "name": "Orca Security",
+    "q": "99.9% earned the click. The page changed the subject."
+   },
+   {
+    "slug": "cycode",
+    "name": "Cycode",
+    "q": "Four analysts sold the click. The page hid them."
+   }
+  ],
+  "platform": "LinkedIn",
+  "date": "2026-11-02",
+  "human_date": "November 2, 2026",
+  "ad_img": "roast",
+  "roast_id": "0da0296e",
+  "logo_url": "https://www.adroast.in/api/icp?logo=kanopysecurity.com"
+ },
+ "voice": {
+  "hook": [
+   "The ad offers a free assessment.",
+   "The page only offers a demo."
+  ],
+  "lede": "“Overprivileged Agents Are Your Next Breach” is a hook built for the buyer, and a free 90-day Shadow AI assessment is a real reason to click. Then the offer disappears. The landing page says “Book a demo” everywhere, swaps the breach fear for “Smart AI Governance. Zero Friction.”, and shows no customer logos to a security buyer about to take a meeting.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 7,
+    "title": "A threat list in the buyer’s words",
+    "what": "“Hardcoded Secrets. Overprivileged Agents. Suspicious Skills.” is specific language this buyer uses every day. It frames the threat before it sells anything."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 6,
+    "title": "Two threat lists at once",
+    "what": "The body leads with overprivileged agents and the creative leads with hardcoded secrets and suspicious skills. The two run in parallel instead of building on each other.",
+    "fix": "Pick one threat and carry it through the copy, the creative and the page."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 3,
+    "title": "No proof anywhere in the ad",
+    "what": "No named customer, no logo, no analyst mention and no number. A free assessment still asks a security team to let a new vendor in.",
+    "fix": "Add one named customer or one finding from a real assessment."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 5,
+    "title": "The offer disappears",
+    "what": "The ad promises a free 90-day assessment. The page says “Book a demo” everywhere, which is a different ask with more friction.",
+    "fix": "Make the assessment the page’s only CTA, in the same words as the ad."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 4,
+    "title": "The hook is dropped in the headline",
+    "what": "“Smart AI Governance. Zero Friction.” is category language. It leaves behind the breach fear that earned the click, and the tone moves to “Marie Kondo for your AI jungle.”",
+    "fix": "Open with “Overprivileged Agents Are Your Next Breach,” then show how the assessment finds them."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 3,
+    "title": "No proof on the page either",
+    "what": "Zero customer logos, case studies, certifications or named enterprise users, in front of a buyer at a large enterprise.",
+    "fix": "Put one piece of proof above the fold, next to the CTA."
+   }
+  ],
+  "faq": [
+   {
+    "q": "What is wrong with Kanopy Security’s LinkedIn ad?",
+    "a": "The ad is strong. The problem is the handoff: it offers a free 90-day Shadow AI assessment and the landing page only offers “Book a demo.”"
+   },
+   {
+    "q": "Why does changing the CTA after the click hurt?",
+    "a": "The buyer clicked for one offer and is asked for a bigger commitment. A free assessment and a sales demo are different decisions, so the click has to be earned again."
+   },
+   {
+    "q": "How would you fix this page?",
+    "a": "Repeat the ad’s headline, make the assessment the only CTA, and add one piece of customer proof above the fold."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 6,
+  "landing_page_score": 5,
+  "issues": [
+   {
+    "category": "headline_clarity",
+    "title": "Headline Clarity",
+    "score": 7,
+    "explanation": "'Hardcoded Secrets. Overprivileged Agents. Suspicious Skills.' is punchy and specific jargon this buyer actually uses daily. Clear threat framing."
+   },
+   {
+    "category": "cta_friction",
+    "title": "CTA Friction",
+    "score": 6,
+    "explanation": "'Find Them All' is a fun but vague button for a security assessment; the ad body's 'Get a free 90-day assessment' is clearer than the creative's CTA."
+   },
+   {
+    "category": "visual_copy_match",
+    "title": "Visual-Copy Match",
+    "score": 6,
+    "explanation": "Ad body text ('Overprivileged Agents Are Your Next Breach') doesn't fully match creative headline ('Hardcoded Secrets, Suspicious Skills'), two different threat lists running in parallel."
+   },
+   {
+    "category": "benefit_specificity",
+    "title": "Benefit Specificity",
+    "score": 6,
+    "explanation": "'Detect over-permissioned agents, embedded business data, and public exposure, automatically' is concrete, but 'automatically' and '90-day assessment' lack a quantified outcome or finding."
+   },
+   {
+    "category": "trust_signals",
+    "title": "Trust Signals",
+    "score": 3,
+    "explanation": "No named customer, logo, analyst mention or number anywhere in the ad; LinkedIn supports image-based trust signals and this creative skips them entirely."
+   }
+  ]
+ }
+}

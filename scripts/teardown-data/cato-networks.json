@@ -1,0 +1,145 @@
+{
+ "embed": false,
+ "meta": {
+  "slug": "cato-networks",
+  "name": "Cato Networks",
+  "domain": "catonetworks.com",
+  "initial": "C",
+  "badge_color": "#0f766e",
+  "lp_url": "https://www.catonetworks.com/blog/zero-trust-for-ai-agents-starts-after-login/",
+  "ad_detail_url": "https://www.linkedin.com/ad-library/detail/1665319106",
+  "title": "Cato Networks ad teardown: a strong read that never reaches the product",
+  "meta_desc": "A teardown of Cato Networks’ live LinkedIn ad: a sharp point on Zero Trust for AI agents, a blog that delivers it, and no bridge from the article to what Cato sells.",
+  "og_desc": "A strong read. No bridge to the product.",
+  "keywords": "cato networks linkedin ads, cato ad teardown, zero trust ads, AI agent security ads, SASE ads, ad teardown",
+  "card_desc": "A sharp point about AI agents and Zero Trust, delivered by a blog that never connects it to Cato.",
+  "related": [
+   {
+    "slug": "cyberhaven",
+    "name": "Cyberhaven",
+    "q": "A sharp DLP hook, then an essay with no next step."
+   },
+   {
+    "slug": "drata",
+    "name": "Drata",
+    "q": "A sharp creative, a clunky page, six fields for a replay."
+   },
+   {
+    "slug": "orca-security",
+    "name": "Orca Security",
+    "q": "99.9% earned the click. The page changed the subject."
+   }
+  ],
+  "platform": "LinkedIn",
+  "date": "2026-11-02",
+  "human_date": "November 2, 2026",
+  "ad_img": "roast",
+  "roast_id": "01d8e670",
+  "logo_url": "https://www.adroast.in/api/icp?logo=catonetworks.com"
+ },
+ "voice": {
+  "hook": [
+   "The ad and the blog agree.",
+   "Neither one mentions what Cato sells."
+  ],
+  "lede": "“AI Agents Prove Zero Trust Doesn’t Stop at Login” is a real point of view for a security leader, and the blog delivers on it with a solid framework. The handoff works. The problem is what comes after: both stay in educational mode, so the reader finishes the article informed and with no reason to think about Cato.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 7,
+    "title": "A point of view, not a tagline",
+    "what": "“Control AI Actions” and “AI Agents Prove Zero Trust Doesn’t Stop at Login” land the idea fast, and the blocked and allowed paths on the creative show it."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 5,
+    "title": "Abstract where it should be concrete",
+    "what": "“Runtime context provides continuous enforcement” sounds right and stays abstract. There is no scenario of what gets blocked or allowed.",
+    "fix": "Show one action an agent tries, and what happens to it."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 4,
+    "title": "No proof in the ad",
+    "what": "No named customer, analyst citation or stat appears in the ad.",
+    "fix": "Bring the Gartner reference from the blog into the creative."
+   },
+   {
+    "tag": "page",
+    "good": true,
+    "score": 7,
+    "title": "The article delivers",
+    "what": "“Zero Trust for AI Agents Starts After Login” is sharp, and the piece gives a solid framework with a Gartner autonomy ladder. The reader gets what the ad promised."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 6,
+    "title": "No product bridge",
+    "what": "The piece reads as pure thought leadership, with almost no tie to Cato’s product.",
+    "fix": "Add one section on how Cato enforces this, using the same argument."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 4,
+    "title": "The article never asks for anything",
+    "what": "The navigation has “Product Demo” and “Contact us,” but the body never moves the reader toward them.",
+    "fix": "End the article with a next step that continues the argument."
+   }
+  ],
+  "faq": [
+   {
+    "q": "What works in Cato Networks’ LinkedIn ad?",
+    "a": "The point of view. The ad makes a specific claim about Zero Trust and AI agents, and the blog delivers it with a real framework."
+   },
+   {
+    "q": "What is the problem if the ad and page match?",
+    "a": "Message match gets the reader to finish the article. It does not move them toward buying. Here nothing connects the argument to Cato’s product."
+   },
+   {
+    "q": "How do you make a blog work for paid traffic?",
+    "a": "Keep the argument, then add one section that ties it to the product and one next step in the body of the article."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 6,
+  "landing_page_score": 6,
+  "issues": [
+   {
+    "category": "headline_clarity",
+    "title": "Headline Clarity",
+    "score": 7,
+    "explanation": "'Control AI Actions' and the creative's 'AI Agents Prove Zero Trust Doesn't Stop at Login' both land the core idea fast, a real CISO-relevant hook."
+   },
+   {
+    "category": "cta_friction",
+    "title": "CTA Friction",
+    "score": 7,
+    "explanation": "'Read the Blog' matches the content offer with zero friction, correct ask for a non-gated educational piece."
+   },
+   {
+    "category": "visual_copy_match",
+    "title": "Visual-Copy Match",
+    "score": 7,
+    "explanation": "Robot icon with blocked/allowed paths to folder, chat, terminal visually echoes 'authentication alone can't govern every action' well."
+   },
+   {
+    "category": "benefit_specificity",
+    "title": "Benefit Specificity",
+    "score": 5,
+    "explanation": "'Runtime context provides continuous enforcement' sounds good but stays abstract, no concrete scenario of what gets blocked or allowed."
+   },
+   {
+    "category": "trust_signals",
+    "title": "Trust Signals",
+    "score": 4,
+    "explanation": "No named customer, analyst citation, or stat in the ad itself; LinkedIn allows image-based proof but this creative carries none."
+   }
+  ]
+ }
+}

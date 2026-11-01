@@ -1,0 +1,143 @@
+{
+ "embed": false,
+ "meta": {
+  "slug": "databricks",
+  "name": "Databricks",
+  "domain": "databricks.com",
+  "initial": "D",
+  "badge_color": "#ff3621",
+  "lp_url": "https://www.databricks.com/blog/managing-ai-coding-costs-scale",
+  "ad_detail_url": "https://www.linkedin.com/ad-library/detail/1653022906",
+  "title": "Databricks ad teardown: a near-perfect match that ends in a dead end",
+  "meta_desc": "A teardown of Databricks’ live LinkedIn ad: the ad, the infographic and the blog repeat the same four levers and the same savings, then the playbook ends with no next step.",
+  "og_desc": "The ad and the page match. The page has no next step.",
+  "keywords": "databricks linkedin ads, databricks ad teardown, AI coding costs, thought leadership ads, message match, ad teardown",
+  "card_desc": "The ad, the infographic and the blog tell the same story, then the playbook ends with nowhere to go.",
+  "related": [
+   {
+    "slug": "drata",
+    "name": "Drata",
+    "q": "A sharp creative, a clunky page, six fields for a replay."
+   },
+   {
+    "slug": "cato-networks",
+    "name": "Cato Networks",
+    "q": "A strong read that never mentions what Cato sells."
+   },
+   {
+    "slug": "webflow",
+    "name": "Webflow",
+    "q": "A sharp ad, then a vague “Learn more.”"
+   }
+  ],
+  "platform": "LinkedIn",
+  "date": "2026-11-02",
+  "human_date": "November 2, 2026",
+  "ad_img": "roast",
+  "roast_id": "fead4f6a",
+  "logo_url": "https://www.adroast.in/api/icp?logo=databricks.com"
+ },
+ "voice": {
+  "hook": [
+   "This ad and page match almost perfectly.",
+   "Then the playbook just ends."
+  ],
+  "lede": "This is what a clean handoff looks like. The ad promises how Databricks manages AI coding costs, the infographic shows four levers with their savings, and the blog opens on the same promise with the same numbers. The score is high because of it. The one real miss is the last screen: after a useful playbook, the article gives the reader nothing to do next.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 8,
+    "title": "A headline that does what it says",
+    "what": "“How Databricks manages AI coding costs” is a clear, specific promise, and the post body backs it."
+   },
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 8,
+    "title": "The creative carries the numbers",
+    "what": "The infographic quantifies each lever and repeats the ad copy’s four techniques almost word for word."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 7,
+    "title": "Directional, not audited",
+    "what": "Figures like “~50%+ savings” give real specificity, but they are labeled as directional estimates, which softens the claim a little.",
+    "fix": "Pair one estimate with one measured result from the Databricks team."
+   },
+   {
+    "tag": "page",
+    "good": true,
+    "score": 9,
+    "title": "The click lands exactly where it should",
+    "what": "“Managing AI Coding Costs at Scale” matches the ad, and the page repeats the same four levers. There is no bait and switch."
+   },
+   {
+    "tag": "page",
+    "good": true,
+    "score": 8,
+    "title": "Peers an engineering leader respects",
+    "what": "Patrick Wendell’s byline in the ad, and Stripe, Coinbase, Uber and Ramp on the page, give the argument real peer credibility."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 4,
+    "title": "The playbook has no next step",
+    "what": "The site menu is there, but inside the article there is no link to the product, no email capture and no prompt to talk to anyone.",
+    "fix": "Add one next step that continues the playbook, like the product behind the routing lever."
+   }
+  ],
+  "faq": [
+   {
+    "q": "Why does this Databricks ad score well?",
+    "a": "The ad, the infographic and the blog tell the same story with the same numbers, so the reader never has to reorient after the click."
+   },
+   {
+    "q": "What is missing from the Databricks funnel?",
+    "a": "A next step inside the article. The playbook ends with no product link, no email capture and no prompt to talk to anyone."
+   },
+   {
+    "q": "What can other B2B teams copy from this ad?",
+    "a": "Put the argument in the creative, repeat it in the same words on the page, and name real people and peers behind it."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 7,
+  "landing_page_score": 7,
+  "issues": [
+   {
+    "category": "headline_clarity",
+    "title": "Headline Clarity",
+    "score": 8,
+    "explanation": "'How Databricks manages AI coding costs' on the creative is a clear, specific promise matched by the post body. Does exactly what it says."
+   },
+   {
+    "category": "cta_friction",
+    "title": "CTA Friction",
+    "score": 7,
+    "explanation": "'See the full playbook' is soft and fits an open-content ask, no friction, though the creative itself shows no visible button text."
+   },
+   {
+    "category": "visual_copy_match",
+    "title": "Visual-Copy Match",
+    "score": 8,
+    "explanation": "Infographic quantifies each lever (50%, 30%, 10%, 10% savings), reinforcing the ad copy's four techniques almost word for word."
+   },
+   {
+    "category": "benefit_specificity",
+    "title": "Benefit Specificity",
+    "score": 7,
+    "explanation": "Numbers like '~50%+ savings' give real specificity, though they're labeled directional estimates, not audited results, slightly softening the claim."
+   },
+   {
+    "category": "trust_signals",
+    "title": "Trust Signals",
+    "score": 7,
+    "explanation": "A named exec (Patrick Wendell, VP Engineering) and the Databricks brand itself carry credibility; image-based badges are valid on LinkedIn but absent here."
+   }
+  ]
+ }
+}

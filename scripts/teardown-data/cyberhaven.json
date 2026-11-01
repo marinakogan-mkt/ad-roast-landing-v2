@@ -1,0 +1,146 @@
+{
+ "embed": false,
+ "meta": {
+  "slug": "cyberhaven",
+  "name": "Cyberhaven",
+  "domain": "cyberhaven.com",
+  "initial": "C",
+  "badge_color": "#1f4fd8",
+  "lp_url": "https://www.cyberhaven.com/blog/securing-agentic-enterprise",
+  "ad_detail_url": "https://www.linkedin.com/ad-library/detail/1605415774",
+  "title": "Cyberhaven ad teardown: a sharp DLP hook, an essay with no next step",
+  "meta_desc": "A teardown of Cyberhaven’s live LinkedIn ad: “What your DLP can’t see” is the sharpest line, it sits below a vague headline, and the click lands on an essay with no visible CTA.",
+  "og_desc": "The best line is buried. The page has no next step.",
+  "keywords": "cyberhaven linkedin ads, cyberhaven ad teardown, DLP ads, agentic AI security ads, blog landing page, ad teardown",
+  "card_desc": "“What your DLP can’t see” is buried in the body, and the click lands on an essay with no CTA of its own.",
+  "related": [
+   {
+    "slug": "kanopy-security",
+    "name": "Kanopy Security",
+    "q": "A free assessment in the ad. A demo on the page."
+   },
+   {
+    "slug": "cato-networks",
+    "name": "Cato Networks",
+    "q": "A strong read that never mentions what Cato sells."
+   },
+   {
+    "slug": "orca-security",
+    "name": "Orca Security",
+    "q": "99.9% earned the click. The page changed the subject."
+   }
+  ],
+  "platform": "LinkedIn",
+  "date": "2026-11-02",
+  "human_date": "November 2, 2026",
+  "ad_img": "roast",
+  "roast_id": "d5b697e5",
+  "logo_url": "https://www.adroast.in/api/icp?logo=cyberhaven.com"
+ },
+ "voice": {
+  "hook": [
+   "The best line is buried in the ad.",
+   "The page has nowhere to go next."
+  ],
+  "lede": "“What your DLP can’t see” is the sharpest thing Cyberhaven says here, and it sits under a vaguer headline. The topic carries over well, since the ad and the page both talk about agentic AI outpacing legacy tools. But the click lands on a long thought-leadership essay with no CTA in the article itself, so a reader who agrees has nowhere to go but the navigation.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 7,
+    "title": "A soft ask that fits the offer",
+    "what": "“See the shift” is a light CTA for a read, and that is the right size of ask for cold LinkedIn traffic."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 6,
+    "title": "The headline hides the hook",
+    "what": "“AI Changed Work. We Protect It.” is clean but vague. “What your DLP can’t see” is the sharper line, and it sits in the body copy.",
+    "fix": "Lead the creative with “What your DLP can’t see.”"
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 5,
+    "title": "Names the risk, not the answer",
+    "what": "“Your AI agents can now plan, act, and move data on their own” names the risk well. The ad never says what Cyberhaven does about it.",
+    "fix": "Add one line on what Cyberhaven sees that a DLP does not."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 4,
+    "title": "The proof stayed on the page",
+    "what": "The ad has no named customer, stat or proof point. The most compelling number, a 60% adoption stat, only appears after the click.",
+    "fix": "Move that stat into the creative."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 4,
+    "title": "A thousand words before the product",
+    "what": "The post runs past 1,000 words before any product specificity. Cyberhaven Flow gets one passing mention, with no screenshot and no capability list.",
+    "fix": "Show what the product sees, early, for the reader the DLP hook attracted."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 3,
+    "title": "No next step",
+    "what": "The menu has a demo button, but the article itself has no CTA, just share buttons and an AI summary tool. Paid traffic reads, agrees and leaves.",
+    "fix": "Add one next step tied to the hook, like seeing what your DLP misses."
+   }
+  ],
+  "faq": [
+   {
+    "q": "What works in Cyberhaven’s LinkedIn ad?",
+    "a": "The topic and the ask. The ad and the page both center on agentic AI outpacing legacy tools, and a soft CTA fits a blog read."
+   },
+   {
+    "q": "Can paid LinkedIn traffic go to a blog post?",
+    "a": "It can, if the post gives the reader a next step. An essay with no CTA in the article pays for attention it cannot keep."
+   },
+   {
+    "q": "What should Cyberhaven change first?",
+    "a": "Add a CTA inside the article. Then lead the creative with “What your DLP can’t see” and move the 60% stat into the ad."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 6,
+  "landing_page_score": 5,
+  "issues": [
+   {
+    "category": "headline_clarity",
+    "title": "Headline Clarity",
+    "score": 6,
+    "explanation": "'AI Changed Work. We Protect It.' is clean but vague. 'What your DLP can't see' in the body copy is the sharper hook, buried."
+   },
+   {
+    "category": "cta_friction",
+    "title": "CTA Friction",
+    "score": 7,
+    "explanation": "'See the shift' as a soft content CTA fits a blog-read offer, low friction, appropriately light ask for cold LinkedIn traffic."
+   },
+   {
+    "category": "visual_copy_match",
+    "title": "Visual-Copy Match",
+    "score": 6,
+    "explanation": "Abstract star shapes and flowing lines look nice but say nothing about data, agents, or security; pure decoration over the strong headline."
+   },
+   {
+    "category": "benefit_specificity",
+    "title": "Benefit Specificity",
+    "score": 5,
+    "explanation": "'Your AI agents can now plan, act, and move data on their own' names the risk well but never says what Cyberhaven actually does about it."
+   },
+   {
+    "category": "trust_signals",
+    "title": "Trust Signals",
+    "score": 4,
+    "explanation": "No named customer, stat, or proof point in the creative itself; the compelling 60% adoption stat lives on the landing page, not the ad."
+   }
+  ]
+ }
+}
