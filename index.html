@@ -3743,8 +3743,9 @@
           // Respect the actual section the deep link asked for: the roast's "See the roadmap" opens
           // /services#deliverables, while "Work with us" / "See the service" open #work-with-us.
           const _target = BOOT_HASH === '#deliverables' ? 'deliverables' : 'work-with-us';
-          // The services page keeps its own URL: "/" would render the tool on reload (SERVICES_PAGE reads the path).
-          if (!isServicesPage()) { try { window.history.replaceState({}, '', '/#' + _target); } catch (e) {} }
+          // These sections only render on the services page, which keeps its own URL. A hash on the
+          // tool home (old /#services links) goes there: SERVICES_PAGE reads the path once, at load.
+          if (!isServicesPage()) { window.location.replace('/services#' + _target); return; }
           const _reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           let _n = 0;
           const _svc = () => {
@@ -4981,6 +4982,7 @@
          scroll); instead we retry until the section exists. One source of truth for every services link. */
       const openWorkWithUs = () => {
         setNavOpen(false);
+        if (!isServicesPage()) { window.location.assign('/services#work-with-us'); return; }
         const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const doScroll = () => { const el = document.getElementById('work-with-us'); if (el) { el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); return true; } return false; };
         if (doScroll()) return;
