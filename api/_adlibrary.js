@@ -51,7 +51,7 @@ function norm(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 // semgrep.dev -> "Pablo Estrada"); else (several advertisers, none match) we cannot identify the
 // company's own ads, so keep none rather than show a stranger's ads. `extraToks` lets a caller add
 // resolved identities (e.g. a LinkedIn company slug) as extra accepted tokens.
-export function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = [] } = {}) {
+export function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = [], strict = false } = {}) {
   const nn = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   const wordsOf = (s) => String(s || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   // >= 3, not 4: a 3-letter brand ("Wiz", "Box") would otherwise yield no token, so the fuzzy
@@ -91,7 +91,7 @@ export function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = 
   const owned = ads.filter(a => nameMatches(a.advertiser));
   if (owned.length) return owned;
   const distinct = new Set(ads.map(a => nn(a.advertiser))).size;
-  return distinct <= 1 ? ads : [];
+  return (distinct <= 1 && !strict) ? ads : []; // strict: a lone advertiser isn't enough, the name must match
 }
 
 // Parse the rendered ad-library search HTML into ad cards. Each preview card contains the
@@ -938,242 +938,106 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
   return { ok: true, ads: kept.slice(0, limit), total: kept.length };
 }
 
-// ---- Meta (Facebook + Instagram) via the OFFICIAL Ad Library API ----------------------------
-// Requires META_ADLIBRARY_TOKEN (a Meta access token from an identity-confirmed Meta app).
-// Without it we return nothing and the UI keeps Meta as "coming soon". The API only exposes
-// non-political ("commercial") ads that were delivered in the EU/UK (a DSA effect) plus
-// political/issue ads globally — so for a US-only advertiser this is often empty, which is
-// EXPECTED, not a bug. We query the full EU-27 + UK with ad_type=ALL (the maximum coverage the
-// API allows) and resolve each creative image from its snapshot page.
-const META_EU_UK = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'GB'];
-
-async function _fetchMetaSnapshot(url) {
-  // ad_snapshot_url embeds the access token and is fetchable server-side (unlike the bot-walled
-  // public library page). Its HTML carries the creative URLs in embedded JSON — pull the first
-  // usable image + destination link + CTA text.
-  try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 8000);
-    let r;
-    try { r = await fetch(url, { signal: c.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36' } }); } finally { clearTimeout(t); }
-    if (!r.ok) return {};
-    const html = await r.text();
-    const unesc = (s) => s ? s.replace(/\\\//g, '/').replace(/\\u003D/gi, '=').replace(/\\u0026/gi, '&') : s;
-    const pick = (re) => { const m = html.match(re); return m ? unesc(m[1]) : null; };
-    const img = pick(/"original_image_url":"(https:[^"]+)"/) || pick(/"resized_image_url":"(https:[^"]+)"/) || pick(/"video_preview_image_url":"(https:[^"]+)"/);
-    const link = pick(/"link_url":"(https?:[^"]+)"/);
-    const cta = pick(/"cta_text":"([^"]+)"/);
-    return { img, link, cta };
-  } catch (e) { return {}; }
-}
-
-// ---- Meta via Apify's Facebook Ads Scraper (the PUBLIC Ad Library web view) ------------------
-// The official API above needs a Meta identity confirmation tied to residency in the chosen country
+// ---- Meta via a public Ad Library scraper on Apify ------------------------------------------
+// Meta's official Ad Library API needs an identity confirmation tied to residency in the chosen country
 // (Marina is abroad, so every ID was refused) and even when granted only returns EU/UK commercial
 // ads, which is near-empty for US B2B SaaS. The public Ad Library web view shows every ACTIVE ad in
-// any country with no verification; Apify's official scraper (apify/facebook-ads-scraper, pay per
-// ad, ~$0.006 on the free plan) reads it for us. Uses the same APIFY_TOKEN as LinkedIn.
-// OFF unless APIFY_META=1 in Vercel: pulled from live 30 oct (each board paid up to $0.15, often
-// for nothing) until Meta is on-demand. Off, no run starts and icp.js hides cached Meta ads.
-// Best-effort: any failure returns ok:false and the caller falls back to the official API.
+// any country with no verification. sukhdipp/meta-ad-library-scraper reads it at $0.0006 per ad, and
+// `advertiserDomains` filters by landing domain BEFORE billing, so other advertisers' ads cost nothing.
+// Chosen 30 oct over lergassy's ($0.00015): that one has no preview image on video ads.
+// OFF unless APIFY_META=1 in Vercel. ON, it never runs on a board load: only when a paid account
+// asks for it (`only: 'meta'` in ads-fetch). Same APIFY_TOKEN as LinkedIn.
 export const META_ON = process.env.APIFY_META === '1';
-async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null, pickupOnly = false } = {}) {
+// Facebook's image links die after ~4 days, so Meta ads can't live as long as the rest of the board.
+export const META_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+const META_DAY_CAP = 100; // runs per day across all accounts, at most ~$1.20
+async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null } = {}) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
-  const term = (company || String(domain || '').replace(/\.[a-z.]+$/i, '') || '').trim();
-  if (!term) return { ok: false, reason: 'no_query', ads: [] };
-  const libUrl = 'https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&media_type=all&search_type=keyword_unordered&q=' + encodeURIComponent(term);
-  const input = { startUrls: [{ url: libUrl }], resultsLimit: 30, activeStatus: 'active', isDetailsPerAd: false, includeAboutPage: false, enrichWithEcommerceData: false };
-  const api = 'https://api.apify.com/v2';
-  const tk = 'token=' + encodeURIComponent(token);
-  const call = async (url, opts = {}, ms = 10000) => {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), ms);
-    try { return await fetch(url, { ...opts, signal: c.signal }); } finally { clearTimeout(t); }
-  };
-  // The scraper needs 40-90s, longer than a board pull can wait. So the run is started async and its
-  // id parked in Redis: if it finishes inside our wait we use it now; otherwise the NEXT board load (we wait only ~25s so the pull plus scoring stays under Vercel's 60s)
-  // (or icp.js's pickup on a cached board) collects the finished run. No Redis: wait and hope.
-  const runKey = 'meta:apify:run:' + norm(term);
-  let run = null;
-  try { const v = redis ? await redis.get(runKey) : null; run = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null; } catch (e) { run = null; }
+  const dom = String(domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
+  if (!dom) return { ok: false, reason: 'no_domain', ads: [] };
+  if (redis) {
+    try {
+      const dayKey = 'meta:apify:day:' + new Date().toISOString().slice(0, 10);
+      const n = await redis.incr(dayKey);
+      if (n === 1) await redis.expire(dayKey, 60 * 60 * 48);
+      if (n > META_DAY_CAP) return { ok: false, reason: 'meta_day_cap', ads: [] };
+    } catch (e) {}
+  }
+  const input = { advertiserDomains: [dom], countries: ['US'], activeStatus: 'active', maxAds: 20 };
+  const url = 'https://api.apify.com/v2/acts/sukhdipp~meta-ad-library-scraper/run-sync-get-dataset-items?timeout=45&maxTotalChargeUsd=0.02&clean=true&token=' + encodeURIComponent(token);
+  let items;
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), 50000);
   try {
-    if (run && run.id) {
-      const r = await call(api + '/actor-runs/' + run.id + '?' + tk);
-      const j = r.ok ? await r.json() : null;
-      const st = j && j.data && j.data.status;
-      if (st === 'RUNNING' || st === 'READY') {
-        if (Date.now() - (run.at || 0) < 6 * 60 * 1000) return { ok: false, reason: 'apify_meta_pending', ads: [] };
-        run = null; // stuck: start over
-      } else if (st === 'SUCCEEDED') {
-        run = { ...run, dataset: j.data.defaultDatasetId };
-      } else { run = null; }
-      if (!run || !run.dataset) { try { if (redis) await redis.del(runKey); } catch (e) {} }
-    }
-    if (pickupOnly && !(run && run.dataset)) return { ok: false, reason: 'apify_meta_none', ads: [] };
-    if (!run || !run.dataset) {
-      const r = await call(api + '/acts/apify~facebook-ads-scraper/runs?timeout=240&waitForFinish=25&' + tk, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
-      }, 30000);
-      if (!r.ok) {
-        let why = '';
-        try { const j = await r.json(); why = (j && j.error && (j.error.type || '') + ':' + String(j.error.message || '').slice(0, 120)) || ''; } catch (e) {}
-        return { ok: false, reason: 'apify_meta_' + r.status + (why ? ':' + why : ''), ads: [] };
-      }
-      const j = await r.json();
-      const d = (j && j.data) || {};
-      if (d.status !== 'SUCCEEDED') {
-        if ((d.status === 'RUNNING' || d.status === 'READY') && redis && d.id) {
-          try { await redis.set(runKey, JSON.stringify({ id: d.id, at: Date.now() }), { ex: 60 * 30 }); } catch (e) {}
-          return { ok: false, reason: 'apify_meta_pending', ads: [] };
-        }
-        return { ok: false, reason: 'apify_meta_run_' + String(d.status || 'unknown').toLowerCase(), ads: [] };
-      }
-      run = { id: d.id, dataset: d.defaultDatasetId };
-    }
-    try { if (redis) await redis.del(runKey); } catch (e) {}
-    const r = await call(api + '/datasets/' + run.dataset + '/items?clean=true&' + tk, {}, 15000);
-    if (!r.ok) return { ok: false, reason: 'apify_meta_dataset_' + r.status, ads: [] };
-    var items = await r.json();
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal });
+    if (!r.ok) return { ok: false, reason: 'apify_meta_' + r.status, ads: [] };
+    items = await r.json();
   } catch (e) { return { ok: false, reason: 'apify_meta_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
-  if (!Array.isArray(items) || !items.length) return { ok: false, reason: 'apify_meta_no_ads', ads: [] };
-  // The scraper's snapshot comes camelCase; older runs/actors used snake_case. Read both.
-  const g = (o, ...ks) => { for (const k of ks) { if (o && o[k] != null && o[k] !== '') return o[k]; } return null; };
+  finally { clearTimeout(t); }
+  if (!Array.isArray(items)) return { ok: false, reason: 'apify_meta_bad_response', ads: [] };
+  // Catalog / dynamic ads carry template tokens ("{{product.name}}"): skip any value still a template.
+  const firstTxt = (...vs) => { for (const v of vs) { const x = String(v || '').trim(); if (x && !/\{\{[^}]*\}\}/.test(x)) return x; } return ''; };
+  const list = (v) => (Array.isArray(v) ? v : []);
   const seen = new Set();
   const out = [];
   for (const it of items) {
-    if (it && (it.isActive === false || it.is_active === false)) continue;
-    const s = g(it, 'snapshot') || {};
-    const cards = Array.isArray(s.cards) ? s.cards : [];
-    const imgs = Array.isArray(s.images) ? s.images : [];
-    const vids = Array.isArray(s.videos) ? s.videos : [];
-    const c0 = cards[0] || {};
-    const img = g(imgs[0], 'originalImageUrl', 'original_image_url', 'resizedImageUrl', 'resized_image_url')
-      || g(c0, 'originalImageUrl', 'original_image_url', 'resizedImageUrl', 'resized_image_url')
-      || g(vids[0], 'videoPreviewImageUrl', 'video_preview_image_url')
-      || g(c0, 'videoPreviewImageUrl', 'video_preview_image_url');
-    // Catalog / dynamic ads carry template tokens ("{{product.name}}") in the snapshot; the real
-    // text lives on the cards. Skip any value that is still a template.
-    const txt = (v) => { const t = String((v && typeof v === 'object' ? v.text : v) || '').trim(); return /\{\{[^}]*\}\}/.test(t) ? '' : t; };
-    const firstTxt = (...vs) => { for (const v of vs) { const t = txt(v); if (t) return t; } return ''; };
-    const body = firstTxt(g(s, 'body'), ...cards.map(c => g(c, 'body')));
-    const title = firstTxt(g(s, 'title'), ...cards.map(c => g(c, 'title')), g(s, 'linkDescription', 'link_description'), ...cards.map(c => g(c, 'linkDescription', 'link_description')));
+    if (!it || !it.pageName || it.isActive === false) continue;
+    const i0 = list(it.images)[0] || {};
+    const v0 = list(it.videos)[0] || {};
+    const img = i0.originalUrl || i0.resizedUrl || v0.previewImageUrl || null;
+    const body = firstTxt(it.body, ...list(it.creativeBodies));
+    const title = firstTxt(it.title, ...list(it.creativeTitles), it.linkDescription);
     // Collapse exact duplicates (Meta advertisers run the same creative in many ad sets).
     const sig = (img ? String(img).split('?')[0] : '') + '|' + body.slice(0, 120);
     if (seen.has(sig)) continue;
     seen.add(sig);
-    const adId = String(g(it, 'adArchiveID', 'adArchiveId', 'ad_archive_id', 'adId') || '') || null;
-    const page = g(it, 'pageName', 'page_name') || g(s, 'pageName', 'page_name');
     out.push({
       plat: 'Meta',
       head: title || (body ? body.slice(0, 80) : '(untitled ad)'),
       body,
-      img: img || null,
-      cta: g(s, 'ctaText', 'cta_text') || g(c0, 'ctaText', 'cta_text'),
-      ctaUrl: g(s, 'linkUrl', 'link_url') || g(c0, 'linkUrl', 'link_url'),
+      img,
+      cta: it.ctaText || null,
+      ctaUrl: it.linkUrl || null,
       dom: null,
-      advertiser: page || null,
+      advertiser: it.pageName,
       region: 'US',
-      detailUrl: adId ? ('https://www.facebook.com/ads/library/?id=' + adId) : libUrl,
-      adId,
+      detailUrl: it.adLibraryUrl || null,
+      adId: String(it.adId || it.id || '') || null,
     });
   }
-  // Keyword search also returns other advertisers that mention the name: keep the company's own.
-  const owned = ownedByAdvertiser(out, { domain, company });
-  if (!owned.length) return { ok: false, reason: 'apify_meta_not_owned', ads: [] };
-  return { ok: true, ads: owned.slice(0, limit), total: owned.length, reason: 'ok', via: 'apify' };
+  // A landing-domain match isn't proof on its own: Banco Bolivariano linked through
+  // us-west-2.protection.sophos.com. The page name has to be the company's too.
+  const owned = ownedByAdvertiser(out, { domain: dom, company, strict: true });
+  return { ok: true, empty: !owned.length, ads: owned.slice(0, limit), total: owned.length, reason: owned.length ? 'ok' : 'no_ads', via: 'apify' };
 }
 
-export async function fetchMetaAds({ company, domain, limit = 12, redis = null, pickupOnly = false } = {}) {
+export async function fetchMetaAds({ company, domain, limit = 12, redis = null } = {}) {
   if (!META_ON) return { ok: false, reason: 'meta_off', ads: [] };
-  // Apify (US + every country, no verification) first; the official EU/UK API is the fallback.
-  const ap = await fetchMetaAdsViaApify({ company, domain, limit, redis, pickupOnly });
-  if (ap.ok || pickupOnly || ap.reason === 'apify_meta_pending') return ap;
-  const official = await fetchMetaAdsOfficial({ company, domain, limit });
-  if (!official.ok && ap.reason) official.reason = ap.reason + ' | ' + official.reason;
-  return official;
+  return fetchMetaAdsViaApify({ company, domain, limit, redis });
 }
 
-async function fetchMetaAdsOfficial({ company, domain, limit = 12 } = {}) {
-  const token = process.env.META_ADLIBRARY_TOKEN;
-  if (!token) return { ok: false, reason: 'no_token', ads: [] };
-  const term = (company || domain || '').trim();
-  if (!term) return { ok: false, reason: 'no_query', ads: [] };
-  const params = new URLSearchParams({
-    access_token: token,
-    ad_type: 'ALL',
-    ad_active_status: 'ACTIVE',
-    ad_reached_countries: JSON.stringify(META_EU_UK),
-    search_terms: term,
-    fields: 'id,page_id,page_name,ad_creative_bodies,ad_creative_link_titles,ad_creative_link_captions,ad_snapshot_url,publisher_platforms,ad_delivery_start_time',
-    limit: '25',
-  });
-  const url = 'https://graph.facebook.com/v21.0/ads_archive?' + params.toString();
-  let data;
-  try {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 12000);
-    let r;
-    try { r = await fetch(url, { signal: c.signal }); } finally { clearTimeout(t); }
-    data = await r.json();
-    if (data && data.error) {
-      const e = data.error;
-      // Surface the full Meta error (code + subcode + message) so we can diagnose exactly why a
-      // valid token still fails (e.g. permission, identity confirmation, verification).
-      const detail = 'meta_error:' + (e.code || '') + (e.error_subcode ? '/' + e.error_subcode : '') + ':' + String(e.message || '').slice(0, 180);
-      return { ok: false, reason: detail, ads: [] };
-    }
-  } catch (e) { return { ok: false, reason: 'meta_fetch_failed', ads: [] }; }
-  let items = Array.isArray(data.data) ? data.data : [];
-  // search_terms is fuzzy — keep only ads whose Page name plausibly matches the advertiser.
-  const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const want = norm(company || domain);
-  if (want) items = items.filter(a => { const pn = norm(a.page_name); return pn && (pn.indexOf(want) !== -1 || want.indexOf(pn) !== -1); });
-  items = items.slice(0, limit);
-  const enriched = await Promise.all(items.map(async (a) => {
-    const snap = a.ad_snapshot_url ? await _fetchMetaSnapshot(a.ad_snapshot_url) : {};
-    const body = (a.ad_creative_bodies && a.ad_creative_bodies[0]) || '';
-    const head = (a.ad_creative_link_titles && a.ad_creative_link_titles[0]) || (a.ad_creative_link_captions && a.ad_creative_link_captions[0]) || (body ? body.slice(0, 80) : '(untitled ad)');
-    return {
-      plat: 'Meta',
-      head,
-      body,
-      img: snap.img || null,
-      cta: snap.cta || null,
-      ctaUrl: snap.link || null,
-      dom: null,
-      advertiser: a.page_name || null,
-      region: 'EU/UK',
-      detailUrl: a.ad_snapshot_url || ('https://www.facebook.com/ads/library/?q=' + encodeURIComponent(term)),
-      adId: a.id,
-    };
-  }));
-  return { ok: true, ads: enriched, reason: enriched.length ? 'ok' : 'no_ads' };
-}
-
-// Merge a company's real ads across sources (LinkedIn + Google + Meta EU/UK), score the whole
-// set in one pass, and return one list. Each source is best-effort: one failing never sinks the
-// others. Meta only returns data when META_ADLIBRARY_TOKEN is set and the advertiser ran ads in
-// the EU/UK; otherwise the UI keeps Meta as "coming soon".
+// Merge a company's real ads across sources (LinkedIn + Google), score the whole set in one pass,
+// and return one list. Each source is best-effort: one failing never sinks the other. Meta is not
+// here on purpose: it costs per ad, so it only runs on demand (`only: 'meta'` in ads-fetch).
 export async function fetchAllAds({ company, domain, icp, limit = 80, redis = null } = {}) {
   // Pull MANY creatives (cheap): the board shows the most-urgent few in full and the rest greyed/locked
   // for upsell, and the "X of N" count needs the real volume. Only a bounded batch gets scored (icp.js).
-  const [li, gg, mt] = await Promise.all([
+  const [li, gg] = await Promise.all([
     fetchLinkedInAds({ company, domain, limit: 30 }).catch(() => ({ ok: false, ads: [] })),
     fetchGoogleAds({ domain, company, limit: 40 }).catch(() => ({ ok: false, ads: [] })),
-    fetchMetaAds({ company, domain, limit: 12, redis }).catch(() => ({ ok: false, ads: [], reason: 'meta_fetch_failed' })),
   ]);
-  const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length, meta: (mt.ads || []).length };
+  const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length, meta: 0 };
   // Surface why a source came back empty (e.g. LinkedIn Jina rate-limit, Meta no-token) even when
   // another source succeeded, so the UI can tell "none running" from "we couldn't fetch it".
   const notes = {
     linkedin: (li.ads && li.ads.length) ? 'ok' : (li.reason || 'no_ads'),
     linkedin_apify: li._apify || null, // debug: why Apify was/wasn't used for LinkedIn
     google: (gg.ads && gg.ads.length) ? 'ok' : (gg.reason || 'no_ads'),
-    meta: (mt.ads && mt.ads.length) ? 'ok' : (mt.reason || 'no_ads'),
+    meta: 'on_demand',
   };
-  let ads = [...(li.ads || []), ...(gg.ads || []), ...(mt.ads || [])].slice(0, limit);
-  if (!ads.length) return { ok: false, reason: (li.reason || gg.reason || mt.reason || 'no_ads'), ads: [], sources, notes };
+  let ads = [...(li.ads || []), ...(gg.ads || [])].slice(0, limit);
+  if (!ads.length) return { ok: false, reason: (li.reason || gg.reason || 'no_ads'), ads: [], sources, notes };
   if (icp) ads = await scoreAds(ads, icp);
   const totals = {
     linkedin: (typeof li.total === 'number' ? li.total : (li.ads || []).length),
