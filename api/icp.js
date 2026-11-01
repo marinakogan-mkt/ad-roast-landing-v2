@@ -831,11 +831,13 @@ ${items}
     // UNSCORED for the greyed/locked gallery, so a big board (60+ ads) never scores -- and bills -- all of
     // them. The client's progressive re-call scores the unscored ones WITHIN this batch, not the extras.
     const SCORE_CAP = 18;
-    // Meta ads are few and were asked for by hand, so they don't compete for the cap with a big board.
+    // Meta ads were asked for by hand, so they don't compete for the cap with a big board, but only
+    // the first few get scored; the rest ride along greyed like any other extras.
     const _meta = pull.ads.filter(a => (a.plat || '') === 'Meta');
     const _notMeta = pull.ads.filter(a => (a.plat || '') !== 'Meta');
-    const _toRank = [..._notMeta.slice(0, SCORE_CAP), ..._meta];
-    const _extras = _notMeta.slice(SCORE_CAP);
+    const META_SCORE_CAP = 6;
+    const _toRank = [..._notMeta.slice(0, SCORE_CAP), ..._meta.slice(0, META_SCORE_CAP)];
+    const _extras = [..._notMeta.slice(SCORE_CAP), ..._meta.slice(META_SCORE_CAP)];
     const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
     // Drop capture_fail ads (homonym / wrong-advertiser / scrape artifact) from the board ENTIRELY,
     // not just from the OG image and worst-pick: a different company that merely shares the name

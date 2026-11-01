@@ -950,7 +950,7 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
 export const META_ON = process.env.APIFY_META === '1';
 // Facebook's image links die after ~4 days, so Meta ads can't live as long as the rest of the board.
 export const META_TTL_MS = 3 * 24 * 60 * 60 * 1000;
-const META_DAY_CAP = 100; // runs per day across all accounts, at most ~$1.20
+const META_DAY_CAP = 100; // runs per day across all accounts, at most ~$0.84
 async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null } = {}) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
@@ -964,7 +964,7 @@ async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null 
       if (n > META_DAY_CAP) return { ok: false, reason: 'meta_day_cap', ads: [] };
     } catch (e) {}
   }
-  const input = { advertiserDomains: [dom], countries: ['US'], activeStatus: 'active', maxAds: 20 };
+  const input = { advertiserDomains: [dom], countries: ['US'], activeStatus: 'active', maxAds: 14 };
   const url = 'https://api.apify.com/v2/acts/sukhdipp~meta-ad-library-scraper/run-sync-get-dataset-items?timeout=45&maxTotalChargeUsd=0.02&clean=true&token=' + encodeURIComponent(token);
   let items;
   const c = new AbortController();
