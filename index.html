@@ -3743,7 +3743,8 @@
           // Respect the actual section the deep link asked for: the roast's "See the roadmap" opens
           // /services#deliverables, while "Work with us" / "See the service" open #work-with-us.
           const _target = BOOT_HASH === '#deliverables' ? 'deliverables' : 'work-with-us';
-          try { window.history.replaceState({}, '', '/#' + _target); } catch (e) {}
+          // The services page keeps its own URL: "/" would render the tool on reload (SERVICES_PAGE reads the path).
+          if (!isServicesPage()) { try { window.history.replaceState({}, '', '/#' + _target); } catch (e) {} }
           const _reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           let _n = 0;
           const _svc = () => {
@@ -4004,9 +4005,10 @@
             /* Don't reset the URL if there's a payment-success ?id= already handled
                by the init effect - only reset on a true return to landing. Also never clobber a
                clean app path (/board, /dashboard, /account): the view is transiently 'landing' on a
-               deep link before the routing effect switches it, and resetting to '/' would break it. */
+               deep link before the routing effect switches it, and resetting to '/' would break it.
+               /services and /work-with-us ARE the landing view, on their own shareable URL. */
             const p = window.location.pathname;
-            const isAppPath = p === '/board' || p === '/b' || p.indexOf('/board/') === 0 || p.indexOf('/b/') === 0 || p.indexOf('/report/') === 0 || p === '/dashboard' || p === '/account';
+            const isAppPath = p === '/board' || p === '/b' || p.indexOf('/board/') === 0 || p.indexOf('/b/') === 0 || p.indexOf('/report/') === 0 || p === '/dashboard' || p === '/account' || p === '/services' || p === '/work-with-us';
             const hasReportParam = /[?&](id|synth|payment)=/.test(window.location.search);
             if (!hasReportParam && !isAppPath) target = '/';
           }
@@ -4065,10 +4067,9 @@
       useEffect(() => {
         if (autoDashRef.current) return;
         if (!(roastSession && roastSession.email)) return;
-        // A services/section deep link (/services, /work-with-us) must never open the dashboard, even
-        // though its URL gets normalized to a bare "/" after the section scroll — otherwise a signed-in
-        // account clicking "Services" lands on the board instead of the section. BOOT_PATH is the URL
-        // the page actually loaded with, captured before any normalization, so this is deterministic.
+        // A services/section deep link (/services, /work-with-us) must never open the dashboard —
+        // otherwise a signed-in account clicking "Services" lands on the board instead of the section.
+        // BOOT_PATH is the URL the page actually loaded with, so this is deterministic.
         if (BOOT_PATH === '/services' || BOOT_PATH === '/work-with-us') return;
         try {
           // Only auto-open the dashboard on a TRULY bare "/" — not when a hash deep-links to a
@@ -4116,7 +4117,7 @@
             return;
           }
           /* Keep the tool/service pages in sync with the URL on back/forward. */
-          if (window.location.pathname.replace(/\/+$/, '') === '/services' || window.location.hash === '#services') setView('landing');
+          if (['/services', '/work-with-us'].includes(window.location.pathname.replace(/\/+$/, '')) || window.location.hash === '#services') setView('landing');
         };
         window.addEventListener('popstate', onPop);
         return () => window.removeEventListener('popstate', onPop);
@@ -10527,7 +10528,9 @@
       if (link) link.href = '/favicon-96.png?v=5'; // padded logo; ?v bust so browsers/Google refresh the cached favicon
       // Keep the SEO-optimized title on the public site; only the portal overrides it.
       // /b/<slug> boards get a company-specific title server-side (api/_board-og.js); leave it.
+      // /services and /work-with-us too (servicesOgHandler in api/_board-og.js).
       if (!isPortal && /^\/(b|board)\/./.test(window.location.pathname)) return;
+      if (!isPortal && isServicesPage()) return;
       document.title = isPortal ? 'AdRoast | Partner Portal' : 'AdRoast: free live-ad audit for B2B teams';
     }
 
