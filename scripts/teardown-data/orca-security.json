@@ -1,0 +1,139 @@
+{
+ "embed": false,
+ "meta": {
+  "slug": "orca-security",
+  "name": "Orca Security",
+  "domain": "orca.security",
+  "platform": "LinkedIn",
+  "date": "2026-09-14",
+  "human_date": "September 14, 2026",
+  "initial": "O",
+  "badge_color": "#0b6b6f",
+  "ad_img": "roast",
+  "lp_url": "https://orca.security/lp/sp/ty-content-download-2026-state-of-ai-security-report/",
+  "ad_detail_url": "https://www.linkedin.com/ad-library/detail/1561391026",
+  "title": "Orca Security ad teardown: a 99.9% stat that disappears after the click",
+  "meta_desc": "A teardown of Orca Security’s live LinkedIn ad: “99.9% of fixable AI vulnerabilities remain unpatched” stops the scroll, then the landing page resets to a report title and delays the proof.",
+  "og_desc": "The stat that earned the click left before the buyer arrived.",
+  "keywords": "orca security linkedin ads, orca ad teardown, cloud security ads, AI security ads, report landing page, message match, ad teardown",
+  "card_desc": "A 99.9% stat stops the scroll. The page resets to a report title and makes the buyer rebuild the case.",
+  "related": [
+   {
+    "slug": "cycode",
+    "name": "Cycode",
+    "q": "Four analysts sold the click. The page hid them."
+   },
+   {
+    "slug": "hyperproof",
+    "name": "Hyperproof",
+    "q": "A privacy hook that lands on a compliance page."
+   },
+   {
+    "slug": "snyk",
+    "name": "Snyk",
+    "q": "A six-step guide promised. A homepage delivered."
+   }
+  ],
+  "post_url": "",
+  "roast_id": "3cca68dd",
+  "logo_url": "https://www.adroast.in/api/icp?logo=orca.security"
+ },
+ "voice": {
+  "hook": [
+   "99.9% earned the click.",
+   "The page changed the subject."
+  ],
+  "lede": "Orca has a rare asset: “99.9% of fixable AI vulnerabilities remain unpatched.” It is specific, it creates urgency, and it gives a security leader a clear reason to care. But the ad leads with a broad headline, and the landing page resets the conversation with a report title. The funnel does not lack proof. It delays it.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "title": "A stat that does real work",
+    "what": "The dark design and the oversized number make the risk impossible to miss. Attention is not the problem here. What happens around that attention is.",
+    "score": 7
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "title": "The headline leans on the stat",
+    "what": "“The Full Picture of AI Risk” could point to AI-generated code, data exposure, agent security, Shadow AI, governance or model risk. The stat carries the creative while the headline stays broad.",
+    "fix": "Reverse it: “99.9% of Fixable AI Vulnerabilities Are Still Unpatched.” Build the ad around what stopped the scroll.",
+    "score": 6
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "title": "A big number with no source",
+    "what": "A CISO who sees 99.9% immediately asks 99.9% of what, across what sample, and how it was derived. The ad does not answer.",
+    "fix": "Add the proof Orca already has: “Based on real-world telemetry from 1,200+ production organizations.”",
+    "score": 4
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "title": "The hero drops the reason for the click",
+    "what": "“2026 State of AI Security Report” is accurate, but it resets the conversation. The page answers much of what the buyer wants to know, only later.",
+    "fix": "Carry the same claim above the fold, then support it with what the telemetry reveals.",
+    "score": 5
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "title": "Three names for one action",
+    "what": "The creative says “Get the Full Report,” the button says “Download,” and the page says “Get the Report.”",
+    "fix": "One action, one promise. Then move one more stat next to the form, because big claims need immediate backing.",
+    "score": 6
+   }
+  ],
+  "faq": [
+   {
+    "q": "What works in Orca Security’s LinkedIn ad?",
+    "a": "The stat. “99.9% of fixable AI vulnerabilities remain unpatched” is specific and urgent, and the dark, oversized design makes it impossible to miss."
+   },
+   {
+    "q": "Where does the Orca funnel lose momentum?",
+    "a": "Right after the click. The hero changes to the report title, so the buyer has to rebuild the argument the ad already made, and the proof that backs the stat arrives later on the page."
+   },
+   {
+    "q": "How should a report landing page handle an ad stat?",
+    "a": "Repeat the same claim above the fold in the same words, back it with the sample behind it, and keep one CTA from the creative to the form."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 7,
+  "landing_page_score": 5,
+  "issues": [
+   {
+    "category": "headline_clarity",
+    "title": "Headline Clarity",
+    "score": 8,
+    "explanation": "\"The Full Picture of AI Risk\" is clear and on-brand for security leaders; the 99.9% unpatched stat gives it teeth and specificity."
+   },
+   {
+    "category": "cta_friction",
+    "title": "CTA Friction",
+    "score": 7,
+    "explanation": "\"Get the Full Report\" matches the content-download intent well, low friction for a top-of-funnel ask, though it undersells what's inside."
+   },
+   {
+    "category": "visual_copy_match",
+    "title": "Visual-Copy Match",
+    "score": 7,
+    "explanation": "Dark, data-driven visual fits a security audience; logo and copy align but the creative gives zero preview of report contents or format."
+   },
+   {
+    "category": "benefit_specificity",
+    "title": "Benefit Specificity",
+    "score": 6,
+    "explanation": "The 99.9% stat is strong but \"see what that means for your stack\" is vague filler, doesn't say what the reader actually learns."
+   },
+   {
+    "category": "trust_signals",
+    "title": "Trust Signals",
+    "score": 4,
+    "explanation": "No named customers, no callout stats like report page count or analyst mentions, no numeric proof beyond the one vulnerability stat in the ad text."
+   }
+  ]
+ }
+}

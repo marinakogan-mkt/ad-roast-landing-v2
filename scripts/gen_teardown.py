@@ -24,6 +24,8 @@ def fetch(url, tries=4, min_bytes=1500):
     raise RuntimeError("fetch failed for %s: %s" % (url, last))
 
 def datauri(url, mime=None, min_bytes=1500):
+    if url.startswith("data:"):
+        return url, len(url) * 3 // 4
     data = fetch(url, min_bytes=min_bytes)
     if mime is None:
         if data[:3] == b"\xff\xd8\xff": mime = "image/jpeg"
@@ -79,12 +81,12 @@ def ring(score):
 
 def finding(f):
     icon = CHECK if f["good"] else TRI
-    c = color(f["score"])
+    c = color(f["score"]) if "score" in f else ""
     fix = f.get("fix", "")
     fixblock = (f'<div class="lbl2" style="color:#0f6e56">The fix</div><p>{typo(fix)}</p>') if fix else ""
     return (f'<div class="finding"><button class="fh"><span class="tag tag-{f["tag"]}">{"Ad" if f["tag"]=="ad" else "Page"}</span>'
             f'{icon}<span class="ftitle">{typo(f["title"])}</span>'
-            f'<span class="fscore" style="background:{c}1a;color:{c}">{f["score"]}/10</span>{FCHEV}</button>'
+            + (f'<span class="fscore" style="background:{c}1a;color:{c}">{f["score"]}/10</span>' if c else "") + f'{FCHEV}</button>'
             f'<div class="fd"><div class="lbl2">What{chr(0x2019)}s happening</div><p>{typo(f["what"])}</p>'
             f'{fixblock}</div></div>')
 
@@ -216,6 +218,11 @@ def from_roast(cfg):
         m = re.search(r"id=([A-Za-z0-9]+)", meta["roast_link"])
         rid = m.group(1) if m else ""
     d["roast_id"] = rid
+    # "ad_img": "roast" uses the creative the roast saved, the image that was judged
+    if d.get("ad_img") == "roast":
+        rep = json.load(urllib.request.urlopen(urllib.request.Request(
+            "https://www.adroast.in/api/roast-view?id=" + rid, headers={"User-Agent": UA}), timeout=45))
+        d["ad_img"] = "data:image/jpeg;base64," + rep["adScreenshot"]
     d.setdefault("logo_url", logo_for(meta["domain"]))
     d.setdefault("lp_shot", lp_for(meta.get("lp_url", "https://%s/" % meta["domain"])))
     d["hook"], d["lede"], d["faq"] = voice["hook"], voice["lede"], voice["faq"]
@@ -244,21 +251,22 @@ def integrate(d, repo="."):
     already references the slug."""
     import os
     slug, name, dom = d["slug"], d["name"], d["domain"]
-    score, date = d["score"], d.get("human_date", d["date"])
+    score, date = d.get("score"), d.get("human_date", d["date"])
     initial = d.get("initial", name[0])
     badge = d.get("badge_color", "#0a66c2")
-    sev = "sev-red" if score <= 4 else "sev-amber"
+    sev = d.get("sev") or ("sev-red" if score is not None and score <= 4 else "sev-amber")
+    chip = "%s/10" % score if score is not None else d["verdict"]
     hook = " ".join(typo(l) for l in d["hook"])
     desc = d.get("card_desc") or typo(d["lede"])[:180]
     done = []
     # 1) hub card (prepended as newest) + JSON-LD ItemList (renumbered)
     hub = os.path.join(repo, "teardowns/index.html")
     h = open(hub, encoding="utf-8").read()
-    if ("/teardowns/%s" % slug) not in h:
+    if ('/teardowns/%s"' % slug) not in h:
         card = (f'<a class="tcard" href="/teardowns/{slug}"><div class="tcard-top">'
                 f'<div class="tcard-badge" style="background:{badge}"><img src="/api/icp?logo={dom}" alt="" loading="lazy" onerror="this.remove()">{initial}</div>'
                 f'<div><div class="tcard-co">{name}</div><div class="tcard-date">{date}</div></div>'
-                f'<span class="mini {sev}">{score}/10</span></div>'
+                f'<span class="mini {sev}">{chip}</span></div>'
                 f'<h3>{hook}</h3><p>{desc}</p>'
                 f'<div class="foot">Read the teardown<span class="go">&rarr;</span></div></a>')
         h = h.replace('<div class="grid">', '<div class="grid">' + card, 1)
@@ -285,7 +293,7 @@ def integrate(d, repo="."):
     # 3) /work-with-us proof list
     og = os.path.join(repo, "api/_board-og.js")
     o = open(og, encoding="utf-8").read()
-    if ("/teardowns/%s" % slug) not in o:
+    if ('/teardowns/%s"' % slug) not in o:
         li = f'<ul><li><a href="/teardowns/{slug}">{name} ad teardown</a></li>'
         o = o.replace("<ul><li><a href=\"/teardowns/", li + '<li><a href="/teardowns/', 1)
         open(og, "w", encoding="utf-8").write(o); done.append("proof")
@@ -308,6 +316,10 @@ EMBED_CSS = (
     ".vchip{display:inline-flex;align-items:center;font-weight:800;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;padding:8px 14px;border-radius:999px;white-space:nowrap}"
     ".embedstage.embed-only{max-width:600px;margin:0 auto;display:block}"
     "@media(max-width:720px){.win.embedwin iframe.liembed{height:470px}}"
+    ".adq{padding:28px 24px;flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;background:#fff}"
+    ".adq p{margin:0;font-size:22px;line-height:1.3;font-weight:600;color:#0f172a}"
+    ".adq.adq-page p{font-size:16px;line-height:1.5;font-weight:500;color:#334155}"
+    ".adq-cta{align-self:flex-start;font-size:13px;font-weight:700;color:var(--blue);border:1.5px solid var(--blue);border-radius:999px;padding:6px 14px}"
 )
 
 def vchip(verdict):
@@ -350,22 +362,30 @@ def build_embed(d):
     score_block = (f'{ring(d["score"])}<span class="cap">Ad-to-page<br>score</span>' if has_score
                    else f'{vchip(d["verdict"])}<span class="cap">Verdict</span>')
     post_url = d.get("post_url") or ("https://www.linkedin.com/feed/update/" + d["urn"])
-    embed_src = "https://www.linkedin.com/embed/feed/update/" + d["urn"]
-    embed_win = (
-        '<div class="win ad embedwin"><div class="wl">The ad, torn apart</div>'
-        '<div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>LinkedIn post</span></div>'
-        f'<div class="liwrap"><iframe class="liembed" src="{embed_src}" title="{esc(d["name"])} ad teardown on LinkedIn" frameborder="0" allowfullscreen loading="lazy"></iframe></div>'
-        f'<a class="liopen" href="{post_url}" target="_blank" rel="noopener">Open on LinkedIn &rarr;</a></div>')
+    dots = '<i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i>'
+    if d.get("ad_img"):
+        ad_uri, _ = img_datauri(d["ad_img"])
+        ad_body = f'<div class="shot"><img src="{ad_uri}" alt="{esc(d["name"])} ad creative"></div>'
+    else:
+        cta = f'<span class="adq-cta">{typo(d["ad_cta"])}</span>' if d.get("ad_cta") else ""
+        ad_body = f'<div class="adq"><p>{typo(d["ad_quote"])}</p>{cta}</div>'
+    ad_win = f'<div class="win ad"><div class="wl">The ad</div><div class="wh">{dots}<span>LinkedIn sponsored</span></div>{ad_body}</div>'
     if has_lp:
-        landing_win = (
+        page_win = (
             f'<a class="win lp" href="{d.get("lp_url") or ("https://%s/" % d["domain"])}" target="_blank" rel="noopener" title="Open {d["domain"]}">'
             '<div class="wl">The landing page</div>'
-            f'<div class="wh"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span>{d["domain"]}/</span></div>'
+            f'<div class="wh">{dots}<span>{d["domain"]}/</span></div>'
             f'<div class="shot"><img src="{lp_uri}" alt="{esc(d["name"])} landing page screenshot"></div></a>')
-        stage_inner = embed_win + '<div class="arr">&rarr;</div>' + landing_win
-        stitle, stage_cls = "The ad, and the page it lands on", "twostage embedstage"
+    elif d.get("page_quote"):
+        page_win = (f'<div class="win lp"><div class="wl">After the click</div><div class="wh">{dots}<span>{d["domain"]}/</span></div>'
+                    f'<div class="adq adq-page"><p>{typo(d["page_quote"])}</p></div></div>')
     else:
-        stage_inner, stitle, stage_cls = embed_win, "The teardown, on LinkedIn", "twostage embedstage embed-only"
+        page_win = ""
+    if page_win:
+        stage_inner = ad_win + '<div class="arr">&rarr;</div>' + page_win
+        stitle, stage_cls = "The ad, and what the click finds", "twostage"
+    else:
+        stage_inner, stitle, stage_cls = ad_win, "The ad", "twostage embedstage embed-only"
     stage_sec = f'<div class="sec"><p class="stitle">{stitle}</p><div class="{stage_cls}">{stage_inner}</div></div>'
     html = f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(d["title"])} | AdRoast</title>
@@ -400,7 +420,7 @@ def build_embed(d):
   <div class="sec">
     <p class="stitle">Questions, answered</p>
     <div class="faq">{faqs}</div>
-    <p style="margin-top:16px;font-size:14px;color:#64748b">This is Marina Kogan{chr(0x2019)}s original teardown of {d["name"]}{chr(0x2019)}s live ad. <a href="{post_url}" target="_blank" rel="noopener">See the full infographic on LinkedIn &rarr;</a></p>
+    <p style="margin-top:16px;font-size:14px;color:#64748b">This is Marina Kogan{chr(0x2019)}s original teardown of {d["name"]}{chr(0x2019)}s live ad. <a href="{post_url}" target="_blank" rel="noopener">See the full infographic on LinkedIn &rarr;</a>{d.get("source_extra", "")}</p>
   </div>
 
   <div class="sec">
@@ -433,10 +453,15 @@ if __name__ == "__main__":
         d = dict(cfg["meta"]); v = cfg.get("voice", {})
         d["hook"], d["lede"], d["findings"], d["faq"] = v["hook"], v["lede"], v["findings"], v["faq"]
         d.setdefault("logo_url", logo_for(d["domain"]))
+        if d.get("ad_roast_id"):  # the creative saved with that roast
+            rep = json.load(urllib.request.urlopen(urllib.request.Request(
+                "https://www.adroast.in/api/roast-view?id=" + d["ad_roast_id"], headers={"User-Agent": UA}), timeout=45))
+            d["ad_img"] = "data:image/jpeg;base64," + rep["adScreenshot"]
         if d.get("lp_url"):
             d.setdefault("lp_shot", lp_for(d["lp_url"]))
         html = build_embed(d)
-        d = {}  # embed pages are already in the hub/sitemap/proof; never integrate
+        if not cfg.get("new"):
+            d = {}  # migrated embed pages are already in the hub/sitemap/proof
     else:
         d = from_roast(cfg) if "roast" in cfg or "meta" in cfg else cfg
         html = build(d)

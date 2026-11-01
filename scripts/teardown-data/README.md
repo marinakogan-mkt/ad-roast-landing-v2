@@ -49,6 +49,14 @@ a balanced four); add there by hand if wanted.
 - thum.io sometimes returns a spinner on a cold fetch; the generator retries, and
   `/wait/8/` gives the page time to render.
 
+## New embed page (no saved roast)
+
+`{"embed": true, "new": true, "meta": {...}, "voice": {...}}` builds a page from the
+LinkedIn post and wires it in with `--integrate`, like a redesigned one. `meta` takes
+`score` when the post stated one, otherwise `verdict`, plus `sev` for the hub chip,
+`card_desc` and an optional `source_extra` link. `"ad_img": "roast"` on a full page
+uses the creative saved with the roast. Findings without `score` render without a chip.
+
 ## State
 
 Redesigned set: monday, klaviyo, webflow, clickup, pipedrive.

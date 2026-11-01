@@ -1,0 +1,139 @@
+{
+ "embed": false,
+ "meta": {
+  "slug": "snyk",
+  "name": "Snyk",
+  "domain": "snyk.io",
+  "platform": "LinkedIn",
+  "date": "2026-09-07",
+  "human_date": "September 7, 2026",
+  "initial": "S",
+  "badge_color": "#4c4a73",
+  "ad_img": "roast",
+  "lp_url": "https://snyk.io/",
+  "ad_detail_url": "https://www.linkedin.com/ad-library/detail/1479976156",
+  "title": "Snyk ad teardown: a six-step guide promised, a homepage delivered",
+  "meta_desc": "A teardown of Snyk’s live LinkedIn ad: it offers a six-step AI code governance guide, then sends the click to the general homepage, where the guide is never mentioned.",
+  "og_desc": "The ad promised a guide. The click got a homepage.",
+  "keywords": "snyk linkedin ads, snyk ad teardown, AI code governance ads, application security ads, ad to landing page mismatch, ad teardown",
+  "card_desc": "The ad offers a six-step AI code governance guide. The click lands on the general homepage, with no guide in sight.",
+  "related": [
+   {
+    "slug": "orca-security",
+    "name": "Orca Security",
+    "q": "The stat that earned the click left before the buyer arrived."
+   },
+   {
+    "slug": "cycode",
+    "name": "Cycode",
+    "q": "Four analysts sold the click. The page hid them."
+   },
+   {
+    "slug": "ox-security",
+    "name": "OX Security",
+    "q": "A single-product ad on a page selling eight."
+   }
+  ],
+  "post_url": "",
+  "roast_id": "4512b497",
+  "logo_url": "https://www.adroast.in/api/icp?logo=snyk.io"
+ },
+ "voice": {
+  "hook": [
+   "The ad promised a six-step guide.",
+   "The click got a homepage."
+  ],
+  "lede": "The ad picks a timely pain, developers shipping AI-generated code faster than security can review it, and offers a sensible next step: a six-step guide. Then the funnel breaks. The click lands on Snyk’s general homepage, with no reference to the guide, and the visitor is asked to sign up, explore the platform or book a demo. That pause to reorient is where qualified traffic leaks out.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "title": "A timely pain, a sensible offer",
+    "what": "“Developers are shipping AI-generated code faster than security teams can review it” is a real, current problem. A six-step guide is the right size of ask for that audience and that stage.",
+    "score": 7
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "title": "The sharpest idea is buried",
+    "what": "The creative leads with a polished title about stabilizing, optimizing and scaling. The idea buyers care about first, that security cannot keep up with development speed, sits lower down.",
+    "fix": "Lead with the pain in the headline and let the guide title support it.",
+    "score": 6
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "title": "No concrete win after reading",
+    "what": "The copy talks about visibility and governance that scales. It never says what the reader gets: less manual review, vulnerable AI-written code caught earlier, or more output governed without adding headcount.",
+    "fix": "Make the guide outcome specific, so the download has a stated payoff.",
+    "score": 5
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "title": "The guide is not on the page",
+    "what": "The ad promises a specific whitepaper, a simple download and six practical steps. The homepage headline talks about unleashing AI innovators securely, with no mention of the six-step framework or AI code governance.",
+    "fix": "Send the traffic to a dedicated page built around that exact asset.",
+    "score": 3
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "title": "A download became a demo",
+    "what": "The visitor came for a guide and now has to choose between signing up, exploring the platform and booking a live demo. That is a different offer with a higher commitment level.",
+    "fix": "Use one CTA from ad to page: Download the 6-Step Guide. Earn the next step after the guide has delivered value.",
+    "score": 3
+   }
+  ],
+  "faq": [
+   {
+    "q": "What is wrong with Snyk’s LinkedIn ad?",
+    "a": "The ad itself is reasonable. The break is after the click: it offers a six-step AI code governance guide and lands on Snyk’s general homepage, which never mentions the guide."
+   },
+   {
+    "q": "Should a gated guide ad go to the homepage?",
+    "a": "No. When someone clicks for a specific asset, the page should give them that asset. A homepage makes them sort through the whole company to find it, and asks for a bigger commitment than the one they agreed to."
+   },
+   {
+    "q": "How would you fix this funnel?",
+    "a": "Lead the ad with the pain, name the outcome of the guide, send the click to a dedicated page for that asset, keep one CTA throughout, and bring one relevant proof point into the ad or the page."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 6,
+  "landing_page_score": 4,
+  "issues": [
+   {
+    "category": "headline_clarity",
+    "title": "Headline Clarity",
+    "score": 6,
+    "explanation": "Creative headline 'Stabilize, Optimize, Scale: A Prescriptive Path for AI Security' is jargon-forward; the intro line about developers outpacing security review is clearer and should lead."
+   },
+   {
+    "category": "cta_friction",
+    "title": "CTA Friction",
+    "score": 7,
+    "explanation": "'Download Guide' on the creative and 'Learn more' in copy are low friction and appropriate for top-of-funnel content, though the two CTAs slightly compete."
+   },
+   {
+    "category": "visual_copy_match",
+    "title": "Visual-Copy Match",
+    "score": 6,
+    "explanation": "Creative promises '6 steps' toward governance, matching the ad body copy, but the whitepaper title itself doesn't mention the number 6 or governance explicitly."
+   },
+   {
+    "category": "benefit_specificity",
+    "title": "Benefit Specificity",
+    "score": 5,
+    "explanation": "'Foundational visibility to automated governance that scales' is vague; no concrete outcome like reduced review time or vulnerability counts is cited."
+   },
+   {
+    "category": "trust_signals",
+    "title": "Trust Signals",
+    "score": 4,
+    "explanation": "No named customers, ratings, or numeric proof appear in the ad text or callouts; Snyk's strong stats (288% ROI, 80% faster scans) live only on the LP, unused in the ad."
+   }
+  ]
+ }
+}

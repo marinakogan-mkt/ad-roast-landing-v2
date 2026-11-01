@@ -1,0 +1,139 @@
+{
+ "embed": false,
+ "meta": {
+  "slug": "typeform",
+  "name": "Typeform",
+  "domain": "typeform.com",
+  "date": "2026-10-26",
+  "human_date": "October 26, 2026",
+  "initial": "T",
+  "badge_color": "#262627",
+  "urn": "urn:li:ugcPost:7520499759611228160",
+  "lp_url": "https://www.typeform.com/growth",
+  "title": "Typeform ad teardown: two people, three stories, one landing page",
+  "meta_desc": "A teardown of Typeform’s live ads: LinkedIn sells the new platform while Google sells the old one, and three thought leader ads with three different problems land on the same page.",
+  "og_desc": "Two people tell three stories. The page answers one.",
+  "keywords": "typeform linkedin ads, typeform google ads, typeform ad teardown, thought leader ads, influencer ads landing page, ad teardown",
+  "card_desc": "LinkedIn sells the new platform, Google sells the old one, and three thought leader ads land on one page that answers only one of them.",
+  "related": [
+   {
+    "slug": "webflow",
+    "name": "Webflow",
+    "q": "A sharp ad, then a vague “Learn more.”"
+   },
+   {
+    "slug": "monday",
+    "name": "monday.com",
+    "q": "The ad promised a demo. The page opened a signup."
+   },
+   {
+    "slug": "clickup",
+    "name": "ClickUp",
+    "q": "The headline named the pain. The creative changed the subject."
+   }
+  ],
+  "post_url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7520499759611228160",
+  "logo_url": "https://www.adroast.in/api/icp?logo=typeform.com",
+  "ad_img": "roast",
+  "roast_id": "1cde5a2b",
+  "platform": "LinkedIn"
+ },
+ "voice": {
+  "hook": [
+   "Two people tell three stories.",
+   "The page answers one."
+  ],
+  "lede": "Typeform runs two companies in paid. LinkedIn sells the new platform with Research Flow and Growth Flow, while Google still sells the old product in the old words. And inside LinkedIn, a thought leader program writes from three different problems, then sends all three to one page. The variety is exactly why the program works in the feed. It is also what breaks the handoff.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 6,
+    "title": "Thought leader ads that sound like people",
+    "what": "Five LinkedIn ads are written in first person by four different people. This one is a founder venting about inbound leads, native to the feed, with the real form builder on screen."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 4,
+    "title": "A problem with no ending",
+    "what": "The ad describes noisy inbound, SMBs and enterprises asking for different things, and never says what Typeform did about it. No result, no numbers, no before and after.",
+    "fix": "Finish the story: what changed for Tenex after the form went live."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 5,
+    "title": "Three stories, one destination",
+    "what": "Three of the five land on the same page: a breakfast series for social media marketers, “An event can be packed, beautifully branded, and completely useless to the business,” and this one about leads. The page body never mentions events.",
+    "fix": "Give each story a landing page that continues its problem."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 4,
+    "title": "Even the best match loses the thread",
+    "what": "Leads is the only story of the three the page answers, and it still drops the problem. A personal, chaotic founder story opens on “Boost revenue with conversations that convert.”",
+    "fix": "When a creator earns the click with a specific problem, pick up that same problem in the first screen."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 5,
+    "title": "Volume, not results",
+    "what": "The main proof on the page is “48M+ responses every month.” That shows scale, not what happened for a customer like Tenex.",
+    "fix": "Put one named result next to the story that sent the click."
+   }
+  ],
+  "faq": [
+   {
+    "q": "What is the problem with Typeform’s ads?",
+    "a": "The channels tell two different stories. LinkedIn sells Research Flow and Growth Flow, and Google still sells surveys and quizzes. On top of that, three thought leader ads with three different problems share one landing page."
+   },
+   {
+    "q": "Do thought leader ads need their own landing pages?",
+    "a": "When each voice writes from a different problem, yes. The click was earned by that specific problem, so the first screen should continue it, or the buyer has to work out why they are there."
+   },
+   {
+    "q": "How do you catch this kind of mismatch?",
+    "a": "Read every ad and its page back to back, and read LinkedIn and Google side by side. Nothing in a campaign dashboard shows it."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 5,
+  "landing_page_score": 6,
+  "issues": [
+   {
+    "category": "headline_clarity",
+    "title": "Headline Clarity",
+    "score": 4,
+    "explanation": "No headline at all, just a selfie and a screen showing 'Welcome to Tenex Lead Flow.' Reader has to piece together it's about Typeform from a screenshot, not copy."
+   },
+   {
+    "category": "cta_friction",
+    "title": "CTA Friction",
+    "score": 5,
+    "explanation": "No written CTA in the ad copy itself, just a founder venting about lead chaos. Reader has no idea what to do next, this reads like a LinkedIn post, not an ad."
+   },
+   {
+    "category": "visual_copy_match",
+    "title": "Visual-Copy Match",
+    "score": 6,
+    "explanation": "The selfie-with-laptop format is native and thumb-stopping, and the visible form builder backs up the 'handling leads' story. But 'Get Started' button on screen isn't the actual ad CTA."
+   },
+   {
+    "category": "benefit_specificity",
+    "title": "Benefit Specificity",
+    "score": 4,
+    "explanation": "Copy describes a problem (noisy inbound, SMBs vs enterprise asks) but never states what Typeform actually did or the result. No numbers, no before/after."
+   },
+   {
+    "category": "trust_signals",
+    "title": "Trust Signals",
+    "score": 5,
+    "explanation": "A real founder's face and real product screen build native credibility on LinkedIn, but there's no outcome metric or customer name to back the story up."
+   }
+  ]
+ }
+}
