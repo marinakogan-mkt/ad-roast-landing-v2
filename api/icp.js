@@ -568,7 +568,9 @@ ${items}
     const detailUrl = String(body.detailUrl || '').trim();
     const adId = String(body.adId || '').trim();
     const adBody = String(body.body || '');
-    const cacheKey = adId ? 'adland:v3:' + plat + ':' + adId : null; // v3: re-resolve now that we unwrap redirect/tracker wrappers and drop bot-walls (v2 cached raw tracker URLs)
+    const adHead = String(body.head || '').trim();
+    const adDom = String(body.dom || '').trim().toLowerCase().replace(/^www\./, '');
+    const cacheKey = adId ? 'adland:v4:' + plat + ':' + adId : null; // v4: re-resolve now that Google ads are found by title (v3 cached '__none__' for all of them)
     // Hosts that are the ad PLATFORM's own site/CDN/chrome — never the landing page. We do NOT
     // exclude link shorteners (lnkd.in) or the advertiser's social pages: lnkd.in is the real click
     // destination the advertiser used and redirects to the landing (roast follows it). Mirrors the
@@ -615,16 +617,51 @@ ${items}
         return u;                                                                   // real content (or a page that blocks us): keep
       } catch (e) { return u; }                                                     // network hiccup: keep, never drop a real page
     };
+    // --- Google exposes no click destination (not on the Transparency page, not in GetCreativeById), but
+    // its Dynamic Search Ads copy the article title into the headline. So search the advertiser's own
+    // domain for that title and accept a result ONLY if its title carries every meaningful word of the
+    // headline. A loose match returns nothing: we never guess a page (Marina's rule, same as homepage).
+    // Returns the url, null when nothing matches, undefined when the search itself failed.
+    const titleWords = (s) => String(s).toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(w => w && !/^(a|an|the|of|to|for|and|or|in|on|with|your|our|how|what|why|is|are)$/.test(w));
+    const matchTitle = (results, want, dom) => {
+      for (const x of results) {
+        const host = hostOf(x && x.url);
+        if (host !== dom && !host.endsWith('.' + dom)) continue;
+        try { const p = new URL(x.url); if (p.pathname === '/' || p.search) continue; } catch (e) { continue; }
+        const have = new Set(titleWords(x.title));
+        if (want.every(w => have.has(w))) return x.url;
+      }
+      return null;
+    };
+    const fromTitleSearch = async () => {
+      const want = titleWords(adHead);
+      if (!adDom || want.length < 3 || !process.env.JINA_API_KEY) return null;
+      const c = new AbortController(); const tt = setTimeout(() => c.abort(), 8000);
+      try {
+        const r = await fetch('https://s.jina.ai/?q=' + encodeURIComponent('site:' + adDom + ' ' + adHead), { signal: c.signal, headers: { Authorization: 'Bearer ' + process.env.JINA_API_KEY, Accept: 'application/json', 'X-Respond-With': 'no-content' } });
+        if (r.status === 422) return null;                                          // Jina's answer for zero results
+        if (!r.ok) return undefined;
+        const d = await r.json();
+        return matchTitle(Array.isArray(d && d.data) ? d.data : [], want, adDom);
+      } catch (e) { return undefined; } finally { clearTimeout(tt); }
+    };
     try {
       if (_redis && cacheKey) {
         try { const c = await _redis.get(cacheKey); if (c != null) { res.setHeader('Cache-Control', 'no-store'); return res.status(200).json({ landingUrl: c === '__none__' ? null : c, source: 'cache' }); } } catch (e) {}
       }
-      let landing = null, source = null, definitive = false;
+      let landing = null, source = null, definitive = false, searchFailed = false;
+      // 0. Google only: the detail page never carries the destination, so try the title first. It
+      //    answers in ~2 s against ~20 s for the detail render.
+      if (plat === 'google' && adHead) {
+        const found = await fromTitleSearch();
+        if (found) { landing = found; source = 'title-search'; definitive = true; }
+        else if (found === undefined) searchFailed = true;
+      }
       // 1. The ad's own detail page: its first outbound href is the real click destination. Guard
       //    against a challenge/error shell (Jina hitting a Cloudflare 5xx, a "Failed to load" render):
       //    those carry bogus hrefs (e.g. cloudflare.com/5xx-error-landing) and must NOT be extracted
       //    or cached. Only a page that actually rendered is a definitive answer.
-      if (detailUrl) {
+      if (!landing && detailUrl) {
         const html = await fetchHtmlViaJina(detailUrl);
         const broken = !html || html.length < 1500 || /just a moment|attention required|cloudflare ray|cf-ray|5xx-error-landing|\/error-landing|failed to load|enable javascript and cookies/i.test(html);
         if (html && !broken) {
@@ -642,6 +679,7 @@ ${items}
       if (landing) { const resolved = await resolveTracker(landing); if (!resolved) { landing = null; source = null; } else if (resolved !== landing) { landing = resolved; source = (source || 'detail') + '+resolved'; } }
       // Cache only a definitive result (found, or a real page that genuinely had none). A transient
       // fetch failure returns null WITHOUT caching, so the next click retries instead of asking for 7d.
+      if (searchFailed && !landing) definitive = false;
       if (_redis && cacheKey && definitive) { try { await _redis.set(cacheKey, landing || '__none__', { ex: 60 * 60 * 24 * 7 }); } catch (e) {} }
       res.setHeader('Cache-Control', 'no-store');
       return res.status(200).json({ landingUrl: landing, source: landing ? source : null });

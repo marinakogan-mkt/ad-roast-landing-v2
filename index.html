@@ -2322,7 +2322,7 @@
         if (sel.ctaUrl) return;
         let cancelled = false;
         setLandingResolving(true);
-        fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ad-landing', plat: sel.plat || '', detailUrl: sel.detailUrl || '', adId: sel.adId || '', body: sel.body || '', dom: sel.dom || '' }) })
+        fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ad-landing', plat: sel.plat || '', detailUrl: sel.detailUrl || '', adId: sel.adId || '', body: sel.body || '', head: sel.head || '', dom: sel.dom || '' }) })
           .then(r => r.ok ? r.json() : null)
           .then(d => { if (cancelled) return; if (d && d.landingUrl) { setLandingInput(d.landingUrl); setLandingAuto(true); } })
           .catch(() => {})
