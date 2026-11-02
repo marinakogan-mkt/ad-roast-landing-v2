@@ -47,16 +47,25 @@ async function icpIsAdmin(req, redis) {
   } catch (e) { return false; }
 }
 
-// Meta costs per ad, so only a paying roast account can trigger a pull.
-async function icpIsPaid(req, redis) {
+// Meta costs per ad, so only a signed-in roast account can trigger a pull. Free accounts get a daily limit.
+const META_FREE_DAY = 3;
+async function icpAccount(req, redis) {
   try {
     const tok = readSessionCookie(req);
-    if (!tok || !redis) return false;
+    if (!tok || !redis) return null;
     const s = await redis.get('auth:session:' + tok);
     const sess = s ? (typeof s === 'string' ? JSON.parse(s) : s) : null;
-    if (!sess || !sess.email || sess.mode !== 'roast') return false;
+    if (!sess || !sess.email || sess.mode !== 'roast') return null;
     const bal = await peekAccount(redis, sess.email);
-    return !!(bal && bal.plan && bal.plan !== 'free');
+    return { email: sess.email, plan: (bal && bal.plan) || 'free' };
+  } catch (e) { return null; }
+}
+async function metaFreeLimitHit(redis, email) {
+  try {
+    const key = 'meta:free:' + new Date().toISOString().slice(0, 10) + ':' + email;
+    const n = await redis.incr(key);
+    if (n === 1) await redis.expire(key, 60 * 60 * 48);
+    return n > META_FREE_DAY;
   } catch (e) { return false; }
 }
 
@@ -743,13 +752,15 @@ ${items}
       return res.status(200).json({ ok: true, ads: scGads, sources: { google: scGads.length }, notes: { google: 'ok' }, _fast: true, fresh: { checked: Date.now(), checkedAt: null, stale: false, listCached: false, count: scGads.length, scoredNew: scG.scoredNew, reused: scG.reused, pending: scG.pending, scoreError: scG.scoreError || null, rateLimited: !!scG.rateLimited } });
     }
 
-    // On-demand Meta: the board's button, paid accounts only. Folds the result into the pull cache
+    // On-demand Meta: the board's button, signed-in accounts only. Folds the result into the pull cache
     // and answers with just the count; the client then re-reads the board, which scores the new ads.
     // A company with no Meta ads is remembered too, so nobody pays to find that out twice.
     if (body.only === 'meta') {
       if (!META_ON) return res.status(200).json({ ok: false, reason: 'meta_off' });
-      if (!await icpIsPaid(req, _redis)) return res.status(402).json({ ok: false, reason: 'paid_only' });
+      const metaAcct = await icpAccount(req, _redis);
+      if (!metaAcct) return res.status(401).json({ ok: false, reason: 'sign_in' });
       if (cachedCopy && cachedCopy._metaAt && Date.now() - cachedCopy._metaAt < META_TTL_MS) return res.status(200).json({ ok: true, cached: true });
+      if (metaAcct.plan === 'free' && await metaFreeLimitHit(_redis, metaAcct.email)) return res.status(200).json({ ok: false, reason: 'meta_free_limit' });
       const mt = await fetchMetaAds({ company: body.company, domain: body.domain, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
       if (!mt.ok) return res.status(200).json({ ok: false, reason: mt.reason });
       const base = cachedCopy || { ok: true, ads: [], sources: {}, notes: {}, _checkedAt: Date.now() };

@@ -945,7 +945,7 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
 // any country with no verification. sukhdipp/meta-ad-library-scraper reads it at $0.0006 per ad, and
 // `advertiserDomains` filters by landing domain BEFORE billing, so other advertisers' ads cost nothing.
 // Chosen 30 oct over lergassy's ($0.00015): that one has no preview image on video ads.
-// OFF unless APIFY_META=1 in Vercel. ON, it never runs on a board load: only when a paid account
+// OFF unless APIFY_META=1 in Vercel. ON, it never runs on a board load: only when a signed-in account
 // asks for it (`only: 'meta'` in ads-fetch). Same APIFY_TOKEN as LinkedIn.
 export const META_ON = process.env.APIFY_META === '1';
 // Facebook's image links die after ~4 days, so Meta ads can't live as long as the rest of the board.

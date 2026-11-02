@@ -1796,7 +1796,7 @@
     // Google + the logo come back empty (a name like "Omni Convert" only ever resolves LinkedIn).
     const isValidUrl = (s) => { s = (s || '').trim(); if (!s || /\s/.test(s)) return false; try { new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s); return /\.[a-z]{2,}/i.test(s); } catch { return false; } };
 
-    function AdLibraryView({ onUnlock }) {
+    function AdLibraryView({ onUnlock, onSignup }) {
       const [modalHead, setModalHead] = useState(null);
       const [fP, setFP] = useState('all');
       const [siteInput, setSiteInput] = useState('');
@@ -2112,7 +2112,7 @@
           pending = (res.fresh && res.fresh.pending) || 0;
         }
       };
-      // Meta costs per ad, so it only runs from the board's button (paid accounts). The server folds the
+      // Meta costs per ad, so it only runs from the board's button (signed-in accounts). The server folds the
       // ads into the cached board; re-reading it scores them through the normal progressive path.
       const loadMeta = async () => {
         if (!real || !real.co || metaBusy) return;
@@ -2121,7 +2121,7 @@
         setMetaBusy(true); setMetaFailed(false);
         try {
           const m = await post({ only: 'meta' });
-          if (!m || !m.ok) { setMetaFailed(true); return; }
+          if (!m || !m.ok) { setMetaFailed(m && m.reason === 'meta_free_limit' ? 'limit' : true); return; }
           const res = await post({});
           if (loadSeqRef.current !== mySeq || !res || !res.ok || !Array.isArray(res.ads)) return;
           const realObj = { ...real, ads: _cleanBoardAds(res.ads), notes: res.notes || {}, fresh: res.fresh || null, totals: res.totals || real.totals || null };
@@ -2928,10 +2928,10 @@
                       lacking Meta ads. We can't fetch Meta creatives (bot-walled), so no image. */}
                   {SOON_SOURCES.filter(p => !ads.some(a => a.plat === p)).map(p => {
                     const notes = (real && real.notes) || {};
-                    const canPull = p === 'Meta' && notes.meta_on && acct.signedIn && acct.plan !== 'free';
+                    const canPull = p === 'Meta' && notes.meta_on;
                     const none = canPull && notes.meta === 'no_ads';
                     return (
-                    <button key={p} disabled={none || metaBusy} onClick={() => canPull ? loadMeta() : setSoon(p)} title={canPull ? 'Pull live ' + p + ' ads' : 'See what is coming for ' + p} className={'group rounded-2xl border overflow-hidden flex flex-col text-left p-0 transition-all duration-200 ' + (none || metaBusy ? '' : 'cursor-pointer hover:-translate-y-1 hover:shadow-lg')} style={{ borderColor: '#dbe4ef', borderStyle: 'dashed', background: '#fafbfc' }}>
+                    <button key={p} disabled={none || metaBusy} onClick={() => !canPull ? setSoon(p) : acct.signedIn ? loadMeta() : onSignup()} title={canPull ? 'Pull live ' + p + ' ads' : 'See what is coming for ' + p} className={'group rounded-2xl border overflow-hidden flex flex-col text-left p-0 transition-all duration-200 ' + (none || metaBusy ? '' : 'cursor-pointer hover:-translate-y-1 hover:shadow-lg')} style={{ borderColor: '#dbe4ef', borderStyle: 'dashed', background: '#fafbfc' }}>
                       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                         <span style={{ opacity: 0.7 }}><PlatLogo plat={p} size={18} /></span>
                         <span className="font-bold text-gray-500" style={{ fontSize: 15 }}>{p}</span>
@@ -2947,8 +2947,8 @@
                         </>}
                         {canPull && none && <span className="text-gray-400" style={{ fontSize: 12 }}>No active {p} ads found.</span>}
                         {canPull && !none && <>
-                          <span className="text-gray-400" style={{ fontSize: 12 }}>{metaBusy ? 'Reading the Ad Library, about 30 seconds.' : metaFailed ? "Couldn't pull them this time." : 'Pulled when you ask.'}</span>
-                          {!metaBusy && <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>{metaFailed ? 'Try again' : 'Pull ' + p + ' ads'} <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>}
+                          <span className="text-gray-400" style={{ fontSize: 12 }}>{metaBusy ? 'Reading the Ad Library, about 30 seconds.' : metaFailed === 'limit' ? 'Free accounts pull 3 a day. Back tomorrow.' : metaFailed ? "Couldn't pull them this time." : acct.signedIn ? 'Pulled when you ask.' : 'Free with an account.'}</span>
+                          {!metaBusy && metaFailed !== 'limit' && <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>{metaFailed ? 'Try again' : 'Pull ' + p + ' ads'} <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>}
                         </>}
                       </div>
                     </button>
@@ -5350,7 +5350,7 @@
 
       /* Internal admin roasts list (/?roasts=1). */
       if (view === 'roasts-list') return <RoastsListView />;
-      if (view === 'ad-library') return (<React.Fragment><AdLibraryView onUnlock={() => setShowUnlockModal(true)} />{boardUnlockEl}{boardGateEl}</React.Fragment>);
+      if (view === 'ad-library') return (<React.Fragment><AdLibraryView onUnlock={() => setShowUnlockModal(true)} onSignup={() => setShowSignupGate(true)} />{boardUnlockEl}{boardGateEl}</React.Fragment>);
 
       /* ICP gate: the roast stopped because we couldn't read the site well enough to detect the
          buyer. Rather than score the ad against a guess (which would falsely rank a good-fit brand
@@ -5709,7 +5709,7 @@
                 {/* Left-aligned with a 20px inset so they start under the input's "Your website" text */}
                 <p className="hidden sm:block text-gray-400 mt-3 sm:pl-5" style={{ fontSize: '13px' }}>🎁 We pull every live ad we find and score it &middot; first roast's on us &middot; no credit card</p>
                 <p className="sm:hidden text-gray-400 mt-3" style={{ fontSize: '11px' }}>🎁 First roast's on us &middot; no credit card</p>
-                <p className="text-gray-400 mt-1 sm:pl-5" style={{ fontSize: '13px', lineHeight: 1.3 }}>Works with LinkedIn and Google ads, across any industry.</p>
+                <p className="text-gray-400 mt-1 sm:pl-5" style={{ fontSize: '13px', lineHeight: 1.3 }}>Works with LinkedIn, Google and Meta ads, across any industry.</p>
               </div>
             </div>
             {/* SOCIAL PROOF marquee, inside the first screen: every live roast, auto-fed and scrolling */}
