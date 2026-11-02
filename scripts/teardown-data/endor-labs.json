@@ -1,5 +1,4 @@
 {
- "embed": true,
  "meta": {
   "slug": "endor-labs",
   "name": "Endor Labs",
@@ -8,9 +7,7 @@
   "human_date": "June 15, 2026",
   "initial": "E",
   "badge_color": "#0f766e",
-  "verdict": "Out of order",
   "eyebrow": "Ad teardown &middot; SCA / AppSec",
-  "urn": "urn:li:share:7472302256227328001",
   "post_url": "https://www.linkedin.com/feed/update/urn:li:share:7472302256227328001",
   "title": "Endor Labs ad teardown: the strongest AppSec story of the quarter, buried",
   "meta_desc": "A teardown of Endor Labs's live LinkedIn ad: a Rubrik case study with a named exec and real numbers (a 24-hour SLA, 187 npm packages cleared in 30 minutes) turned into soft adjectives in the ad body.",
@@ -32,7 +29,13 @@
     "name": "Cycode",
     "q": "Four analysts sold the click. The page hid them."
    }
-  ]
+  ],
+  "ad_img": "roast",
+  "roast_id": "75f30329",
+  "lp_url": "https://www.endorlabs.com/learn/rubrik-hits-aggressive-slas-via-endor-labs",
+  "ad_detail_url": "https://www.linkedin.com/ad-library/detail/1253910243",
+  "logo_url": "https://www.adroast.in/api/icp?logo=endorlabs.com",
+  "platform": "LinkedIn"
  },
  "voice": {
   "hook": [
@@ -45,14 +48,46 @@
     "tag": "ad",
     "good": true,
     "title": "The raw material is elite",
-    "what": "A named customer (Rubrik), a named executive, and hard numbers: a 24-hour SLA and 187 compromised npm packages cleared in 30 minutes. This is the kind of proof most B2B ads never get to use."
+    "what": "A named customer (Rubrik), a named executive, and hard numbers: a 24-hour SLA and 187 compromised npm packages cleared in 30 minutes. This is the kind of proof most B2B ads never get to use.",
+    "score": 8
+   },
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 7,
+    "title": "The creative names the outcome",
+    "what": "“How Rubrik hits aggressive remediation SLAs” is clear and specific, and the two logos side by side do real work. It is the sharpest line in the ad, and it still stops short of the number."
    },
    {
     "tag": "ad",
     "good": false,
     "title": "Every hard number turned into a soft adjective",
     "what": "The ad body turns the real figures into mush, “tight SLAs” instead of “24-hour SLA,” and leaves the operator quote that would stop the scroll completely unused. The strongest assets are in the story but not in the ad.",
-    "fix": "Lead with the numbers and the quote: 187 packages in 30 minutes, the named exec's words, verbatim. Let the proof do the work it was built for."
+    "fix": "Lead with the numbers and the quote: 187 packages in 30 minutes, the named exec's words, verbatim. Let the proof do the work it was built for.",
+    "score": 6
+   },
+   {
+    "tag": "page",
+    "good": true,
+    "score": 8,
+    "title": "The page keeps the promise",
+    "what": "Same customer, same SLA story, and Rubrik’s Head of Security quoted right at the top. A reader who clicked for proof finds it immediately."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 7,
+    "title": "The key results have no numbers",
+    "what": "The results box says “rapid response to malware” and “faster remediation.” The 187 packages, the 30 minutes and the 24-hour SLA sit further down, inside the story.",
+    "fix": "Put the numbers in the results box. It is the first thing a skimming security leader reads."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 5,
+    "title": "A story ends in two different asks",
+    "what": "“Book a Demo” and “Start Free Trial” both sit in the header, a bigger ask than the “Learn more” in the ad, and the reader has no single next step that fits having just read a customer story.",
+    "fix": "Pick one action and put it at the end of the story, where the proof has already done its work."
    }
   ],
   "faq": [
@@ -71,6 +106,64 @@
    {
     "q": "How do I check my own ad for this?",
     "a": "Look at your best customer story and your ad side by side: did the real numbers and the real quote make it into the ad, or did they get softened into adjectives? Burying your strongest proof is the most expensive edit you can make. AdRoast scores this automatically, and the first roast is free."
+   }
+  ],
+  "scorecard": [
+   {
+    "label": "Headline Clarity",
+    "score": 7,
+    "note": "Creative headline 'How Rubrik hits aggressive remediation SLAs' is clear and specific, though 'one ticket, one fix dream' in body copy is vaguer jargon."
+   },
+   {
+    "label": "CTA Friction",
+    "score": 6,
+    "note": "Learn More fits a customer story, but the landing page immediately pushes Book Demo and Start Free Trial, a bigger ask than the ad implied."
+   },
+   {
+    "label": "Visual-Copy Match",
+    "score": 7,
+    "note": "Rubrik and Endor logos paired cleanly, gradient text on dark background is on-brand and readable, subhead on creative matches ad body tone."
+   },
+   {
+    "label": "Benefit Specificity",
+    "score": 6,
+    "note": "FedRAMP authorization and single pane of glass are concrete, but 'one ticket, one fix dream' undersells the actual reachability-analysis mechanism."
+   },
+   {
+    "label": "Trust Signals",
+    "score": 8,
+    "note": "Named customer Rubrik and the FedRAMP claim are strong, specific credibility markers for this buyer, and the page adds a quoted Head of Security."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 7,
+  "landing_page_score": 7,
+  "issues": [
+   {
+    "title": "Headline Clarity",
+    "score": 7,
+    "explanation": "Creative headline 'How Rubrik hits aggressive remediation SLAs' is clear and specific, though 'one ticket, one fix dream' in body copy is vaguer jargon."
+   },
+   {
+    "title": "CTA Friction",
+    "score": 6,
+    "explanation": "Learn More fits a customer story, but the landing page immediately pushes Book Demo and Start Free Trial, a bigger ask than the ad implied."
+   },
+   {
+    "title": "Visual-Copy Match",
+    "score": 7,
+    "explanation": "Rubrik and Endor logos paired cleanly, gradient text on dark background is on-brand and readable, subhead on creative matches ad body tone."
+   },
+   {
+    "title": "Benefit Specificity",
+    "score": 6,
+    "explanation": "FedRAMP authorization and single pane of glass are concrete, but 'one ticket, one fix dream' undersells the actual reachability-analysis mechanism."
+   },
+   {
+    "title": "Trust Signals",
+    "score": 8,
+    "explanation": "Named customer Rubrik, a quoted exec (Head of Security), and FedRAMP compliance claim are strong, specific credibility markers for this buyer."
    }
   ]
  }

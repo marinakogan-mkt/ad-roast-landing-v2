@@ -59,6 +59,6 @@ uses the creative saved with the roast. Findings without `score` render without 
 
 ## State
 
-Every page in the hub uses the monday format except endor-labs, which still embeds
-the LinkedIn post: its live LinkedIn ads show no destination, so it has no landing to
-roast. Findings need a `score` from the roast so each row carries a chip.
+Every page in the hub uses the monday format. Findings need a `score` from the roast
+so each row carries a chip. A rotated ad can still be found in the LinkedIn Ad Library:
+search the advertiser with a keyword, the detail page gives the creative and destination.
