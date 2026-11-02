@@ -6,6 +6,7 @@ import { videoStoryboard, adIsVideo } from './_vframes.js';
 import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, logClaudeUsage } from './_adlibrary.js';
 import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
 import { platformRulesPrompt, RULES_VERSION } from './_platform-rules.js';
+import { PROMPT_VERSION, roastVer } from './_roast-version.js';
 
 const _redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -234,6 +235,7 @@ function scrubLocaleReasons(parsed) {
 }
 
 export default async function handler(req, res) {
+  const _t0 = Date.now(); // handler-start clock, so late best-effort work can bail before the 60s cap
   const API_VERSION = 'v4';
   /* Bumped whenever the scoring PROMPT changes in a way that should invalidate
      cached roasts. It is part of the dedupe hash only, so a prompt fix actually
@@ -254,8 +256,8 @@ export default async function handler(req, res) {
      p8 (2026-10-30): PLATFORM FORMAT & POLICY RISK + policy_flags (c1373e4), which shipped
      without a bump, so a repeat roast kept serving the p7 result with no flags.
      The platform rules themselves now live in api/_platform-rules.js with their own
-     RULES_VERSION in the hash, so a rule update needs no bump here. */
-  const PROMPT_VERSION = 'p8';
+     RULES_VERSION in the hash, so a rule update needs no bump here. PROMPT_VERSION
+     now lives in api/_roast-version.js (shared with roast-view.js), with the history. */
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', _version: API_VERSION });
@@ -300,6 +302,27 @@ export default async function handler(req, res) {
   const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, adImageUrl, company, website, adUrl, forceFresh, isVideo: isVideoIn } = body;
   let isVideo = isVideoIn;
 
+  /* MIGRATION RE-ROAST (internal only). When a stored report was scored under an older
+     prompt/rules version, roast-view re-roasts it on open by POSTing back here with
+     action:'migrate' and the report's FROZEN snapshot (ad text, creative, landing text).
+     This path re-scores the SAME inputs with the current rules, writes back to the SAME
+     report id, and re-stamps record.ver, WITHOUT consuming a token, touching the company
+     roster, or minting a new id. It re-fetches NOTHING (no live ad, no live landing): the
+     whole point is that a page which later changed or died must not alter a roast that was
+     already correct. It is gated by a shared secret (ROAST_MIGRATE_SECRET) sent in the
+     x-roast-migrate header, compared in constant time. With the env var unset this whole
+     branch is dead, so there is NO token-free roast path reachable by an external caller:
+     a request with action:'migrate' but no/wrong secret falls through to the normal flow
+     and hits the standard entitlement gate (anonymous -> gated sample, no model call). */
+  let isMigrate = false;
+  try {
+    const _ms = process.env.ROAST_MIGRATE_SECRET || '';
+    const _mh = req.headers['x-roast-migrate'];
+    if (_ms && body.action === 'migrate' && typeof _mh === 'string' && _mh.length === _ms.length) {
+      isMigrate = crypto.timingSafeEqual(Buffer.from(_mh), Buffer.from(_ms));
+    }
+  } catch (e) { isMigrate = false; }
+
   // Working creative vars: a roast started from the "Your Live Ads" dashboard sends the
   // real creative as a hotlinkable URL (adImageUrl) instead of an uploaded base64 image.
   // We fetch it server-side (no browser CORS) further down and fill these in so the model
@@ -310,6 +333,11 @@ export default async function handler(req, res) {
   // of a lone poster: with it the model actually analyzes the video, so the creative is scored, not
   // marked "not analyzed". Stays false (copy-only, visual not scored) when we can't fetch the video.
   let videoFramesOk = false;
+  /* On a migration re-roast the creative we pass back IS the frozen one the model already saw
+     (for a video that was a prebuilt 6-frame storyboard). framesPrebuilt mirrors the record's
+     original videoFramesOk, so the re-roast scores the video exactly as before rather than
+     marking it "not analyzed", and NEVER rebuilds the storyboard (which would re-fetch the clip). */
+  if (isMigrate && body.framesPrebuilt && effShot) videoFramesOk = true;
 
   /* Pre-LLM token gate (optimization #2): a roast only warrants an Anthropic call
      when the caller is a signed-in account WITH tokens. Out-of-token or anonymous
@@ -324,7 +352,9 @@ export default async function handler(req, res) {
     try { acctBal = await peekAccount(_redis, acctEmail); }
     catch (e) { redisDown = true; console.error('[AdRoast] peek failed:', e.message); }
   }
-  const entitled = redisDown || !!(acctEmail && acctBal && acctBal.tokens > 0);
+  // Migration re-roasts are internal (secret-gated above) and spend no token, so they are
+  // entitled by definition — they never reach the gated/blur path.
+  const entitled = isMigrate || redisDown || !!(acctEmail && acctBal && acctBal.tokens > 0);
   /* Video analysis is a premium lever (it costs a download + ffmpeg + extra vision tokens), so it is
      gated by plan: the FREE first roast includes it as a taster, and the top paid tier (Pro) includes
      it, but the basic paid tier (Starter, and the legacy small plans) does NOT — a Starter who wants
@@ -351,7 +381,7 @@ export default async function handler(req, res) {
      up to its plan's number of DISTINCT companies (Free/Starter 1, Pro 5). Re-roasting a company
      it already has is always fine. Fails OPEN on any Redis error so it never wrongly blocks. */
   let _companyKey = null;
-  if (acctEmail && !redisDown) {
+  if (acctEmail && !redisDown && !isMigrate) {
     try {
       _companyKey = companyKey(company, website);
       const cChk = await checkCompanyAllowed(_redis, acctEmail, _companyKey, (acctBal && acctBal.plan) || 'free');
@@ -381,7 +411,7 @@ export default async function handler(req, res) {
     .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null, adImageUrl: adImageUrl || null, isVideo: !!isVideo, promptVersion: `${PROMPT_VERSION}:${RULES_VERSION}` }))
     .digest('hex');
   const dedupeKey = acctEmail ? `roast:dedupe:${acctEmail}:${dedupeHash}` : null;
-  if (dedupeKey && !redisDown && !forceFresh) {
+  if (dedupeKey && !redisDown && !forceFresh && !isMigrate) {
     try {
       const raw = await _redis.get(dedupeKey);
       const hit = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
@@ -436,7 +466,8 @@ export default async function handler(req, res) {
   // fetch the page and extract OG tags + body text to use as the ad copy for the LLM prompt.
   let effectiveAdCopy = adCopy;
   const adCopyTrim = (adCopy || '').trim();
-  if (/^https?:\/\/\S+$/i.test(adCopyTrim)) {
+  // Migration passes the already-resolved ad text (record.adText), so never re-scrape an ad URL.
+  if (!isMigrate && /^https?:\/\/\S+$/i.test(adCopyTrim)) {
     const platformDetected = /linkedin\.com\/ad-library|linkedin\.com\/posts/i.test(adCopyTrim) ? 'linkedin'
       : /facebook\.com\/ads\/library|fb\.com\/ads\/library/i.test(adCopyTrim) ? 'meta'
       : /adstransparency\.google\.com/i.test(adCopyTrim) ? 'google'
@@ -498,7 +529,9 @@ export default async function handler(req, res) {
 
   // Fetch landing page content if URL provided
   let landingPageContent = '';
-  if (landingUrl?.trim()) {
+  // Migration passes landingUrl='' and the frozen landing text as landingCopy, so no live
+  // fetch (and no Jina fallback) runs: a landing that later changed or died never alters the roast.
+  if (!isMigrate && landingUrl?.trim()) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
@@ -1013,12 +1046,49 @@ Return the JSON object defined in the output contract. All fields required.`;
         if (!Array.isArray(parsed.policy_flags)) parsed.policy_flags = [];
         else parsed.policy_flags = parsed.policy_flags.filter(f => f && typeof f === 'object' && f.detail).slice(0, 8);
 
+        /* MIGRATION write-back: overwrite the SAME report in place with the freshly
+           re-scored result, re-stamp record.ver, and refresh the compact roast:index
+           row's scores. NO token, NO company roster, NO new id, NO dedupe/roast:last.
+           Everything else in the record (frozen snapshot, creative keys, landingUrl,
+           the pinned landing screenshot) is preserved by merging onto the old record. */
+        if (isMigrate && !redisDown) {
+          const idM = String(body.migrateReportId || '');
+          try {
+            const rawOld = idM ? await _redis.get(`roast:report:${idM}`) : null;
+            const oldRec = rawOld ? (typeof rawOld === 'string' ? JSON.parse(rawOld) : rawOld) : null;
+            if (oldRec) {
+              const { _entitlement, _meta, ...cleanResult } = parsed;
+              oldRec.result = cleanResult;
+              oldRec.ver = roastVer();
+              oldRec.migratedTs = Date.now();
+              await _redis.set(`roast:report:${idM}`, JSON.stringify(oldRec), { ex: 60 * 60 * 24 * 90 });
+              // Update the matching roast:index summary row's scores in place (same id, no new row).
+              try {
+                const rows = await _redis.lrange('roast:index', 0, 999);
+                for (let i = 0; i < (rows || []).length; i++) {
+                  let row; try { row = typeof rows[i] === 'string' ? JSON.parse(rows[i]) : rows[i]; } catch (e) { continue; }
+                  if (row && row.reportId === idM) {
+                    row.adScore = parsed.overall_score ?? row.adScore ?? null;
+                    row.lpScore = parsed.landing_page_roast?.overall_score ?? row.lpScore ?? null;
+                    row.matchScore = parsed.ad_landing_mismatch?.alignment_score ?? row.matchScore ?? null;
+                    row.ver = oldRec.ver;
+                    await _redis.lset('roast:index', i, JSON.stringify(row));
+                    break;
+                  }
+                }
+              } catch (e) { console.error('[AdRoast migrate] index update:', e.message); }
+              parsed._migrated = true;
+            }
+          } catch (e) { console.error('[AdRoast migrate] write-back failed:', e.message); }
+          // Internal path: no account, no entitlement to report back.
+          parsed._entitlement = { authed: false, email: null, full: true, remaining: null, plan: null };
+        }
         /* Token consume + entitlement. We only reach here when `entitled` was true
            at the gate above (account has tokens, or Redis was down and we failed
            open). Consume one token for this successful roast, and cache the full
            result to roast:last so any out-of-token retry re-serves it — blurred —
            with no further Anthropic call (optimization #2). */
-        if (acctEmail && !redisDown) {
+        else if (acctEmail && !redisDown) {
           try {
             const t = await consumeToken(_redis, acctEmail);
             parsed._entitlement = { authed: true, email: acctEmail, full: t.full, remaining: t.remaining, plan: t.plan };
@@ -1040,6 +1110,19 @@ Return the JSON object defined in the output contract. All fields required.`;
             const { _entitlement, _meta, ...cleanResult } = parsed; // don't persist per-request entitlement/debug
             const ts = Date.now();
             const record = { result: cleanResult, icp: icpDescription || '', platform: platform || '', offerType: offerType || '', offerDetail: offerDetail || '', company: company || '', website: website || '', landingUrl: landingUrl || '', adUrl: adUrl || '', adCopy: adCopy || '', visualDescription: visualDescription || '', email: acctEmail, ts, landingStatus, isVideo: !!isVideo };
+            /* FROZEN SNAPSHOT for a rules-version re-roast (api/roast-view.js). ver stamps the
+               prompt+rules the roast was scored under; a later mismatch triggers an in-place
+               re-roast of THIS saved content (never a live re-fetch). adText is the resolved ad
+               copy the model actually read (after any ad-URL scrape), landingContent is the
+               landing text it read, and videoFramesOk records whether the creative was a scored
+               video storyboard. isAdvancedAudit marks multi-variant audits (variants aren't frozen,
+               so roast-view leaves those as-is). These are what let the re-roast reproduce the
+               exact inputs with zero network calls. */
+            record.ver = roastVer();
+            record.adText = effectiveAdCopy || '';
+            record.landingContent = (landingPageContent || landingCopy || '').slice(0, 8000);
+            record.videoFramesOk = !!videoFramesOk;
+            record.isAdvancedAudit = !!isAdvancedAudit;
             /* Persist the ad creative so a shared/cold report shows the actual ad being
                roasted. Downscaled JPEG (~800px) is small; cap defensively so an oversized
                image never blows the Redis value limit (the roast still saves without it). */
@@ -1076,6 +1159,50 @@ Return the JSON object defined in the output contract. All fields required.`;
                 await _redis.hset(`roast:cos:${acctEmail}`, { [_companyKey]: JSON.stringify({ domain: _companyKey, name: company || _companyKey, site: website || _companyKey, ts }) });
               }
             } catch (e) {}
+
+            /* FREEZE THE LANDING SCREENSHOT, ONCE, AT ROAST TIME. The report viewer shows the
+               landing via /api/icp?shot=<url>&report=<id>, which serves shot:report:<id> when set.
+               Populating that key now (not lazily on first view) means the report always shows the
+               landing exactly as it was when roasted: a page that later changes its hero, or dies,
+               never alters this report. Best-effort: reuses icp.js's url-render cache when warm to
+               avoid a fresh render, caps the fetch so it can't eat the function budget, and on any
+               failure falls back to the existing lazy first-view pin. Only when a shot key is set. */
+            try {
+              const _lu = (landingUrl || '').trim();
+              const SHOT_KEY = process.env.SCREENSHOTONE_ACCESS_KEY;
+              if (_lu && /^https?:\/\//i.test(_lu) && SHOT_KEY) {
+                const urlCacheKey = 'shot:v1:' + _lu; // same key icp.js's shot renderer caches under
+                let shotB64 = null;
+                try { const hit = await _redis.get(urlCacheKey); if (hit && typeof hit === 'string') shotB64 = hit; } catch (e) {}
+                // Only kick off a FRESH render when there's budget left (video roasts can already be
+                // ~45s); otherwise skip and let the lazy first-view pin capture it. A cache hit is free.
+                if (!shotB64 && (Date.now() - _t0) < 40000) {
+                  const so = new URL('https://api.screenshotone.com/take');
+                  so.searchParams.set('access_key', SHOT_KEY);
+                  so.searchParams.set('url', _lu);
+                  so.searchParams.set('format', 'jpg');
+                  so.searchParams.set('viewport_width', '1280');
+                  so.searchParams.set('viewport_height', '900');
+                  so.searchParams.set('image_quality', '82');
+                  so.searchParams.set('block_cookie_banners', 'true');
+                  so.searchParams.set('block_ads', 'true');
+                  so.searchParams.set('block_chats', 'true');
+                  so.searchParams.set('timeout', '14');
+                  const sc = new AbortController();
+                  const st = setTimeout(() => sc.abort(), 15000);
+                  let up; try { up = await fetch(so.toString(), { signal: sc.signal }); } finally { clearTimeout(st); }
+                  const ct = (up && up.headers.get('content-type')) || '';
+                  if (up && up.ok && /^image\//i.test(ct)) {
+                    const b = Buffer.from(await up.arrayBuffer());
+                    if (b.length && b.length < 800000) {
+                      shotB64 = b.toString('base64');
+                      try { await _redis.set(urlCacheKey, shotB64, { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
+                    }
+                  }
+                }
+                if (shotB64) await _redis.set(`shot:report:${reportId}`, shotB64, { ex: 60 * 60 * 24 * 90 });
+              }
+            } catch (e) { /* landing shot is best-effort; the lazy first-view pin still covers it */ }
           } catch (e) { console.error('[AdRoast] roast index error:', e.message); }
 
           try { await _redis.set(`roast:last:${acctEmail}`, JSON.stringify(parsed), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
