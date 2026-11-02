@@ -5,7 +5,7 @@ import { consumeToken, peekAccount, companyKey, checkCompanyAllowed, addCompany 
 import { videoStoryboard, adIsVideo } from './_vframes.js';
 import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, logClaudeUsage } from './_adlibrary.js';
 import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
-import { platformRulesPrompt, RULES_VERSION } from './_platform-rules.js';
+import { platformRulesPrompt, RULES_VERSION, mechanicalPolicyFlags } from './_platform-rules.js';
 import { PROMPT_VERSION, roastVer } from './_roast-version.js';
 
 const _redis = new Redis({
@@ -234,6 +234,55 @@ function scrubLocaleReasons(parsed) {
   return emptied;
 }
 
+/* Cheap model for the rules-version re-roast: recompute ONLY policy_flags. A rules change (new
+   platform FORMAT & POLICY rules) does not change the quality scores, the landing read, or the
+   mismatch, so there is no reason to re-run the whole roast (image + 5 dimensions + landing +
+   mismatch on the big model). We re-judge only the compliance layer, from the FROZEN ad TEXT,
+   with NO creative image attached (the image is the expensive part and the rules are about the
+   text/format). A small text model is plenty for this. */
+const FLAGS_MODEL = 'claude-haiku-5-5';
+
+/* Recompute policy_flags for the current platform rules, from the stored ad text only.
+   Mechanical (zero-token) flags are unioned with a tiny text-only model pass that handles the
+   judgment the rules need (trademark: is a named brand a competitor and is the LP a comparison
+   page; editorial tone; capitalization; per-asset limits). No image, short output. Any model
+   failure degrades to just the mechanical flags, never throws. */
+async function recomputePolicyFlags({ platform, adText, visualDescription, landingUrl, landingContent }) {
+  const mech = mechanicalPolicyFlags({ platform, adText, visualDescription });
+  const text = [adText, visualDescription && ('AD VISUAL: ' + visualDescription)].filter(Boolean).join('\n\n').slice(0, 6000);
+  if (!text.trim()) return mech; // no text to judge -> only the mechanical flags (usually none)
+  const lpHint = (landingContent || '').replace(/\s+/g, ' ').trim().slice(0, 1200);
+  const sys = platformRulesPrompt()
+    + '\n\nYou are ONLY checking platform FORMAT & POLICY RISK, never ad quality. Using the rules above, return ONLY compact JSON: {"policy_flags":[{"type":"...","severity":"hard"|"soft","detail":"..."}]}. No prose, no markdown. A clean ad returns {"policy_flags":[]}. Judge from the ad TEXT below; there is no creative image to look at, so never flag anything about imagery.';
+  const user = `Platform: ${platform || 'unknown'}\nLanding URL: ${landingUrl || 'n/a'}\n\n=== AD TEXT ===\n${text}\n`
+    + (lpHint ? `\n=== LANDING PAGE TEXT (only for the trademark comparison-page exception) ===\n${lpHint}\n` : '');
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: FLAGS_MODEL, max_tokens: 700, thinking: { type: 'disabled' }, system: [{ type: 'text', text: sys }], messages: [{ role: 'user', content: user }] })
+    });
+    const data = await r.json();
+    try { logClaudeUsage('migrate-flags', FLAGS_MODEL, data, 'img=0'); } catch (e) {}
+    if (!data || data.error) return mech;
+    const t = Array.isArray(data.content) ? data.content.filter(b => b && b.type === 'text').map(b => b.text).join('\n') : (data.content?.[0]?.text || '');
+    const m = t && t.match(/\{[\s\S]*\}/);
+    const parsed = m ? JSON.parse(m[0]) : {};
+    const model = Array.isArray(parsed.policy_flags) ? parsed.policy_flags.filter(f => f && typeof f === 'object' && f.detail) : [];
+    // Union mechanical + model, dedupe by type + leading detail text, cap at 8 (same cap as a roast).
+    const seen = new Set(); const out = [];
+    for (const f of [...mech, ...model]) {
+      const k = String(f.type || '') + '|' + String(f.detail || '').toLowerCase().replace(/\s+/g, ' ').slice(0, 60);
+      if (seen.has(k)) continue;
+      seen.add(k); out.push(f);
+    }
+    return out.slice(0, 8);
+  } catch (e) {
+    console.error('[AdRoast migrate-flags] model error:', e && e.message);
+    return mech;
+  }
+}
+
 export default async function handler(req, res) {
   const _t0 = Date.now(); // handler-start clock, so late best-effort work can bail before the 60s cap
   const API_VERSION = 'v4';
@@ -314,14 +363,46 @@ export default async function handler(req, res) {
      branch is dead, so there is NO token-free roast path reachable by an external caller:
      a request with action:'migrate' but no/wrong secret falls through to the normal flow
      and hits the standard entitlement gate (anonymous -> gated sample, no model call). */
-  let isMigrate = false;
+  let migrateMode = null; // 'flags' (cheap, rules-only) | 'full' (prompt changed) | null
   try {
     const _ms = process.env.ROAST_MIGRATE_SECRET || '';
     const _mh = req.headers['x-roast-migrate'];
-    if (_ms && body.action === 'migrate' && typeof _mh === 'string' && _mh.length === _ms.length) {
-      isMigrate = crypto.timingSafeEqual(Buffer.from(_mh), Buffer.from(_ms));
+    const _act = body.action === 'migrate' ? 'full' : (body.action === 'migrate-flags' ? 'flags' : null);
+    if (_ms && _act && typeof _mh === 'string' && _mh.length === _ms.length && crypto.timingSafeEqual(Buffer.from(_mh), Buffer.from(_ms))) {
+      migrateMode = _act;
     }
-  } catch (e) { isMigrate = false; }
+  } catch (e) { migrateMode = null; }
+  // Only the FULL re-roast threads through the main handler; the guards below use isMigrate.
+  const isMigrate = migrateMode === 'full';
+
+  /* CHEAP rules-version re-roast: recompute ONLY policy_flags and patch it into the stored
+     result, with the same id and re-stamped ver. A rules change never moves the quality scores,
+     so the roast:index row (scores only) is untouched. No creative image, no landing re-read, no
+     full roast. Early-returns here so NONE of the token/scrape/prompt machinery below runs.
+     Secret-gated via migrateMode; unreachable without the secret. */
+  if (migrateMode === 'flags') {
+    const idM = String(body.migrateReportId || '');
+    try {
+      const rawOld = idM ? await _redis.get(`roast:report:${idM}`) : null;
+      const oldRec = rawOld ? (typeof rawOld === 'string' ? JSON.parse(rawOld) : rawOld) : null;
+      if (!oldRec || !oldRec.result) return res.status(200).json({ _migratedFlags: false, reason: 'no_record' });
+      const flags = await recomputePolicyFlags({
+        platform: oldRec.platform || '',
+        adText: oldRec.adText || oldRec.adCopy || '',
+        visualDescription: oldRec.visualDescription || '',
+        landingUrl: oldRec.landingUrl || '',
+        landingContent: oldRec.landingContent || ''
+      });
+      oldRec.result.policy_flags = flags;
+      oldRec.ver = roastVer();
+      oldRec.migratedTs = Date.now();
+      await _redis.set(`roast:report:${idM}`, JSON.stringify(oldRec), { ex: 60 * 60 * 24 * 90 });
+      return res.status(200).json({ _migratedFlags: true, policy_flags: flags });
+    } catch (e) {
+      console.error('[AdRoast migrate-flags] write-back failed:', e && e.message);
+      return res.status(500).json({ _migratedFlags: false, error: 'flags_failed' });
+    }
+  }
 
   // Working creative vars: a roast started from the "Your Live Ads" dashboard sends the
   // real creative as a hotlinkable URL (adImageUrl) instead of an uploaded base64 image.

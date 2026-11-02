@@ -27,37 +27,47 @@ const redis = new Redis({
    whole migrate-on-open feature is dark (reports serve exactly as before). The secret is what
    authorizes the token-free re-roast on the /api/roast side; a same-origin call without it
    would just hit the normal entitlement gate, so this is not a spoofable token bypass. */
-async function runMigration(id, rec) {
+async function runMigration(id, rec, mode) {
   const secret = process.env.ROAST_MIGRATE_SECRET || '';
   if (!secret) return false;
   // Self-call the SAME deployment (VERCEL_URL is this deployment's host), so a preview tests
   // the preview's code and prod calls prod — never cross-deployment. SITE_URL is the fallback.
   const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : (process.env.SITE_URL || 'https://adroast.in');
-  // The frozen creative the model originally scored (inline, or in its own permanent key).
-  let adScreenshot = rec.adScreenshot || '';
-  let adScreenshotType = rec.adScreenshotType || '';
-  if (!adScreenshot && rec.adCreativeKey) {
-    try {
-      const craw = await redis.get(`roast:creative:${id}`);
-      const c = craw ? (typeof craw === 'string' ? JSON.parse(craw) : craw) : null;
-      if (c && c.b64) { adScreenshot = c.b64; adScreenshotType = c.type || adScreenshotType; }
-    } catch (e) {}
+
+  let payload;
+  if (mode === 'flags') {
+    // CHEAP: only the platform rules changed. The handler loads the record itself and recomputes
+    // ONLY policy_flags from the frozen ad text (text-only, small model, no creative image), so the
+    // request body carries nothing but the id. Scores and everything else stay as they were.
+    payload = { action: 'migrate-flags', migrateReportId: id };
+  } else {
+    // FULL: the scoring prompt changed (rare, manual). Re-roast the frozen snapshot end to end.
+    // The frozen creative the model originally scored (inline, or in its own permanent key).
+    let adScreenshot = rec.adScreenshot || '';
+    let adScreenshotType = rec.adScreenshotType || '';
+    if (!adScreenshot && rec.adCreativeKey) {
+      try {
+        const craw = await redis.get(`roast:creative:${id}`);
+        const c = craw ? (typeof craw === 'string' ? JSON.parse(craw) : craw) : null;
+        if (c && c.b64) { adScreenshot = c.b64; adScreenshotType = c.type || adScreenshotType; }
+      } catch (e) {}
+    }
+    payload = {
+      action: 'migrate',
+      migrateReportId: id,
+      platform: rec.platform || '', offerType: rec.offerType || '', offerDetail: rec.offerDetail || '',
+      icpDescription: rec.icp || '',
+      adCopy: rec.adText || '',            // frozen resolved ad text -> never re-scraped
+      visualDescription: rec.visualDescription || '',
+      landingUrl: '',                      // empty -> the handler never re-fetches the landing
+      landingCopy: rec.landingContent || '',
+      adScreenshot: adScreenshot || null, adScreenshotType,
+      adImageUrl: '',                      // empty -> the handler never re-fetches the creative
+      isVideo: !!rec.isVideo, framesPrebuilt: !!rec.videoFramesOk,
+      company: rec.company || '', website: rec.website || '', adUrl: '',
+      allowNoLanding: true, allowWeakIcp: true, forceFresh: true
+    };
   }
-  const payload = {
-    action: 'migrate',
-    migrateReportId: id,
-    platform: rec.platform || '', offerType: rec.offerType || '', offerDetail: rec.offerDetail || '',
-    icpDescription: rec.icp || '',
-    adCopy: rec.adText || '',            // frozen resolved ad text -> never re-scraped
-    visualDescription: rec.visualDescription || '',
-    landingUrl: '',                      // empty -> the handler never re-fetches the landing
-    landingCopy: rec.landingContent || '',
-    adScreenshot: adScreenshot || null, adScreenshotType,
-    adImageUrl: '',                      // empty -> the handler never re-fetches the creative
-    isVideo: !!rec.isVideo, framesPrebuilt: !!rec.videoFramesOk,
-    company: rec.company || '', website: rec.website || '', adUrl: '',
-    allowNoLanding: true, allowWeakIcp: true, forceFresh: true
-  };
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 55000);
   try {
@@ -69,7 +79,7 @@ async function runMigration(id, rec) {
     });
     if (!r.ok) return false;
     const j = await r.json().catch(() => null);
-    return !!(j && (j._migrated || j.overall_score));
+    return !!(j && (j._migratedFlags || j._migrated || j.overall_score));
   } catch (e) {
     return false;
   } finally { clearTimeout(t); }
@@ -381,6 +391,10 @@ export default async function handler(req, res) {
          version. The report is PERMANENT and never degraded: the single trigger is a version
          mismatch (not a changed/dead ad or landing), the re-roast runs only against the frozen
          snapshot, and anything that goes wrong just serves the old record intact.
+         ver is "PROMPT:RULES". The two parts drive two very different costs:
+           - only RULES changed  => 'flags': recompute ONLY policy_flags (text-only, small model,
+             no image). This is the automatic, frequent case and is cheap. Scores don't move.
+           - PROMPT changed       => 'full': a full re-roast of the frozen snapshot (rare, manual).
          Eligibility is deliberately narrow:
            - rec.adText present  => the report was saved WITH the frozen snapshot, so the inputs
              can be reproduced with zero network calls. Legacy reports (no snapshot) are served
@@ -396,6 +410,10 @@ export default async function handler(req, res) {
           && typeof rec.adText === 'string'
           && !rec.isAdvancedAudit
           && rec.ver !== CUR;
+        // Cheap by default (rules-only); only a PROMPT-part change needs the full re-roast.
+        const curParts = CUR.split(':');
+        const oldParts = String(rec.ver || '').split(':');
+        const mode = (oldParts[0] && oldParts[0] !== curParts[0]) ? 'full' : 'flags';
         if (eligible) {
           const failKey = `roast:refreshfail:${id}`;
           let cooling = false;
@@ -406,7 +424,7 @@ export default async function handler(req, res) {
             try { gotLock = (await redis.set(lockKey, '1', { nx: true, ex: 60 })) === 'OK'; } catch (e) {}
             if (gotLock) {
               try {
-                const ok = await runMigration(id, rec);
+                const ok = await runMigration(id, rec, mode);
                 if (ok) {
                   const raw2 = await redis.get(`roast:report:${id}`);
                   const rec2 = raw2 ? (typeof raw2 === 'string' ? JSON.parse(raw2) : raw2) : null;
