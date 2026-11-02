@@ -1,40 +1,138 @@
 {
-  "embed": true,
-  "meta": {
-    "slug": "semgrep", "name": "Semgrep", "domain": "semgrep.dev",
-    "date": "2026-07-13", "human_date": "July 13, 2026", "initial": "S",
-    "badge_color": "#12805c", "score": 6,
-    "eyebrow": "Ad teardown &middot; AppSec / SAST",
-    "urn": "urn:li:share:7482449221108039680",
-    "post_url": "https://www.linkedin.com/feed/update/urn:li:share:7482449221108039680",
-    "title": "Semgrep ad teardown: a comparison page that contradicts its own numbers",
-    "meta_desc": "A teardown of Semgrep's live LinkedIn ad: a screenshotable stat and an elite logo wall, landing on a Snyk comparison page that cites a different number and a $100 gift card that pulls the wrong crowd.",
-    "og_desc": "A page selling accuracy that can't keep its own numbers straight.",
-    "keywords": "semgrep linkedin ads, semgrep ad teardown, SAST ads, snyk comparison, competitive displacement, appsec ads, ad teardown",
-    "related": [
-      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The page hid them."},
-      {"slug": "apiiro", "name": "Apiiro", "q": "A sharp hook that dies on a blog post."},
-      {"slug": "endor-labs", "name": "Endor Labs", "q": "The best AppSec story of the quarter, buried."}
-    ]
-  },
-  "voice": {
-    "hook": ["A page that sells accuracy.", "And can't keep its own numbers straight."],
-    "lede": "The Snyk comparison page has the right strategy and fights its own execution. The ad leads with a screenshotable stat, 17.5 hours vs 26 minutes, plus an elite logo wall (Dropbox, Snowflake, Figma, GitLab) and a real third-party benchmark. Then the landing page says 2.5 hours, not 26 minutes, so a page selling accuracy cannot keep its own numbers straight. And a $100 gift card pulls gift-card hunters, not AppSec leaders.",
-    "findings": [
-      {"tag": "ad", "good": true, "title": "A screenshotable stat and an elite logo wall",
-       "what": "The ad leads with a number you could screenshot, 17.5 hours vs 26 minutes, backs it with recognizable logos (Dropbox, Snowflake, Figma, GitLab), and cites a real third-party benchmark. For a competitive-displacement play against Snyk, that is the right opening."},
-      {"tag": "page", "good": false, "title": "The page contradicts the ad's own number",
-       "what": "The ad says 26 minutes. The landing page says 2.5 hours. A page whose entire argument is accuracy cannot keep its own headline number straight between the ad and the destination, and a skeptical AppSec buyer will notice.",
-       "fix": "Make every number match. Pick the real figure and use it identically in the ad, the page and the benchmark, so the accuracy claim survives the click."},
-      {"tag": "page", "good": false, "title": "A $100 gift card pulls the wrong crowd",
-       "what": "The incentive attracts gift-card hunters, not AppSec leaders. It inflates form fills with people who will never buy and buries the real buyers in the noise.",
-       "fix": "Drop the gift card, or gate it behind a qualifying step, so the page measures intent instead of rewarding tourists."}
-    ],
-    "faq": [
-      {"q": "Is Semgrep's ad good?", "a": "The ad is strong: a screenshotable stat (17.5 hours vs 26 minutes), an elite logo wall and a real third-party benchmark, which is exactly the right opening for a comparison play against Snyk. It scores 6 because the page it lands on undercuts the ad's own argument."},
-      {"q": "Where does the funnel break?", "a": "On the comparison page. The ad says 26 minutes; the page says 2.5 hours. A page selling accuracy cannot keep its own number straight between the ad and the destination, and a $100 gift card pulls gift-card hunters instead of AppSec leaders."},
-      {"q": "How would you fix it?", "a": "Make the numbers match everywhere, pick the real figure and use it identically in the ad, the page and the benchmark, and drop or gate the gift card so the page attracts buyers, not tourists."},
-      {"q": "How do I check my own ad for this?", "a": "Put your ad and your landing page next to each other and check the headline number: is it identical? If a page built on a metric cites a different metric one click later, you are arguing against yourself. AdRoast scores this automatically, and the first roast is free."}
-    ]
-  }
+ "meta": {
+  "slug": "semgrep",
+  "name": "Semgrep",
+  "domain": "semgrep.dev",
+  "initial": "S",
+  "badge_color": "#12805c",
+  "lp_url": "https://semgrep.dev/events/securing-the-ai-native-sdlc",
+  "title": "Semgrep ad teardown: a sharp question, then a vague “learn how”",
+  "meta_desc": "A teardown of Semgrep’s LinkedIn webinar ad: “AI writes your code?” names the fear, then “learn how to keep it secure” gives the reader nothing specific, and the page puts demo and trial buttons above the signup.",
+  "og_desc": "A sharp question, then a vague “learn how.”",
+  "keywords": "semgrep linkedin ads, semgrep ad teardown, appsec ads, webinar ads, AI generated code security, webinar landing page, ad teardown",
+  "card_desc": "“AI writes your code?” names the fear. “Learn how” gives the reader nothing specific, and the page has three different asks.",
+  "related": [
+   {
+    "slug": "cycode",
+    "name": "Cycode",
+    "q": "Four analysts sold the click. The page hid them."
+   },
+   {
+    "slug": "drata",
+    "name": "Drata",
+    "q": "Three strong logos. Six fields for a replay."
+   },
+   {
+    "slug": "apiiro",
+    "name": "Apiiro",
+    "q": "A sharp hook. A click that dies on a blog post."
+   }
+  ],
+  "platform": "LinkedIn",
+  "date": "2026-11-02",
+  "human_date": "November 2, 2026",
+  "ad_img": "roast",
+  "roast_id": "2bdb0add",
+  "logo_url": "https://www.adroast.in/api/icp?logo=semgrep.dev"
+ },
+ "voice": {
+  "hook": [
+   "“AI writes your code?” stops the scroll.",
+   "“Learn how” gives it nowhere to go."
+  ],
+  "lede": "Semgrep’s webinar ad opens with the question AppSec teams are already asking. Then the promise goes soft: learn how to keep it secure, on a stock billboard, with no hint of what the session teaches. The page knows the better answer. It talks about real, reachable vulnerabilities without the noise, and that line never made it into the ad. The webinar ran on September 24 and the page now serves it on demand.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 7,
+    "title": "A question that names the fear",
+    "what": "“AI writes your code?” is the exact anxiety this buyer has right now. It is short, direct and needs no category knowledge."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 4,
+    "title": "“Learn how” says nothing specific",
+    "what": "“Learn how to keep it secure” could sit on any webinar. It never mentions noise, triage or reachable vulnerabilities, the things an AppSec team cares about.",
+    "fix": "Borrow the page’s own line: find reachable vulnerabilities in AI-generated code without drowning in noise."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 6,
+    "title": "A billboard that could sell anything",
+    "what": "A lit billboard in a dark studio has nothing to do with code, AppSec or AI. The visual adds a frame and no meaning.",
+    "fix": "Show the problem: a pull request written by an agent with one reachable finding flagged."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 5,
+    "title": "A date, a partner and no ask",
+    "what": "The creative gives the date and the BridgeIT partnership, then stops. There is no written next step, so the reader has to work out that this is a signup.",
+    "fix": "Put the action on the creative: save your seat, with the date beside it."
+   },
+   {
+    "tag": "page",
+    "good": true,
+    "score": 6,
+    "title": "Same session, same partner",
+    "what": "The title, the topic and BridgeIT all carry over, and the page names both speakers. The ad’s claim holds after the click."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 5,
+    "title": "Three asks on one page",
+    "what": "“Book demo” and “Try for free” sit above the signup form, and the form’s own button just says “Submit.” The one action this page exists for has the weakest label.",
+    "fix": "Change “Submit” to “Watch the session” and let it be the loudest button on the page."
+   }
+  ],
+  "faq": [
+   {
+    "q": "What is wrong with Semgrep’s LinkedIn webinar ad?",
+    "a": "The hook works and the promise behind it does not. “AI writes your code?” earns attention, then “learn how to keep it secure” gives no specific reason to register."
+   },
+   {
+    "q": "Why does a vague webinar promise hurt?",
+    "a": "A webinar asks for time as well as an email. The reader needs to know what they will leave with, and a topic alone does not tell them."
+   },
+   {
+    "q": "Should a webinar page keep demo and trial buttons?",
+    "a": "They can stay in the navigation, but the signup has to be the strongest action on the page. If “Submit” is the quietest button, the page is arguing against itself."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 6,
+  "landing_page_score": 5,
+  "issues": [
+   {
+    "title": "Headline Clarity",
+    "score": 7,
+    "explanation": "'AI writes your code? Learn how to keep it secure.' is a clear question-hook that names the exact anxiety this ICP has right now."
+   },
+   {
+    "title": "CTA Friction",
+    "score": 5,
+    "explanation": "No written CTA button text on the creative itself, just a date and partner name; viewer has to infer this is a sign-up ask."
+   },
+   {
+    "title": "Visual-Copy Match",
+    "score": 6,
+    "explanation": "Billboard-in-a-dark-studio visual is generic stock-concept, doesn't connect to code, AppSec, or the AI theme the copy raises."
+   },
+   {
+    "title": "Benefit Specificity",
+    "score": 4,
+    "explanation": "'Learn how to keep it secure' is vague; no mention of false positives, triage burden, or specific tooling pain this ICP actually has."
+   },
+   {
+    "title": "Trust Signals",
+    "score": 5,
+    "explanation": "BridgeIT co-host adds some credibility but there's no speaker name, title, or proof point suggesting why this webinar is worth 45 minutes."
+   }
+  ]
+ }
 }

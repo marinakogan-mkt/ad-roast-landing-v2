@@ -1,40 +1,146 @@
 {
-  "embed": true,
-  "meta": {
-    "slug": "hyperproof", "name": "Hyperproof", "domain": "hyperproof.io",
-    "date": "2026-08-17", "human_date": "August 17, 2026", "initial": "H",
-    "badge_color": "#1f6fd6", "score": 6,
-    "eyebrow": "Ad teardown &middot; GRC / TPRM",
-    "urn": "urn:li:ugcPost:7495132830339858432",
-    "post_url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7495132830339858432",
-    "lp_url": "https://hyperproof.io/",
-    "title": "Hyperproof ad teardown: a precise privacy hook, a generic compliance page",
-    "meta_desc": "A teardown of Hyperproof's live LinkedIn ad: one of the sharpest hooks in the series, built for a DPO, lands on a broad GRC page where the words that made the ad work disappear.",
-    "og_desc": "Built for a DPO. The page was built for everyone.",
-    "keywords": "hyperproof linkedin ads, hyperproof ad teardown, GRC ads, TPRM ads, DPO ads, privacy ads, sub-processor, ad teardown",
-    "related": [
-      {"slug": "descope", "name": "Descope", "q": "A sharp CIAM ad, sent to the wrong page."},
-      {"slug": "silverfort", "name": "Silverfort", "q": "The right message, in the wrong order."},
-      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The page hid them."}
-    ]
-  },
-  "voice": {
-    "hook": ["The ad spoke to one person.", "The page spoke to everyone."],
-    "lede": "The ad is built for one very specific person, a DPO or privacy lead responsible for sub-processors, personal data and GDPR exposure, and its hook is one of the sharpest in the series. Then the landing page switches to a broad GRC story for CISOs, compliance and internal audit. The words that made the ad work, sub-processor, personal data, disappear. The ad has focus, the page has assets, the funnel just needs alignment.",
-    "findings": [
-      {"tag": "ad", "good": true, "title": "A hook built for exactly one buyer",
-       "what": "“You approved the vendor. Who approved their sub-processors?” is clear in under 12 words and gives a privacy team a concrete reason to click. It speaks to one buyer, the privacy lead, and does not try to speak to anyone else."},
-      {"tag": "page", "good": true, "title": "The page itself is not weak",
-       "what": "Strong structure, credible customer logos (Reddit, Nutanix, Fortinet, Appian), a genuinely low-friction four-field form, no credit card and no vendor logins. As a page, it has real assets."},
-      {"tag": "page", "good": false, "title": "The words that earned the click disappear",
-       "what": "The page switches to a broad TPRM and GRC story for CISOs and audit. “Sub-processor” and “personal data,” the exact words that made the privacy lead click, are gone. A precise privacy click lands on a generic compliance page.",
-       "fix": "Build a privacy-lead version of the page, or at least a section above the fold that keeps the sub-processor and personal-data language the ad used, so the buyer sees their own problem continue."}
-    ],
-    "faq": [
-      {"q": "Is Hyperproof's ad good?", "a": "Yes, the hook is one of the sharpest in the series: under 12 words, aimed at exactly one buyer, the DPO or privacy lead, with a concrete reason to click. It scores 6 overall because the funnel loses that focus after the click, not because the ad is weak."},
-      {"q": "Where does the funnel break?", "a": "On the landing page. The ad speaks to a privacy lead about sub-processors and personal data; the page switches to a broad GRC and TPRM story for CISOs, compliance and audit, and the specific privacy language disappears. The page has good assets, just aimed at a different buyer."},
-      {"q": "How would you fix it?", "a": "Keep the buyer the ad chose. Carry the sub-processor and personal-data language onto the page, at least above the fold, so the privacy lead sees their own problem continue instead of landing on a generic compliance pitch."},
-      {"q": "How do I check my own ad for this?", "a": "Find the two or three words in your ad that make your buyer click, then check the page: are those words still there above the fold? If a tightly-targeted ad lands on a broad page, the focus that earned the click leaks away. AdRoast scores this automatically, and the first roast is free."}
-    ]
-  }
+ "meta": {
+  "slug": "hyperproof",
+  "name": "Hyperproof",
+  "domain": "hyperproof.io",
+  "initial": "H",
+  "badge_color": "#1f6fd6",
+  "lp_url": "https://hyperproof.io/ciso-for-a-day-overview/",
+  "title": "Hyperproof ad teardown: two hooks in one ad, and the page picks the right one",
+  "meta_desc": "A teardown of Hyperproof’s LinkedIn ad: “CISO for a Day” is a strong offer, the creative leads with a different line, and the page delivers the game with one proof point near the bottom.",
+  "og_desc": "Two hooks in one ad. The page picks the right one.",
+  "keywords": "hyperproof linkedin ads, hyperproof ad teardown, GRC software ads, compliance ads, interactive assessment, landing page, ad teardown",
+  "card_desc": "“CISO for a Day” is a strong offer. The creative leads with a different line, and the page has to settle it.",
+  "related": [
+   {
+    "slug": "drata",
+    "name": "Drata",
+    "q": "Three strong logos. Six fields for a replay."
+   },
+   {
+    "slug": "cycode",
+    "name": "Cycode",
+    "q": "Four analysts sold the click. The page hid them."
+   },
+   {
+    "slug": "descope",
+    "name": "Descope",
+    "q": "Six pillars promised. None of them named."
+   }
+  ],
+  "platform": "LinkedIn",
+  "date": "2026-11-02",
+  "human_date": "November 2, 2026",
+  "ad_img": "roast",
+  "roast_id": "26d09a2e",
+  "logo_url": "https://www.adroast.in/api/icp?logo=hyperproof.io",
+  "ad_detail_url": "https://www.linkedin.com/ad-library/detail/1618052914"
+ },
+ "voice": {
+  "hook": [
+   "Two hooks in one ad.",
+   "The page picks the right one."
+  ],
+  "lede": "Hyperproof turned a 15-question maturity quiz into a game, and that is a real offer. “CISO for a Day” is a stronger idea than almost anything else in GRC advertising. The ad just does not commit to it: the creative shouts “The Proof Is In the Platform,” the headline says something else, and the button under both says “Learn more.” The page knows what it is, and it is the best part of this funnel.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 6,
+    "title": "Two hooks compete for one glance",
+    "what": "The creative says “The Proof Is In the Platform.” The headline says “CISO for a Day: Play the Scenarios, Get Your Score.” The reader has to decide which one the ad is about.",
+    "fix": "Lead the creative with “CISO for a Day.” It is the offer, and the slogan is not."
+   },
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 7,
+    "title": "A specific promise",
+    "what": "“9 real scenarios, one GRC maturity score” tells the reader the size of the commitment and exactly what they get at the end. Most compliance ads never get this concrete."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 7,
+    "title": "“Learn more” undersells a game",
+    "what": "The creative’s own button says “Play CISO for a Day.” LinkedIn’s button says “Learn more.” Nobody learns more from a game, they play it.",
+    "fix": "Match the written call to action to the creative’s button."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 5,
+    "title": "No proof in the ad",
+    "what": "There is no customer name, logo or number on the creative. The page has an Acuity International story, and the ad doesn’t use it.",
+    "fix": "Add the Acuity result as one line on the creative."
+   },
+   {
+    "tag": "page",
+    "good": true,
+    "score": 8,
+    "title": "The buyer’s day, in two sentences",
+    "what": "“Your board wants answers, your auditor wants evidence, and your third-party vendor list just doubled” is the ICP’s week, written in the game’s own voice."
+   },
+   {
+    "tag": "page",
+    "good": true,
+    "score": 8,
+    "title": "“Start my shift” keeps the game going",
+    "what": "The button stays inside the role-play, where a generic “Start now” would break it. It is a small choice that makes the whole page feel designed."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 6,
+    "title": "One proof point, far from the button",
+    "what": "Acuity International and its “1/3 of the time” result sit far below the first call to action. It is the only proof on the page.",
+    "fix": "Move the Acuity number up beside “Start my shift” and add two or three logos."
+   }
+  ],
+  "faq": [
+   {
+    "q": "What is wrong with Hyperproof’s LinkedIn ad?",
+    "a": "It has a great offer and does not lead with it. The creative’s slogan and the “CISO for a Day” headline compete, and “Learn more” undersells an interactive game."
+   },
+   {
+    "q": "What does the landing page do well?",
+    "a": "It stays in character. The copy speaks to the buyer’s real week, “Start my shift” keeps the role-play going, and the “What you get” list says exactly what comes out of the game."
+   },
+   {
+    "q": "Why does an interactive assessment beat a static quiz here?",
+    "a": "It answers from decisions rather than self-reported ratings, and that makes the score more believable. The ad should say so, because “no 15-question quiz required” is a real difference."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 7,
+  "landing_page_score": 7,
+  "issues": [
+   {
+    "title": "Headline Clarity",
+    "score": 6,
+    "explanation": "Creative says 'The Proof Is In the Platform' but ad copy headline is 'CISO for a Day: Play the Scenarios, Get Your Score.' Two different hooks competing for attention."
+   },
+   {
+    "title": "CTA Friction",
+    "score": 7,
+    "explanation": "'Learn more' is soft for an interactive game offer. Creative's own button says 'Play CISO for a Day,' which is punchier and matches intent better."
+   },
+   {
+    "title": "Visual-Copy Match",
+    "score": 6,
+    "explanation": "Creative headline 'The Proof Is In the Platform' never appears in ad copy text, and copy's 'no 15-question quiz required' isn't echoed on the creative at all."
+   },
+   {
+    "title": "Benefit Specificity",
+    "score": 7,
+    "explanation": "'9 real scenarios, one GRC maturity score' is concrete and specific, a real step up from vague 'improve your compliance posture' filler."
+   },
+   {
+    "title": "Trust Signals",
+    "score": 5,
+    "explanation": "No customer name, logo, or proof point in the ad itself, LinkedIn supports it but this creative skips it entirely."
+   }
+  ]
+ }
 }

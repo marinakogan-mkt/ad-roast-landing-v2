@@ -59,8 +59,6 @@ uses the creative saved with the roast. Findings without `score` render without 
 
 ## State
 
-Redesigned set: monday, klaviyo, webflow, clickup, pipedrive.
-The 8 cyber pages (cycode, silverfort, semgrep, descope, hyperproof, apiiro,
-endor-labs, ox-security) still use the older embed-centric design. Migrating one
-needs a fresh roast (for the screenshots + 5-axis), then this generator; the old
-copy can be lifted from the existing page.
+Every page in the hub uses the monday format except endor-labs, which still embeds
+the LinkedIn post: its live LinkedIn ads show no destination, so it has no landing to
+roast. Findings need a `score` from the roast so each row carries a chip.

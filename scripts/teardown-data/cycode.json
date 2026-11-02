@@ -26,12 +26,12 @@
    {
     "slug": "ox-security",
     "name": "OX Security",
-    "q": "A single-product ad on a page selling eight."
+    "q": "The ad promised an incident. The page offers a box."
    },
    {
     "slug": "semgrep",
     "name": "Semgrep",
-    "q": "A comparison page that argues with its own numbers."
+    "q": "A sharp question, then a vague “learn how.”"
    }
   ],
   "ad_img": "https://media.licdn.com/dms/image/v2/D4E10AQFeJUf7ntZ4ug/image-shrink_1280/B4EZ9IifCsHMAc-/0/1783628427747/Ads202627png?e=2147483647&v=beta&t=TOT9W9gNap9G4LdyLwgts0JrHaWG35FKEaofC0ynwds",
@@ -48,28 +48,32 @@
     "tag": "ad",
     "good": true,
     "title": "Four analysts, named and shown",
-    "what": "Gartner, IDC, GigaOm and Frost & Sullivan are named in the copy and shown as logos on the creative. That is strong, specific, third-party validation, and it is rare for a LinkedIn ad. It is exactly what a consolidation-minded security buyer wants to see."
+    "what": "Gartner, IDC, GigaOm and Frost & Sullivan are named in the copy and shown as logos on the creative. That is strong, specific, third-party validation, and it is rare for a LinkedIn ad. It is exactly what a consolidation-minded security buyer wants to see.",
+    "score": 8
    },
    {
     "tag": "ad",
     "good": false,
     "title": "A headline you read twice",
     "what": "“The Leader Four Analysts Agree On” reads like a garbled Yoda quote. The layout is clean, but the syntax makes you reread it, and it never says leader in what.",
-    "fix": "Say it straight: name the category the four analysts rank Cycode in, so the proof lands on the first read."
+    "fix": "Say it straight: name the category the four analysts rank Cycode in, so the proof lands on the first read.",
+    "score": 6
    },
    {
     "tag": "ad",
     "good": false,
     "title": "Names the threat, not the save",
     "what": "“Cannot keep pace with the risk agentic development creates” names the threat but never says what Cycode actually stops, or how fast. The buyer gets the fear without the fix.",
-    "fix": "Add one concrete outcome: what Cycode catches that the buyer's current stack misses."
+    "fix": "Add one concrete outcome: what Cycode catches that the buyer's current stack misses.",
+    "score": 4
    },
    {
     "tag": "page",
     "good": false,
     "title": "The proof that earned the click disappears",
     "what": "The page opens on “#1 AI Native Agentic Development Security Platform.” The four analyst badges that sold the click are gone above the fold, replaced by internal language (ADLC, Software Supply Chain Security). Real logos are there (UBS, Broadcom, Nutanix), but they are disconnected from the ad's promise.",
-    "fix": "Lead the page with the same four analysts the ad used. Keep the argument that earned the click alive above the fold."
+    "fix": "Lead the page with the same four analysts the ad used. Keep the argument that earned the click alive above the fold.",
+    "score": 4
    }
   ],
   "faq": [

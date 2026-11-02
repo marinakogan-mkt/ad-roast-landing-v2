@@ -31,6 +31,7 @@ def datauri(url, mime=None, min_bytes=1500):
         if data[:3] == b"\xff\xd8\xff": mime = "image/jpeg"
         elif data[:8] == b"\x89PNG\r\n\x1a\n": mime = "image/png"
         elif data[:4] == b"RIFF" and data[8:12] == b"WEBP": mime = "image/webp"
+        elif data.lstrip()[:5] in (b"<svg ", b"<?xml"): mime = "image/svg+xml"
         else: mime = "image/jpeg"
     return "data:%s;base64,%s" % (mime, base64.b64encode(data).decode()), len(data)
 

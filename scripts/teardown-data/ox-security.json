@@ -1,38 +1,140 @@
 {
-  "embed": true,
-  "meta": {
-    "slug": "ox-security", "name": "OX Security", "domain": "ox.security",
-    "date": "2026-07-06", "human_date": "July 6, 2026", "initial": "O",
-    "badge_color": "#0b6bcb", "score": 5,
-    "eyebrow": "Ad teardown &middot; ASPM / CNAPP",
-    "urn": "urn:li:share:7479912636642598912",
-    "post_url": "https://www.linkedin.com/feed/update/urn:li:share:7479912636642598912",
-    "lp_url": "https://ox.security/",
-    "title": "OX Security ad teardown: a single-product ad that lands on a page selling eight",
-    "meta_desc": "A teardown of OX Security's live LinkedIn ad: one product (OX.Cloud) behind an elite logo wall and a real proof stat, landing on a page selling four products and eight capabilities under a headline that reads like a typo.",
-    "og_desc": "One product in the ad. Eight on the page.",
-    "keywords": "ox security linkedin ads, ox security ad teardown, ASPM ads, CNAPP ads, message continuity, ad to landing page, ad teardown",
-    "related": [
-      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The page hid them."},
-      {"slug": "silverfort", "name": "Silverfort", "q": "The right message, in the wrong order."},
-      {"slug": "semgrep", "name": "Semgrep", "q": "A comparison page that argues with its own numbers."}
-    ]
-  },
-  "voice": {
-    "hook": ["One product in the ad.", "Eight on the page."],
-    "lede": "The ad sells one product, OX.Cloud, behind an elite logo wall (IBM, Microsoft, Intel, Swisscom) and a real proof stat, 11,237 alerts reduced to 123 actionable ones. Then the click lands on a page selling four products and eight capabilities, under an H1, “Prompt to Run-time Security,” that reads like a typo and means nothing outside the category. Specific intent, generic destination.",
-    "findings": [
-      {"tag": "ad", "good": true, "title": "One product, elite logos, a real number",
-       "what": "The ad does the hard part well: it sells a single product (OX.Cloud), backs it with an elite logo wall (IBM, Microsoft, Intel, Swisscom), and carries a concrete proof stat, 11,237 alerts reduced to 123 actionable ones. That is specific intent."},
-      {"tag": "page", "good": false, "title": "A specific ad, a generic destination",
-       "what": "The click lands on a page selling four products and eight capabilities, under an H1, “Prompt to Run-time Security,” that reads like a typo and means nothing outside the category. The single-product promise dissolves into a platform overview.",
-       "fix": "Send the OX.Cloud click to an OX.Cloud page: the same product, the same stat, the same logos, so the specific intent the ad built gets a specific place to land."}
-    ],
-    "faq": [
-      {"q": "Is OX Security's ad good?", "a": "The ad is strong: it sells one product, OX.Cloud, with an elite logo wall and a real, specific proof stat (11,237 alerts down to 123). It scores 5 because of what happens after the click, not because of the ad itself."},
-      {"q": "Where does the funnel break?", "a": "On the landing page. A single-product ad lands on a page selling four products and eight capabilities, under a headline, “Prompt to Run-time Security,” that reads like a typo. The specific intent the ad created has nowhere specific to go."},
-      {"q": "How would you fix it?", "a": "Match the page to the product. Point the OX.Cloud click at an OX.Cloud page that keeps the same stat and the same logos, instead of a platform overview that restarts the sales conversation from zero."},
-      {"q": "How do I check my own ad for this?", "a": "If your ad sells one product, click it and ask: does the page sell that one product, or the whole platform? A specific ad landing on a generic page makes the buyer do the narrowing you already did for them. AdRoast scores this automatically, and the first roast is free."}
-    ]
-  }
+ "meta": {
+  "slug": "ox-security",
+  "name": "OX Security",
+  "domain": "ox.security",
+  "initial": "O",
+  "badge_color": "#0b6bcb",
+  "lp_url": "https://www.ox.security/halloween-vip/",
+  "title": "OX Security ad teardown: the ad promised an incident, the page offers a box",
+  "meta_desc": "A teardown of OX Security’s Halloween LinkedIn ad: a sharp 2 a.m. runtime incident hook, then a page that leads with a horror video and a swag box, with incident response listed third of ten.",
+  "og_desc": "The ad promised an incident. The page offers a box.",
+  "keywords": "ox security linkedin ads, ox security ad teardown, cloud security ads, appsec ads, ad to landing page mismatch, ad teardown",
+  "card_desc": "A sharp 2 a.m. incident hook, then a page that leads with a horror video and a swag box.",
+  "related": [
+   {
+    "slug": "cycode",
+    "name": "Cycode",
+    "q": "Four analysts sold the click. The page hid them."
+   },
+   {
+    "slug": "apiiro",
+    "name": "Apiiro",
+    "q": "A sharp hook. A click that dies on a blog post."
+   },
+   {
+    "slug": "hyperproof",
+    "name": "Hyperproof",
+    "q": "Two hooks in one ad. The page picks the right one."
+   }
+  ],
+  "platform": "LinkedIn",
+  "date": "2026-11-02",
+  "human_date": "November 2, 2026",
+  "ad_img": "roast",
+  "roast_id": "e3b27876",
+  "logo_url": "https://www.adroast.in/api/icp?logo=ox.security",
+  "ad_detail_url": "https://www.linkedin.com/ad-library/detail/1665374516"
+ },
+ "voice": {
+  "hook": [
+   "The ad promised a runtime incident.",
+   "The page offers a box."
+  ],
+  "lede": "OX Security’s Halloween ad has a line a security engineer feels: a runtime incident at 2 a.m., and how long until the team knows what happened. The button says “See a runtime incident.” The click lands on a Halloween page with a video to play and a box to claim, US only, while supplies last. Runtime incident response shows up later, third in a list of ten capabilities. Seasonal is fine. The problem is that the promise got left behind.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 6,
+    "title": "A real line under the costume",
+    "what": "“Process, network and MITRE tactic in one view” is concrete and credible to a security architect. It is the strongest thing in the creative."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 6,
+    "title": "The gag sits on top of the hook",
+    "what": "“We’re sorry” and “the witching hour is real” come first. The 2 a.m. incident, the part that would stop the right reader, is smaller than the pumpkin.",
+    "fix": "Keep the Halloween wrapper light and let the 2 a.m. line be the biggest thing on the creative."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 3,
+    "title": "No proof anywhere",
+    "what": "There is no customer, no number and no badge. A claim about seeing the full story needs someone who has seen it.",
+    "fix": "Add one number: time to understand an incident with OX Cloud, from a real customer."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 2,
+    "title": "The incident disappears at the top",
+    "what": "The ad’s promise was specific: see a runtime incident. The top of the page is “Got you scared?” and a video. The reader has to scroll to find the word incident.",
+    "fix": "Open on the same 2 a.m. line, then show the incident view the button promised."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 3,
+    "title": "“Claim your Box” is the main ask",
+    "what": "The first action on the page is a swag giveaway, US only, while supplies last. That collects addresses from people who clicked to see a product.",
+    "fix": "Make the incident walkthrough the first button and move the box below it."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 4,
+    "title": "Incident response is third of ten",
+    "what": "The capability the ad sold sits in a list with AIDR, CSPM, KSPM, DSPM and six others. A one-product promise lands on a whole catalog.",
+    "fix": "Link the ad to the Runtime Events section, or lead the page with it."
+   }
+  ],
+  "faq": [
+   {
+    "q": "What is wrong with OX Security’s LinkedIn ad?",
+    "a": "The ad itself is decent: a real pain with a concrete capability, under a heavy costume. The damage happens after the click, where the promise of seeing an incident gives way to a video and a giveaway."
+   },
+   {
+    "q": "Is a Halloween campaign a bad idea for B2B?",
+    "a": "No. A seasonal wrapper can earn attention. It stops working when the costume replaces the promise, and the reader who clicked for a runtime incident can’t find one."
+   },
+   {
+    "q": "How would you fix this page?",
+    "a": "Open with the ad’s 2 a.m. line, make the incident walkthrough the first action, and keep the box as a bonus below it. Same campaign, and the promise survives."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 6,
+  "landing_page_score": 3,
+  "issues": [
+   {
+    "title": "Headline Clarity",
+    "score": 6,
+    "explanation": "'We're sorry' plus Halloween gags bury the actual hook (2 a.m. incident, full story in one view) under a seasonal gimmick."
+   },
+   {
+    "title": "CTA Friction",
+    "score": 5,
+    "explanation": "'See a runtime incident' is a soft, vague ask. For a mid-funnel capability pitch it should point clearer at a demo, not just 'learn more'."
+   },
+   {
+    "title": "Visual-Copy Match",
+    "score": 5,
+    "explanation": "Spiderwebs, pumpkins and 'witching hour' compete with a serious SOC pain point; the Halloween skin dilutes rather than sharpens the incident-response message."
+   },
+   {
+    "title": "Benefit Specificity",
+    "score": 6,
+    "explanation": "'Process, network and MITRE tactic in one view' is concrete and credible to a security architect, the strongest line in the creative."
+   },
+   {
+    "title": "Trust Signals",
+    "score": 3,
+    "explanation": "No customer name, number, or badge anywhere in the creative; LinkedIn supports logos and this ad uses none."
+   }
+  ]
+ }
 }

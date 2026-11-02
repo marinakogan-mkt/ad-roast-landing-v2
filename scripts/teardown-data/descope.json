@@ -1,40 +1,138 @@
 {
-  "embed": true,
-  "meta": {
-    "slug": "descope", "name": "Descope", "domain": "descope.com",
-    "date": "2026-08-03", "human_date": "August 3, 2026", "initial": "D",
-    "badge_color": "#3f4b66", "verdict": "Wrong page",
-    "eyebrow": "Ad teardown &middot; CIAM / Identity",
-    "urn": "urn:li:ugcPost:7490059256344297472",
-    "post_url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7490059256344297472",
-    "title": "Descope ad teardown: a strategic CIAM ad, an implementation tutorial",
-    "meta_desc": "A teardown of Descope's live LinkedIn ad: strong, category-aware CIAM copy sends paid traffic into a 3,000-word DevRel tutorial full of Python and MCP snippets. Right buyer, wrong page.",
-    "og_desc": "A sharp CIAM ad, sent to the wrong page.",
-    "keywords": "descope linkedin ads, descope ad teardown, CIAM ads, agentic identity, non-human identity, developer vs buyer, ad teardown",
-    "related": [
-      {"slug": "silverfort", "name": "Silverfort", "q": "The right message, in the wrong order."},
-      {"slug": "cycode", "name": "Cycode", "q": "Four analysts sold the click. The page hid them."},
-      {"slug": "hyperproof", "name": "Hyperproof", "q": "A privacy hook that lands on a compliance page."}
-    ]
-  },
-  "voice": {
-    "hook": ["The ad was written for a buyer.", "The page was written for a developer."],
-    "lede": "The ad copy is genuinely strong and category-aware, written for CIAM leaders with a real strategic problem around agentic identity. Then the click lands on a 3,000-word DevRel tutorial full of Python and MCP snippets. Descope clearly has two ICPs, developers and CIAM leaders, and paid traffic is being pushed into the wrong experience. You do not need more traffic when the conversation after the click falls apart this badly.",
-    "findings": [
-      {"tag": "ad", "good": true, "title": "Specific, category-aware, written for the buyer",
-       "what": "Every line earns attention: “Auth stops at token issuance,” “NHIs outnumber humans 20:1,” “57% of CIAM leaders fear agents sharing data.” It is concrete, it names the problem, and it speaks the CIAM leader's language."},
-      {"tag": "ad", "good": false, "title": "No proof the buyer can hold on to",
-       "what": "The copy is sharp, but there are no customer logos and no Descope-specific proof points. The stats frame the problem well; nothing yet shows Descope is the answer.",
-       "fix": "Add one named customer or a Descope-specific result so the strategic frame has a payoff attached to it."},
-      {"tag": "page", "good": false, "title": "A strategic click lands on an implementation tutorial",
-       "what": "The CTA “See the strategic read” lands on “Monitoring and Auditing Agentic Identities,” a 3,000-word technical post with Python, MCP and Snowflake snippets, bylined by a Developer Relations Engineer. Zero customer logos, zero testimonials, zero named customers. The buyer who clicked for strategy gets handed code.",
-       "fix": "Send the paid CIAM-leader click to a strategic page, the executive read the ad promised, and keep the DevRel tutorial for the developer funnel it was written for."}
-    ],
-    "faq": [
-      {"q": "Is Descope's ad good?", "a": "The ad is one of the sharpest in the series: specific, category-aware copy written for CIAM leaders, with real stats on agentic identity. Its only gap is proof, no named customers or Descope-specific results. The real problem is not the ad, it is the page it sends you to."},
-      {"q": "Where does the funnel break?", "a": "At the click. A strategic ad written for a CIAM buyer lands on a 3,000-word DevRel tutorial full of Python and MCP snippets, written by a Developer Relations Engineer. Descope has two ICPs, developers and CIAM leaders, and the paid traffic is going into the developer experience."},
-      {"q": "How would you fix it?", "a": "Match the page to the buyer the ad targeted. Send the paid CIAM-leader click to the strategic executive read it promised, and reserve the implementation tutorial for the developer funnel. The traffic is fine; the destination is wrong."},
-      {"q": "How do I check my own ad for this?", "a": "If you sell to more than one ICP, click your own ad as the buyer it targets and ask: is this page written for me, or for someone else in the org? Paid traffic landing in the wrong experience wastes the best copy you have. AdRoast scores this automatically, and the first roast is free."}
-    ]
-  }
+ "meta": {
+  "slug": "descope",
+  "name": "Descope",
+  "domain": "descope.com",
+  "initial": "D",
+  "badge_color": "#3f4b66",
+  "lp_url": "https://hello.descope.com/b2b-enterprise-readiness-checklist",
+  "title": "Descope ad teardown: six pillars promised, none of them named",
+  "meta_desc": "A teardown of Descope’s LinkedIn ad: a real enterprise pain and a page that matches it, but neither ever names the six pillars, and a gated checklist runs with no proof.",
+  "og_desc": "Six pillars promised. None of them named.",
+  "keywords": "descope linkedin ads, descope ad teardown, CIAM ads, enterprise readiness checklist, gated content landing page, ad teardown",
+  "card_desc": "A real enterprise pain and a tight match, but the six pillars stay secret and the gated checklist has no proof.",
+  "related": [
+   {
+    "slug": "cycode",
+    "name": "Cycode",
+    "q": "Four analysts sold the click. The page hid them."
+   },
+   {
+    "slug": "drata",
+    "name": "Drata",
+    "q": "Three strong logos. Six fields for a replay."
+   },
+   {
+    "slug": "silverfort",
+    "name": "Silverfort",
+    "q": "The message was right. The order was wrong."
+   }
+  ],
+  "platform": "LinkedIn",
+  "date": "2026-11-02",
+  "human_date": "November 2, 2026",
+  "ad_img": "roast",
+  "roast_id": "697b3e7e",
+  "logo_url": "https://www.adroast.in/api/icp?logo=descope.com"
+ },
+ "voice": {
+  "hook": [
+   "Six pillars promised.",
+   "None of them named."
+  ],
+  "lede": "Descope picked a pain every engineering lead selling upmarket has lived: enterprise deals stall when identity gaps show up late. The ad and the page match almost word for word, which is rarer than it should be. The gap is what both of them hold back. Six pillars are promised twice and never named, and a gated checklist asks for four fields with no logo, number or customer beside the form.",
+  "findings": [
+   {
+    "tag": "ad",
+    "good": true,
+    "score": 7,
+    "title": "A pain the buyer has already lived",
+    "what": "“Enterprise deals stall when identity gaps surface too late” names a specific, expensive moment. A VP of Engineering recognizes it instantly, with no jargon in the way."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 5,
+    "title": "Six pillars, none of them named",
+    "what": "The copy promises a score across “six foundational pillars” and stops there. SSO, SCIM and delegated admin are what the buyer is worried about, and the ad never says them.",
+    "fix": "Name two or three pillars in the ad. Specifics are what make a checklist feel worth a work email."
+   },
+   {
+    "tag": "ad",
+    "good": false,
+    "score": 4,
+    "title": "No proof on the creative",
+    "what": "The creative is a staircase of checkmarks leading to a bank icon. It is clean and on-topic, and it carries no customer logo or number.",
+    "fix": "Add one customer logo or a line on who has already passed the checklist."
+   },
+   {
+    "tag": "page",
+    "good": true,
+    "score": 8,
+    "title": "The promise survives the click",
+    "what": "The ad and the page use the same title, the same six-pillar frame and the same asset. Nobody lands wondering if they are in the right place."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 6,
+    "title": "The headline names the asset, not the payoff",
+    "what": "“A Practical Checklist for B2B Enterprise Readiness” describes the document. It leaves out what the reader walks away able to do.",
+    "fix": "Lead with the outcome: know which identity gaps will stall your next enterprise deal."
+   },
+   {
+    "tag": "page",
+    "good": false,
+    "score": 3,
+    "title": "A gated asset with zero proof",
+    "what": "Four fields stand next to three bullets, with no logos, no download count and no preview of what is inside. For a gated asset, this is where confidence drops.",
+    "fix": "Put three or four customer logos beside the form and show one page of the checklist."
+   }
+  ],
+  "faq": [
+   {
+    "q": "What is wrong with Descope’s LinkedIn ad?",
+    "a": "The pain is right and the match is tight. The ad’s weakness is what it withholds: six pillars are promised and never named, and the creative carries no proof."
+   },
+   {
+    "q": "Why does naming the pillars matter?",
+    "a": "Pillars are what the reader is trading a work email for. Naming SSO, SCIM or delegated admin tells them the checklist covers their real problem, and it pre-qualifies the click."
+   },
+   {
+    "q": "How should a gated checklist page build trust?",
+    "a": "Put proof next to the form: customer logos, a download count or a preview page. The form is the moment of doubt, so that is where the evidence belongs."
+   }
+  ]
+ },
+ "roast": {
+  "overall_score": 7,
+  "landing_page_score": 6,
+  "issues": [
+   {
+    "title": "Headline Clarity",
+    "score": 7,
+    "explanation": "\"Enterprise deals stall when identity gaps surface too late\" names a real, specific pain that VPs of Eng recognize instantly. Clear, no jargon soup."
+   },
+   {
+    "title": "CTA Friction",
+    "score": 7,
+    "explanation": "This is a content offer (checklist download), not a demo ask, so low friction is appropriate. No written CTA line in the ad copy itself is a minor gap."
+   },
+   {
+    "title": "Visual-Copy Match",
+    "score": 7,
+    "explanation": "Creative shows a rising staircase of checkmarks toward a bank icon, matching \"score your readiness across six pillars.\" Clean but generic stock-style icon work."
+   },
+   {
+    "title": "Benefit Specificity",
+    "score": 5,
+    "explanation": "\"Six foundational pillars\" is repeated everywhere but never named in the ad or creative. What are they? SSO, SCIM, MFA? Say it."
+   },
+   {
+    "title": "Trust Signals",
+    "score": 4,
+    "explanation": "No customer logos or proof points on the creative image itself. LinkedIn supports logo badges here and this ad skips that lever entirely."
+   }
+  ]
+ }
 }
