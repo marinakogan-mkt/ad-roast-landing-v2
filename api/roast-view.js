@@ -8,6 +8,7 @@
 // back to Notion on a Redis miss.
 import { Redis } from '@upstash/redis';
 import { isPrivateReport, readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
+import { roastVer } from './_roast-version.js';
 
 const NOTION_DATABASE_ID = 'ca2dbc99d48c4ca8ab59375cf76d62cb';
 
@@ -15,6 +16,64 @@ const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN
 });
+
+/* Re-roast a stale report IN PLACE against its FROZEN snapshot (never a live re-fetch).
+   This posts the saved inputs back to /api/roast with action:'migrate' and the internal
+   secret header, so that handler re-scores the SAME content with the current prompt/rules,
+   writes back to the SAME id, re-stamps record.ver, and refreshes the index row — all with
+   NO token spend, NO company-roster change, and NO new id. Returns true on success.
+
+   Gated entirely by ROAST_MIGRATE_SECRET: with the env var unset this returns false and the
+   whole migrate-on-open feature is dark (reports serve exactly as before). The secret is what
+   authorizes the token-free re-roast on the /api/roast side; a same-origin call without it
+   would just hit the normal entitlement gate, so this is not a spoofable token bypass. */
+async function runMigration(id, rec) {
+  const secret = process.env.ROAST_MIGRATE_SECRET || '';
+  if (!secret) return false;
+  // Self-call the SAME deployment (VERCEL_URL is this deployment's host), so a preview tests
+  // the preview's code and prod calls prod — never cross-deployment. SITE_URL is the fallback.
+  const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : (process.env.SITE_URL || 'https://adroast.in');
+  // The frozen creative the model originally scored (inline, or in its own permanent key).
+  let adScreenshot = rec.adScreenshot || '';
+  let adScreenshotType = rec.adScreenshotType || '';
+  if (!adScreenshot && rec.adCreativeKey) {
+    try {
+      const craw = await redis.get(`roast:creative:${id}`);
+      const c = craw ? (typeof craw === 'string' ? JSON.parse(craw) : craw) : null;
+      if (c && c.b64) { adScreenshot = c.b64; adScreenshotType = c.type || adScreenshotType; }
+    } catch (e) {}
+  }
+  const payload = {
+    action: 'migrate',
+    migrateReportId: id,
+    platform: rec.platform || '', offerType: rec.offerType || '', offerDetail: rec.offerDetail || '',
+    icpDescription: rec.icp || '',
+    adCopy: rec.adText || '',            // frozen resolved ad text -> never re-scraped
+    visualDescription: rec.visualDescription || '',
+    landingUrl: '',                      // empty -> the handler never re-fetches the landing
+    landingCopy: rec.landingContent || '',
+    adScreenshot: adScreenshot || null, adScreenshotType,
+    adImageUrl: '',                      // empty -> the handler never re-fetches the creative
+    isVideo: !!rec.isVideo, framesPrebuilt: !!rec.videoFramesOk,
+    company: rec.company || '', website: rec.website || '', adUrl: '',
+    allowNoLanding: true, allowWeakIcp: true, forceFresh: true
+  };
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 55000);
+  try {
+    const r = await fetch(origin + '/api/roast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-roast-migrate': secret },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal
+    });
+    if (!r.ok) return false;
+    const j = await r.json().catch(() => null);
+    return !!(j && (j._migrated || j.overall_score));
+  } catch (e) {
+    return false;
+  } finally { clearTimeout(t); }
+}
 
 // Admins allowed to list all roasts = the portal master role's emails.
 const ADMIN_EMAILS = new Set(
@@ -316,8 +375,57 @@ export default async function handler(req, res) {
      touching Notion, so the report link works even if Notion is down/unset. */
   try {
     const raw = await redis.get(`roast:report:${id}`);
-    const rec = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+    let rec = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
     if (rec && rec.result) {
+      /* RE-ROAST ON OPEN, only when the stored result was scored under an OLDER prompt/rules
+         version. The report is PERMANENT and never degraded: the single trigger is a version
+         mismatch (not a changed/dead ad or landing), the re-roast runs only against the frozen
+         snapshot, and anything that goes wrong just serves the old record intact.
+         Eligibility is deliberately narrow:
+           - rec.adText present  => the report was saved WITH the frozen snapshot, so the inputs
+             can be reproduced with zero network calls. Legacy reports (no snapshot) are served
+             as-is: we will not re-fetch a possibly-changed page to reconstruct them.
+           - not an advanced multi-variant audit (variants aren't frozen).
+           - rec.ver differs from the current version.
+         A 60s SET NX lock stops two concurrent opens from re-roasting twice (a second opener
+         just serves the old record, no waiting). A refreshfail cooldown stops a broken re-roast
+         from retrying on every open. The whole thing is dark unless ROAST_MIGRATE_SECRET is set. */
+      try {
+        const CUR = roastVer();
+        const eligible = !!process.env.ROAST_MIGRATE_SECRET
+          && typeof rec.adText === 'string'
+          && !rec.isAdvancedAudit
+          && rec.ver !== CUR;
+        if (eligible) {
+          const failKey = `roast:refreshfail:${id}`;
+          let cooling = false;
+          try { cooling = !!(await redis.get(failKey)); } catch (e) {}
+          if (!cooling) {
+            const lockKey = `roast:migrating:${id}`;
+            let gotLock = false;
+            try { gotLock = (await redis.set(lockKey, '1', { nx: true, ex: 60 })) === 'OK'; } catch (e) {}
+            if (gotLock) {
+              try {
+                const ok = await runMigration(id, rec);
+                if (ok) {
+                  const raw2 = await redis.get(`roast:report:${id}`);
+                  const rec2 = raw2 ? (typeof raw2 === 'string' ? JSON.parse(raw2) : raw2) : null;
+                  if (rec2 && rec2.result && rec2.ver === CUR) rec = rec2; // serve the fresh one
+                } else {
+                  // Don't retry a broken re-roast on every open; back off 1 day.
+                  try { await redis.set(failKey, '1', { ex: 60 * 60 * 24 }); } catch (e) {}
+                }
+              } catch (e) {
+                try { await redis.set(failKey, '1', { ex: 60 * 60 * 24 }); } catch (e2) {}
+              } finally {
+                try { await redis.del(lockKey); } catch (e) {}
+              }
+            }
+            // locked by another open -> fall through and serve the old record (never wait)
+          }
+        }
+      } catch (e) { /* migration is best-effort; never block serving the stored report */ }
+
       return res.status(200).json({
         result: rec.result,
         icp: rec.icp || '',
