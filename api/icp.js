@@ -212,6 +212,39 @@ async function fetchSiteDirect(url) {
 // User agents that are never a person reading a board (see the visit beacon).
 const NOT_HUMAN_UA = /bot|crawl|spider|slurp|headless|Claude\/|Electron\/|python|curl|wget|lighthouse|facebookexternalhit|embedly|preview/i;
 
+// Per-platform numbers for the platform link preview (/b/<domain>/linkedin, /google, /meta). The outreach
+// line says "the two linkedin ads I'd fix first are in here" and links the filtered view, so its card has
+// to show THAT platform's two worst ads, not the whole board. Same cuts as the board-wide snapshot.
+function ogByPlat(scoredAll) {
+  const out = {};
+  const key = (a) => String(a.head || a.headline || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const groups = {};
+  for (const a of scoredAll) {
+    const p = String(a.plat || '').toLowerCase();
+    if (!p) continue;
+    (groups[p] = groups[p] || []).push(a);
+  }
+  for (const p of Object.keys(groups)) {
+    const list = groups[p];
+    const cnt = list.length;
+    const off = list.filter(a => a.score <= 6).length;
+    const crit = list.filter(a => a.score <= 4).length;
+    const avg = Math.round((list.reduce((s, a) => s + a.score, 0) / cnt) * 10) / 10;
+    // The two most urgent, conversion ads first, never the same ad twice (boards repeat a creative).
+    const conv = list.filter(a => a.conversion !== false);
+    const pool = (conv.length >= 2 ? conv : list).slice().sort((a, b) => a.score - b.score);
+    const top = [];
+    for (const a of pool) {
+      const k = key(a);
+      if (top.some(t => k && t._k && (t._k.startsWith(k) || k.startsWith(t._k)))) continue;
+      top.push({ _k: k, score: a.score, head: String(a.head || a.headline || '').slice(0, 120), img: (a.img && /^https?:\/\//.test(String(a.img))) ? a.img : null });
+      if (top.length === 2) break;
+    }
+    out[p] = { count: cnt, avg, off, crit, offPct: Math.round(off / cnt * 100), top: top.map(({ _k, ...t }) => t) };
+  }
+  return out;
+}
+
 export default async function handler(req, res) {
   /* MCP server (/api/mcp, rewritten to /api/icp?mcp=1). Folded in here to stay under the Hobby
      12-function cap; the actual JSON-RPC handler lives in _mcp.js (an underscore helper). */
@@ -882,6 +915,7 @@ ${items}
             toFix: crit, // legacy field
             worstImg: worst ? worst.img : null,
             worstPlat: worst ? (worst.plat || null) : null,
+            byPlat: ogByPlat(scoredAll),
             at: Date.now(),
           };
           await _redis.set('ads:ogstats:' + domKey, JSON.stringify(og), { ex: 60 * 60 * 24 * 30 });

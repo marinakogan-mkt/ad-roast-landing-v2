@@ -259,11 +259,117 @@ function buildSvg(opts) {
   return parts.join('');
 }
 
+// The platform card (/b/<domain>/linkedin, /google, /meta). Marina, 5 nov 2026: the second message
+// ("the two linkedin ads I'd fix first are in here") showed the same card as the board link above it.
+// This one has to look different and say what the link is: the platform's two worst ads, side by side,
+// each with its score, under a band in the platform's color. Same readability rule as the board card
+// (LinkedIn paints it ~240px wide), so few, big elements.
+const PLAT = {
+  linkedin: { label: 'LinkedIn', band: '#0a66c2' },
+  google: { label: 'Google', band: '#1a73e8' },
+  meta: { label: 'Meta', band: '#0866ff' },
+};
+function buildPlatSvg(opts) {
+  const { company, domain, plat, ps, adLogo, coLogo, creatives } = opts;
+  const P = PLAT[plat];
+  const top = (ps && ps.top) || [];
+  const n = Math.max(1, Math.min(2, top.length || 2));
+  const parts = [];
+  parts.push(`<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`);
+  // card frames: two 236x300 side by side, or one 492x300
+  const fy = 140, fh = 300;
+  const frames = n === 2 ? [{ x: 640, w: 236 }, { x: 896, w: 236 }] : [{ x: 640, w: 492 }];
+  parts.push(`<defs>`);
+  parts.push(`<clipPath id="clogo"><rect x="68" y="136" width="64" height="64" rx="14"/></clipPath>`);
+  frames.forEach((f, i) => parts.push(`<clipPath id="cf${i}"><rect x="${f.x}" y="${fy}" width="${f.w}" height="${fh}" rx="16"/></clipPath>`));
+  parts.push(`</defs>`);
+  parts.push(`<rect width="1200" height="630" fill="#ffffff"/>`);
+
+  // Platform band.
+  parts.push(`<rect width="1200" height="96" fill="${P.band}"/>`);
+  parts.push(`<text x="68" y="62" font-family="Inter" font-size="36" font-weight="800" letter-spacing="1" fill="#ffffff">${esc(P.label.toUpperCase())} ADS</text>`);
+  if (adLogo) {
+    parts.push(`<rect x="962" y="26" width="44" height="44" rx="10" fill="#ffffff"/>`);
+    parts.push(`<image x="965" y="29" width="38" height="38" xlink:href="${adLogo}" href="${adLogo}"/>`);
+  }
+  parts.push(`<text x="1132" y="60" font-family="Inter" font-size="29" font-weight="700" fill="#ffffff" text-anchor="end">adroast.in</text>`);
+
+  // Company row.
+  if (coLogo) {
+    parts.push(`<rect x="68" y="136" width="64" height="64" rx="14" fill="#ffffff" stroke="${LINE}" stroke-width="1.5"/>`);
+    parts.push(`<image x="68" y="136" width="64" height="64" clip-path="url(#clogo)" preserveAspectRatio="xMidYMid meet" xlink:href="${coLogo}" href="${coLogo}"/>`);
+  } else {
+    const c = monoColor(domain || company);
+    parts.push(`<rect x="68" y="136" width="64" height="64" rx="14" fill="${c}"/>`);
+    parts.push(`<text x="100" y="180" font-family="Inter" font-size="34" font-weight="700" fill="#ffffff" text-anchor="middle">${esc((company || '?').charAt(0).toUpperCase())}</text>`);
+  }
+  const cl = (company || '').length;
+  const nameSize = cl <= 12 ? 46 : cl <= 20 ? 38 : 30;
+  parts.push(`<text x="148" y="${168 + Math.round(nameSize * 0.35)}" font-family="Inter" font-size="${nameSize}" font-weight="700" fill="${INK}">${esc(company)}</text>`);
+
+  // The claim: which ads, and that they go first.
+  const l1 = n === 2 ? 'The 2 ads' : 'The ad';
+  parts.push(`<text x="68" y="318" font-family="Inter" font-size="86" font-weight="800" letter-spacing="-3" fill="${RED}">${esc(l1)}</text>`);
+  parts.push(`<text x="68" y="408" font-family="Inter" font-size="86" font-weight="800" letter-spacing="-3" fill="${INK}">to fix first</text>`);
+  if (ps && ps.count) {
+    const sub = `${ps.off} of ${ps.count} live ${P.label} ads miss the buyer`;
+    const subSize = sub.length <= 36 ? 30 : 26;
+    parts.push(`<text x="70" y="470" font-family="Inter" font-size="${subSize}" font-weight="600" fill="${MUTE}">${esc(sub)}</text>`);
+  }
+
+  // The ads themselves, each with its score under it.
+  frames.forEach((f, i) => {
+    const ad = top[i] || null;
+    parts.push(`<rect x="${f.x}" y="${fy}" width="${f.w}" height="${fh}" rx="16" fill="${PANEL}" stroke="${LINE}" stroke-width="1.5"/>`);
+    const img = creatives && creatives[i];
+    if (img) {
+      parts.push(`<image x="${f.x + 8}" y="${fy + 8}" width="${f.w - 16}" height="${fh - 16}" clip-path="url(#cf${i})" preserveAspectRatio="xMidYMid meet" xlink:href="${img}" href="${img}"/>`);
+    } else if (ad && ad.head) {
+      // No creative to show (Google text ads): the headline itself, wrapped in the frame.
+      const words = String(ad.head).split(/\s+/); const lines = []; let cur = '';
+      const max = Math.floor((f.w - 40) / 15);
+      for (const w of words) { if ((cur + ' ' + w).trim().length > max) { if (cur) lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); if (lines.length === 5) break; }
+      if (cur && lines.length < 5) lines.push(cur);
+      lines.forEach((ln, j) => parts.push(`<text x="${f.x + 20}" y="${fy + 52 + j * 36}" font-family="Inter" font-size="26" font-weight="700" fill="${INK}">${esc(ln)}</text>`));
+    } else {
+      parts.push(`<text x="${f.x + f.w / 2}" y="${fy + fh / 2 + 8}" font-family="Inter" font-size="24" font-weight="400" fill="${MUTE}" text-anchor="middle">Live ad</text>`);
+    }
+    if (ad && typeof ad.score === 'number') {
+      const c = scoreColor(ad.score);
+      const cx = f.x + f.w / 2;
+      parts.push(`<rect x="${cx - 78}" y="${fy + fh + 22}" width="156" height="70" rx="35" fill="${c}"/>`);
+      parts.push(`<text x="${cx}" y="${fy + fh + 71}" font-family="Inter" font-size="40" font-weight="800" fill="#ffffff" text-anchor="middle">${esc(ad.score + '/10')}</text>`);
+    }
+  });
+
+  // Footer CTA in the platform color.
+  parts.push(`<text x="68" y="566" font-family="Inter" font-size="30" font-weight="700" fill="${P.band}">See why, and the fix for each →</text>`);
+  parts.push(`</svg>`);
+  return parts.join('');
+}
+
 export async function boardOgImageHandler(req, res) {
   const slug = (req.query && (req.query.slug || req.query.s)) || '';
   try {
     const domain = slugToDomain(slug);
-    const company = domain ? nameFromDomain(domain) : 'Your ads';
+    let company = domain ? nameFromDomain(domain) : 'Your ads';
+    // The real name, same sources and order as the og:title in _board-og.js. The domain label alone
+    // put "Corp" on corp.kaltura.com's card while the title right next to it said Kaltura.
+    if (_redis && domain) {
+      try {
+        const dk = domain.replace(/[^a-z0-9.]/g, '');
+        const [nm, pr] = await Promise.all([_redis.get('geo:name:' + dk), _redis.get('geo:icp:' + dk)]);
+        const icpRec = pr ? (typeof pr === 'string' ? JSON.parse(pr) : pr) : null;
+        const realName = icpRec && typeof icpRec.company === 'string' ? icpRec.company.trim() : '';
+        if (nm && typeof nm === 'string' && nm.trim() && nm.trim().length <= 60) company = nm.trim();
+        else if (realName && realName.length <= 60) company = realName;
+      } catch (e) {}
+    }
+    // Platform view: from ?p= (what _board-og writes) or the slug's second segment.
+    const pq = String((req.query && req.query.p) || '').toLowerCase();
+    const ps2 = (String(slug).toLowerCase().match(/^[^/?#]+\/(linkedin|google|meta)\b/) || [])[1] || '';
+    const plat = PLAT[pq] ? pq : (PLAT[ps2] ? ps2 : '');
+    let platStats = null;
 
     let stats = null, worstImg = null, worstPlat = null;
     if (_redis && domain) {
@@ -277,6 +383,7 @@ export async function boardOgImageHandler(req, res) {
           stats = { count: og.count, avg: og.avg, off: og.off, crit: og.crit, offPct: og.offPct };
           worstImg = og.worstImg || null; worstPlat = og.worstPlat || null;
         }
+        if (plat && og && og.byPlat && og.byPlat[plat]) platStats = og.byPlat[plat];
       } catch (e) {}
       if (!stats) {
         try {
@@ -285,6 +392,41 @@ export async function boardOgImageHandler(req, res) {
           if (pull && pull.ads) { stats = boardStats(pull.ads); const w = worstCreative(pull.ads); if (w) { worstImg = w.img; worstPlat = w.plat; } }
         } catch (e) { stats = null; }
       }
+    }
+
+    if (plat) {
+      // Older snapshots have no byPlat: fall back to the clean per-ad list (scores, no images), plus the
+      // board-wide worst creative when it happens to be from this platform.
+      if (!platStats && _redis && domain) {
+        try {
+          const raw = await _redis.get('ads:geo:' + domain.replace(/[^a-z0-9.]/g, ''));
+          const list = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+          const pl = (Array.isArray(list) ? list : []).filter(a => typeof a.score === 'number' && String(a.plat || '').toLowerCase() === plat);
+          if (pl.length) {
+            const sorted = pl.slice().sort((a, b) => a.score - b.score);
+            const t = sorted.slice(0, 2).map(a => ({ score: a.score, head: a.head || '', img: null }));
+            if (t[0] && worstImg && String(worstPlat || '').toLowerCase() === plat) t[0].img = worstImg;
+            const off = pl.filter(a => a.score <= 6).length;
+            platStats = { count: pl.length, off, top: t };
+          }
+        } catch (e) {}
+      }
+      const tops = (platStats && platStats.top) || [];
+      const hdr = (u) => (/licdn|linkedin/i.test(String(u)) ? { referer: 'https://www.linkedin.com/', 'user-agent': UA } : { 'user-agent': UA });
+      const [coLogoP, ...creatives] = await Promise.all([
+        domain ? logoCandidates(domain).then((urls) => firstDataUri(urls, { 'user-agent': UA })) : Promise.resolve(null),
+        ...tops.map(t => (t && t.img ? fetchDataUri(t.img, hdr(t.img)) : Promise.resolve(null))),
+      ]);
+      await ensureWasm();
+      const svgP = buildPlatSvg({ company, domain, plat, ps: platStats, adLogo: adLogoDataUri(), coLogo: coLogoP, creatives });
+      const pngP = new Resvg(svgP, {
+        fitTo: { mode: 'width', value: 1200 },
+        font: { fontBuffers: loadFonts(), defaultFontFamily: 'Inter', loadSystemFonts: false },
+      }).render().asPng();
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+      res.status(200).send(Buffer.from(pngP));
+      return;
     }
 
     // Fetch the company logo and the spotlight creative in parallel; either can fail to null.
