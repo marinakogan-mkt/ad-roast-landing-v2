@@ -482,7 +482,12 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
 // to the model. Unchanged creatives reuse their cached score (0 tokens); a newly launched creative
 // costs one score; a paused/removed creative simply isn't in the fresh pull. Result: the board is
 // effectively real-time on which ads are live, while tokens are spent only on genuinely new ads.
-const ADSCORE_TTL = 60 * 60 * 24 * 30; // 30 days: a creative's fit-to-ICP score doesn't drift.
+// 180 days. A creative's fit-to-ICP score doesn't drift, so the old 30-day expiry re-paid the FULL
+// vision cost of every still-live creative once a month for an answer that could not have changed.
+// Correctness never depended on the TTL: the cache namespace already carries the rubric version and
+// the ICP hash, so a rubric bump or a changed ICP invalidates these entries however long they live.
+// Creatives that rotate out simply stop being read.
+const ADSCORE_TTL = 60 * 60 * 24 * 180;
 
 // Stable id for a creative so the SAME ad maps to the SAME cache slot across pulls. Platform ad
 // ids are stable; fall back to the image URL sans query (LinkedIn/Google signed params change).
@@ -644,15 +649,25 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // tagged talent and left off the board. Boards re-score lazily on their next open, as before.
   const keyOf = (a) => 'adscore:' + (/google/i.test(String(a.plat || '')) ? 'v16' : 'v20') + ':' + ih + ':' + creativeSig(a);
   const cachedBySig = {};
+  const failSeen = {}; // past capture-failures, including ones whose retry window has already opened
   if (!force) {
     try {
       const vals = await redis.mget(...ads.map(keyOf));
       ads.forEach((a, i) => {
         const v = vals && vals[i];
         const o = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null;
+        if (!o) return;
         // A cached capture-failure counts as "known" so the ad leaves `need` (no re-score loop) and
-        // still gets dropped downstream. Otherwise only a real numeric score is a cache hit.
-        if (o && (typeof o.score === 'number' || o._captureFail || o.textless || o.talent)) cachedBySig[creativeSig(a)] = o;
+        // still gets dropped downstream, but only until its retry window opens. Entries written
+        // before the backoff have no retryAt: treat those as still inside the window, so a deploy
+        // doesn't re-bill every known failure at once.
+        if (o._captureFail) {
+          failSeen[creativeSig(a)] = o;
+          if (!o.retryAt || Date.now() < o.retryAt) cachedBySig[creativeSig(a)] = o;
+          return;
+        }
+        // Otherwise only a real numeric score (or a known textless / talent row) is a cache hit.
+        if (typeof o.score === 'number' || o.textless || o.talent) cachedBySig[creativeSig(a)] = o;
       });
     } catch (e) { /* miss -> score all */ }
   }
@@ -670,10 +685,19 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
       const scored = await scoreAds(toScore, icp);
       const writes = [];
       for (const a of scored) {
-        // Capture failure: remember it (12h TTL) so it drops out of `need` and doesn't loop the
-        // client's re-score. Short TTL so a creative that only failed transiently (a timeout / 429)
-        // comes back and scores fairly within the day instead of staying hidden.
-        if (a._captureFail) { failBySig[creativeSig(a)] = true; writes.push(redis.set(keyOf(a), JSON.stringify({ _captureFail: true }), { ex: 60 * 60 * 12 })); continue; }
+        // Capture failure: remember it so it drops out of `need` and doesn't loop the client's
+        // re-score. The retry window now BACKS OFF (12h, then 3d, 14d, 60d) instead of reopening
+        // every 12 hours for ever. A creative that failed once transiently (a timeout / 429) still
+        // comes back and scores fairly within the day, which is all the short window was for, but a
+        // permanently uncapturable one stops buying a full vision score twice a day: at a flat 12h
+        // that was about 60 paid scores a month each, for a row the board drops and never shows.
+        if (a._captureFail) {
+          failBySig[creativeSig(a)] = true;
+          const n = ((failSeen[creativeSig(a)] || {}).n || 0) + 1;
+          const wait = n === 1 ? 60 * 60 * 12 : n === 2 ? 60 * 60 * 24 * 3 : n === 3 ? 60 * 60 * 24 * 14 : 60 * 60 * 24 * 60;
+          writes.push(redis.set(keyOf(a), JSON.stringify({ _captureFail: true, n, retryAt: Date.now() + wait * 1000 }), { ex: ADSCORE_TTL }));
+          continue;
+        }
         // No readable copy on the creative: remember it (it won't grow text) so it leaves `need`.
         if (a.textless) { const o = { textless: true }; freshBySig[creativeSig(a)] = o; writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL })); continue; }
         // Hiring / employer-brand post: known (leaves `need`), never scored, dropped from the board.
