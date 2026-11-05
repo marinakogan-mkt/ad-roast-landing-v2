@@ -102,6 +102,48 @@ export function ownedByAdvertiser(ads, { domain = '', company = '', extraToks = 
   return (distinct <= 1 && !strict) ? ads : []; // strict: a lone advertiser isn't enough, the name must match
 }
 
+// Same guard, run PER PLATFORM. Each source identifies the company differently: LinkedIn by page
+// name, Google by landing DOMAIN (the advertiser is the legal entity, often a name that has nothing
+// to do with the brand, e.g. RepMove's Google ads run under its holding company). On a mixed list
+// the name match from LinkedIn made ownedByAdvertiser return ONLY the matching LinkedIn ads, so the
+// Google ads vanished from the board as soon as LinkedIn finished loading (RepMove, 4 nov 2026).
+export function ownedPerPlatform(ads, opts = {}) {
+  if (!Array.isArray(ads)) return ads;
+  const groups = new Map();
+  for (const a of ads) { const p = (a && a.plat) || ''; if (!groups.has(p)) groups.set(p, []); groups.get(p).push(a); }
+  const keep = new Set();
+  for (const [, g] of groups) for (const a of ownedByAdvertiser(g, opts)) keep.add(a);
+  return ads.filter(a => keep.has(a)); // keep the original order
+}
+
+// LinkedIn's accountOwner search wants the page name as LinkedIn spells it. When the site gives no
+// clean company name the board falls back to the domain stem ("Onitsecurity"), which matches no
+// page, while "Onit Security" returns the company's live ads. Split a glued stem at a common
+// company-name word so the search has a second try. Returns [] when there is nothing to split.
+const NAME_WORDS = ['security', 'cyber', 'labs', 'lab', 'software', 'systems', 'technologies', 'technology', 'tech', 'cloud', 'data', 'analytics', 'networks', 'network', 'solutions', 'digital', 'media', 'health', 'group', 'ai', 'hq', 'app', 'apps', 'io', 'online', 'global', 'marketing', 'sales', 'finance', 'pay', 'capital', 'partners', 'studio', 'works', 'hub', 'ops', 'insights', 'intelligence', 'robotics', 'bio', 'energy', 'logistics', 'legal', 'learning', 'commerce', 'connect', 'platform', 'agency'];
+export function linkedInNameVariants(company, domain = '') {
+  const out = [];
+  const add = (s) => { s = String(s || '').trim(); if (s && !out.some(x => x.toLowerCase() === s.toLowerCase())) out.push(s); };
+  const name = String(company || '').trim();
+  const stem = String(domain || '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split('.')[0];
+  for (const base of [name, stem]) {
+    if (!base || /\s/.test(base)) continue;
+    // camelCase first ("OnitSecurity" -> "Onit Security")
+    const camel = base.replace(/([a-z])([A-Z])/g, '$1 $2');
+    if (camel !== base) add(camel);
+    const lc = base.toLowerCase().replace(/[^a-z0-9]/g, '');
+    for (const w of NAME_WORDS) {
+      if (lc.length > w.length + 2 && lc.endsWith(w)) {
+        const head = lc.slice(0, lc.length - w.length);
+        const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+        add(cap(head) + ' ' + (w.length <= 2 ? w.toUpperCase() : cap(w)));
+        break;
+      }
+    }
+  }
+  return out.filter(v => v.toLowerCase() !== name.toLowerCase());
+}
+
 // Parse the rendered ad-library search HTML into ad cards. Each preview card contains the
 // advertiser name (a font-bold div), the body copy (commentary__content), and a content
 // image anchor (/ad-library/detail/{id}) whose <img data-delayed-url> is the real creative
@@ -887,7 +929,22 @@ async function fetchLinkedInAdsViaApify({ company, limit = 12 } = {}) {
   } catch (e) { return { ok: false, reason: 'apify_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
 }
 
-export async function fetchLinkedInAds({ company, domain = '', limit = 12 } = {}) {
+export async function fetchLinkedInAds({ company, domain = '', limit = 12, _variant = false } = {}) {
+  const t0 = Date.now();
+  const r0 = await fetchLinkedInAdsOnce({ company, domain, limit });
+  if (_variant || (r0.ok && r0.ads && r0.ads.length) || r0.reason !== 'no_ads') return r0;
+  // A clean read that found nothing: the name may just be spelled differently from the LinkedIn page
+  // ("Onitsecurity" vs "Onit Security"). One browser-engine try per variant, at most two, and only
+  // while there is room left under the 60s function limit (scoring still has to run after).
+  for (const v of linkedInNameVariants(company, domain).slice(0, 2)) {
+    if (Date.now() - t0 > 22000) break;
+    const r1 = await fetchLinkedInAdsOnce({ company: v, domain, limit, single: true });
+    if (r1.ok && r1.ads && r1.ads.length) return { ...r1, _nameVariant: v };
+  }
+  return r0;
+}
+
+async function fetchLinkedInAdsOnce({ company, domain = '', limit = 12, single = false } = {}) {
   const q = (company || '').trim();
   if (!q) return { ok: false, reason: 'no_company', ads: [] };
   // Try Apify first (reliable, no rate-limit fingerprint); fall back to Jina's anon pool if it's not
@@ -916,8 +973,8 @@ export async function fetchLinkedInAds({ company, domain = '', limit = 12 } = {}
   // 2 attempts stay under the 60s function limit (Google runs in parallel; scoring runs after).
   // Attempt 0: default engine (fast; an auth/credit failure returns in ~1s so the key-drop is cheap).
   // Attempt 1: Jina's browser engine, which gets past LinkedIn's Cloudflare far more often.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt > 0) await new Promise(r => setTimeout(r, 600));
+  for (let attempt = single ? 1 : 0; attempt < 2; attempt++) {
+    if (attempt > 0 && !single) await new Promise(r => setTimeout(r, 600));
     // Jina bills per OUTPUT token, so strip the heavy non-content before it counts: scripts, styles,
     // svg, iframes. These are the bulk of a LinkedIn page's weight and CANNOT contain an ad card
     // (whose detail-anchor + data-delayed-url creative is real DOM), so parseAdCards is unaffected
