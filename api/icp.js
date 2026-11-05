@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -849,7 +849,7 @@ ${items}
     // up on next view.
     if (pull && Array.isArray(pull.ads)) {
       pull.ads = dropJunkCreatives(pull.ads);
-      pull.ads = ownedByAdvertiser(pull.ads, { domain: body.domain, company: body.company });
+      pull.ads = ownedPerPlatform(pull.ads, { domain: body.domain, company: body.company }); // per platform: a LinkedIn name match must not drop Google's domain-matched ads
       // Meta off, or its image links about to die: hide what's cached (the cache isn't rewritten) and
       // the board goes back to Coming soon / the button. meta_on tells the client which of the two.
       const metaLive = META_ON && pull._metaAt && Date.now() - pull._metaAt < META_TTL_MS;
@@ -942,7 +942,7 @@ ${items}
           // Belt-and-suspenders: also require the ad's advertiser to match this company, so a
           // stranger's ad that slipped past the pull-time filter (or an older contaminated cache)
           // never gets published publicly under this company's name.
-          const ownScored = ownedByAdvertiser(
+          const ownScored = ownedPerPlatform(
             scoredAll.filter(a => a.flag !== 'capture_fail' && (a.head || a.headline)),
             { domain: body.domain, company: body.company }
           );
