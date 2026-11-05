@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { readSessionCookie } from './auth/_allowlist.js';
 import { consumeToken, peekAccount, companyKey, checkCompanyAllowed, addCompany } from './_tokens.js';
 import { videoStoryboard, adIsVideo } from './_vframes.js';
-import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, logClaudeUsage } from './_adlibrary.js';
+import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, logClaudeUsage } from './_adlibrary.js';
 import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
 import { platformRulesPrompt, RULES_VERSION } from './_platform-rules.js';
 
@@ -286,7 +286,7 @@ export default async function handler(req, res) {
     if (!pull || !Array.isArray(pull.ads) || !pull.ads.length) return res.status(200).json({ ok: false, reason: 'no_board_yet' });
     let icp = body.icp || '';
     if (!icp && _redis && domKey) { try { const g = await _redis.get('geo:icp:' + domKey); const gg = g ? (typeof g === 'string' ? JSON.parse(g) : g) : null; icp = (gg && gg.icp_text) || ''; } catch (e) {} }
-    let ads = ownedByAdvertiser(dropJunkCreatives(pull.ads), { domain: body.domain, company: body.company });
+    let ads = ownedPerPlatform(dropJunkCreatives(pull.ads), { domain: body.domain, company: body.company });
     if (icp) { try { const sc = await scoreAdsCached(ads, icp, _redis, { force: false, limit: 0 }); ads = dropJunkCreatives(sc.ads); } catch (e) {} }
     // Most recommended to roast = the lowest-scored VIDEO ad that has a detail URL (unscored sorts last).
     const vids = ads.filter(a => a && a.isVideo && a.detailUrl && a.flag !== 'capture_fail' && !a._captureFail);
