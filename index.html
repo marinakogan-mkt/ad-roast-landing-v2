@@ -2089,7 +2089,7 @@
       // floors them at 5 and names them canonically ("... not a demand-gen ad"), so keep them off
       // the board entirely - otherwise one of them can be the lowest and lead as the "fix first",
       // and a CMO dismisses the whole board. Detected off the verdict, so it needs the ad scored.
-      const _isBrandAd = (a) => /\bnot a (direct )?demand[\s-]?gen\b|\bbrand \/ culture post\b|\bbrand or culture post\b/i.test(String(a && a.verdict || ''));
+      const _isBrandAd = (a) => /\bnot a (direct )?demand[\s-]?gen\b|\bbrand \/ culture (post|story)\b|\bbrand or culture (post|story)\b|\bemployer[\s-]brand(ing)?\b/i.test(String(a && a.verdict || ''));
       const _cleanBoardAds = (ads) => (ads || []).filter(a => !_isBlankAd(a) && !_isBrandAd(a));
       // Progressive scoring: the server scores at most a few new creatives per call (so one call never
       // blows Vercel's 60s limit). If the response says creatives are still `pending`, re-call ads-fetch
@@ -2374,8 +2374,12 @@
         // Honest count: how many DISTINCT live creatives we found vs how many we're showing, so the
         // board never implies the shown ads are all of them. totals come from the pull (per platform).
         const _liveTotal = (real && real.totals) ? ((real.totals.linkedin || 0) + (real.totals.google || 0)) : 0;
-        let worstIdx = 0;
-        sc.forEach((a, i) => { if (a.score < sc[worstIdx].score) worstIdx = i; });
+        // "Fix first" is the worst CONVERSION ad (AD TAXONOMY): a brand or content post can score lower
+        // for its own reasons, but it must not be the ad the board leads with (Leadfeeder, 5 nov 2026).
+        const _hasConv = sc.some(a => a.conversion !== false);
+        let worstIdx = -1;
+        sc.forEach((a, i) => { if (_hasConv && a.conversion === false) return; if (worstIdx < 0 || a.score < sc[worstIdx].score) worstIdx = i; });
+        if (worstIdx < 0) worstIdx = 0;
         // Negative, urgent framing (Marina: "dame metricas de negatividad para que quiera corregirlas").
         const onT = sc.filter(a => a.score > 6).length;
         const off = sc.length - onT;                       // ads reaching the wrong buyer
@@ -3060,7 +3064,11 @@
                   </div>
                 );
               })}
-              {shown.length === 0 && <div className="text-gray-400 text-sm p-5">No ads on this platform.</div>}
+              {/* While the pull is still running (cold board, or the fast Google-only paint before LinkedIn lands)
+                  an empty platform means "not loaded yet", not "no ads": say so instead of a false "No ads". */}
+              {shown.length === 0 && (pulling || phase === 'loading' || (real && real._partial))
+                ? <div className="text-gray-400 text-sm p-5">Loading {fP === 'all' ? 'your' : fP} ads…</div>
+                : shown.length === 0 && <div className="text-gray-400 text-sm p-5">No ads on this platform.</div>}
             </div>
             {!_paidView && shownOrdered.length > FREE_LIMIT && (
               <div className="mt-5 rounded-2xl border text-center mx-auto" style={{ borderColor: '#cfe0f5', background: '#f0f6fd', padding: '18px 20px', maxWidth: 640 }}>
