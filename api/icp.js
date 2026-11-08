@@ -900,7 +900,19 @@ ${items}
         const scoredAll = scAds.filter(a => typeof a.score === 'number');
         if (scoredAll.length) {
           const _conv = scoredAll.filter(a => a.conversion !== false); // worst = a conversion ad when there is one
-          const worst = (_conv.length ? _conv : scoredAll).filter(a => a.img && /^https?:\/\//.test(String(a.img)) && a.plat !== 'Meta').sort((a, b) => a.score - b.score)[0] || null;
+          const _withImg = (_conv.length ? _conv : scoredAll).filter(a => a.img && /^https?:\/\//.test(String(a.img)) && a.plat !== 'Meta').sort((a, b) => a.score - b.score);
+          const worst = _withImg[0] || null;
+          // The board link card shows their two worst ads side by side, so keep both here. Same
+          // de-dupe as ogByPlat: a board often repeats one creative across several ad records, and
+          // two identical cards would read as a bug.
+          const _hk = (a) => String(a.head || a.headline || '').toLowerCase().replace(/\s+/g, ' ').trim();
+          const worst2 = [];
+          for (const a of _withImg) {
+            const k = _hk(a);
+            if (worst2.some(t => t.img === a.img || (k && t._k && (t._k.startsWith(k) || k.startsWith(t._k))))) continue;
+            worst2.push({ _k: k, score: a.score, img: a.img, plat: a.plat || null });
+            if (worst2.length === 2) break;
+          }
           // Same numbers the board overview cards show, so the link preview mirrors them exactly:
           // off = ads reaching the wrong buyer (score <= 6, "ads to fix"), crit = badly off (<= 4).
           const cnt = scoredAll.length;
@@ -915,6 +927,7 @@ ${items}
             toFix: crit, // legacy field
             worstImg: worst ? worst.img : null,
             worstPlat: worst ? (worst.plat || null) : null,
+            worst2: worst2.map(({ _k, ...t }) => t),
             byPlat: ogByPlat(scoredAll),
             at: Date.now(),
           };
