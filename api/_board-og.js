@@ -136,16 +136,19 @@ export async function boardOgHandler(req, res) {
     // Platform view: its own title and numbers, from the same clean list filtered to that platform.
     const platAds = plat ? ads.filter(a => String(a.plat || '').toLowerCase() === plat) : [];
     const platStats = platAds.length ? boardStats(platAds) : null;
-    const nFix = platStats ? Math.min(2, Math.max(1, platAds.length)) : 2;
-    // Only the platform link gets the roast line. On a company that runs one platform its worst ad
-    // IS the board's worst ad, and giving both links the same title puts the identical preview under
-    // both messages of the sequence, which is the bug this whole card split exists to fix.
     const roast = plat ? roastLine(platAds) : null;
-    const title = roast
-      ? roast.verdict
-      : plat
-      ? (nFix === 1 ? 'The ' + platLabel + ' ad ' + company + ' should fix first' : 'The 2 ' + platLabel + ' ads ' + company + ' should fix first')
+    // Marina's own copy for the platform link (9 nov 2026). The board link keeps its own title:
+    // a company that runs a single platform has the same worst ad board-wide, so one title for both
+    // would put the identical preview under both messages of the sequence, which is the bug this
+    // whole card split exists to fix.
+    const title = plat
+      ? company + ' ads, brutally reviewed.'
       : 'Where ' + company + "'s ads lose the buyer";
+    // What LinkedIn prints under the title. Her line first, then the roast of that platform's worst
+    // ad in the scorer's own words, which is the whole promise of the link in one sentence.
+    const ogDesc = plat
+      ? 'Start here: your worst ' + platLabel + ' ad.' + (roast ? ' ' + roast.verdict + '.' : '')
+      : null;
     const desc = plat
       ? (platStats
         ? company + "'s live " + platLabel + ' ads, each scored against their ideal buyer. ' + platStats.count + ' live ' + platLabel + ' ads, ' + platStats.avg + '/10 average fit, ' + platStats.toFix + ' to fix.'
@@ -163,10 +166,10 @@ export async function boardOgHandler(req, res) {
     html = replaceTag(html, /(<link rel="canonical" href=")[^"]*(">)/, `$1${attr(boardUrl)}$2`);
 
     html = replaceTag(html, /(<meta property="og:title" content=")[^"]*(">)/, `$1${attr(title)}$2`);
-    html = replaceTag(html, /(<meta property="og:description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
+    html = replaceTag(html, /(<meta property="og:description" content=")[^"]*(">)/, `$1${attr(ogDesc || desc)}$2`);
     html = replaceTag(html, /(<meta property="og:url" content=")[^"]*(">)/, `$1${attr(shareUrl)}$2`);
     html = replaceTag(html, /(<meta name="twitter:title" content=")[^"]*(">)/, `$1${attr(title)}$2`);
-    html = replaceTag(html, /(<meta name="twitter:description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
+    html = replaceTag(html, /(<meta name="twitter:description" content=")[^"]*(">)/, `$1${attr(ogDesc || desc)}$2`);
 
     // Per-company og:image: a 1200x630 PNG rendered for THIS company (name + live board stats) by
     // /api/icp?ogimg=1 (satori + resvg-wasm). Falls back to the static hero on any render error.
