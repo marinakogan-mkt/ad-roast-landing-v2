@@ -45,24 +45,6 @@ function slugToDomain(slug) {
 // links it as "the two linkedin ads I'd fix first are in here", so its card names the platform.
 const PLAT_LABEL = { linkedin: 'LinkedIn', google: 'Google', meta: 'Meta' };
 
-// Marina, 9 nov 2026: the shared link's title is the roast itself, in one line. The scorer already
-// writes exactly that per ad (a max-14-word diagnosis, no fix), so the title says what is actually
-// wrong with their weakest ad instead of a template. The company name is not in it: the card image
-// already shows their logo and their own ad, and the description repeats the name. Cut to what
-// LinkedIn shows, at a clause boundary so it never ends mid-thought.
-function roastLine(list) {
-  const scored = (list || []).filter(a => a && typeof a.score === 'number' && a.verdict && String(a.verdict).trim());
-  if (!scored.length) return null;
-  const w = scored.slice().sort((a, b) => a.score - b.score)[0];
-  let v = String(w.verdict).trim().replace(/\s+/g, ' ').replace(/\.+$/, '');
-  if (v.length > 88) {
-    const cut = v.slice(0, 88);
-    const at = Math.max(cut.lastIndexOf(', '), cut.lastIndexOf(' and '), cut.lastIndexOf(' but '), cut.lastIndexOf(' while '));
-    v = (at > 30 ? cut.slice(0, at) : cut.slice(0, cut.lastIndexOf(' '))).replace(/[,;:]$/, '');
-  }
-  if (!v) return null;
-  return { verdict: v, score: w.score };
-}
 function slugToPlatform(slug) {
   const m = String(slug || '').toLowerCase().match(/^[^/?#]+\/(linkedin|google|meta)\/?(?:[?#].*)?$/);
   return m ? m[1] : '';
@@ -136,7 +118,6 @@ export async function boardOgHandler(req, res) {
     // Platform view: its own title and numbers, from the same clean list filtered to that platform.
     const platAds = plat ? ads.filter(a => String(a.plat || '').toLowerCase() === plat) : [];
     const platStats = platAds.length ? boardStats(platAds) : null;
-    const roast = plat ? roastLine(platAds) : null;
     // Marina's own copy for the platform link (9 nov 2026). The board link keeps its own title:
     // a company that runs a single platform has the same worst ad board-wide, so one title for both
     // would put the identical preview under both messages of the sequence, which is the bug this
@@ -144,11 +125,8 @@ export async function boardOgHandler(req, res) {
     const title = plat
       ? company + ' ads, brutally reviewed.'
       : 'Where ' + company + "'s ads lose the buyer";
-    // What LinkedIn prints under the title. Her line first, then the roast of that platform's worst
-    // ad in the scorer's own words, which is the whole promise of the link in one sentence.
-    const ogDesc = plat
-      ? 'Start here: your worst ' + platLabel + ' ad.' + (roast ? ' ' + roast.verdict + '.' : '')
-      : null;
+    // What LinkedIn prints under the title. Marina's line, and nothing after it.
+    const ogDesc = plat ? 'Start here: your worst ' + platLabel + ' ad.' : null;
     const desc = plat
       ? (platStats
         ? company + "'s live " + platLabel + ' ads, each scored against their ideal buyer. ' + platStats.count + ' live ' + platLabel + ' ads, ' + platStats.avg + '/10 average fit, ' + platStats.toFix + ' to fix.'
