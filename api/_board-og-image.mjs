@@ -228,7 +228,8 @@ function adCard(o) {
       + `<text x="${tx}" y="${n1(y + pad + lg * 0.42)}" font-family="Inter" font-size="${nameSize}" font-weight="700" fill="${INK}">${esc(name)}</text>`
       + `<text x="${tx}" y="${n1(y + pad + lg * 0.42 + subSize + 10)}" font-family="Inter" font-size="${subSize}" font-weight="400" fill="${MUTE}">${esc(sub)}</text>`;
   }
-  const body = `<g transform="rotate(${rot} ${n1(x + w / 2)} ${n1(y + h / 2)})" filter="url(#sh)">`
+  const body = `<g transform="rotate(${rot} ${n1(x + w / 2)} ${n1(y + h / 2)})">`
+    + softShadow(x, y, w, h, 20, 18, 0.20)
     + `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="20" fill="#ffffff"/>` + inner + `</g>`;
   return { defs, body };
 }
@@ -242,7 +243,8 @@ function tagEl(text, size, top = 40, right = 36, rot = 6) {
   const t = String(text).toUpperCase(), ls = 0.04 * size;
   const w = textW(t, size, ls) + 52, h = 32 + 1.21 * size;
   const x = CW - right - w, cx = x + w / 2, cy = top + h / 2;
-  return `<g transform="rotate(${rot} ${n1(cx)} ${n1(cy)})" filter="url(#sh2)">`
+  return `<g transform="rotate(${rot} ${n1(cx)} ${n1(cy)})">`
+    + `<rect x="${n1(x)}" y="${n1(top + 9)}" width="${n1(w)}" height="${n1(h)}" rx="12" fill="${RED}" opacity="0.38" filter="url(#sh2)"/>`
     + `<rect x="${n1(x)}" y="${top}" width="${n1(w)}" height="${n1(h)}" rx="12" fill="${RED}"/>`
     + `<text x="${n1(cx + ls / 2)}" y="${n1(cy + 0.355 * size)}" font-family="Inter" font-size="${size}" font-weight="800" letter-spacing="${n1(ls)}" fill="#ffffff" text-anchor="middle">${esc(t)}</text></g>`;
 }
@@ -270,8 +272,13 @@ function headlineEl(x, y, size, lh, lead, tail) {
   });
   return { body: out.join(''), h: lines.length * lh, lines: lines.length };
 }
-const SHADOWS = `<filter id="sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="24" stdDeviation="20" flood-color="#0b1220" flood-opacity="0.18"/></filter>`
-  + `<filter id="sh2" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="9" flood-color="${RED}" flood-opacity="0.40"/></filter>`;
+// Shadows are drawn as their own blurred shape BEHIND the card, never as a filter on the card group:
+// if resvg ever drops a filter it does not understand, an unblurred rectangle still reads as a shadow,
+// whereas a filter on the group would take the whole card down with it.
+const SHADOWS = `<filter id="sh" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="17"/></filter>`
+  + `<filter id="sh2" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="8"/></filter>`;
+const softShadow = (x, y, w, h, rx, dy, op, id) =>
+  `<rect x="${n1(x)}" y="${n1(y + dy)}" width="${n1(w)}" height="${n1(h)}" rx="${rx}" fill="#0b1220" opacity="${op}" filter="url(#${id || 'sh'})"/>`;
 // Google Ads mark, as the design draws it: two round-capped strokes and the green dot.
 const gAdsMark = (x, y, s) => `<g transform="translate(${x},${n1(y)}) scale(${n1(s / 100)})">`
   + `<line x1="50" y1="16" x2="78" y2="70" stroke="#4285F4" stroke-width="24" stroke-linecap="round"/>`
