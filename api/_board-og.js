@@ -44,6 +44,25 @@ function slugToDomain(slug) {
 // /b/<domain>/linkedin (or /google, /meta) is the board filtered to one platform. The outreach line
 // links it as "the two linkedin ads I'd fix first are in here", so its card names the platform.
 const PLAT_LABEL = { linkedin: 'LinkedIn', google: 'Google', meta: 'Meta' };
+
+// Marina, 9 nov 2026: the shared link's title is the roast itself, in one line. The scorer already
+// writes exactly that per ad (a max-14-word diagnosis, no fix), so the title says what is actually
+// wrong with their weakest ad instead of a template. The company name is not in it: the card image
+// already shows their logo and their own ad, and the description repeats the name. Cut to what
+// LinkedIn shows, at a clause boundary so it never ends mid-thought.
+function roastLine(list) {
+  const scored = (list || []).filter(a => a && typeof a.score === 'number' && a.verdict && String(a.verdict).trim());
+  if (!scored.length) return null;
+  const w = scored.slice().sort((a, b) => a.score - b.score)[0];
+  let v = String(w.verdict).trim().replace(/\s+/g, ' ').replace(/\.+$/, '');
+  if (v.length > 88) {
+    const cut = v.slice(0, 88);
+    const at = Math.max(cut.lastIndexOf(', '), cut.lastIndexOf(' and '), cut.lastIndexOf(' but '), cut.lastIndexOf(' while '));
+    v = (at > 30 ? cut.slice(0, at) : cut.slice(0, cut.lastIndexOf(' '))).replace(/[,;:]$/, '');
+  }
+  if (!v) return null;
+  return { verdict: v, score: w.score };
+}
 function slugToPlatform(slug) {
   const m = String(slug || '').toLowerCase().match(/^[^/?#]+\/(linkedin|google|meta)\/?(?:[?#].*)?$/);
   return m ? m[1] : '';
@@ -118,7 +137,13 @@ export async function boardOgHandler(req, res) {
     const platAds = plat ? ads.filter(a => String(a.plat || '').toLowerCase() === plat) : [];
     const platStats = platAds.length ? boardStats(platAds) : null;
     const nFix = platStats ? Math.min(2, Math.max(1, platAds.length)) : 2;
-    const title = plat
+    // Only the platform link gets the roast line. On a company that runs one platform its worst ad
+    // IS the board's worst ad, and giving both links the same title puts the identical preview under
+    // both messages of the sequence, which is the bug this whole card split exists to fix.
+    const roast = plat ? roastLine(platAds) : null;
+    const title = roast
+      ? roast.verdict
+      : plat
       ? (nFix === 1 ? 'The ' + platLabel + ' ad ' + company + ' should fix first' : 'The 2 ' + platLabel + ' ads ' + company + ' should fix first')
       : 'Where ' + company + "'s ads lose the buyer";
     const desc = plat
