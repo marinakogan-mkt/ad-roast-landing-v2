@@ -733,8 +733,10 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
           if (!o.retryAt || Date.now() < o.retryAt) cachedBySig[creativeSig(a)] = o;
           return;
         }
-        // Otherwise only a real numeric score (or a known textless / talent row) is a cache hit.
-        if (typeof o.score === 'number' || o.textless || o.talent) cachedBySig[creativeSig(a)] = o;
+        // Otherwise only a real numeric score (or a known textless / talent / unscorable row) is a
+        // cache hit. _unscored is the short-lived marker for a creative the scorer handed back with
+        // no number: without it that creative never enters the cache and is re-billed for ever.
+        if (typeof o.score === 'number' || o.textless || o.talent || o._unscored) cachedBySig[creativeSig(a)] = o;
       });
     } catch (e) { /* miss -> score all */ }
   }
@@ -769,7 +771,19 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
         if (a.textless) { const o = { textless: true }; freshBySig[creativeSig(a)] = o; writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL })); continue; }
         // Hiring / employer-brand post: known (leaves `need`), never scored, dropped from the board.
         if (a.talent) { const o = { talent: true, job: 'talent' }; freshBySig[creativeSig(a)] = o; writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL })); continue; }
-        if (typeof a.score !== 'number') continue;
+        // The scorer returned this creative with no number (or skipped its index entirely), and it
+        // is not textless / talent / capture-fail. Before 2026-11-09 we cached NOTHING here, so the
+        // creative never entered the 30-day cache and was re-sent to the vision call on EVERY board
+        // open, for ever: the outreach gate alone re-billed the same "N ads sin puntaje" companies
+        // three times a day (see reports/2026-11-05-anthropic-api-costos.md). Remember it for a few
+        // hours so it leaves `need`, with a SHORT ttl so a creative that only failed transiently
+        // still gets a fair score the same day. The board shows it exactly as before: unscored.
+        if (typeof a.score !== 'number') {
+          const o = { _unscored: true };
+          freshBySig[creativeSig(a)] = o;
+          writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: 60 * 60 * 6 }));
+          continue;
+        }
         const o = { score: a.score, verdict: a.verdict, tags: Array.isArray(a.tags) ? a.tags.slice(0, 4) : [], title: a.title || null, job: a.job || null, audienceKind: a.audienceKind || 'primary', contentKind: a.contentKind || null, dims: a.dims || {}, audience: a.audience || null, fit: a.fit === false ? false : true };
         if (a.ocrHead) o.head = a.ocrHead;
         if (a.ocrBody) o.body = a.ocrBody;
@@ -790,6 +804,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
     if (failBySig[creativeSig(a)] || (o && o._captureFail)) return { ...a, _captureFail: true }; // our capture failed; isJunkCreative drops it
     if (o && o.textless) return { ...a, textless: true }; // unscored, greyed, out of every average
     if (o && o.talent) return { ...a, talent: true, job: 'talent' }; // hiring post: icp.js drops it from the board
+    if (o && o._unscored) return a; // scorer gave no number: shown unscored, exactly as before the 2026-11-09 cache fix
     // head/body: the ad's own copy, else the copy READ off its creative. Never a described title.
     const _job = o ? normalizeJob(o.job) : null;
     return o ? ({ ...a, score: o.score, verdict: cleanVerdict(o.verdict), tags: Array.isArray(o.tags) ? o.tags.filter((t) => !ARTIFACT_TAG.test(String(t))) : [], title: _ownWords(o.title) || a.title || null, job: _job, jobLabel: JOBS[_job].label, conversion: isConversionJob(_job), audienceKind: o.audienceKind || 'primary', contentKind: o.contentKind || null, dims: o.dims || {}, audience: o.audience || null, fit: o.fit === false ? false : true, head: a.head || o.head || _ownWords(o.title) || '', body: a.body || o.body || '' }) : a;
