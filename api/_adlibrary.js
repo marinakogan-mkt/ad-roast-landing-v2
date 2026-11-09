@@ -15,13 +15,19 @@
 // one fetch + parse + score, no polling.
 
 // Sonnet 4.6 (not Haiku): it reads non-English creative copy and judges buyer-fit far more
-// accurately, and unlike Sonnet 5 it still accepts temperature (kept at 0 for determinism).
-// Token cost is bounded HARD by scoreAdsCached: only creatives NOT already in the 30-day cache
-// are sent to the model, so a re-scored board pays Sonnet vision only for new/changed ads.
-// NOTE: if ANTHROPIC_ICP_MODEL is set in the env it overrides this; unset it to use Sonnet 4.6.
+// accurately. How each generation is held to a deterministic answer is in modelParams below.
+// Token cost is bounded HARD by scoreAdsCached: only creatives NOT already in the score cache
+// are sent to the model, so a re-scored board pays Sonnet vision only for new/changed ads, and
+// _downscale caps what a creative's pixels can cost when one does have to be scored.
 import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
 
-const SCORE_MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
+// ANTHROPIC_SCORE_MODEL overrides the board scorer ALONE, which is what makes a model comparison
+// safe to run in production: ANTHROPIC_ICP_MODEL (kept as a fallback for existing deploys) also
+// drives ICP detection in api/icp.js, and a different ICP model writes different ICP text, whose
+// hash is part of every score cache key. So flipping that one would re-score boards as their 60-day
+// ICP cache turns over, which is the single most expensive thing this product can do. Flip
+// ANTHROPIC_SCORE_MODEL to try a scorer, and leave ICP detection where it is.
+const SCORE_MODEL = process.env.ANTHROPIC_SCORE_MODEL || process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 
 // One compact line per Anthropic call so prompt-cache hits can be checked in Vercel runtime logs
 // (grep "[claude-usage]"). in = uncached input, cw = cache write, cr = cache read. Never throws.
@@ -252,6 +258,57 @@ export function collapseTemplateGroups(ads) {
 // copy that sells the ad usually lives ON the creative, and Google image ads carry no
 // separate text at all. Images are passed as URL sources (Anthropic fetches them), so we
 // don't download them here. Best-effort; any failure returns the ads unscored.
+// Sampling and thinking differ by model generation, and both scorer models are switchable by env
+// (ANTHROPIC_SCORE_MODEL / ANTHROPIC_KIND_MODEL) so one can be tried without a code change. Claude 4.x
+// accepts temperature, which is how the board got its determinism. Every 5.x model returns a 400 on
+// a non-default sampling parameter AND runs adaptive thinking by default, which would quietly bill
+// reasoning tokens on a scoring call that does not need any. So: temperature 0 on 4.x, thinking off
+// on 5.x. Sonnet 5.5 is the exception that rejects "disabled" and wants "between_tools" instead.
+export function modelParams(model) {
+  const m = String(model || '');
+  if (/-4-\d/.test(m)) return { temperature: 0 };
+  if (/sonnet-5-5/.test(m)) return { thinking: { type: 'between_tools' } };
+  return { thinking: { type: 'disabled' } };
+}
+
+// Creative images are about 85% of the scorer's input tokens, and vision is billed by pixel area
+// (roughly width * height / 750), so a creative's ORIGINAL size is paid again on every score. Ads
+// are built to be read in a feed a few hundred pixels wide, so 800px on the long edge keeps the
+// headline and CTA legible, which the OCR rule depends on, while cutting a 1200x627 creative from
+// about 1000 image tokens to about 450. This also makes the two scorer models comparable: Sonnet 5
+// keeps vision up to 2576px where Sonnet 4.6 stops at 1568px, so without a cap of our own the newer
+// model would be charged MORE for the same creative. Raise ANTHROPIC_IMG_MAX_EDGE if OCR ever starts
+// missing small print. sharp is imported lazily and EVERY failure falls back to the original bytes,
+// so a missing or broken dependency costs tokens, never a board that cannot be scored.
+const IMG_MAX_EDGE = Math.max(320, Number(process.env.ANTHROPIC_IMG_MAX_EDGE) || 800);
+const IMG_HARD_BYTES = 12_000_000; // sanity bound on what we pull into a function's memory
+let _sharp; // undefined = not tried yet, null = unavailable
+async function _downscale(buf, ct) {
+  try {
+    if (_sharp === undefined) {
+      try { _sharp = (await import('sharp')).default; }
+      catch (e) { _sharp = null; console.log('[adscore] sharp unavailable, creatives go at full size:', e.message); }
+    }
+    if (!_sharp) return { buf, ct };
+    const img = _sharp(buf, { animated: false, failOn: 'none' });
+    const md = await img.metadata();
+    if (!md || !md.width || !md.height) return { buf, ct };
+    if (Math.max(md.width, md.height) <= IMG_MAX_EDGE) return { buf, ct };
+    // Vision is billed by PIXELS, not by file weight, so quality 88 is free and keeps small print
+    // readable. Transparency has to be flattened onto white first: a logo PNG with a transparent
+    // background and dark text would otherwise come out as dark text on JPEG black, unreadable,
+    // and the OCR rule would read the creative as having no copy at all.
+    let pipe = img.resize({ width: IMG_MAX_EDGE, height: IMG_MAX_EDGE, fit: 'inside', withoutEnlargement: true });
+    if (md.hasAlpha) pipe = pipe.flatten({ background: '#ffffff' });
+    const out = await pipe.jpeg({ quality: 88 }).toBuffer();
+    // Keep the resized version even when it weighs MORE than the original: we only get here with
+    // the pixel count genuinely reduced, and pixels are what is billed. LinkedIn's CDN serves
+    // byte-small WebP at full pixel size, which a weight comparison would have kept at full cost.
+    if (!out || !out.length || out.length > IMG_HARD_BYTES) return { buf, ct };
+    return { buf: out, ct: 'image/jpeg' };
+  } catch (e) { return { buf, ct }; }
+}
+
 // Fetch a creative and return it as a base64 image block. Anthropic's own URL-image fetch
 // silently fails for many ad CDNs (tpc.googlesyndication.com in particular), which made the
 // model score image-only ads "no copy, cannot evaluate" = a bogus 1. Fetching server-side
@@ -269,7 +326,7 @@ async function _fetchImgB64(url) {
     let ct = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
     if (ct === 'image/jpg') ct = 'image/jpeg';
     const buf = Buffer.from(await r.arrayBuffer());
-    if (!buf.length || buf.length > 4_000_000) return null;
+    if (!buf.length || buf.length > IMG_HARD_BYTES) return null;
     // Trust the BYTES, not the header. Google (simgad) sometimes serves a real PNG/JPEG with a
     // missing or generic content-type (octet-stream), so a strict header check dropped a valid
     // creative -> the ad reached the scorer with empty copy and no image and got scored "broken" (a
@@ -287,7 +344,11 @@ async function _fetchImgB64(url) {
     const m = sniff(buf);
     if (m) ct = m;
     else if (!/^image\/(png|jpe?g|gif|webp)$/.test(ct)) return null;
-    return { media_type: ct, data: buf.toString('base64') };
+    const small = await _downscale(buf, ct);
+    // Nothing was resized (no sharp, or already small enough). The old 4MB guard still applies in
+    // that case: sending a huge base64 payload is worse than letting Anthropic fetch the URL.
+    if (small.buf === buf && buf.length > 4_000_000) return null;
+    return { media_type: small.ct, data: small.buf.toString('base64') };
   } catch (e) { return null; }
 }
 
@@ -391,9 +452,11 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      // temperature 0: the SAME ads must score the SAME way run to run. Default temp made the
-      // board swing (e.g. Google avg 1.1 one run, 7.7 the next) — pure sampling noise, not signal.
-      // Sonnet 4.6 accepts temperature (Sonnet 5 rejects it), so determinism is preserved.
+      // Determinism: the SAME ads must score the SAME way run to run. Default temp made the board
+      // swing (e.g. Google avg 1.1 one run, 7.7 the next), pure sampling noise, not signal. On
+      // Sonnet 4.6 that is temperature 0; a 5.x model rejects temperature, so modelParams sends
+      // thinking off instead and determinism rests on the rubric, which since the v20 taxonomy
+      // scores every dimension explicitly and has the code compute the final score.
       // max_tokens 2000: headroom for up to 14 terse JSON rows. A truncated output fails the JSON
       // parse and wastes the WHOLE call (incl. the expensive vision input), so the cap sits just
       // above real need rather than at it. Billing is by actual output, so the cap is not a cost.
@@ -404,7 +467,7 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
       // images) lives in the user message after it. So the system block is the cache breakpoint.
       // 1h TTL: a board scores in several batches seconds apart (limit 3/6/8) and boards from
       // different users arrive minutes apart, so one 2x write is read many times inside the hour.
-      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 3000, temperature: 0, system: [{ type: 'text', text: sys, cache_control: { type: 'ephemeral', ttl: '1h' } }], messages: [{ role: 'user', content }] }),
+      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 3000, ...modelParams(SCORE_MODEL), system: [{ type: 'text', text: sys, cache_control: { type: 'ephemeral', ttl: '1h' } }], messages: [{ role: 'user', content }] }),
     });
     const d = await r.json().catch(() => null);
     logClaudeUsage('board-score', SCORE_MODEL, d, 'ads=' + ads.length);
@@ -517,7 +580,11 @@ function icpHash(icp) {
 // classification ("is this ad selling the product?"), cached per creative so the answer never flips
 // between runs. Search ads always carry an offer, so only social ads (LinkedIn, Meta) are checked.
 const _OFFER_SIGNAL = /\b(demo|trial|free|download|sign[\s-]?up|signup|register|webinar|webcast|event|summit|conference|book|get started|try|pricing|quote|guide|report|e-?book|whitepaper|white paper|checklist|template|playbook|toolkit|course|workshop|learn more|read more|see how|get the|get your|claim|discount|introducing|announc)/i;
-const KIND_MODEL = process.env.ANTHROPIC_KIND_MODEL || 'claude-haiku-4-5-20251001';
+// Haiku 5.5 at $0.10/$0.50 per MTok against Haiku 4.5 at $1/$5. This is classification, not copy,
+// so the cheap model is the right one; its newer tokenizer counts about 30% more tokens for the same
+// text, which still leaves it roughly 8x cheaper. modelParams drops the temperature it would 400 on
+// and turns its default adaptive thinking off.
+const KIND_MODEL = process.env.ANTHROPIC_KIND_MODEL || 'claude-haiku-5-5';
 const BRAND_VERDICT_TEXT = 'Thought-leadership or brand post with no product pitch, not a demand-gen ad; judge it on brand lift, not buyer fit.';
 // VERIFY LOW SCORES (adversarial false-positive catcher, pipeline #3): the Sonnet scorer applies
 // PURPOSE BEFORE FIT but unevenly, so an ad doing a non-primary job (brand, event, a secondary
@@ -549,7 +616,7 @@ async function recheckLows(ads, icp, redis) {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: KIND_MODEL, max_tokens: 1500, temperature: 0, system: sys, messages: [{ role: 'user', content: list }] }),
+      body: JSON.stringify({ model: KIND_MODEL, max_tokens: 1500, ...modelParams(KIND_MODEL), system: sys, messages: [{ role: 'user', content: list }] }),
     });
     const d = await r.json().catch(() => null);
     logClaudeUsage('ad-verify', KIND_MODEL, d, 'ads=' + need.length);

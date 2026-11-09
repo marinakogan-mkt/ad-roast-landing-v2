@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups, logClaudeUsage } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -1000,12 +1000,13 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 1200,
-        // temperature 0: ICP detection must be deterministic. The board scores every ad
-        // AGAINST this ICP, so a drifting ICP silently drifts all the scores (the same
-        // unchanged Semgrep ad swung 5 -> 7 between loads just because the re-detected buyer
-        // came back slightly different). Pin it so a given site always yields the same buyer
-        // and therefore the same, reproducible scores. Mirrors scoreAds() which is already 0.
-        temperature: 0,
+        // Determinism matters more here than anywhere: the board scores every ad AGAINST this
+        // ICP, and the ICP text's hash is part of every score cache key, so a drifting ICP both
+        // drifts the scores (the same unchanged Semgrep ad swung 5 -> 7 between loads purely
+        // because the re-detected buyer came back slightly different) and invalidates the cache,
+        // re-billing a whole board. On Sonnet 4.6 that pin is temperature 0; a 5.x model rejects
+        // temperature with a 400, so modelParams turns its default adaptive thinking off instead.
+        ...modelParams(MODEL),
         // No cache_control: systemPrompt is static but ~850 tokens, under Sonnet 4.6's 1024-token
         // cacheable minimum, so a marker would not cache. ICP results are already cached 60 days per URL.
         system: systemPrompt,
