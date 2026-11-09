@@ -1,8 +1,9 @@
 // Per-company link-preview IMAGE for /b/<slug> (og:image), rendered on demand as a 1200x630 PNG.
 // A card shared on LinkedIn shows the image referenced by og:image; _board-og.js points that tag at
-// /api/icp?ogimg=1&slug=<slug>, which lands here. We render a branded card for THAT company: AdRoast
-// branding (light, not black), the company's own logo, one of their real creatives, and their board
-// metrics as the biggest element. No headline text (the shared link's og:title already says it).
+// /api/icp?ogimg=1&slug=<slug>, which lands here. We render a branded card for THAT company: their
+// own logo, their real creatives in feed-style post cards, a red ring around them and an URGENT /
+// FIX NOW tag, over the bone ground of the design Marina approved (AdRoast Link Cards Final, 9 nov
+// 2026). The headline lives in the image now, so it has to be wrapped here (see textW/wrapText).
 //
 // WHY hand-built SVG + resvg-wasm (not @vercel/og, not satori): both @vercel/og and satori pull in
 // harfbuzzjs, whose hb.wasm cannot be bundled into a Vercel Node function (nft misses it and the pnpm
@@ -94,12 +95,14 @@ function boardStats(ads) {
   const avg = Math.round((scored.reduce((s, a) => s + a.score, 0) / cnt) * 10) / 10;
   return { count: cnt, avg, off, crit, offPct: Math.round(off / cnt * 100) };
 }
-// The single ad we spotlight in the preview: the worst-scoring one with a usable creative (the same
-// "start here" ad the board recommends). Returns the ad or null.
-function worstCreative(ads) {
+// The ads we spotlight in the preview: the worst-scoring ones with a usable creative (the same
+// "start here" ads the board recommends), never the same creative twice.
+function worstCreatives(ads, n) {
   const withImg = (ads || []).filter(a => typeof a.score === 'number' && a.img && /^https?:\/\//.test(String(a.img)) && !isJunk(a));
-  if (!withImg.length) return null;
-  return withImg.slice().sort((a, b) => a.score - b.score)[0];
+  const sorted = withImg.slice().sort((a, b) => a.score - b.score);
+  const out = [];
+  for (const a of sorted) { if (out.some(o => o.img === a.img)) continue; out.push(a); if (out.length >= (n || 1)) break; }
+  return out;
 }
 
 // Fetch a remote image and return a data URI resvg can embed (png/jpeg/gif only; skip webp/svg which
@@ -128,34 +131,43 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-// Palette — AdRoast branding, light.
+// ── Palette and type. Straight from the design Marina signed off on (AdRoast Link Cards Final,
+// 9 nov 2026): bone ground, ink text, the last words of the headline in red, the ad in a white post
+// card, a hand-drawn-looking red ring around it and an URGENT / FIX NOW tag pinned to the corner.
+const BONE = '#f3f2f0';
+const INK = '#0b1220';
+const RED = '#e5383b';
+const MUTE = '#59626f';
 const BLUE = '#0a66c2';
-const INK = '#0f1b2d';
-const MUTE = '#64748b';
 const LINE = '#e2e8f0';
-const PANEL = '#f1f6fc';
-const RED = '#dc2626';
-const AMBER = '#b45309';
-const GREEN = '#15803d';
-// score -> color, matching the board's severity read (red badly off, amber weak, blue solid).
-const scoreColor = (s) => (s <= 4 ? RED : s <= 6 ? '#d97706' : BLUE);
+const SLOT = '#f3f2f0';
+const CW = 1200, CH = 630;
+const CX = 64, COL = 436; // left column: x and usable width (500 wide, 64 of padding)
 
-// The board's two overview cards, mirrored here so the link preview shows the same chips.
-function sevAdsToFix(offPct, crit) {
-  return (offPct >= 30 || crit >= 2) ? { t: 'Losing the buyer', c: RED }
-    : (offPct >= 10 || crit >= 1) ? { t: 'Missing the buyer', c: AMBER }
-    : offPct > 0 ? { t: 'Minor misses', c: AMBER }
-    : { t: 'On target', c: GREEN };
+// Inter Bold advance widths in 1/1000 em for ASCII 32..126, measured off the very TTF this function
+// ships. resvg lays out text itself but cannot WRAP, so we break the headline here, and breaking it
+// by character count puts the line breaks in the wrong place. Anything outside the table (accents)
+// falls back to a mid-width value, which only ever costs a slightly early break.
+const IW = [232,325,392,650,655,859,674,209,409,409,565,680,303,469,298,390,688,489,630,659,678,645,660,595,661,660,298,303,680,680,680,563,1031,748,661,752,727,613,585,761,746,281,570,690,567,915,735,782,648,783,656,655,668,729,748,1036,714,724,667,409,390,409,488,477,497,580,635,587,635,598,386,633,624,272,272,582,272,912,622,614,632,632,409,562,389,622,586,850,574,586,572,409,374,409,680];
+function textW(s, size, ls) {
+  const t = String(s == null ? '' : s);
+  let u = 0;
+  for (let i = 0; i < t.length; i++) { const c = t.charCodeAt(i) - 32; u += (c >= 0 && c < IW.length) ? IW[c] : 600; }
+  return u / 1000 * size + (ls || 0) * Math.max(0, t.length - 1);
 }
-function sevOffTarget(offPct) {
-  return offPct >= 30 ? { t: 'Mostly off target', c: RED }
-    : offPct >= 15 ? { t: 'Off target', c: RED }
-    : offPct >= 5 ? { t: 'Some off target', c: AMBER }
-    : offPct > 0 ? { t: 'A few off target', c: AMBER }
-    : { t: 'All on target', c: GREEN };
+function wrapText(text, size, maxw, ls) {
+  const out = []; let cur = '';
+  for (const wd of String(text || '').split(/\s+/).filter(Boolean)) {
+    const t = cur ? cur + ' ' + wd : wd;
+    if (!cur || textW(t, size, ls) <= maxw) cur = t; else { out.push(cur); cur = wd; }
+  }
+  if (cur) out.push(cur);
+  return out.length ? out : [''];
 }
-// tint a hex color at low alpha for chip/card fills (color + "14"/"33" like the board's tailwind).
-const tint = (hex, aa) => hex + aa;
+// Where the first baseline falls inside a line box, the way a browser places it (Inter's hhea metrics
+// are 0.969 ascent / 0.241 descent), so an SVG built from CSS line-heights lands on the same pixels.
+const baseOff = (size, lh) => 0.5 * (lh - 1.21 * size) + 0.969 * size;
+const n1 = (v) => Math.round(v * 10) / 10;
 
 // Simple deterministic brand color for the monogram fallback when no logo image resolves.
 function monoColor(seed) {
@@ -164,108 +176,218 @@ function monoColor(seed) {
   const hues = ['#0a66c2', '#2563eb', '#7c3aed', '#0891b2', '#db2777', '#ea580c', '#059669'];
   return hues[h % hues.length];
 }
+// corp.kaltura.com reads as a subdomain in an ad's "Sponsored ·" line; the ad itself says kaltura.com.
+function shortDomain(d) { return String(d || '').replace(/^(www|corp|go|get|try|info|ads|hq|app)\./, ''); }
 
-// A waste-gravity chip label for the shareable card (this is the outreach hook, so it uses the
-// punchier spend framing the founder designed for it; the in-product board stays measured).
-function wasteChip(offPct) {
-  return offPct >= 70 ? { t: 'SEVERE WASTE', c: RED }
-    : offPct >= 30 ? { t: 'HIGH WASTE', c: RED }
-    : offPct >= 10 ? { t: 'LEAKING BUDGET', c: AMBER }
-    : offPct > 0 ? { t: 'MINOR WASTE', c: AMBER }
-    : { t: 'ON TARGET', c: GREEN };
+// A creative inside its slot. `ratio` forces the Google ad block (wide and short) anchored to the top,
+// which is how the sitelinks underneath the ad stay out of the frame.
+function imgFit(id, bx, by, bw, bh, src, ratio) {
+  if (!src) return { defs: '', body: `<rect x="${bx}" y="${n1(by)}" width="${bw}" height="${n1(bh)}" rx="8" fill="${SLOT}"/>` };
+  if (ratio) {
+    let iw = bw, ih = bw / ratio;
+    if (ih > bh) { ih = bh; iw = bh * ratio; }
+    const ix = n1(bx + (bw - iw) / 2), iy = n1(by + (bh - ih) / 2);
+    return {
+      defs: `<clipPath id="${id}"><rect x="${ix}" y="${iy}" width="${n1(iw)}" height="${n1(ih)}" rx="8"/></clipPath>`,
+      body: `<image x="${ix}" y="${iy}" width="${n1(iw)}" height="${n1(ih)}" clip-path="url(#${id})" preserveAspectRatio="xMidYMin slice" xlink:href="${src}" href="${src}"/>`,
+    };
+  }
+  return {
+    defs: `<clipPath id="${id}"><rect x="${bx}" y="${n1(by)}" width="${bw}" height="${n1(bh)}" rx="8"/></clipPath>`,
+    body: `<image x="${bx}" y="${n1(by)}" width="${bw}" height="${n1(bh)}" clip-path="url(#${id})" preserveAspectRatio="xMidYMid meet" xlink:href="${src}" href="${src}"/>`,
+  };
 }
-// One metric panel: big value on top, label under it, soft tinted by severity.
-function statPanel(x, y, w, h, color, value, label) {
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="${color}14" stroke="${color}2e" stroke-width="1.5"/>`
-    + `<text x="${x + 28}" y="${y + 92}" font-family="Inter" font-size="78" font-weight="800" fill="${color}">${esc(value)}</text>`
-    + `<text x="${x + 30}" y="${y + 132}" font-family="Inter" font-size="27" font-weight="700" fill="${INK}">${esc(label)}</text>`;
-}
-
-function buildSvg(opts) {
-  const { company, domain, stats, adLogo, coLogo, creative } = opts;
-  const parts = [];
-  parts.push(`<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`);
-  parts.push(`<defs>`);
-  parts.push(`<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3f8fe"/><stop offset="1" stop-color="#e7eff9"/></linearGradient>`);
-  parts.push(`<linearGradient id="spec" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dc2626"/><stop offset="0.35" stop-color="#d97706"/><stop offset="0.62" stop-color="#64748b"/><stop offset="1" stop-color="#0a66c2"/></linearGradient>`);
-  parts.push(`<clipPath id="clogo"><rect x="68" y="128" width="64" height="64" rx="14"/></clipPath>`);
-  parts.push(`<clipPath id="ccrea"><rect x="800" y="64" width="372" height="300" rx="16"/></clipPath>`);
-  parts.push(`</defs>`);
-
-  // Soft branded ground + a white "report card" inset (with a faint drop shadow) so it feels designed.
-  parts.push(`<rect width="1200" height="630" fill="url(#bg)"/>`);
-  parts.push(`<rect x="28" y="32" width="1144" height="574" rx="28" fill="#0f1b2d" opacity="0.06"/>`);
-  parts.push(`<rect x="28" y="24" width="1144" height="574" rx="28" fill="#ffffff" stroke="#e6ebf2" stroke-width="1.5"/>`);
-
-  // Brand row: AdRoast logo + domain wordmark.
-  if (adLogo) parts.push(`<image x="68" y="58" width="38" height="38" xlink:href="${adLogo}" href="${adLogo}"/>`);
-  parts.push(`<text x="${adLogo ? 116 : 68}" y="88" font-family="Inter" font-size="31" font-weight="700" fill="${BLUE}">adroast.in</text>`);
-
-  // Company row: their logo (or monogram) + name.
-  if (coLogo) {
-    parts.push(`<rect x="68" y="128" width="64" height="64" rx="14" fill="#ffffff" stroke="${LINE}" stroke-width="1.5"/>`);
-    parts.push(`<image x="68" y="128" width="64" height="64" clip-path="url(#clogo)" preserveAspectRatio="xMidYMid meet" xlink:href="${coLogo}" href="${coLogo}"/>`);
-  } else {
+// The advertiser's logo in the post row: contained in its slot, monogram when nothing resolves.
+function logoSlot(id, x, y, s, src, circle, company, domain) {
+  const r = circle ? Math.round(s / 2) : 8;
+  if (!src) {
     const c = monoColor(domain || company);
-    parts.push(`<rect x="68" y="128" width="64" height="64" rx="14" fill="${c}"/>`);
-    parts.push(`<text x="100" y="172" font-family="Inter" font-size="34" font-weight="700" fill="#ffffff" text-anchor="middle">${esc((company || '?').charAt(0).toUpperCase())}</text>`);
+    return { defs: '', body: `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${r}" fill="${c}"/>`
+      + `<text x="${x + s / 2}" y="${y + Math.round(s * 0.68)}" font-family="Inter" font-size="${Math.round(s * 0.5)}" font-weight="700" fill="#ffffff" text-anchor="middle">${esc(String(company || '?').charAt(0).toUpperCase())}</text>` };
   }
-  const n = (company || '').length;
-  const nameSize = n <= 10 ? 64 : n <= 16 ? 56 : n <= 24 ? 44 : 34;
-  const nameY = 160 + Math.round(nameSize * 0.35); // vertically centered against the 64px logo
-  parts.push(`<text x="148" y="${nameY}" font-family="Inter" font-size="${nameSize}" font-weight="700" fill="${INK}">${esc(company)}</text>`);
-
-  if (stats) {
-    // Marina 2026-09-14: "las letras son muy pequenias". LinkedIn suele pintar el
-    // preview a ~240px de ancho, o sea 1/5: todo lo que no llegue a ~100px en este
-    // lienzo no se lee. Por eso hay UN heroe grande en vez de dos paneles chicos, y
-    // la chip de gravedad es la unica etiqueta. Nada de "spend": no lo medimos.
-    const wc = sevOffTarget(stats.offPct);
-    const chLabel = wc.t.toUpperCase();
-    const chW = Math.round(chLabel.length * 13) + 58;
-    parts.push(`<rect x="68" y="222" width="${chW}" height="46" rx="23" fill="${wc.c}16"/>`);
-    parts.push(`<circle cx="96" cy="245" r="6" fill="${wc.c}"/>`);
-    parts.push(`<text x="112" y="254" font-family="Inter" font-size="25" font-weight="700" letter-spacing="1" fill="${wc.c}">${esc(chLabel)}</text>`);
-
-    // El heroe: cuantos de sus ads le hablan al comprador equivocado.
-    const hero = `${stats.off} of ${stats.count}`;
-    parts.push(`<text x="68" y="404" font-family="Inter" font-size="132" font-weight="800" letter-spacing="-4" fill="${wc.c}">${esc(hero)}</text>`);
-    parts.push(`<text x="68" y="462" font-family="Inter" font-size="46" font-weight="700" fill="${INK}">live ads miss the buyer</text>`);
-
-    // Espectro: rojo (comprador equivocado) a azul (en el blanco), con el promedio.
-    const sx = 68, sw = 668, sy = 524;
-    parts.push(`<rect x="${sx}" y="${sy}" width="${sw}" height="14" rx="7" fill="url(#spec)"/>`);
-    const mx = sx + Math.round(Math.max(0, Math.min(10, stats.avg)) / 10 * sw);
-    parts.push(`<circle cx="${mx}" cy="${sy + 7}" r="13" fill="${scoreColor(stats.avg)}" stroke="#ffffff" stroke-width="4"/>`);
-    parts.push(`<text x="${sx}" y="${sy + 46}" font-family="Inter" font-size="21" font-weight="700" letter-spacing="1" fill="${RED}">WRONG BUYER</text>`);
-    parts.push(`<text x="${sx + sw}" y="${sy + 46}" font-family="Inter" font-size="21" font-weight="700" letter-spacing="1" fill="${BLUE}" text-anchor="end">ON TARGET</text>`);
-  } else {
-    parts.push(`<text x="68" y="330" font-family="Inter" font-size="60" font-weight="700" fill="${INK}">See your live ads,</text>`);
-    parts.push(`<text x="68" y="400" font-family="Inter" font-size="60" font-weight="700" fill="${INK}">scored.</text>`);
-    parts.push(`<text x="68" y="452" font-family="Inter" font-size="27" font-weight="400" fill="${MUTE}">Free. No card.</text>`);
+  return {
+    defs: `<clipPath id="${id}"><rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${r}"/></clipPath>`,
+    body: `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${r}" fill="${SLOT}"/>`
+      + `<image x="${x + 3}" y="${y + 3}" width="${s - 6}" height="${s - 6}" clip-path="url(#${id})" preserveAspectRatio="xMidYMid meet" xlink:href="${src}" href="${src}"/>`,
+  };
+}
+// One ad as it looks in the feed: the post row (advertiser logo, name, Promoted) over the creative.
+function adCard(o) {
+  const { id, x, y, w, h, rot, pad, lg, circle, name, sub, nameSize, subSize, logo, img, ratio, domain, row } = o;
+  const gap = pad <= 22 ? 12 : 14;
+  const hasRow = row !== false;
+  const iy = y + pad + (hasRow ? lg + gap : 0);
+  const ih = h - pad * 2 - (hasRow ? lg + gap : 0);
+  const A = imgFit(id + 'a', x + pad, iy, w - 2 * pad, ih, img, ratio);
+  let defs = A.defs, inner = A.body;
+  if (hasRow) {
+    const L = logoSlot(id + 'l', x + pad, y + pad, lg, logo, circle, name, domain);
+    const tx = x + pad + lg + gap + 2;
+    defs += L.defs;
+    inner = L.body + inner
+      + `<text x="${tx}" y="${n1(y + pad + lg * 0.42)}" font-family="Inter" font-size="${nameSize}" font-weight="700" fill="${INK}">${esc(name)}</text>`
+      + `<text x="${tx}" y="${n1(y + pad + lg * 0.42 + subSize + 10)}" font-family="Inter" font-size="${subSize}" font-weight="400" fill="${MUTE}">${esc(sub)}</text>`;
   }
+  const body = `<g transform="rotate(${rot} ${n1(x + w / 2)} ${n1(y + h / 2)})">`
+    + softShadow(x, y, w, h, 20, 18, 0.20)
+    + `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="20" fill="#ffffff"/>` + inner + `</g>`;
+  return { defs, body };
+}
+// The red ring. CSS draws it as a 7px border on a border-radius:50% box, so it is an ellipse whose
+// radii are the box minus the stroke, turned -4deg about its own centre.
+function ringEl(x, y, w, h, rot = -4, sw = 7) {
+  const cx = n1(x + w / 2), cy = n1(y + h / 2);
+  return `<ellipse cx="${cx}" cy="${cy}" rx="${n1((w - sw) / 2)}" ry="${n1((h - sw) / 2)}" fill="none" stroke="${RED}" stroke-width="${sw}" transform="rotate(${rot} ${cx} ${cy})"/>`;
+}
+function tagEl(text, size, top = 40, right = 36, rot = 6) {
+  const t = String(text).toUpperCase(), ls = 0.04 * size;
+  const w = textW(t, size, ls) + 52, h = 32 + 1.21 * size;
+  const x = CW - right - w, cx = x + w / 2, cy = top + h / 2;
+  return `<g transform="rotate(${rot} ${n1(cx)} ${n1(cy)})">`
+    + `<rect x="${n1(x)}" y="${n1(top + 9)}" width="${n1(w)}" height="${n1(h)}" rx="12" fill="${RED}" opacity="0.38" filter="url(#sh2)"/>`
+    + `<rect x="${n1(x)}" y="${top}" width="${n1(w)}" height="${n1(h)}" rx="12" fill="${RED}"/>`
+    + `<text x="${n1(cx + ls / 2)}" y="${n1(cy + 0.355 * size)}" font-family="Inter" font-size="${size}" font-weight="800" letter-spacing="${n1(ls)}" fill="#ffffff" text-anchor="middle">${esc(t)}</text></g>`;
+}
+function buttonEl(text, size, x, y) {
+  const w = textW(text, size, 0) + 56, h = 36 + 1.21 * size;
+  return { h, body: `<rect x="${x}" y="${n1(y)}" width="${n1(w)}" height="${n1(h)}" rx="12" fill="${BLUE}"/>`
+    + `<text x="${n1(x + w / 2)}" y="${n1(y + h / 2 + 0.355 * size)}" font-family="Inter" font-size="${size}" font-weight="800" fill="#ffffff" text-anchor="middle">${esc(text)}</text>` };
+}
+// The headline: wrapped here, with the closing words in red the way the design has them.
+function headlineEl(x, y, size, lh, lead, tail) {
+  const ls = -0.04 * size;
+  const all = (lead + ' ' + (tail || '')).trim();
+  const lines = wrapText(all, size, COL, ls);
+  const total = all.split(/\s+/).length;
+  const nTail = tail ? String(tail).split(/\s+/).length : 0;
+  const off = baseOff(size, lh);
+  const out = []; let i = 0;
+  lines.forEach((ln, k) => {
+    out.push(`<text x="${x}" y="${n1(y + off + k * lh)}" font-family="Inter" font-size="${size}" font-weight="700" letter-spacing="${n1(ls)}" fill="${INK}">`);
+    ln.split(/\s+/).forEach((wd, j) => {
+      const c = (i >= total - nTail) ? RED : INK; i++;
+      out.push(`<tspan fill="${c}">${j ? ' ' : ''}${esc(wd)}</tspan>`);
+    });
+    out.push(`</text>`);
+  });
+  return { body: out.join(''), h: lines.length * lh, lines: lines.length };
+}
+// Shadows are drawn as their own blurred shape BEHIND the card, never as a filter on the card group:
+// if resvg ever drops a filter it does not understand, an unblurred rectangle still reads as a shadow,
+// whereas a filter on the group would take the whole card down with it.
+const SHADOWS = `<filter id="sh" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="17"/></filter>`
+  + `<filter id="sh2" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="8"/></filter>`;
+const softShadow = (x, y, w, h, rx, dy, op, id) =>
+  `<rect x="${n1(x)}" y="${n1(y + dy)}" width="${n1(w)}" height="${n1(h)}" rx="${rx}" fill="#0b1220" opacity="${op}" filter="url(#${id || 'sh'})"/>`;
+// Google Ads mark, as the design draws it: two round-capped strokes and the green dot.
+const gAdsMark = (x, y, s) => `<g transform="translate(${x},${n1(y)}) scale(${n1(s / 100)})">`
+  + `<line x1="50" y1="16" x2="78" y2="70" stroke="#4285F4" stroke-width="24" stroke-linecap="round"/>`
+  + `<line x1="50" y1="16" x2="28" y2="58" stroke="#FBBC04" stroke-width="24" stroke-linecap="round"/>`
+  + `<circle cx="22" cy="70" r="13" fill="#34A853"/></g>`;
+const GOOGLE_RATIO = 2.2553; // the Google ad block without its sitelinks
 
-  // Right column: their creative in a frame, then a "Roast these ads" button.
-  parts.push(`<rect x="800" y="64" width="372" height="300" rx="16" fill="${PANEL}" stroke="${LINE}" stroke-width="1.5"/>`);
-  if (creative) {
-    parts.push(`<image x="814" y="78" width="344" height="272" clip-path="url(#ccrea)" preserveAspectRatio="xMidYMid meet" xlink:href="${creative}" href="${creative}"/>`);
-  } else {
-    parts.push(`<text x="986" y="222" font-family="Inter" font-size="24" font-weight="400" fill="${MUTE}" text-anchor="middle">Live ad</text>`);
+// ── The board-wide card (/b/<domain>): their logo, the headline, the button, their two worst ads.
+function buildSvg(opts) {
+  const { company, domain, stats, adLogo, coLogo, creatives } = opts;
+  const size = 72, lh = 0.98 * size;
+  const imgs = (creatives || []).filter(Boolean);
+  const btnTxt = (stats && stats.off) ? `See the ${stats.off} ads →` : 'See your live ads →';
+  const btn = buttonEl(btnTxt, 36, CX, 0);
+  const hl0 = wrapText('Ads that need you today', size, COL, -0.04 * size).length * lh;
+  const y0 = (CH - (110 + 36 + hl0 + 36 + btn.h + 36 + 50)) / 2;
+  const hl = headlineEl(CX, y0 + 110 + 36, size, lh, 'Ads that need you', 'today');
+  const by = y0 + 110 + 36 + hl.h + 36;
+  const two = imgs.length > 1;
+  const c1 = two ? adCard({ id: 'b1', x: 560, y: 110, w: 400, h: 390, rot: -5, pad: 22, lg: 50, name: company, sub: 'Promoted', nameSize: 24, subSize: 18, logo: coLogo, img: imgs[1], domain }) : null;
+  const c2 = adCard({ id: 'b2', x: two ? 760 : 680, y: two ? 90 : 120, w: 400, h: 390, rot: 4, pad: 22, lg: 50, name: company, sub: 'Promoted', nameSize: 24, subSize: 18, logo: coLogo, img: imgs[0], domain });
+  const p = [];
+  p.push(`<svg width="${CW}" height="${CH}" viewBox="0 0 ${CW} ${CH}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`);
+  p.push(`<defs>${SHADOWS}${c1 ? c1.defs : ''}${c2.defs}`);
+  if (coLogo) p.push(`<clipPath id="lk"><rect x="${CX}" y="${n1(y0)}" width="170" height="110"/></clipPath>`);
+  p.push(`</defs>`);
+  p.push(`<rect width="${CW}" height="${CH}" fill="${BONE}"/>`);
+  if (coLogo) p.push(`<image x="${CX}" y="${n1(y0)}" width="170" height="110" clip-path="url(#lk)" preserveAspectRatio="xMinYMid meet" xlink:href="${coLogo}" href="${coLogo}"/>`);
+  else {
+    const c = monoColor(domain || company);
+    p.push(`<rect x="${CX}" y="${n1(y0)}" width="110" height="110" rx="20" fill="${c}"/>`);
+    p.push(`<text x="${CX + 55}" y="${n1(y0 + 78)}" font-family="Inter" font-size="58" font-weight="700" fill="#ffffff" text-anchor="middle">${esc(String(company || '?').charAt(0).toUpperCase())}</text>`);
   }
-  parts.push(`<rect x="800" y="388" width="372" height="66" rx="14" fill="${BLUE}"/>`);
-  parts.push(`<text x="986" y="430" font-family="Inter" font-size="30" font-weight="700" fill="#ffffff" text-anchor="middle">Roast these ads →</text>`);
+  p.push(hl.body);
+  p.push(buttonEl(btnTxt, 36, CX, by).body);
+  if (adLogo) p.push(`<image x="${CX}" y="${n1(by + btn.h + 36)}" width="50" height="50" xlink:href="${adLogo}" href="${adLogo}"/>`);
+  if (c1) p.push(c1.body);
+  p.push(c2.body);
+  p.push(two ? ringEl(500, 28, 700, 572) : ringEl(620, 60, 520, 500));
+  p.push(tagEl('Urgent', 40));
+  p.push(`</svg>`);
+  return p.join('');
+}
 
-  parts.push(`</svg>`);
-  return parts.join('');
+// ── The platform card (/b/<domain>/linkedin, /google, /meta). Marina, 5 nov 2026: the second outreach
+// message ("the two linkedin ads I'd fix first are in here") was showing the very same card as the
+// board link above it. This one names the platform and shows that platform's worst ad, ringed.
+const PLAT = {
+  linkedin: { label: 'LinkedIn', band: '#0a66c2' },
+  google: { label: 'Google', band: '#1a73e8' },
+  meta: { label: 'Meta', band: '#0866ff' },
+};
+// Google's ad screenshot already carries the advertiser and the URL inside it, so repeating them in a
+// post row prints the name twice. LinkedIn creatives carry neither, so there the row stays.
+const GOOGLE_POST_ROW = false;
+function buildPlatSvg(opts) {
+  const { company, domain, plat, ps, adLogo, coLogo, creatives } = opts;
+  const P = PLAT[plat] || PLAT.linkedin;
+  const img = (creatives || []).filter(Boolean)[0] || null;
+  const isG = plat === 'google';
+  const size = 72, lh = 0.98 * size;
+  const lead = `Your ${P.label} ad is`, tail = 'leaking clicks';
+  const nl = wrapText(lead + ' ' + tail, size, COL, -0.04 * size).length;
+  const y0 = (CH - (150 + 48 + nl * lh)) / 2;
+  const hl = headlineEl(CX, y0 + 150 + 48, size, lh, lead, tail);
+  const card = adCard({
+    id: 'p1', x: 600, y: 110, w: 540, h: 400, rot: 0, pad: 26, lg: 56, circle: isG,
+    name: company, sub: isG ? `Sponsored · ${shortDomain(domain)}` : 'Promoted',
+    nameSize: 26, subSize: 20, logo: coLogo, img, ratio: isG ? GOOGLE_RATIO : null,
+    domain, row: isG ? GOOGLE_POST_ROW : true,
+  });
+  const p = [];
+  p.push(`<svg width="${CW}" height="${CH}" viewBox="0 0 ${CW} ${CH}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`);
+  p.push(`<defs>${SHADOWS}${card.defs}</defs>`);
+  p.push(`<rect width="${CW}" height="${CH}" fill="${BONE}"/>`);
+  if (isG) p.push(gAdsMark(CX, y0, 150));
+  else if (adLogo) p.push(`<image x="${CX}" y="${n1(y0)}" width="150" height="150" xlink:href="${adLogo}" href="${adLogo}"/>`);
+  p.push(hl.body);
+  p.push(card.body);
+  p.push(ringEl(580, 90, 580, 440));
+  p.push(tagEl('Fix now', 38));
+  p.push(`</svg>`);
+  return p.join('');
 }
 
 export async function boardOgImageHandler(req, res) {
   const slug = (req.query && (req.query.slug || req.query.s)) || '';
   try {
     const domain = slugToDomain(slug);
-    const company = domain ? nameFromDomain(domain) : 'Your ads';
+    let company = domain ? nameFromDomain(domain) : 'Your ads';
+    // The real name, same sources and order as the og:title in _board-og.js. The domain label alone
+    // put "Corp" on corp.kaltura.com's card while the title right next to it said Kaltura.
+    if (_redis && domain) {
+      try {
+        const dk = domain.replace(/[^a-z0-9.]/g, '');
+        const [nm, pr] = await Promise.all([_redis.get('geo:name:' + dk), _redis.get('geo:icp:' + dk)]);
+        const icpRec = pr ? (typeof pr === 'string' ? JSON.parse(pr) : pr) : null;
+        const realName = icpRec && typeof icpRec.company === 'string' ? icpRec.company.trim() : '';
+        if (nm && typeof nm === 'string' && nm.trim() && nm.trim().length <= 60) company = nm.trim();
+        else if (realName && realName.length <= 60) company = realName;
+      } catch (e) {}
+    }
+    // Platform view: from ?p= (what _board-og writes) or the slug's second segment.
+    const pq = String((req.query && req.query.p) || '').toLowerCase();
+    const ps2 = (String(slug).toLowerCase().match(/^[^/?#]+\/(linkedin|google|meta)\b/) || [])[1] || '';
+    const plat = PLAT[pq] ? pq : (PLAT[ps2] ? ps2 : '');
+    let platStats = null;
 
-    let stats = null, worstImg = null, worstPlat = null;
+    let stats = null, worstImg = null, worstPlat = null, worstTwo = [];
     if (_redis && domain) {
       const domKey = domain.replace(/[^a-z0-9.]/g, '');
       // Primary: the compact snapshot the board writes on every render (has scored metrics + the worst
@@ -276,28 +398,73 @@ export async function boardOgImageHandler(req, res) {
         if (og && typeof og.off === 'number') { // new-shape snapshot with the two board metrics
           stats = { count: og.count, avg: og.avg, off: og.off, crit: og.crit, offPct: og.offPct };
           worstImg = og.worstImg || null; worstPlat = og.worstPlat || null;
+          // The board card shows their two worst ads side by side; worst2 is written next to
+          // worstImg by icp.js. Older snapshots have only worstImg, and then one card is drawn.
+          if (Array.isArray(og.worst2)) worstTwo = og.worst2.filter(t => t && t.img).slice(0, 2);
         }
+        if (plat && og && og.byPlat && og.byPlat[plat]) platStats = og.byPlat[plat];
       } catch (e) {}
       if (!stats) {
         try {
           const raw = await _redis.get('ads:pull:' + domKey);
           const pull = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-          if (pull && pull.ads) { stats = boardStats(pull.ads); const w = worstCreative(pull.ads); if (w) { worstImg = w.img; worstPlat = w.plat; } }
+          if (pull && pull.ads) {
+            stats = boardStats(pull.ads);
+            const ws = worstCreatives(pull.ads, 2);
+            if (ws.length) { worstImg = ws[0].img; worstPlat = ws[0].plat; worstTwo = ws.map(w => ({ score: w.score, img: w.img, plat: w.plat || null })); }
+          }
         } catch (e) { stats = null; }
       }
     }
 
-    // Fetch the company logo and the spotlight creative in parallel; either can fail to null.
-    const licdn = worstImg && /licdn|linkedin/i.test(String(worstImg));
-    const [coLogo, creative] = await Promise.all([
+    if (plat) {
+      // Older snapshots have no byPlat: fall back to the clean per-ad list (scores, no images), plus the
+      // board-wide worst creative when it happens to be from this platform.
+      if (!platStats && _redis && domain) {
+        try {
+          const raw = await _redis.get('ads:geo:' + domain.replace(/[^a-z0-9.]/g, ''));
+          const list = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+          const pl = (Array.isArray(list) ? list : []).filter(a => typeof a.score === 'number' && String(a.plat || '').toLowerCase() === plat);
+          if (pl.length) {
+            const sorted = pl.slice().sort((a, b) => a.score - b.score);
+            const t = sorted.slice(0, 2).map(a => ({ score: a.score, head: a.head || '', img: null }));
+            if (t[0] && worstImg && String(worstPlat || '').toLowerCase() === plat) t[0].img = worstImg;
+            const off = pl.filter(a => a.score <= 6).length;
+            platStats = { count: pl.length, off, top: t };
+          }
+        } catch (e) {}
+      }
+      const tops = (platStats && platStats.top) || [];
+      const hdr = (u) => (/licdn|linkedin/i.test(String(u)) ? { referer: 'https://www.linkedin.com/', 'user-agent': UA } : { 'user-agent': UA });
+      const [coLogoP, ...creatives] = await Promise.all([
+        domain ? logoCandidates(domain).then((urls) => firstDataUri(urls, { 'user-agent': UA })) : Promise.resolve(null),
+        ...tops.map(t => (t && t.img ? fetchDataUri(t.img, hdr(t.img)) : Promise.resolve(null))),
+      ]);
+      await ensureWasm();
+      const svgP = buildPlatSvg({ company, domain, plat, ps: platStats, adLogo: adLogoDataUri(), coLogo: coLogoP, creatives });
+      const pngP = new Resvg(svgP, {
+        fitTo: { mode: 'width', value: 1200 },
+        font: { fontBuffers: loadFonts(), defaultFontFamily: 'Inter', loadSystemFonts: false },
+      }).render().asPng();
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+      res.status(200).send(Buffer.from(pngP));
+      return;
+    }
+
+    // Fetch the company logo and their two worst creatives in parallel; any of them can fail to null
+    // and the card simply shows one ad, or an empty slot, instead of breaking.
+    const hdrFor = (u) => (/licdn|linkedin/i.test(String(u)) ? { referer: 'https://www.linkedin.com/', 'user-agent': UA } : { 'user-agent': UA });
+    const imgUrls = (worstTwo.length ? worstTwo.map(t => t.img) : (worstImg ? [worstImg] : []));
+    const [coLogo, ...creatives] = await Promise.all([
       // Same resolver the board uses: the logo the company declares on its own site first
       // (apple-touch-icon / schema.org / favicon), Logo.dev + Google favicon as the safety net.
       domain ? logoCandidates(domain).then((urls) => firstDataUri(urls, { 'user-agent': UA })) : Promise.resolve(null),
-      worstImg ? fetchDataUri(worstImg, licdn ? { referer: 'https://www.linkedin.com/', 'user-agent': UA } : { 'user-agent': UA }) : Promise.resolve(null),
+      ...imgUrls.map(u => fetchDataUri(u, hdrFor(u))),
     ]);
 
     await ensureWasm();
-    const svg = buildSvg({ company, domain, stats, adLogo: adLogoDataUri(), coLogo, creative });
+    const svg = buildSvg({ company, domain, stats, adLogo: adLogoDataUri(), coLogo, creatives });
     const png = new Resvg(svg, {
       fitTo: { mode: 'width', value: 1200 },
       font: { fontBuffers: loadFonts(), defaultFontFamily: 'Inter', loadSystemFonts: false },

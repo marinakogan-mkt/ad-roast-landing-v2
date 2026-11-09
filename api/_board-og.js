@@ -41,6 +41,14 @@ function slugToDomain(slug) {
   if (!s) return '';
   return s.indexOf('.') === -1 ? s + '.com' : s;
 }
+// /b/<domain>/linkedin (or /google, /meta) is the board filtered to one platform. The outreach line
+// links it as "the two linkedin ads I'd fix first are in here", so its card names the platform.
+const PLAT_LABEL = { linkedin: 'LinkedIn', google: 'Google', meta: 'Meta' };
+
+function slugToPlatform(slug) {
+  const m = String(slug || '').toLowerCase().match(/^[^/?#]+\/(linkedin|google|meta)\/?(?:[?#].*)?$/);
+  return m ? m[1] : '';
+}
 function nameFromDomain(domain) {
   const label = String(domain || '').split('.')[0].replace(/[^a-z0-9]+/gi, ' ').trim();
   if (!label) return 'This company';
@@ -74,6 +82,11 @@ export async function boardOgHandler(req, res) {
     // Canonical form is the normalized domain (the sitemap lists /b/<domain>), so /b/wiz,
     // /b/Wiz.io and /board/wiz.io all consolidate on one indexable URL.
     const boardUrl = 'https://www.adroast.in/b/' + encodeURIComponent(domain);
+    const plat = slugToPlatform(slug);
+    const platLabel = PLAT_LABEL[plat] || '';
+    // The shared URL of the platform view. LinkedIn caches the preview by og:url, so pointing a
+    // /linkedin link at the plain board URL would serve the board-wide card. Canonical stays the board.
+    const shareUrl = plat ? boardUrl + '/' + plat : boardUrl;
 
     // Enrich with real board stats when the pull is cached (free, no model call).
     // Read the CLEAN, scored, non-artifact ad list persisted for GEO (ads:geo), not the
@@ -102,8 +115,21 @@ export async function boardOgHandler(req, res) {
       } catch (e) { stats = null; ads = []; posdata = null; }
     }
 
-    const title = 'Where ' + company + "'s ads lose the buyer";
-    const desc = stats
+    // Platform view: its own title and numbers, from the same clean list filtered to that platform.
+    const platAds = plat ? ads.filter(a => String(a.plat || '').toLowerCase() === plat) : [];
+    const platStats = platAds.length ? boardStats(platAds) : null;
+    // Marina's own copy, 9 nov 2026. One line per card, and the two never repeat: the board link
+    // names the company, the platform link names the ad. That split is the point of the card split,
+    // so a company on a single platform does not get the identical preview under both messages.
+    const title = plat
+      ? 'Start here: your worst ' + platLabel + ' ad.'
+      : company + ' ads, brutally reviewed.';
+    // Nothing else goes under the title: the factual line below is what LinkedIn prints.
+    const desc = plat
+      ? (platStats
+        ? company + "'s live " + platLabel + ' ads, each scored against their ideal buyer. ' + platStats.count + ' live ' + platLabel + ' ads, ' + platStats.avg + '/10 average fit, ' + platStats.toFix + ' to fix.'
+        : company + "'s live " + platLabel + ' ads, each scored against their ideal buyer, with the exact fix for the ones to change first.')
+      : stats
       ? company + "'s live LinkedIn and Google ads, each scored against their ideal buyer. " + stats.count + ' live ads, ' + stats.avg + '/10 average fit, ' + stats.toFix + ' to fix. See the board.'
       : company + "'s live LinkedIn and Google ads, each scored against their ideal buyer, with the exact fixes. Free, no card.";
 
@@ -117,19 +143,22 @@ export async function boardOgHandler(req, res) {
 
     html = replaceTag(html, /(<meta property="og:title" content=")[^"]*(">)/, `$1${attr(title)}$2`);
     html = replaceTag(html, /(<meta property="og:description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
-    html = replaceTag(html, /(<meta property="og:url" content=")[^"]*(">)/, `$1${attr(boardUrl)}$2`);
+    html = replaceTag(html, /(<meta property="og:url" content=")[^"]*(">)/, `$1${attr(shareUrl)}$2`);
     html = replaceTag(html, /(<meta name="twitter:title" content=")[^"]*(">)/, `$1${attr(title)}$2`);
     html = replaceTag(html, /(<meta name="twitter:description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
 
     // Per-company og:image: a 1200x630 PNG rendered for THIS company (name + live board stats) by
     // /api/icp?ogimg=1 (satori + resvg-wasm). Falls back to the static hero on any render error.
-    const imgUrl = 'https://www.adroast.in/api/icp?ogimg=1&slug=' + encodeURIComponent(slug);
+    // v=p2: a new image URL for the platform card, so a crawler that cached the old board-wide image
+    // under the same URL fetches the new one.
+    const imgUrl = 'https://www.adroast.in/api/icp?ogimg=1&slug=' + encodeURIComponent(domain)
+      + (plat ? '&p=' + plat + '&v=p2' : '');
     html = replaceTag(html, /(<meta property="og:image" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
     // LinkedIn and Slack prefer og:image:secure_url when both are present, so leaving it
     // on the static card silently served the generic image for every board.
     html = replaceTag(html, /(<meta property="og:image:secure_url" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
     html = replaceTag(html, /(<meta name="twitter:image" content=")[^"]*(">)/, `$1${attr(imgUrl)}$2`);
-    html = replaceTag(html, /(<meta property="og:image:alt" content=")[^"]*(">)/, `$1${attr('Where ' + company + "'s ads lose the buyer")}$2`);
+    html = replaceTag(html, /(<meta property="og:image:alt" content=")[^"]*(">)/, `$1${attr(title)}$2`);
 
     // GEO (generative-engine optimization): inject real, crawlable body content plus
     // JSON-LD so LLM crawlers (GPTBot, PerplexityBot, ClaudeBot) and search bots read
