@@ -704,8 +704,17 @@ async function verifyLowScores(ads, icp, redis) {
   });
 }
 
+// A buyer the ICP step could NOT read (parked or for-sale domain, empty page, bot wall) comes back as
+// prose like "Cannot be determined. The page is a domain parking page...". Scoring ads against that
+// sentence produced a full board of confident verdicts with no buyer behind them (onitsecurity.com,
+// 11 nov 2026: the real site is onit.security). No buyer, no score: the ads stay unscored and the
+// buyer has to be fixed first (house rule: sin ICP deducible no se roastea).
+export const ICP_UNKNOWN = /^\W*(the\s+)?((buyer|icp|ideal customer|advertiser|audience|target)\b[^.]{0,40}?\s)?(cannot|can ?not|could not|unable to)\s+(be\s+)?(determined|identified|inferred|reliably determined)|\b(domain|website|page) (is )?(parked|for sale)\b|\bdomain[\s-](parking|for[\s-]sale|auction)\b|\bparked domain\b|\bno (advertiser|company) identity\b/i;
+export function icpIsUnknown(icp) { const t = String(icp || '').trim(); return !t || ICP_UNKNOWN.test(t.slice(0, 400)); }
+
 export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0 } = {}) {
   if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0, pending: 0 };
+  if (icpIsUnknown(icp)) return { ads, scoredNew: 0, reused: 0, pending: ads.length, noIcp: true };
   if (!redis) {
     try { const scored = await scoreAds(ads, icp); const n = scored.filter(a => typeof a.score === 'number' || a.textless).length; return { ads: scored, scoredNew: n, reused: 0, pending: ads.length - n }; }
     catch (e) { return { ads, scoredNew: 0, reused: 0, pending: ads.length, scoreError: e.message, rateLimited: !!e.rateLimited }; }
