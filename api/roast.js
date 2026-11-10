@@ -1252,7 +1252,7 @@ Return the JSON object defined in the output contract. All fields required.`;
               const _lu = (landingUrl || '').trim();
               const SHOT_KEY = process.env.SCREENSHOTONE_ACCESS_KEY;
               if (_lu && /^https?:\/\//i.test(_lu) && SHOT_KEY) {
-                const urlCacheKey = 'shot:v1:' + _lu; // same key icp.js's shot renderer caches under
+                const urlCacheKey = 'shot:v2:' + _lu; // challenge-guarded cache (icp.js shot renderer shares v2); v1 held pre-guard shots that could be a bot wall
                 let shotB64 = null;
                 try { const hit = await _redis.get(urlCacheKey); if (hit && typeof hit === 'string') shotB64 = hit; } catch (e) {}
                 // Only kick off a FRESH render when there's budget left (video roasts can already be
@@ -1269,6 +1269,12 @@ Return the JSON object defined in the output contract. All fields required.`;
                   so.searchParams.set('block_ads', 'true');
                   so.searchParams.set('block_chats', 'true');
                   so.searchParams.set('timeout', '14');
+                  // Never pin a bot-wall / interstitial as the report's permanent landing: make
+                  // ScreenshotOne itself fail (non-image) when the rendered page is a challenge, so
+                  // the image guard below drops it and the lazy first-view pin retries later.
+                  for (const w of ['Performing security verification', 'Verify you are human', 'Verifying you are human', 'Just a moment...', 'Checking your browser', 'Enable JavaScript and cookies to continue', 'Attention Required']) {
+                    so.searchParams.append('fail_if_content_contains', w);
+                  }
                   const sc = new AbortController();
                   const st = setTimeout(() => sc.abort(), 15000);
                   let up; try { up = await fetch(so.toString(), { signal: sc.signal }); } finally { clearTimeout(st); }
