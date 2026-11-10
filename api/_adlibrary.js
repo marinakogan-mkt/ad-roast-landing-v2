@@ -28,6 +28,8 @@ import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPr
 // ICP cache turns over, which is the single most expensive thing this product can do. Flip
 // ANTHROPIC_SCORE_MODEL to try a scorer, and leave ICP detection where it is.
 const SCORE_MODEL = process.env.ANTHROPIC_SCORE_MODEL || process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
+// Suffix for the score cache namespace: empty unless a scorer is being tried on purpose.
+const SCORE_NS = process.env.ANTHROPIC_SCORE_MODEL ? ':' + String(process.env.ANTHROPIC_SCORE_MODEL).replace(/[^a-z0-9]+/gi, '') : '';
 
 // One compact line per Anthropic call so prompt-cache hits can be checked in Vercel runtime logs
 // (grep "[claude-usage]"). in = uncached input, cw = cache write, cr = cache read. Never throws.
@@ -714,7 +716,12 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // comparison, event, talent), scores that job's weighted DIMENSIONS, and the code computes the
   // final score from them (model overall kept within 1 point). Floors are gone. Hiring posts are
   // tagged talent and left off the board. Boards re-score lazily on their next open, as before.
-  const keyOf = (a) => 'adscore:' + (/google/i.test(String(a.plat || '')) ? 'v16' : 'v20') + ':' + ih + ':' + creativeSig(a);
+  // A comparison run must not overwrite the board every user reads. The key carries the model ONLY
+  // when ANTHROPIC_SCORE_MODEL is set, so without that var the keys are byte-identical to before and
+  // nothing already cached is invalidated. With it, the trial model writes into its own namespace.
+  // Without this the test was not a test: scoring one board with another model stored that model's
+  // verdict for 180 days under the key production reads, with no way back except a full re-score.
+  const keyOf = (a) => 'adscore:' + (/google/i.test(String(a.plat || '')) ? 'v16' : 'v20') + ':' + ih + ':' + creativeSig(a) + SCORE_NS;
   const cachedBySig = {};
   const failSeen = {}; // past capture-failures, including ones whose retry window has already opened
   if (!force) {
