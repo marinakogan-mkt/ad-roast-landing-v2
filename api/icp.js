@@ -423,7 +423,14 @@ ${items}
       }
     } catch (e) { /* miss -> render/cache */ }
     if (!SHOT_KEY) { return redirectThumb(3600); }
-    const cacheKey = 'shot:v1:' + target.toString();
+    // v2: v1 may hold a bot-wall page (Cloudflare "Performing security verification") rendered as if it
+    // were the site, so those entries are orphaned rather than served again.
+    const cacheKey = 'shot:v2:' + target.toString();
+    const blockedKey = 'shot:blocked:' + target.toString();
+    // A site that bot-walls our renderer has no honest screenshot: answer 404 so the report shows its
+    // "Open <url>" fallback card instead of a challenge page that reads as the real landing.
+    const sendBlocked = () => { res.setHeader('Cache-Control', 'public, max-age=3600'); return res.status(404).json({ error: 'blocked_by_site' }); };
+    try { if (_redis && await _redis.get(blockedKey)) return sendBlocked(); } catch (e) {}
     try {
       if (_redis) {
         const hit = await _redis.get(cacheKey);
@@ -446,12 +453,20 @@ ${items}
       so.searchParams.set('block_ads', 'true');
       so.searchParams.set('block_chats', 'true');
       so.searchParams.set('timeout', '30');
+      // Bot-wall pages render fine as images, so ScreenshotOne reports success; refuse them by their text.
+      ['Performing security verification', 'Verify you are human', 'Verifying you are human', 'Just a moment...', 'Checking your browser', 'Enable JavaScript and cookies to continue', 'Attention Required'].forEach(m => so.searchParams.append('fail_if_content_contains', m));
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 28000);
       let up;
       try { up = await fetch(so.toString(), { signal: controller.signal }); } finally { clearTimeout(t); }
       const ct = up.headers.get('content-type') || '';
       if (!up.ok || !/^image\//i.test(ct)) {
+        let walled = false;
+        try { const j = await up.json(); walled = !!(j && /content_contains_specified_string/.test(JSON.stringify(j))); } catch (e) {}
+        if (walled) {
+          try { if (_redis) await _redis.set(blockedKey, '1', { ex: 60 * 60 * 6 }); } catch (e) {}
+          return sendBlocked();
+        }
         return redirectThumb(600);
       }
       const buf = Buffer.from(await up.arrayBuffer());
