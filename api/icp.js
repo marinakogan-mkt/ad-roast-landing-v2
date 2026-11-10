@@ -467,14 +467,18 @@ ${items}
           try { if (_redis) await _redis.set(blockedKey, '1', { ex: 60 * 60 * 6 }); } catch (e) {}
           return sendBlocked();
         }
-        return redirectThumb(600);
+        // Not thum.io: it renders the same bot wall (that is how 6sense's report got a Cloudflare page),
+        // and a missing screenshot is better than a wrong one. The card falls back to the live link.
+        res.setHeader('Cache-Control', 'public, max-age=600');
+        return res.status(404).json({ error: 'render_failed' });
       }
       const buf = Buffer.from(await up.arrayBuffer());
       try { if (_redis && buf.length && buf.length < 800000) await _redis.set(cacheKey, buf.toString('base64'), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
       await pin(buf); // freeze this fresh render to the report id too
       return sendImg(buf, ct);
     } catch (e) {
-      return redirectThumb(600);
+      res.setHeader('Cache-Control', 'public, max-age=600');
+      return res.status(404).json({ error: 'render_failed' });
     }
   }
 
