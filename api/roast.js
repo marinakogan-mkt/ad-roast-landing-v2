@@ -4,7 +4,7 @@ import { readSessionCookie } from './auth/_allowlist.js';
 import { consumeToken, peekAccount, companyKey, checkCompanyAllowed, addCompany } from './_tokens.js';
 import { videoStoryboard, adIsVideo } from './_vframes.js';
 import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, logClaudeUsage } from './_adlibrary.js';
-import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
+import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt, TEMPS, normalizeTemp, temperaturePrompt, tempMismatch } from './_rubrics.js';
 import { platformRulesPrompt, RULES_VERSION } from './_platform-rules.js';
 
 const _redis = new Redis({
@@ -124,6 +124,7 @@ const OUTPUT_CONTRACT = `OUTPUT CONTRACT — return ONLY this JSON object (all f
 {
   "icp_mismatch": "string",
   "ad_job": {"job": "demand_gen|lead_magnet|content|brand|social_proof|launch|comparison|event|talent", "audience_kind": "primary|secondary|segment|localized", "content_kind": "product_led|educational|search_traffic, only for content, else empty", "evidence": "the quoted words, format or destination signal that mark the job", "dims": {"<each dimension key of that job>": <1-10>}},
+  "audience_temp": {"temp": "cold|warm|hot", "signals": {"offer": "cold|warm|hot or null", "cta": "cold|warm|hot or null", "copy": "cold|warm|hot or null", "dest": "cold|warm|hot or null"}, "evidence": "the quoted words or destination that set the temperature, <=20 words", "mismatch": "one short sentence if the copy and the ask sit at different temperatures, else empty string"},
   "overall_score": <number 1-10, consistent with ad_job.dims>,
   "issues": [
     {"category": "headline_clarity", "title": "Headline Clarity", "score": <1-10>, "explanation": "string"},
@@ -254,8 +255,13 @@ export default async function handler(req, res) {
      p8 (2026-10-30): PLATFORM FORMAT & POLICY RISK + policy_flags (c1373e4), which shipped
      without a bump, so a repeat roast kept serving the p7 result with no flags.
      The platform rules themselves now live in api/_platform-rules.js with their own
-     RULES_VERSION in the hash, so a rule update needs no bump here. */
-  const PROMPT_VERSION = 'p8';
+     RULES_VERSION in the hash, so a rule update needs no bump here.
+     p9 (2026-11-11): AUDIENCE TEMPERATURE lens (api/_rubrics.js). A second axis, separate
+     from the job: the roast infers how warm the reader is (cold/warm/hot), calibrates the
+     job's dimensions to that temperature, and surfaces a copy-vs-ask mismatch as a WARNING
+     kept out of the score. The user can pin the temperature from the report; a pin re-roasts
+     against that bar (audienceTemp is in the hash, so each distinct pin scores once). */
+  const PROMPT_VERSION = 'p9';
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed', _version: API_VERSION });
@@ -297,7 +303,11 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, warmed: sb ? 1 : 0, ad: { adId: target.adId || null, score: (typeof target.score === 'number' ? target.score : null), head: (target.head || '').slice(0, 80) } });
   }
 
-  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, adImageUrl, company, website, adUrl, forceFresh, isVideo: isVideoIn } = body;
+  const { platform, offerType, offerDetail, icpDescription, landingUrl, adCopy, visualDescription, hasImage, landingCopy, variants, isAdvancedAudit, adScreenshot, adScreenshotType, adImageUrl, company, website, adUrl, forceFresh, isVideo: isVideoIn, audienceTemp } = body;
+  // Audience-temperature override: the report lets the user PIN the inferred temperature (cold/warm/hot)
+  // from the editable chip. When pinned, the model judges against THAT bar instead of inferring one.
+  // '' => infer (the default). Normalized here so a bad value can never reach the prompt or the hash.
+  const pinnedTemp = normalizeTemp(audienceTemp);
   let isVideo = isVideoIn;
 
   // Working creative vars: a roast started from the "Your Live Ads" dashboard sends the
@@ -378,7 +388,7 @@ export default async function handler(req, res) {
     catch (e) { return _norm(u); }
   };
   const dedupeHash = crypto.createHash('sha256')
-    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null, adImageUrl: adImageUrl || null, isVideo: !!isVideo, promptVersion: `${PROMPT_VERSION}:${RULES_VERSION}` }))
+    .update(JSON.stringify({ platform: _norm(platform), offerType: _norm(offerType), offerDetail: _norm(offerDetail), icpDescription: _norm(icpDescription), landingUrl: _normUrl(landingUrl), adCopy: _norm(adCopy), visualDescription: _norm(visualDescription), landingCopy: _norm(landingCopy), isAdvancedAudit: !!isAdvancedAudit, variants: variants || null, adScreenshot: adScreenshot || null, adImageUrl: adImageUrl || null, isVideo: !!isVideo, audienceTemp: pinnedTemp, promptVersion: `${PROMPT_VERSION}:${RULES_VERSION}` }))
     .digest('hex');
   const dedupeKey = acctEmail ? `roast:dedupe:${acctEmail}:${dedupeHash}` : null;
   if (dedupeKey && !redisDown && !forceFresh) {
@@ -641,7 +651,9 @@ Scoring (1-10): 1-3 hurting conversions, 4-6 generic, 7-8 solid, 9-10 best-in-cl
 PURPOSE BEFORE FIT (decide this for EVERY ad before you score it, including kinds not named below): an ad's score measures how well it does ITS OWN job for ITS OWN intended reader, not how well it pitches the product to the primary ICP buyer. First read the ad on its own terms and settle two things: its JOB (the response it is actually built to get) and its intended AUDIENCE (who it truly targets, which may be a deliberate reader the homepage ICP does not describe). Then judge it against that job and that reader. The ICP-mismatch / buyer-fit penalty is CONDITIONAL, not automatic: lower overall_score and write icp_mismatch as a miss ONLY when the ad is a genuine demand-gen product pitch aimed at the primary buyer and it fails that buyer. When the ad coherently does another job (brand or non-demand-gen: culture, hiring, founder or origin story, mission, award or customer celebration, a past-event recap, thought-leadership with no offer; event presence; a secondary enterprise / partner / white-label / developer audience; a specific in-ICP segment; a localized market), do NOT apply the primary-ICP match: judge it on its own job's rubric, set icp_mismatch to NAME that job or reader plainly (never to dock it for not being the primary buyer), and let overall_score reflect how well it serves its own reader on that job's dimensions, with NO floor: an ad that does its own job badly scores low for that job's reasons. GUARDRAILS so this never inflates a weak ad: (a) treating an ad as anything other than a primary-buyer demand-gen pitch REQUIRES a positive, coherent signal quoted from the ad itself inside icp_mismatch, never a charitable guess; (b) with no such signal, or when unsure, the DEFAULT holds, it is a demand-gen pitch to the primary buyer judged strictly, so a vague, generic or lazy ad to the right buyer still scores 1-4; (c) reclassifying changes the RUBRIC, not immunity: an ad still scores low when it does its OWN job badly, and a low overall_score still names the specific failing lever. The EVENT and SECONDARY AUDIENCE lenses below, and the LOCALIZATION rule in the critical rules, are WORKED EXAMPLES of this one rule, the detailed rubric for the most common non-primary jobs, not the whole list; reason the same way for any job not named.
 
 ${rubricPrompt()}
-FOR THIS ROAST: fill ad_job with the job, the audience_kind, content_kind (content only), the evidence, and EVERY dimension of that job scored 1-10. You also have the landing page: use it to classify (a /blog or article page, a gated form, a pricing or demo page, the homepage) and to judge the destination-dependent dimensions (content promise and bridge: does the page deliver what the ad promised in its first screen, and how central is the product inside it; lead_magnet friction: count the form fields you can see). The issue explanations, quick wins and fix kit must be written for THAT job: never recommend a demo CTA, a value proposition or in-ad proof to a job that does not ask for them, and for content, brand and event the fix improves the job's own weak dimension.
+
+${temperaturePrompt()}
+FOR THIS ROAST: fill ad_job with the job, the audience_kind, content_kind (content only), the evidence, and EVERY dimension of that job scored 1-10. Also fill audience_temp: infer the temperature from the ad's offer, CTA, copy and destination, and calibrate the job's dimensions to it (a cold-reader ad is not docked for a soft CTA; a hot-reader ad is docked for only educating). You also have the landing page: use it to classify (a /blog or article page, a gated form, a pricing or demo page, the homepage) and to judge the destination-dependent dimensions (content promise and bridge: does the page deliver what the ad promised in its first screen, and how central is the product inside it; lead_magnet friction: count the form fields you can see). The issue explanations, quick wins and fix kit must be written for THAT job: never recommend a demo CTA, a value proposition or in-ad proof to a job that does not ask for them, and for content, brand and event the fix improves the job's own weak dimension.
 
 CRITICAL RULES:
 - BREVITY: read on screen, skimmable in under a minute. Every explanation, feedback line, and verdict = 1-2 tight sentences (max ~30 words), point first, no preamble, no filler. Fix-kit headlines and CTAs stay short. One sharp sentence beats three vague ones.
@@ -774,10 +786,18 @@ NO CLICHE COPY — the fix_kit rewrites (headlines, body, ctas, landing_page_hea
     }
   }
 
+  /* When the user pins the temperature from the report chip, judge against THAT bar instead of
+     inferring one. Still read and report the per-signal temperatures so the copy-vs-ask mismatch
+     warning keeps working: the pin only changes which bar the dimensions are scored against. */
+  const tempLine = pinnedTemp
+    ? `PINNED to ${pinnedTemp} by the user: do NOT infer the temperature, set audience_temp.temp to "${pinnedTemp}" and calibrate every dimension to the ${pinnedTemp} bar (${TEMPS[pinnedTemp].rewards}). Still read offer/cta/copy/dest signals and fill audience_temp.mismatch if the copy and the ask diverge.`
+    : 'Infer it from the ad (offer, CTA, copy, destination) and fill audience_temp. Never present it as known targeting.';
+
   const userPrompt = `Analyze this ad${hasAnyLandingContent ? ' AND its landing page' : ''} for ICP: "${icpDescription}"
 
 Platform: ${platform}
 Offer: ${offerLine}
+Audience temperature: ${tempLine}
 Landing Page URL: ${landingUrl || 'Not provided'}
 Landing page content available: ${hasAnyLandingContent ? 'YES — SCORE IT 1-10' : 'NO — SCORE IT 0'}
 
@@ -866,6 +886,33 @@ Return the JSON object defined in the output contract. All fields required.`;
           const fs = scoreFromDims(job, dims, parsed.overall_score, platform);
           if (typeof fs === 'number') parsed.overall_score = fs;
         } catch (e) { console.error('[AdRoast] ad_job normalize failed:', e.message); }
+
+        /* AUDIENCE TEMPERATURE (p9): a second lens, separate from the job. Normalize the model's read,
+           honor a user pin, and compute the copy-vs-ask MISMATCH deterministically from the per-signal
+           reads (tempMismatch), so the warning follows the signals and never contradicts the score. The
+           mismatch is attached here, NOT folded into overall_score (it is surfaced like a policy flag).
+           A pin wins over the inferred bar; `inferred` is kept so the chip can show both. Guarded so a
+           missing or malformed field can never break the contract. */
+        try {
+          const at = parsed.audience_temp && typeof parsed.audience_temp === 'object' ? parsed.audience_temp : {};
+          const rawSig = at.signals && typeof at.signals === 'object' ? at.signals : {};
+          const signals = { offer: normalizeTemp(rawSig.offer), cta: normalizeTemp(rawSig.cta), copy: normalizeTemp(rawSig.copy), dest: normalizeTemp(rawSig.dest) };
+          // Inferred bar: the model's overall read, else the copy signal, else a platform default
+          // (LinkedIn/Meta are cold contexts, Google search is high intent) so the chip always renders.
+          const _plat = String(platform || '').toLowerCase();
+          const platDefault = /google/.test(_plat) ? 'hot' : 'cold';
+          const inferred = normalizeTemp(at.temp) || signals.copy || platDefault;
+          const temp = pinnedTemp || inferred;
+          const mm = tempMismatch(signals, typeof at.mismatch === 'string' ? at.mismatch : '');
+          parsed.audience_temp = {
+            temp,
+            inferred,
+            pinned: !!pinnedTemp,
+            evidence: typeof at.evidence === 'string' ? at.evidence.slice(0, 160) : '',
+            signals,
+            mismatch: mm ? { level: mm.level, detail: mm.detail } : null,
+          };
+        } catch (e) { console.error('[AdRoast] audience_temp normalize failed:', e.message); parsed.audience_temp = null; }
         
         console.log('[AdRoast] Meta:', JSON.stringify(meta));
         console.log('[AdRoast] hasAnyLandingContent:', hasAnyLandingContent);
