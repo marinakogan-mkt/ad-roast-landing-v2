@@ -48,6 +48,27 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'This account has no portal access.' });
   }
 
+  /* Master-only: read the portal-open log (which clients opened their audit, and
+     when). Hangs off this endpoint via ?action=opens so it needs no extra Vercel
+     function. `opens` is newest-first; `lastSeen` maps each id to its last open. */
+  if (req.query && req.query.action === 'opens') {
+    if (session.mode !== 'master') {
+      return res.status(403).json({ error: 'Not allowed.' });
+    }
+    try {
+      const raw = await redis.lrange('portal:opens', 0, 499);
+      const opens = (raw || [])
+        .map(r => { try { return typeof r === 'string' ? JSON.parse(r) : r; } catch (e) { return null; } })
+        .filter(Boolean);
+      const lastSeen = (await redis.hgetall('portal:lastopen')) || {};
+      res.setHeader('Cache-Control', 'no-store, must-revalidate');
+      return res.status(200).json({ success: true, opens, lastSeen });
+    } catch (e) {
+      console.error('[portal-data] opens read error:', e.message);
+      return res.status(500).json({ error: 'Opens read failed' });
+    }
+  }
+
   /* Build the authorized slice based on the session role. */
   const empty = { partners: {}, directClients: {} };
   let slice = empty;
@@ -79,6 +100,36 @@ export default async function handler(req, res) {
         },
         directClients: {}
       };
+    }
+  }
+
+  /* Log the open (who + when) so we can see which clients actually read their
+     audit. Fire-and-forget: a logging failure must never break the portal. Master
+     is the internal/admin view, so its own opens aren't logged. A short-lived
+     per-id key dedupes refresh storms to at most one logged open per 10 minutes. */
+  if (session.mode === 'partner' || session.mode === 'client') {
+    try {
+      const id = session.clientId || session.partnerId || 'unknown';
+      const fresh = await redis.set('portal:open:recent:' + id, '1', { nx: true, ex: 600 });
+      if (fresh) {
+        let name = id;
+        if (session.mode === 'client' && session.clientId && portalData.directClients[session.clientId]) {
+          name = portalData.directClients[session.clientId].name || id;
+        } else if (session.mode === 'client' && session.partnerId && portalData.partners[session.partnerId]?.clients?.[session.clientId]) {
+          name = portalData.partners[session.partnerId].clients[session.clientId].name || id;
+        } else if (session.mode === 'partner' && session.partnerId && portalData.partners[session.partnerId]) {
+          name = portalData.partners[session.partnerId].name || id;
+        }
+        const at = new Date().toISOString();
+        const entry = JSON.stringify({ at, mode: session.mode, id, name, email: session.email || null });
+        await Promise.all([
+          redis.lpush('portal:opens', entry),
+          redis.ltrim('portal:opens', 0, 499),
+          redis.hset('portal:lastopen', { [id]: at })
+        ]);
+      }
+    } catch (e) {
+      console.error('[portal-data] open-log error:', e.message);
     }
   }
 
