@@ -879,7 +879,11 @@ ${items}
     // the first few get scored; the rest ride along greyed like any other extras.
     const _meta = pull.ads.filter(a => (a.plat || '') === 'Meta');
     const _notMeta = pull.ads.filter(a => (a.plat || '') !== 'Meta');
-    const META_SCORE_CAP = 6;
+    // 2026-11-09, Marina: 6 -> 1. Scoring is the expensive part of a board (Sonnet 4.6 vision, 89%
+    // of the Anthropic bill in the 30 days to 5 Nov), and Meta went live on 1 Nov, the same day the
+    // daily top-ups started. One scored Meta ad is what the /b/<domain>/meta card and the outreach
+    // cover need; the rest ride along greyed like any other extras, same as before.
+    const META_SCORE_CAP = 1;
     const _toRank = [..._notMeta.slice(0, SCORE_CAP), ..._meta.slice(0, META_SCORE_CAP)];
     const _extras = [..._notMeta.slice(SCORE_CAP), ..._meta.slice(META_SCORE_CAP)];
     const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
