@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -994,7 +994,7 @@ ${items}
     try {
       const raw = await _redis.get(icpCacheKey);
       const cached = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-      if (cached && cached.icp_text) {
+      if (cached && cached.icp_text && !icpIsUnknown(cached.icp_text)) {
         // Backfill the domain-keyed GEO positioning record even when the ICP is served from
         // cache (the fresh path below also writes it), so no-ad companies get their page.
         if (cached.company) {
@@ -1090,13 +1090,18 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
     const poisoned = namedVendor && !inputIsVendor;
     if (poisoned) { icp.company = ''; icp.website = ''; }
 
+    // An unreadable site (parked domain, empty page) must not pass for a buyer: blank it so the
+    // board asks for the real site instead of scoring ads against "Cannot be determined".
+    const icpUnknown = icpIsUnknown(icp.icp_text);
+    if (icpUnknown) { icp.icp_text = ''; icp.company = ''; icp.icp_unknown = true; }
+
     const result = { brand, domain, url, ...icp };
 
     /* Cache a confident, clean inference. Also cache on an explicit refresh so the
        "Re-detect" button OVERWRITES a previously poisoned entry (e.g. the cached
        Cloudflare result) with the cleaned one, clearing it for good. Never cache the
        raw poisoned inference itself. */
-    if (_redis && !poisoned && (body.refresh || icp.company)) {
+    if (_redis && !poisoned && !icpUnknown && (body.refresh || icp.company)) {
       try { await _redis.set(icpCacheKey, JSON.stringify(result), { ex: ICP_CACHE_TTL }); } catch (e) {}
     }
     // GEO phase 2: a domain-keyed positioning record so /b/<domain> can render a crawlable
