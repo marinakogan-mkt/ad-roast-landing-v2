@@ -1112,7 +1112,15 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
   const arr = Array.isArray(data && data['1']) ? data['1'] : [];
   const ads = [];
   const seen = new Set();
+  // Only ads Google showed in the last 30 days (2026-11-11). The transparency search has no date
+  // filter and returns a creative's whole history: highspot.com came back 82 of 100 creatives last
+  // shown more than 30 days ago, sana.ai 30 of 30. Those were scored at full vision cost and shown as
+  // "live" ads. Field 7 is the last-shown time in epoch seconds, the same 30-day window LinkedIn
+  // (dateOption last-30-days) and Meta (activeStatus active) already use. No date = kept.
+  const _cutoff = Date.now() / 1000 - 30 * 24 * 60 * 60;
   for (const c of arr) {
+    const _last = Number(c && c['7'] && c['7']['1']);
+    if (_last && _last < _cutoff) continue;
     const cr = c && c['3'];
     const htmlImg = cr && cr['3'] && cr['3']['2'];   // image creatives: an <img src="...simgad..."> string
     let img = null;
