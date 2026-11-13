@@ -1207,66 +1207,79 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, limit = 12
       }
     } catch (e) {}
   }
-  if (redis) {
+  // Day cap, counted per Apify RUN (a cache hit above never reaches here). Each actor call bumps it.
+  const bumpDay = async () => {
+    if (!redis) return true;
     try {
       const dayKey = 'meta:apify:day:' + new Date().toISOString().slice(0, 10);
       const n = await redis.incr(dayKey);
       if (n === 1) await redis.expire(dayKey, 60 * 60 * 48);
-      if (n > META_DAY_CAP) return { ok: false, reason: 'meta_day_cap', ads: [] };
-    } catch (e) {}
-  }
-  // countries 'ALL', never a hardcoded 'US': advertisers run outside the US (Damani in IN), and the
-  // US-only filter was returning nothing for them. By page id when we have it, else by advertiser
-  // domain (the actor keeps only ads whose destination is that domain, so other brands cost nothing).
-  const input = pid
-    ? { pageIds: [pid], countries: ['ALL'], activeStatus: 'active', maxAds: 14 }
-    : { advertiserDomains: [dom], countries: ['ALL'], activeStatus: 'active', maxAds: 14 };
-  const url = 'https://api.apify.com/v2/acts/sukhdipp~meta-ad-library-scraper/run-sync-get-dataset-items?timeout=45&maxTotalChargeUsd=0.02&clean=true&token=' + encodeURIComponent(token);
-  let items;
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), 50000);
-  try {
-    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal });
-    if (!r.ok) return { ok: false, reason: 'apify_meta_' + r.status, ads: [] };
-    items = await r.json();
-  } catch (e) { return { ok: false, reason: 'apify_meta_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
-  finally { clearTimeout(t); }
-  if (!Array.isArray(items)) return { ok: false, reason: 'apify_meta_bad_response', ads: [] };
+      return n <= META_DAY_CAP;
+    } catch (e) { return true; }
+  };
+  // One actor run. Returns { ok:true, items } or { ok:false, reason }. countries 'ALL', never 'US':
+  // advertisers run outside the US (Damani in IN) and a US filter returned nothing for them.
+  const runActor = async (input) => {
+    const url = 'https://api.apify.com/v2/acts/sukhdipp~meta-ad-library-scraper/run-sync-get-dataset-items?timeout=45&maxTotalChargeUsd=0.02&clean=true&token=' + encodeURIComponent(token);
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 50000);
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal });
+      if (!r.ok) return { ok: false, reason: 'apify_meta_' + r.status };
+      const items = await r.json();
+      if (!Array.isArray(items)) return { ok: false, reason: 'apify_meta_bad_response' };
+      return { ok: true, items };
+    } catch (e) { return { ok: false, reason: 'apify_meta_error:' + String(e && e.message || e).slice(0, 40) }; }
+    finally { clearTimeout(t); }
+  };
   // Catalog / dynamic ads carry template tokens ("{{product.name}}"): skip any value still a template.
   const firstTxt = (...vs) => { for (const v of vs) { const x = String(v || '').trim(); if (x && !/\{\{[^}]*\}\}/.test(x)) return x; } return ''; };
   const list = (v) => (Array.isArray(v) ? v : []);
-  const seen = new Set();
-  const out = [];
-  for (const it of items) {
-    if (!it || !it.pageName || it.isActive === false) continue;
-    const i0 = list(it.images)[0] || {};
-    const v0 = list(it.videos)[0] || {};
-    const img = i0.originalUrl || i0.resizedUrl || v0.previewImageUrl || null;
-    const body = firstTxt(it.body, ...list(it.creativeBodies));
-    const title = firstTxt(it.title, ...list(it.creativeTitles), it.linkDescription);
-    // Collapse exact duplicates (Meta advertisers run the same creative in many ad sets).
-    const sig = (img ? String(img).split('?')[0] : '') + '|' + body.slice(0, 120);
-    if (seen.has(sig)) continue;
-    seen.add(sig);
-    out.push({
-      plat: 'Meta',
-      head: title || (body ? body.slice(0, 80) : '(untitled ad)'),
-      body,
-      img,
-      cta: it.ctaText || null,
-      ctaUrl: it.linkUrl || null,
-      dom: null,
-      advertiser: it.pageName,
-      region: null,
-      detailUrl: it.adLibraryUrl || null,
-      adId: String(it.adId || it.id || '') || null,
-    });
-  }
+  const parseItems = (items) => {
+    const seen = new Set();
+    const out = [];
+    for (const it of items) {
+      if (!it || !it.pageName || it.isActive === false) continue;
+      const i0 = list(it.images)[0] || {};
+      const v0 = list(it.videos)[0] || {};
+      const img = i0.originalUrl || i0.resizedUrl || v0.previewImageUrl || null;
+      const body = firstTxt(it.body, ...list(it.creativeBodies));
+      const title = firstTxt(it.title, ...list(it.creativeTitles), it.linkDescription);
+      // Collapse exact duplicates (Meta advertisers run the same creative in many ad sets).
+      const sig = (img ? String(img).split('?')[0] : '') + '|' + body.slice(0, 120);
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      out.push({
+        plat: 'Meta',
+        head: title || (body ? body.slice(0, 80) : '(untitled ad)'),
+        body,
+        img,
+        cta: it.ctaText || null,
+        ctaUrl: it.linkUrl || null,
+        caption: firstTxt(it.caption),                               // Meta's display-link / byline line
+        linkDomain: String(it.linkDomain || '').toLowerCase() || null, // the ad's click-destination domain
+        dom: null,
+        advertiser: it.pageName,
+        region: null,
+        detailUrl: it.adLibraryUrl || null,
+        adId: String(it.adId || it.id || '') || null,
+      });
+    }
+    return out;
+  };
+
+  // PRIMARY run: by page id when we have one (one exact page), else by advertiser DOMAIN (the actor
+  // keeps only ads whose click-destination is that domain, so other brands cost nothing before billing).
+  if (!(await bumpDay())) return { ok: false, reason: 'meta_day_cap', ads: [] };
+  const primary = await runActor(pid
+    ? { pageIds: [pid], countries: ['ALL'], activeStatus: 'active', maxAds: 14 }
+    : { advertiserDomains: [dom], countries: ['ALL'], activeStatus: 'active', maxAds: 14 });
+  if (!primary.ok) return { ok: false, reason: primary.reason, ads: [] };
+  const out = parseItems(primary.items);
   // A page-id pull is one exact page, so every ad is owned by definition: no name re-check (it would
-  // wrongly drop a page whose name doesn't echo the brand, e.g. "Vijay Damani" for damaniconsulting).
-  // A domain pull already kept only ads whose destination is this brand's domain, which is itself
-  // ownership proof, so fall back to that destination-filtered set when the name check finds no match
-  // (the name guard still trims any stray homonym the search let through when it does match).
+  // wrongly drop a page whose name doesn't echo the brand). A domain pull already kept only ads whose
+  // destination is this brand's domain (ownership proof), so fall back to that set when the name check
+  // finds no match (the name guard still trims a stray homonym the search let through when it matches).
   let finalAds;
   if (pid) {
     finalAds = out;
@@ -1274,8 +1287,41 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, limit = 12
     const owned = ownedByAdvertiser(out, { domain: dom, company, strict: true });
     finalAds = owned.length ? owned : out;
   }
+
+  // AUTO-FALLBACK (domain pull only, on a zero). `advertiserDomains` filters by the ad's CLICK
+  // DESTINATION, so an advertiser whose ads point at an Instagram profile or a lead form while naming
+  // their site only in the caption copy (Damani: destination instagram.com, "damaniconsulting.com" in
+  // the body, one even typo'd) comes back empty. On an empty domain pull, run ONE keyword search on the
+  // company name and keep the ads that are theirs: the advertiser name echoes the company, or their
+  // domain shows in the ad text / display link / destination. Fires only on a zero; the merged result
+  // is cached under the domain key, so the common case stays one run and a re-view spends nothing.
+  if (!pid && !finalAds.length && String(company || '').trim()) {
+    if (await bumpDay()) {
+      const kw = await runActor({ searchTerms: [String(company).trim()], countries: ['ALL'], activeStatus: 'active', maxAds: 20 });
+      if (kw.ok) {
+        const kwOut = parseItems(kw.items);
+        const nn = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const coN = nn(company);
+        const domStem = nn(String(dom).replace(/\.[a-z.]+$/i, ''));
+        // Looser name match than the shared guard: a keyword search on the company's OWN name makes a
+        // name echo trustworthy, and the shared guard rejects "<brand> Consulting" pages as agencies.
+        const looseName = (adv) => { const a = nn(adv); return coN.length >= 5 && !!a && (a.includes(coN) || coN.includes(a)); };
+        const refsDomain = (a) => {
+          if (a.linkDomain && dom && (a.linkDomain.includes(dom) || dom.includes(a.linkDomain))) return true;
+          const hay = nn([a.body, a.head, a.cta, a.ctaUrl, a.caption].join(' '));
+          return domStem.length >= 5 && hay.includes(domStem);
+        };
+        finalAds = kwOut.filter(a => looseName(a.advertiser) || refsDomain(a));
+      }
+    }
+  }
+
   const result = { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify' };
-  if (redis) { try { await redis.set(runKey, JSON.stringify(result), { ex: Math.floor(META_TTL_MS / 1000) }); } catch (e) {} }
+  // Cache a HIT for the life of the image links. Cache an EMPTY result only briefly, so a miss (or a
+  // stale empty cached before this fallback existed) self-heals fast and never masks an advertiser who
+  // is in fact running ads. The day cap still bounds re-pulls of a genuinely empty advertiser.
+  const cacheSec = finalAds.length ? Math.floor(META_TTL_MS / 1000) : 6 * 60 * 60;
+  if (redis) { try { await redis.set(runKey, JSON.stringify(result), { ex: cacheSec }); } catch (e) {} }
   return result;
 }
 
