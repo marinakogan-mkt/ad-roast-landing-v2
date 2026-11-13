@@ -2962,17 +2962,17 @@
                           <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>What's coming <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>
                         </div>}
                         {canPull && <div onClick={none || metaBusy ? undefined : headClick} className={'flex items-center justify-between gap-2 ' + (none || metaBusy ? '' : 'cursor-pointer')}>
-                          {none && <span className="text-gray-400" style={{ fontSize: 12 }}>No active {p} ads found.</span>}
+                          {none && <span className="text-gray-500" style={{ fontSize: 12, lineHeight: 1.35 }}>We couldn't auto-match this advertiser on {p}. If they're running {p} ads, paste their Ad Library link below and we'll pull them.</span>}
                           {!none && <span className="text-gray-400" style={{ fontSize: 12 }}>{metaBusy ? 'Reading the Ad Library, about 30 seconds.' : metaFailed === 'limit' ? 'Free accounts pull 3 a day. Back tomorrow.' : metaFailed ? "Couldn't pull them this time." : acct.signedIn ? 'Pulled when you ask.' : 'Free with an account.'}</span>}
                           {!none && !metaBusy && metaFailed !== 'limit' && <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>{metaFailed ? 'Try again' : 'Pull ' + p + ' ads'} <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>}
                         </div>}
-                        {canPull && acct.signedIn && !metaBusy && (metaLinkOpen ? (
+                        {canPull && acct.signedIn && !metaBusy && ((metaLinkOpen || none) ? (
                           <div className="flex items-center gap-1.5">
-                            <input value={metaLink} onChange={e => setMetaLink(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && metaLink.trim()) loadMeta(metaLink.trim()); }} placeholder="Paste your Facebook Ad Library page link" autoFocus className="flex-1 min-w-0 rounded-lg border bg-white px-2.5 py-1.5" style={{ fontSize: 12, borderColor: '#d1d5db' }} />
+                            <input value={metaLink} onChange={e => setMetaLink(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && metaLink.trim()) loadMeta(metaLink.trim()); }} placeholder={'Paste the ' + p + ' Ad Library page link'} autoFocus={metaLinkOpen} className="flex-1 min-w-0 rounded-lg border bg-white px-2.5 py-1.5" style={{ fontSize: 12, borderColor: '#d1d5db' }} />
                             <button onClick={() => metaLink.trim() && loadMeta(metaLink.trim())} disabled={!metaLink.trim()} className="font-bold flex-none rounded-lg px-3 py-1.5 cursor-pointer" style={{ fontSize: 12, color: '#fff', background: '#0a66c2', opacity: metaLink.trim() ? 1 : 0.5 }}>Pull</button>
                           </div>
                         ) : (
-                          <button onClick={() => setMetaLinkOpen(true)} className="self-start font-semibold cursor-pointer" style={{ fontSize: 11.5, color: '#64748b' }}>{none ? 'Running ' + p + ' ads? Pull by Ad Library link →' : 'or pull by Ad Library page link'}</button>
+                          <button onClick={() => setMetaLinkOpen(true)} className="self-start font-semibold cursor-pointer" style={{ fontSize: 11.5, color: '#64748b' }}>or pull by Ad Library page link</button>
                         ))}
                       </div>
                     </div>

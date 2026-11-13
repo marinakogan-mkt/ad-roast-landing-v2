@@ -1193,6 +1193,20 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, limit = 12
     return m ? m[1] : '';
   })();
   if (!pid && !dom) return { ok: false, reason: 'no_domain', ads: [] };
+  // Cache the Apify run per resolved target (this exact page, or this domain) for the life of the
+  // image links. A re-view of the board, a second account opening it, or re-pasting the same link
+  // reuses the dataset and spends NO Apify token and NO day-cap slot. We cache the empty result too,
+  // so finding out an advertiser has no matchable ads is paid for once, not every open.
+  const runKey = 'meta:apify:run:' + (pid ? 'p:' + pid : 'd:' + dom);
+  if (redis) {
+    try {
+      const hit = await redis.get(runKey);
+      if (hit) {
+        const parsed = typeof hit === 'string' ? JSON.parse(hit) : hit;
+        if (parsed && Array.isArray(parsed.ads)) return { ...parsed, cached: true };
+      }
+    } catch (e) {}
+  }
   if (redis) {
     try {
       const dayKey = 'meta:apify:day:' + new Date().toISOString().slice(0, 10);
@@ -1253,12 +1267,16 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, limit = 12
   // A domain pull already kept only ads whose destination is this brand's domain, which is itself
   // ownership proof, so fall back to that destination-filtered set when the name check finds no match
   // (the name guard still trims any stray homonym the search let through when it does match).
+  let finalAds;
   if (pid) {
-    return { ok: true, empty: !out.length, ads: out.slice(0, limit), total: out.length, reason: out.length ? 'ok' : 'no_ads', via: 'apify' };
+    finalAds = out;
+  } else {
+    const owned = ownedByAdvertiser(out, { domain: dom, company, strict: true });
+    finalAds = owned.length ? owned : out;
   }
-  const owned = ownedByAdvertiser(out, { domain: dom, company, strict: true });
-  const finalAds = owned.length ? owned : out;
-  return { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify' };
+  const result = { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify' };
+  if (redis) { try { await redis.set(runKey, JSON.stringify(result), { ex: Math.floor(META_TTL_MS / 1000) }); } catch (e) {} }
+  return result;
 }
 
 export async function fetchMetaAds({ company, domain, pageId = null, limit = 12, redis = null } = {}) {
