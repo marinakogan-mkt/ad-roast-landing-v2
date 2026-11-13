@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ONDEMAND, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -808,12 +808,16 @@ ${items}
     // and answers with just the count; the client then re-reads the board, which scores the new ads.
     // A company with no Meta ads is remembered too, so nobody pays to find that out twice.
     if (body.only === 'meta') {
-      if (!META_ON) return res.status(200).json({ ok: false, reason: 'meta_off' });
+      if (!META_ONDEMAND) return res.status(200).json({ ok: false, reason: 'meta_off' });
       const metaAcct = await icpAccount(req, _redis);
       if (!metaAcct) return res.status(401).json({ ok: false, reason: 'sign_in' });
-      if (cachedCopy && cachedCopy._metaAt && Date.now() - cachedCopy._metaAt < META_TTL_MS) return res.status(200).json({ ok: true, cached: true });
+      // A page id is an explicit "pull THIS page" ask, so it overrides a cached result (a prior domain
+      // pull may have cached no_ads for a page whose name doesn't echo the brand). A plain pull reuses
+      // a fresh cached pull so nobody pays twice.
+      const metaPageId = String(body.pageId || '').trim().slice(0, 200);
+      if (!metaPageId && cachedCopy && cachedCopy._metaAt && Date.now() - cachedCopy._metaAt < META_TTL_MS) return res.status(200).json({ ok: true, cached: true });
       if (metaAcct.plan === 'free' && await metaFreeLimitHit(_redis, metaAcct.email)) return res.status(200).json({ ok: false, reason: 'meta_free_limit' });
-      const mt = await fetchMetaAds({ company: body.company, domain: body.domain, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
+      const mt = await fetchMetaAds({ company: body.company, domain: body.domain, pageId: metaPageId || null, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
       if (!mt.ok) return res.status(200).json({ ok: false, reason: mt.reason });
       const base = cachedCopy || { ok: true, ads: [], sources: {}, notes: {}, _checkedAt: Date.now() };
       const merged = { ...base, ads: [...base.ads.filter(a => (a.plat || '') !== 'Meta'), ...mt.ads], sources: { ...(base.sources || {}), meta: mt.ads.length }, notes: { ...(base.notes || {}), meta: mt.ads.length ? 'ok' : 'no_ads' }, _metaAt: Date.now() };
@@ -871,9 +875,11 @@ ${items}
       pull.ads = ownedPerPlatform(pull.ads, { domain: body.domain, company: body.company }); // per platform: a LinkedIn name match must not drop Google's domain-matched ads
       // Meta off, or its image links about to die: hide what's cached (the cache isn't rewritten) and
       // the board goes back to Coming soon / the button. meta_on tells the client which of the two.
-      const metaLive = META_ON && pull._metaAt && Date.now() - pull._metaAt < META_TTL_MS;
+      // Show Meta whenever a pull is still fresh (its image links are alive): someone paid for it on
+      // demand, so it rides the board for its TTL without re-billing. Independent of the global switch.
+      const metaLive = META_ONDEMAND && pull._metaAt && Date.now() - pull._metaAt < META_TTL_MS;
       if (!metaLive) { pull.ads = pull.ads.filter(a => (a.plat || '') !== 'Meta'); pull.sources = { ...(pull.sources || {}), meta: 0 }; }
-      pull.notes = { ...(pull.notes || {}), meta: metaLive ? (pull.notes || {}).meta : 'on_demand', meta_on: META_ON };
+      pull.notes = { ...(pull.notes || {}), meta: metaLive ? (pull.notes || {}).meta : 'on_demand', meta_on: META_ONDEMAND };
     }
 
     // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.

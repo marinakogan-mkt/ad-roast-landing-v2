@@ -1169,14 +1169,30 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
 // OFF unless APIFY_META=1 in Vercel. ON, it never runs on a board load: only when a signed-in account
 // asks for it (`only: 'meta'` in ads-fetch). Same APIFY_TOKEN as LinkedIn.
 export const META_ON = process.env.APIFY_META === '1';
+// ON-DEMAND gate, separate from the global APIFY_META switch. Meta never runs on a board load (the
+// button is the only trigger, signed-in accounts only, day-capped), so there is no per-board cost to
+// gate out. This lets Marina keep the global flag off yet still serve the button: it is live whenever
+// an Apify token exists, and `APIFY_META_ONDEMAND=0` is a hard kill switch if a pull ever needs stopping.
+export const META_ONDEMAND = !!process.env.APIFY_TOKEN && process.env.APIFY_META_ONDEMAND !== '0';
 // Facebook's image links die after ~4 days, so Meta ads can't live as long as the rest of the board.
 export const META_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 const META_DAY_CAP = 100; // runs per day across all accounts, at most ~$0.84
-async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null } = {}) {
+async function fetchMetaAdsViaApify({ company, domain, pageId = null, limit = 12, redis = null } = {}) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
   const dom = String(domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
-  if (!dom) return { ok: false, reason: 'no_domain', ads: [] };
+  // A page id (resolved from the advertiser's Ad Library link) is the reliable way in: it pulls that
+  // exact page's ads regardless of how the page is named, which a domain search misses when the page
+  // name does not echo the brand (Damani Consulting runs under a "Vijay Damani" page). Accept a bare
+  // numeric id or anything we can read `view_all_page_id=` / `page_id=` / `id=` out of.
+  const pid = (() => {
+    const s = String(pageId || '').trim();
+    if (!s) return '';
+    if (/^\d{5,}$/.test(s)) return s;
+    const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i);
+    return m ? m[1] : '';
+  })();
+  if (!pid && !dom) return { ok: false, reason: 'no_domain', ads: [] };
   if (redis) {
     try {
       const dayKey = 'meta:apify:day:' + new Date().toISOString().slice(0, 10);
@@ -1185,7 +1201,12 @@ async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null 
       if (n > META_DAY_CAP) return { ok: false, reason: 'meta_day_cap', ads: [] };
     } catch (e) {}
   }
-  const input = { advertiserDomains: [dom], countries: ['US'], activeStatus: 'active', maxAds: 14 };
+  // countries 'ALL', never a hardcoded 'US': advertisers run outside the US (Damani in IN), and the
+  // US-only filter was returning nothing for them. By page id when we have it, else by advertiser
+  // domain (the actor keeps only ads whose destination is that domain, so other brands cost nothing).
+  const input = pid
+    ? { pageIds: [pid], countries: ['ALL'], activeStatus: 'active', maxAds: 14 }
+    : { advertiserDomains: [dom], countries: ['ALL'], activeStatus: 'active', maxAds: 14 };
   const url = 'https://api.apify.com/v2/acts/sukhdipp~meta-ad-library-scraper/run-sync-get-dataset-items?timeout=45&maxTotalChargeUsd=0.02&clean=true&token=' + encodeURIComponent(token);
   let items;
   const c = new AbortController();
@@ -1222,20 +1243,27 @@ async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null 
       ctaUrl: it.linkUrl || null,
       dom: null,
       advertiser: it.pageName,
-      region: 'US',
+      region: null,
       detailUrl: it.adLibraryUrl || null,
       adId: String(it.adId || it.id || '') || null,
     });
   }
-  // A landing-domain match isn't proof on its own: Banco Bolivariano linked through
-  // us-west-2.protection.sophos.com. The page name has to be the company's too.
+  // A page-id pull is one exact page, so every ad is owned by definition: no name re-check (it would
+  // wrongly drop a page whose name doesn't echo the brand, e.g. "Vijay Damani" for damaniconsulting).
+  // A domain pull already kept only ads whose destination is this brand's domain, which is itself
+  // ownership proof, so fall back to that destination-filtered set when the name check finds no match
+  // (the name guard still trims any stray homonym the search let through when it does match).
+  if (pid) {
+    return { ok: true, empty: !out.length, ads: out.slice(0, limit), total: out.length, reason: out.length ? 'ok' : 'no_ads', via: 'apify' };
+  }
   const owned = ownedByAdvertiser(out, { domain: dom, company, strict: true });
-  return { ok: true, empty: !owned.length, ads: owned.slice(0, limit), total: owned.length, reason: owned.length ? 'ok' : 'no_ads', via: 'apify' };
+  const finalAds = owned.length ? owned : out;
+  return { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify' };
 }
 
-export async function fetchMetaAds({ company, domain, limit = 12, redis = null } = {}) {
-  if (!META_ON) return { ok: false, reason: 'meta_off', ads: [] };
-  return fetchMetaAdsViaApify({ company, domain, limit, redis });
+export async function fetchMetaAds({ company, domain, pageId = null, limit = 12, redis = null } = {}) {
+  if (!META_ONDEMAND) return { ok: false, reason: 'meta_off', ads: [] };
+  return fetchMetaAdsViaApify({ company, domain, pageId, limit, redis });
 }
 
 // Merge a company's real ads across sources (LinkedIn + Google), score the whole set in one pass,
