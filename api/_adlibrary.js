@@ -1177,7 +1177,7 @@ export const META_ONDEMAND = !!process.env.APIFY_TOKEN && process.env.APIFY_META
 // Facebook's image links die after ~4 days, so Meta ads can't live as long as the rest of the board.
 export const META_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 const META_DAY_CAP = 100; // runs per day across all accounts, at most ~$0.84
-async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId = null, limit = 12, redis = null } = {}) {
+async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null } = {}) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
   const dom = String(domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
@@ -1256,6 +1256,7 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
         ctaUrl: it.linkUrl || null,
         caption: firstTxt(it.caption),                               // Meta's display-link / byline line
         linkDomain: String(it.linkDomain || '').toLowerCase() || null, // the ad's click-destination domain
+        adPageId: String(it.pageId || '') || null,                   // the Facebook page actually running the ad
         dom: null,
         advertiser: it.pageName,
         region: null,
@@ -1303,15 +1304,27 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
         const nn = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
         const coN = nn(company);
         const domStem = nn(String(dom).replace(/\.[a-z.]+$/i, ''));
-        // Looser name match than the shared guard: a keyword search on the company's OWN name makes a
-        // name echo trustworthy, and the shared guard rejects "<brand> Consulting" pages as agencies.
+        const hIg = String(hintIg || '').toLowerCase().replace(/[^a-z0-9._]/g, '');
+        const hFb = String(hintFb || '').toLowerCase().replace(/[^a-z0-9._-]/g, '');
+        // An ad is theirs if ANY independent signal matches -- none of these is brand-specific, every
+        // value comes from this board's own ICP (name, domain, social handles read off the site):
+        //  - the advertiser name echoes the company (looser than the shared guard, which rejects
+        //    "<brand> Consulting" pages as agencies);
+        //  - their domain shows in the ad text / display link / click destination;
+        //  - the ad runs under the exact Facebook page linked on their site;
+        //  - the ad's click destination is their own Instagram or Facebook account. This last one is
+        //    what recognises ads that send clicks to Instagram with the domain nowhere in the copy.
         const looseName = (adv) => { const a = nn(adv); return coN.length >= 5 && !!a && (a.includes(coN) || coN.includes(a)); };
         const refsDomain = (a) => {
           if (a.linkDomain && dom && (a.linkDomain.includes(dom) || dom.includes(a.linkDomain))) return true;
           const hay = nn([a.body, a.head, a.cta, a.ctaUrl, a.caption].join(' '));
           return domStem.length >= 5 && hay.includes(domStem);
         };
-        finalAds = kwOut.filter(a => looseName(a.advertiser) || refsDomain(a));
+        const pageMatch = (a) => hintPid && a.adPageId && String(a.adPageId) === String(hintPid);
+        const normH = (h) => String(h || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const destHandle = (a, host) => { const m = String(a.ctaUrl || '').toLowerCase().match(new RegExp(host.replace('.', '\\.') + '\\/([a-z0-9._-]{1,30})')); return m ? m[1] : ''; };
+        const handleMatch = (a) => (!!hIg && normH(destHandle(a, 'instagram.com')) === normH(hIg)) || (!!hFb && normH(destHandle(a, 'facebook.com')) === normH(hFb));
+        finalAds = kwOut.filter(a => looseName(a.advertiser) || refsDomain(a) || pageMatch(a) || handleMatch(a));
       }
     }
     // Signal 3: the Facebook page linked on the advertiser's OWN site. Catches ads that run under that
@@ -1333,9 +1346,9 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
   return result;
 }
 
-export async function fetchMetaAds({ company, domain, pageId = null, hintPageId = null, limit = 12, redis = null } = {}) {
+export async function fetchMetaAds({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null } = {}) {
   if (!META_ONDEMAND) return { ok: false, reason: 'meta_off', ads: [] };
-  return fetchMetaAdsViaApify({ company, domain, pageId, hintPageId, limit, redis });
+  return fetchMetaAdsViaApify({ company, domain, pageId, hintPageId, hintIg, hintFb, limit, redis });
 }
 
 // Merge a company's real ads across sources (LinkedIn + Google), score the whole set in one pass,

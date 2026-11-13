@@ -2130,7 +2130,7 @@
         const mp = real.co.metaPage || null;
         const extra = (opts && opts.pasteLink)
           ? { only: 'meta', pageId: opts.pasteLink, metaForce: true }
-          : { only: 'meta', hintPageId: (mp && mp.pageId) || '' };
+          : { only: 'meta', hintPageId: (mp && mp.pageId) || '', hintIg: (mp && mp.igHandle) || '', hintFb: (mp && mp.vanity) || '' };
         const mySeq = loadSeqRef.current;
         const post = (ex) => fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'ads-fetch', company: real.co.name, domain: real.co.domain, icp: real.icp, ...ex }) }).then(r => r.json()).catch(() => null);
         setMetaBusy(true); setMetaFailed(false);
@@ -2972,7 +2972,7 @@
                           <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>What's coming <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>
                         </div>}
                         {canPull && metaBusy && <span className="text-gray-400" style={{ fontSize: 12 }}>Reading the Ad Library, about 30 seconds.</span>}
-                        {canPull && !metaBusy && none && <span className="text-gray-500" style={{ fontSize: 12 }}>Not currently running Meta ads.</span>}
+                        {canPull && !metaBusy && none && <span className="text-gray-500" style={{ fontSize: 12, lineHeight: 1.35 }}>We couldn't confirm Meta ads from their site.{acct.signedIn ? ' If you have their Ad Library link, pull it directly below.' : ''}</span>}
                         {canPull && !metaBusy && !none && <div onClick={headClick} className="flex items-center justify-between gap-2 cursor-pointer">
                           <span className="text-gray-400" style={{ fontSize: 12 }}>{metaFailed === 'limit' ? 'Free accounts pull 3 a day. Back tomorrow.' : metaFailed ? "Couldn't pull them this time." : acct.signedIn ? 'Pulled when you ask.' : 'Free with an account.'}</span>
                           {metaFailed !== 'limit' && <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>{metaFailed ? 'Try again' : 'Pull ' + p + ' ads'} <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>}
@@ -2985,7 +2985,7 @@
                             <button onClick={() => metaLink.trim() && loadMeta({ pasteLink: metaLink.trim() })} disabled={!metaLink.trim()} className="font-bold flex-none rounded-lg px-3 py-1.5 cursor-pointer" style={{ fontSize: 12, color: '#fff', background: '#0a66c2', opacity: metaLink.trim() ? 1 : 0.5 }}>Pull</button>
                           </div>
                         ) : (
-                          <button onClick={() => setMetaLinkOpen(true)} className="self-start font-semibold cursor-pointer" style={{ fontSize: 11.5, color: '#0a66c2' }}>Have their Ad Library link? Pull it directly</button>
+                          <button onClick={() => setMetaLinkOpen(true)} className="self-start font-semibold cursor-pointer" style={{ fontSize: 11.5, color: '#0a66c2' }}>Paste their Ad Library link</button>
                         ))}
                       </div>
                     </div>

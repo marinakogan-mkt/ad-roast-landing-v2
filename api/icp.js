@@ -158,6 +158,7 @@ async function fetchHtmlViaJina(url) {
 function extractMetaPage(html) {
   if (!html) return null;
   const s = String(html);
+  let pageId = null, vanity = null, igHandle = null;
   const num = [
     /facebook\.com\/profile\.php\?id=(\d{6,})/i,
     /facebook\.com\/people\/[^"'<>\s/]+\/(\d{6,})/i,
@@ -166,12 +167,21 @@ function extractMetaPage(html) {
     /fb:\/\/(?:page|profile)\/(\d{6,})/i,
     /facebook\.com\/[^"'<>\s]*[?&]page_id=(\d{6,})/i,
   ];
-  for (const re of num) { const m = s.match(re); if (m) return { pageId: m[1], vanity: null }; }
+  for (const re of num) { const m = s.match(re); if (m) { pageId = m[1]; break; } }
   // Vanity handle: facebook.com/<handle>, excluding the non-page paths FB also serves under its host.
-  const NON_PAGE = /^(profile\.php|people|pages|sharer|share|dialog|plugins|tr|events|event|groups|group|watch|hashtag|permalink|story\.php|photo\.php|photo|media|login|help|policies|business|ads|gaming|marketplace|reel|reels|stories|about|privacy|legal|home\.php|flx|l\.php|recover|settings)$/i;
-  const vm = s.match(/facebook\.com\/([A-Za-z0-9][A-Za-z0-9._-]{1,78})(?=["'<>\s/?#]|$)/i);
-  if (vm) { const v = vm[1].replace(/\.$/, ''); if (v && !/^\d+$/.test(v) && !NON_PAGE.test(v)) return { pageId: null, vanity: v }; }
-  return null;
+  if (!pageId) {
+    const NON_PAGE = /^(profile\.php|people|pages|sharer|share|dialog|plugins|tr|events|event|groups|group|watch|hashtag|permalink|story\.php|photo\.php|photo|media|login|help|policies|business|ads|gaming|marketplace|reel|reels|stories|about|privacy|legal|home\.php|flx|l\.php|recover|settings)$/i;
+    const vm = s.match(/facebook\.com\/([A-Za-z0-9][A-Za-z0-9._-]{1,78})(?=["'<>\s/?#]|$)/i);
+    if (vm) { const v = vm[1].replace(/\.$/, ''); if (v && !/^\d+$/.test(v) && !NON_PAGE.test(v)) vanity = v; }
+  }
+  // Instagram handle from the site's own social links. An advertiser whose Meta ads send clicks to an
+  // Instagram profile (domain nowhere in the ad) is matched by this handle, so this is read for EVERY
+  // board, not just ones with a Facebook link. Skip Instagram's own non-profile paths.
+  const IG_NON = /^(p|reel|reels|explore|stories|tv|accounts|about|developer|developers|directory|web|direct|legal|privacy|graphql|api|your_activity|sitemap)$/i;
+  const im = s.match(/instagram\.com\/([A-Za-z0-9._]{1,30})(?=["'<>\s/?#]|$)/i);
+  if (im) { const h = im[1].replace(/\.$/, '').toLowerCase(); if (h && !IG_NON.test(h)) igHandle = h; }
+  if (!pageId && !vanity && !igHandle) return null;
+  return { pageId, vanity, igHandle };
 }
 
 /* Turn a Facebook vanity handle (facebook.com/<handle>) into the numeric page id the Ad Library
@@ -872,14 +882,18 @@ ${items}
       // falsely reported as having no Meta presence just because no page was linked on their site.
       let metaPid = (() => { const s = String(body.pageId || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; })();
       if (!metaPid && body.metaForce && body.vanity) metaPid = await resolveFbVanity(body.vanity, _redis).catch(() => '');
-      // The Facebook page read off the advertiser's own site, passed only as a LAST-RESORT fallback
-      // signal (used when the domain and name pulls both come back empty), never as the primary target.
+      // The social identities read off the advertiser's own site. The FB page id is a last-resort pull
+      // signal (used only when the domain and name pulls both come back empty); the FB/IG handles are
+      // ownership signals the name-search filter matches against the ads' destination accounts, so an ad
+      // whose click target is their Instagram (domain nowhere in the copy) is still recognised as theirs.
       const metaHintPid = (() => { const s = String(body.hintPageId || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; })();
+      const metaHintIg = String(body.hintIg || '').trim().replace(/[^A-Za-z0-9._]/g, '').slice(0, 30).toLowerCase();
+      const metaHintFb = String(body.hintFb || '').trim().replace(/[^A-Za-z0-9._-]/g, '').slice(0, 80).toLowerCase();
       // A fresh pull already on the board is reused (the run cache also guards the Apify cost), unless
       // the user forced a re-pull (the last-resort pasted link).
       if (!body.metaForce && cachedCopy && cachedCopy._metaAt && Date.now() - cachedCopy._metaAt < META_TTL_MS) return res.status(200).json({ ok: true, cached: true });
       if (metaAcct.plan === 'free' && await metaFreeLimitHit(_redis, metaAcct.email)) return res.status(200).json({ ok: false, reason: 'meta_free_limit' });
-      const mt = await fetchMetaAds({ company: body.company, domain: body.domain, pageId: metaPid, hintPageId: metaHintPid, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
+      const mt = await fetchMetaAds({ company: body.company, domain: body.domain, pageId: metaPid, hintPageId: metaHintPid, hintIg: metaHintIg, hintFb: metaHintFb, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
       if (!mt.ok) return res.status(200).json({ ok: false, reason: mt.reason });
       const base = cachedCopy || { ok: true, ads: [], sources: {}, notes: {}, _checkedAt: Date.now() };
       const merged = { ...base, ads: [...base.ads.filter(a => (a.plat || '') !== 'Meta'), ...mt.ads], sources: { ...(base.sources || {}), meta: mt.ads.length }, notes: { ...(base.notes || {}), meta: mt.ads.length ? 'ok' : 'no_ads' }, _metaAt: Date.now() };
