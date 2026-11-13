@@ -857,18 +857,21 @@ ${items}
     }
 
     // On-demand Meta: the board's button, signed-in accounts only. The ONLY Apify run on the Meta
-    // path, and it is a TARGETED pull of one page id, never a broad keyword/domain search. The page
-    // comes from the advertiser's own site (the metaPage the client detected and passes here), or a
-    // vanity we resolve to an id, or a last-resort pasted Ad Library link. No page -> no Apify at all.
+    // path, one cached run per advertiser. By default it pulls BY DOMAIN: advertiserDomains searches
+    // the brand and keeps only ads whose destination is the advertiser's domain, so it finds their ads
+    // under whichever Facebook page runs them -- the page a site links is often a dead profile while the
+    // live ads run under a differently named page (Damani's ads run under a separate page, not the
+    // /people/ profile their footer links). A pasted Ad Library link forces that exact page id instead.
     // Folds the result into the pull cache and answers with the count; the client re-reads to score.
     if (body.only === 'meta') {
       if (!META_ONDEMAND) return res.status(200).json({ ok: false, reason: 'meta_off' });
       const metaAcct = await icpAccount(req, _redis);
       if (!metaAcct) return res.status(401).json({ ok: false, reason: 'sign_in' });
-      // Resolve a numeric page id: one passed in (site-detected or pasted link), else a vanity handle.
+      // A pasted Ad Library link (last resort) forces a pull of that exact page id. Normally there is no
+      // page id and the pull goes by domain. We never require a page id, so an advertiser is never
+      // falsely reported as having no Meta presence just because no page was linked on their site.
       let metaPid = (() => { const s = String(body.pageId || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; })();
-      if (!metaPid && body.vanity) metaPid = await resolveFbVanity(body.vanity, _redis).catch(() => '');
-      if (!metaPid) return res.status(200).json({ ok: false, reason: 'no_meta_page' });
+      if (!metaPid && body.metaForce && body.vanity) metaPid = await resolveFbVanity(body.vanity, _redis).catch(() => '');
       // A fresh pull already on the board is reused (the run cache also guards the Apify cost), unless
       // the user forced a re-pull (the last-resort pasted link).
       if (!body.metaForce && cachedCopy && cachedCopy._metaAt && Date.now() - cachedCopy._metaAt < META_TTL_MS) return res.status(200).json({ ok: true, cached: true });
@@ -928,7 +931,13 @@ ${items}
     // up on next view.
     if (pull && Array.isArray(pull.ads)) {
       pull.ads = dropJunkCreatives(pull.ads);
-      pull.ads = ownedPerPlatform(pull.ads, { domain: body.domain, company: body.company }); // per platform: a LinkedIn name match must not drop Google's domain-matched ads
+      // Per platform: a LinkedIn name match must not drop Google's domain-matched ads. Meta is held out
+      // of this name guard on purpose: its ownership is already settled at fetch (an exact page-id pull,
+      // or a domain pull the actor already filtered to this brand's destination domain). Re-checking Meta
+      // by advertiser NAME here would wrongly drop a brand's ads that run under a differently named page
+      // (Damani's ads run under a "Damani Consulting Services" page the name/partner guard rejects).
+      const keptNonMeta = new Set(ownedPerPlatform(pull.ads.filter(a => (a.plat || '') !== 'Meta'), { domain: body.domain, company: body.company }));
+      pull.ads = pull.ads.filter(a => (a.plat || '') === 'Meta' || keptNonMeta.has(a));
       // Meta off, or its image links about to die: hide what's cached (the cache isn't rewritten) and
       // the board goes back to Coming soon / the button. meta_on tells the client which of the two.
       // Show Meta whenever a pull is still fresh (its image links are alive): someone paid for it on

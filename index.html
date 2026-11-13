@@ -2121,11 +2121,12 @@
       // last resort when their site exposes no Facebook page at all. One targeted, cached Apify run.
       const loadMeta = async (opts) => {
         if (!real || !real.co || metaBusy) return;
-        const mp = real.co.metaPage || null;
+        // Normal pull: no page id, so the server goes by DOMAIN. advertiserDomains searches the brand
+        // and keeps only ads whose destination is their domain, so it finds the advertiser's ads under
+        // whichever page runs them (the page linked on a site is often a dead profile; the live ads run
+        // elsewhere). A pasted Ad Library link forces a pull of that exact page id (last resort).
         const extra = (opts && opts.pasteLink)
           ? { only: 'meta', pageId: opts.pasteLink, metaForce: true }
-          : (mp && mp.pageId) ? { only: 'meta', pageId: mp.pageId }
-          : (mp && mp.vanity) ? { only: 'meta', vanity: mp.vanity }
           : { only: 'meta' };
         const mySeq = loadSeqRef.current;
         const post = (ex) => fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'ads-fetch', company: real.co.name, domain: real.co.domain, icp: real.icp, ...ex }) }).then(r => r.json()).catch(() => null);
@@ -2945,12 +2946,11 @@
                   {SOON_SOURCES.filter(p => !ads.some(a => a.plat === p)).map(p => {
                     const notes = (real && real.notes) || {};
                     const canPull = p === 'Meta' && notes.meta_on;
-                    const none = canPull && notes.meta === 'no_ads';          // their FB page was pulled, no active ads
-                    const mp = (real && real.co && real.co.metaPage) || null; // the FB page read off their own site
-                    const hasPage = !!(mp && (mp.pageId || mp.vanity));       // can we derive Meta presence from the site?
-                    // Presence is derived from the advertiser's WEBSITE: the FB page we read off their site is
-                    // pulled on click. No FB page on their site -> we can't detect a presence (last-resort paste).
-                    const headClick = () => { if (!canPull) { setSoon(p); return; } if (none || metaBusy) return; if (!acct.signedIn) { onSignup(); return; } if (hasPage) loadMeta(); else setMetaLinkOpen(true); };
+                    const none = canPull && notes.meta === 'no_ads';          // a pull ran and found no active ads
+                    // The button pulls by DOMAIN: we always have the advertiser's domain, so the pull is
+                    // always offered (no need to first find a Facebook page on their site). A pull that
+                    // returns nothing shows an honest "not currently running" with a paste-link fallback.
+                    const headClick = () => { if (!canPull) { setSoon(p); return; } if (none || metaBusy) return; if (!acct.signedIn) { onSignup(); return; } loadMeta(); };
                     return (
                     <div key={p} className={'group rounded-2xl border overflow-hidden flex flex-col text-left p-0 transition-all duration-200 ' + (none || metaBusy ? '' : 'hover:-translate-y-1 hover:shadow-lg')} style={{ borderColor: '#dbe4ef', borderStyle: 'dashed', background: '#fafbfc' }}>
                       <div onClick={headClick} title={canPull ? 'Pull live ' + p + ' ads' : 'See what is coming for ' + p} className={'flex flex-col ' + (none || metaBusy ? '' : 'cursor-pointer')}>
@@ -2970,19 +2970,19 @@
                         </div>}
                         {canPull && metaBusy && <span className="text-gray-400" style={{ fontSize: 12 }}>Reading the Ad Library, about 30 seconds.</span>}
                         {canPull && !metaBusy && none && <span className="text-gray-500" style={{ fontSize: 12 }}>Not currently running Meta ads.</span>}
-                        {canPull && !metaBusy && !none && !hasPage && <span className="text-gray-500" style={{ fontSize: 12, lineHeight: 1.35 }}>We couldn't detect a Meta presence from their site.{acct.signedIn ? ' Know their Ad Library page? Paste the link below.' : ''}</span>}
-                        {canPull && !metaBusy && !none && hasPage && <div onClick={headClick} className="flex items-center justify-between gap-2 cursor-pointer">
+                        {canPull && !metaBusy && !none && <div onClick={headClick} className="flex items-center justify-between gap-2 cursor-pointer">
                           <span className="text-gray-400" style={{ fontSize: 12 }}>{metaFailed === 'limit' ? 'Free accounts pull 3 a day. Back tomorrow.' : metaFailed ? "Couldn't pull them this time." : acct.signedIn ? 'Pulled when you ask.' : 'Free with an account.'}</span>
                           {metaFailed !== 'limit' && <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>{metaFailed ? 'Try again' : 'Pull ' + p + ' ads'} <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>}
                         </div>}
-                        {/* Last resort ONLY when their site exposes no Facebook page: paste the Ad Library link. */}
-                        {canPull && acct.signedIn && !metaBusy && !hasPage && !none && (metaLinkOpen ? (
+                        {/* Last resort when a domain pull found nothing: their ads may drive to a different
+                            destination than their site. Paste the exact Ad Library page link to pull it. */}
+                        {canPull && acct.signedIn && !metaBusy && none && (metaLinkOpen ? (
                           <div className="flex items-center gap-1.5">
                             <input value={metaLink} onChange={e => setMetaLink(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && metaLink.trim()) loadMeta({ pasteLink: metaLink.trim() }); }} placeholder={'Paste the ' + p + ' Ad Library page link'} autoFocus className="flex-1 min-w-0 rounded-lg border bg-white px-2.5 py-1.5" style={{ fontSize: 12, borderColor: '#d1d5db' }} />
                             <button onClick={() => metaLink.trim() && loadMeta({ pasteLink: metaLink.trim() })} disabled={!metaLink.trim()} className="font-bold flex-none rounded-lg px-3 py-1.5 cursor-pointer" style={{ fontSize: 12, color: '#fff', background: '#0a66c2', opacity: metaLink.trim() ? 1 : 0.5 }}>Pull</button>
                           </div>
                         ) : (
-                          <button onClick={() => setMetaLinkOpen(true)} className="self-start font-semibold cursor-pointer" style={{ fontSize: 11.5, color: '#0a66c2' }}>Pull by Ad Library link</button>
+                          <button onClick={() => setMetaLinkOpen(true)} className="self-start font-semibold cursor-pointer" style={{ fontSize: 11.5, color: '#0a66c2' }}>Have their Ad Library link? Pull it directly</button>
                         ))}
                       </div>
                     </div>
