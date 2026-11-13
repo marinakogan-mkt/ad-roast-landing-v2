@@ -2116,16 +2116,22 @@
       };
       // Meta costs per ad, so it only runs from the board's button (signed-in accounts). The server folds the
       // ads into the cached board; re-reading it scores them through the normal progressive path.
-      // Pull the advertiser's Meta ads on demand. With no argument it searches by the board's domain;
-      // pass an Ad Library page link (or a bare page id) to pull that exact page, which is the reliable
-      // way in when the Meta page name doesn't echo the brand. Numbers/ids are read out server-side.
-      const loadMeta = async (pageLink) => {
+      // Pull the advertiser's Meta ads on demand, by the Facebook page we read off their own site
+      // (numeric id, or a vanity handle the server resolves). A pasted Ad Library link is only the
+      // last resort when their site exposes no Facebook page at all. One targeted, cached Apify run.
+      const loadMeta = async (opts) => {
         if (!real || !real.co || metaBusy) return;
+        const mp = real.co.metaPage || null;
+        const extra = (opts && opts.pasteLink)
+          ? { only: 'meta', pageId: opts.pasteLink, metaForce: true }
+          : (mp && mp.pageId) ? { only: 'meta', pageId: mp.pageId }
+          : (mp && mp.vanity) ? { only: 'meta', vanity: mp.vanity }
+          : { only: 'meta' };
         const mySeq = loadSeqRef.current;
-        const post = (extra) => fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'ads-fetch', company: real.co.name, domain: real.co.domain, icp: real.icp, ...extra }) }).then(r => r.json()).catch(() => null);
+        const post = (ex) => fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'ads-fetch', company: real.co.name, domain: real.co.domain, icp: real.icp, ...ex }) }).then(r => r.json()).catch(() => null);
         setMetaBusy(true); setMetaFailed(false);
         try {
-          const m = await post(pageLink ? { only: 'meta', pageId: pageLink } : { only: 'meta' });
+          const m = await post(extra);
           if (!m || !m.ok) { setMetaFailed(m && m.reason === 'meta_free_limit' ? 'limit' : true); return; }
           const res = await post({});
           if (loadSeqRef.current !== mySeq || !res || !res.ok || !Array.isArray(res.ads)) return;
@@ -2164,7 +2170,7 @@
         try {
           const icpRes = await fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: siteRaw, refresh: !!opts.refresh }) }).then(r => r.json()).catch(() => ({}));
           const coName = icpRes.company || icpRes.brand || hostOf(siteRaw);
-          const co = { name: coName, domain: icpRes.domain || hostOf(siteRaw), initial: (coName || '?').charAt(0).toUpperCase(), color: '#334155' };
+          const co = { name: coName, domain: icpRes.domain || hostOf(siteRaw), initial: (coName || '?').charAt(0).toUpperCase(), color: '#334155', metaPage: icpRes.metaPage || null };
           const icpText = icpRes.icp_text || '';
           if (!silent) { setLoadingCo(co); setStatusMsg('Pulling your live ads from LinkedIn and Google…'); }
           // Progressive first paint: fire the fast Google-only pull and the full pull CONCURRENTLY.
@@ -2939,11 +2945,12 @@
                   {SOON_SOURCES.filter(p => !ads.some(a => a.plat === p)).map(p => {
                     const notes = (real && real.notes) || {};
                     const canPull = p === 'Meta' && notes.meta_on;
-                    const none = canPull && notes.meta === 'no_ads';
-                    // A domain search misses a page whose name doesn't echo the brand (Damani Consulting
-                    // runs Meta ads under a "Vijay Damani" page). Clicking the card pulls by domain; the
-                    // "pull by Ad Library link" row below pulls that exact page, which always finds it.
-                    const headClick = () => { if (!canPull) { setSoon(p); return; } if (none || metaBusy) return; if (!acct.signedIn) { onSignup(); return; } loadMeta(); };
+                    const none = canPull && notes.meta === 'no_ads';          // their FB page was pulled, no active ads
+                    const mp = (real && real.co && real.co.metaPage) || null; // the FB page read off their own site
+                    const hasPage = !!(mp && (mp.pageId || mp.vanity));       // can we derive Meta presence from the site?
+                    // Presence is derived from the advertiser's WEBSITE: the FB page we read off their site is
+                    // pulled on click. No FB page on their site -> we can't detect a presence (last-resort paste).
+                    const headClick = () => { if (!canPull) { setSoon(p); return; } if (none || metaBusy) return; if (!acct.signedIn) { onSignup(); return; } if (hasPage) loadMeta(); else setMetaLinkOpen(true); };
                     return (
                     <div key={p} className={'group rounded-2xl border overflow-hidden flex flex-col text-left p-0 transition-all duration-200 ' + (none || metaBusy ? '' : 'hover:-translate-y-1 hover:shadow-lg')} style={{ borderColor: '#dbe4ef', borderStyle: 'dashed', background: '#fafbfc' }}>
                       <div onClick={headClick} title={canPull ? 'Pull live ' + p + ' ads' : 'See what is coming for ' + p} className={'flex flex-col ' + (none || metaBusy ? '' : 'cursor-pointer')}>
@@ -2961,18 +2968,21 @@
                           <span className="text-gray-400" style={{ fontSize: 12 }}>We're adding {p} ads next.</span>
                           <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>What's coming <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>
                         </div>}
-                        {canPull && <div onClick={none || metaBusy ? undefined : headClick} className={'flex items-center justify-between gap-2 ' + (none || metaBusy ? '' : 'cursor-pointer')}>
-                          {none && <span className="text-gray-500" style={{ fontSize: 12, lineHeight: 1.35 }}>We couldn't auto-match this advertiser on {p}. If they're running {p} ads, paste their Ad Library link below and we'll pull them.</span>}
-                          {!none && <span className="text-gray-400" style={{ fontSize: 12 }}>{metaBusy ? 'Reading the Ad Library, about 30 seconds.' : metaFailed === 'limit' ? 'Free accounts pull 3 a day. Back tomorrow.' : metaFailed ? "Couldn't pull them this time." : acct.signedIn ? 'Pulled when you ask.' : 'Free with an account.'}</span>}
-                          {!none && !metaBusy && metaFailed !== 'limit' && <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>{metaFailed ? 'Try again' : 'Pull ' + p + ' ads'} <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>}
+                        {canPull && metaBusy && <span className="text-gray-400" style={{ fontSize: 12 }}>Reading the Ad Library, about 30 seconds.</span>}
+                        {canPull && !metaBusy && none && <span className="text-gray-500" style={{ fontSize: 12 }}>Not currently running Meta ads.</span>}
+                        {canPull && !metaBusy && !none && !hasPage && <span className="text-gray-500" style={{ fontSize: 12, lineHeight: 1.35 }}>We couldn't detect a Meta presence from their site.{acct.signedIn ? ' Know their Ad Library page? Paste the link below.' : ''}</span>}
+                        {canPull && !metaBusy && !none && hasPage && <div onClick={headClick} className="flex items-center justify-between gap-2 cursor-pointer">
+                          <span className="text-gray-400" style={{ fontSize: 12 }}>{metaFailed === 'limit' ? 'Free accounts pull 3 a day. Back tomorrow.' : metaFailed ? "Couldn't pull them this time." : acct.signedIn ? 'Pulled when you ask.' : 'Free with an account.'}</span>
+                          {metaFailed !== 'limit' && <span className="font-bold flex-none inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5" style={{ fontSize: 12.5, color: '#0a66c2' }}>{metaFailed ? 'Try again' : 'Pull ' + p + ' ads'} <Icon name="arrowRight" className="w-3.5 h-3.5" /></span>}
                         </div>}
-                        {canPull && acct.signedIn && !metaBusy && ((metaLinkOpen || none) ? (
+                        {/* Last resort ONLY when their site exposes no Facebook page: paste the Ad Library link. */}
+                        {canPull && acct.signedIn && !metaBusy && !hasPage && !none && (metaLinkOpen ? (
                           <div className="flex items-center gap-1.5">
-                            <input value={metaLink} onChange={e => setMetaLink(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && metaLink.trim()) loadMeta(metaLink.trim()); }} placeholder={'Paste the ' + p + ' Ad Library page link'} autoFocus={metaLinkOpen} className="flex-1 min-w-0 rounded-lg border bg-white px-2.5 py-1.5" style={{ fontSize: 12, borderColor: '#d1d5db' }} />
-                            <button onClick={() => metaLink.trim() && loadMeta(metaLink.trim())} disabled={!metaLink.trim()} className="font-bold flex-none rounded-lg px-3 py-1.5 cursor-pointer" style={{ fontSize: 12, color: '#fff', background: '#0a66c2', opacity: metaLink.trim() ? 1 : 0.5 }}>Pull</button>
+                            <input value={metaLink} onChange={e => setMetaLink(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && metaLink.trim()) loadMeta({ pasteLink: metaLink.trim() }); }} placeholder={'Paste the ' + p + ' Ad Library page link'} autoFocus className="flex-1 min-w-0 rounded-lg border bg-white px-2.5 py-1.5" style={{ fontSize: 12, borderColor: '#d1d5db' }} />
+                            <button onClick={() => metaLink.trim() && loadMeta({ pasteLink: metaLink.trim() })} disabled={!metaLink.trim()} className="font-bold flex-none rounded-lg px-3 py-1.5 cursor-pointer" style={{ fontSize: 12, color: '#fff', background: '#0a66c2', opacity: metaLink.trim() ? 1 : 0.5 }}>Pull</button>
                           </div>
                         ) : (
-                          <button onClick={() => setMetaLinkOpen(true)} className="self-start font-semibold cursor-pointer" style={{ fontSize: 11.5, color: '#64748b' }}>or pull by Ad Library page link</button>
+                          <button onClick={() => setMetaLinkOpen(true)} className="self-start font-semibold cursor-pointer" style={{ fontSize: 11.5, color: '#0a66c2' }}>Pull by Ad Library link</button>
                         ))}
                       </div>
                     </div>
