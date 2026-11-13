@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ONDEMAND, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -102,16 +102,17 @@ async function fetchSiteViaJina(url) {
       if (useKey && process.env.JINA_API_KEY) headers['Authorization'] = 'Bearer ' + process.env.JINA_API_KEY;
       const r = await fetch('https://r.jina.ai/' + url, { headers, signal: c.signal });
       if (!r.ok) return { ok: false, status: r.status };
-      const text = (await r.text()).replace(/\s+/g, ' ').trim().slice(0, 10000);
+      const raw = await r.text();
+      const text = raw.replace(/\s+/g, ' ').trim().slice(0, 10000);
       if (text.length < 40) return { ok: false, status: 0 };
-      return { ok: true, body: text };
+      return { ok: true, body: text, metaPage: extractMetaPage(raw) };
     } catch (e) { return { ok: false, status: -1 }; } finally { clearTimeout(t); }
   };
   const hasKey = !!process.env.JINA_API_KEY;
   let res = await attempt(hasKey);
   // A depleted/invalid key (402/401/403) must never be worse than no key: retry anonymously.
   if (!res.ok && hasKey && (res.status === 402 || res.status === 401 || res.status === 403)) res = await attempt(false);
-  return res.ok ? { title: '', desc: '', body: res.body, blocked: false } : null;
+  return res.ok ? { title: '', desc: '', body: res.body, blocked: false, metaPage: res.metaPage || null } : null;
 }
 
 /* Fetch a page as raw HTML through the Jina proxy (X-Return-Format: html), so we can read its
@@ -147,13 +148,72 @@ async function fetchHtmlViaJina(url) {
   return res.ok ? res.html : null;
 }
 
+/* Read the advertiser's Facebook page off the page HTML we already fetched for the ICP, so Meta
+   presence is derived from their own site at zero extra cost. Returns the numeric page id when the
+   markup carries one (the common case: footer social links as profile.php?id=, /people/<name>/<id>,
+   /pages/<name>/<id>, an og / al:ios fb://page/<id>, or a "pageID":"<id>" in an embedded widget), or
+   a vanity handle (facebook.com/<handle>) to resolve to an id later, or null when there is no FB link
+   at all. Numeric wins over vanity. NOTE: this reads the page LINKED on the site, which can differ
+   from the page that actually runs the ads (an advertiser may run ads under a separate page). */
+function extractMetaPage(html) {
+  if (!html) return null;
+  const s = String(html);
+  let pageId = null, vanity = null, igHandle = null;
+  const num = [
+    /facebook\.com\/profile\.php\?id=(\d{6,})/i,
+    /facebook\.com\/people\/[^"'<>\s/]+\/(\d{6,})/i,
+    /facebook\.com\/pages\/[^"'<>\s/]+\/(\d{6,})/i,
+    /["']pageID["']\s*:\s*["'](\d{6,})["']/i,
+    /fb:\/\/(?:page|profile)\/(\d{6,})/i,
+    /facebook\.com\/[^"'<>\s]*[?&]page_id=(\d{6,})/i,
+  ];
+  for (const re of num) { const m = s.match(re); if (m) { pageId = m[1]; break; } }
+  // Vanity handle: facebook.com/<handle>, excluding the non-page paths FB also serves under its host.
+  if (!pageId) {
+    const NON_PAGE = /^(profile\.php|people|pages|sharer|share|dialog|plugins|tr|events|event|groups|group|watch|hashtag|permalink|story\.php|photo\.php|photo|media|login|help|policies|business|ads|gaming|marketplace|reel|reels|stories|about|privacy|legal|home\.php|flx|l\.php|recover|settings)$/i;
+    const vm = s.match(/facebook\.com\/([A-Za-z0-9][A-Za-z0-9._-]{1,78})(?=["'<>\s/?#]|$)/i);
+    if (vm) { const v = vm[1].replace(/\.$/, ''); if (v && !/^\d+$/.test(v) && !NON_PAGE.test(v)) vanity = v; }
+  }
+  // Instagram handle from the site's own social links. An advertiser whose Meta ads send clicks to an
+  // Instagram profile (domain nowhere in the ad) is matched by this handle, so this is read for EVERY
+  // board, not just ones with a Facebook link. Skip Instagram's own non-profile paths.
+  const IG_NON = /^(p|reel|reels|explore|stories|tv|accounts|about|developer|developers|directory|web|direct|legal|privacy|graphql|api|your_activity|sitemap)$/i;
+  const im = s.match(/instagram\.com\/([A-Za-z0-9._]{1,30})(?=["'<>\s/?#]|$)/i);
+  if (im) { const h = im[1].replace(/\.$/, '').toLowerCase(); if (h && !IG_NON.test(h)) igHandle = h; }
+  if (!pageId && !vanity && !igHandle) return null;
+  return { pageId, vanity, igHandle };
+}
+
+/* Turn a Facebook vanity handle (facebook.com/<handle>) into the numeric page id the Ad Library
+   needs, the cheap way: read the page's own HTML through the Jina proxy (no Apify) and pull the id
+   out of its embedded markup. Cached 30 days so a handle is resolved at most once. Best effort: if
+   Facebook walls the fetch we return '' and the caller treats it as no detectable page. */
+async function resolveFbVanity(vanity, redis) {
+  const v = String(vanity || '').trim().replace(/[^A-Za-z0-9._-]/g, '').slice(0, 80);
+  if (!v || /^\d+$/.test(v)) return v && /^\d{6,}$/.test(v) ? v : '';
+  const key = 'meta:fbvanity:' + v.toLowerCase();
+  if (redis) { try { const hit = await redis.get(key); if (hit) return String(hit); } catch (e) {} }
+  let html = null;
+  try { html = await fetchHtmlViaJina('https://www.facebook.com/' + v); } catch (e) { html = null; }
+  const pid = html ? (
+    html.match(/["']pageID["']\s*:\s*["'](\d{6,})["']/i)?.[1] ||
+    html.match(/fb:\/\/(?:page|profile)\/(\d{6,})/i)?.[1] ||
+    html.match(/["'](?:page_id|pageID|entity_id|delegate_page_id)["']\s*:\s*["']?(\d{6,})/i)?.[1] ||
+    ''
+  ) : '';
+  if (pid && redis) { try { await redis.set(key, pid, { ex: 60 * 60 * 24 * 30 }); } catch (e) {} }
+  return pid;
+}
+
 async function fetchSite(url) {
   let direct = null;
   try { direct = await fetchSiteDirect(url); } catch (e) { direct = null; }
   if (direct && !direct.blocked && direct.body && direct.body.length >= 60) return direct;
-  // Direct fetch blocked or thin -> try the Jina Reader proxy before giving up.
+  // Direct fetch blocked or thin -> try the Jina Reader proxy before giving up. Carry the Facebook
+  // page we read from the direct HTML even when we fall back to Jina for the readable text (Jina's
+  // text format drops most links, so the direct HTML is the better source for the FB link).
   const jina = await fetchSiteViaJina(url);
-  if (jina && jina.body && jina.body.length >= 60) return jina;
+  if (jina && jina.body && jina.body.length >= 60) return { ...jina, metaPage: jina.metaPage || (direct && direct.metaPage) || null };
   return direct || { title: '', desc: '', body: '', blocked: true };
 }
 
@@ -199,11 +259,13 @@ async function fetchSiteDirect(url) {
        reads "Cloudflare" and names the CDN as the company (the Semgrep -> Cloudflare bug).
        Treat a blocked page as no content so we don't feed the blocker's name to the model. */
     const probe = (title + ' ' + body).toLowerCase();
+    // The Facebook page is read from the RAW html (links survive here; `body` has them stripped).
+    const metaPage = extractMetaPage(html);
     // Challenge-page markers only (not bare vendor names), so a legit page that merely
     // mentions Cloudflare isn't wrongly treated as blocked.
     const blocked = /just a moment|checking (if the site connection is secure|your browser)|attention required! \| cloudflare|cloudflare ray id|cf-ray|enable javascript and cookies (to continue)?|verify you are (human|a human)|please (enable cookies|complete the security check)|complete the captcha|are you a robot|request (unsuccessful|blocked)|ddos protection by|generated by cloudflare|access to this page has been denied/i.test(probe);
-    if (blocked || body.length < 40) return { title: '', desc: '', body: '', blocked: true };
-    return { title, desc, body, blocked: false };
+    if (blocked || body.length < 40) return { title: '', desc: '', body: '', blocked: true, metaPage };
+    return { title, desc, body, blocked: false, metaPage };
   } finally {
     clearTimeout(timeout);
   }
@@ -804,16 +866,34 @@ ${items}
       return res.status(200).json({ ok: true, ads: scGads, sources: { google: scGads.length }, notes: { google: 'ok' }, _fast: true, fresh: { checked: Date.now(), checkedAt: null, stale: false, listCached: false, count: scGads.length, scoredNew: scG.scoredNew, reused: scG.reused, pending: scG.pending, scoreError: scG.scoreError || null, rateLimited: !!scG.rateLimited } });
     }
 
-    // On-demand Meta: the board's button, signed-in accounts only. Folds the result into the pull cache
-    // and answers with just the count; the client then re-reads the board, which scores the new ads.
-    // A company with no Meta ads is remembered too, so nobody pays to find that out twice.
+    // On-demand Meta: the board's button, signed-in accounts only. The ONLY Apify run on the Meta
+    // path, one cached run per advertiser. By default it pulls BY DOMAIN: advertiserDomains searches
+    // the brand and keeps only ads whose destination is the advertiser's domain, so it finds their ads
+    // under whichever Facebook page runs them -- the page a site links is often a dead profile while the
+    // live ads run under a differently named page (Damani's ads run under a separate page, not the
+    // /people/ profile their footer links). A pasted Ad Library link forces that exact page id instead.
+    // Folds the result into the pull cache and answers with the count; the client re-reads to score.
     if (body.only === 'meta') {
-      if (!META_ON) return res.status(200).json({ ok: false, reason: 'meta_off' });
+      if (!META_ONDEMAND) return res.status(200).json({ ok: false, reason: 'meta_off' });
       const metaAcct = await icpAccount(req, _redis);
       if (!metaAcct) return res.status(401).json({ ok: false, reason: 'sign_in' });
-      if (cachedCopy && cachedCopy._metaAt && Date.now() - cachedCopy._metaAt < META_TTL_MS) return res.status(200).json({ ok: true, cached: true });
+      // A pasted Ad Library link (last resort) forces a pull of that exact page id. Normally there is no
+      // page id and the pull goes by domain. We never require a page id, so an advertiser is never
+      // falsely reported as having no Meta presence just because no page was linked on their site.
+      let metaPid = (() => { const s = String(body.pageId || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; })();
+      if (!metaPid && body.metaForce && body.vanity) metaPid = await resolveFbVanity(body.vanity, _redis).catch(() => '');
+      // The social identities read off the advertiser's own site. The FB page id is a last-resort pull
+      // signal (used only when the domain and name pulls both come back empty); the FB/IG handles are
+      // ownership signals the name-search filter matches against the ads' destination accounts, so an ad
+      // whose click target is their Instagram (domain nowhere in the copy) is still recognised as theirs.
+      const metaHintPid = (() => { const s = String(body.hintPageId || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; })();
+      const metaHintIg = String(body.hintIg || '').trim().replace(/[^A-Za-z0-9._]/g, '').slice(0, 30).toLowerCase();
+      const metaHintFb = String(body.hintFb || '').trim().replace(/[^A-Za-z0-9._-]/g, '').slice(0, 80).toLowerCase();
+      // A fresh pull already on the board is reused (the run cache also guards the Apify cost), unless
+      // the user forced a re-pull (the last-resort pasted link).
+      if (!body.metaForce && cachedCopy && cachedCopy._metaAt && Date.now() - cachedCopy._metaAt < META_TTL_MS) return res.status(200).json({ ok: true, cached: true });
       if (metaAcct.plan === 'free' && await metaFreeLimitHit(_redis, metaAcct.email)) return res.status(200).json({ ok: false, reason: 'meta_free_limit' });
-      const mt = await fetchMetaAds({ company: body.company, domain: body.domain, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
+      const mt = await fetchMetaAds({ company: body.company, domain: body.domain, pageId: metaPid, hintPageId: metaHintPid, hintIg: metaHintIg, hintFb: metaHintFb, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
       if (!mt.ok) return res.status(200).json({ ok: false, reason: mt.reason });
       const base = cachedCopy || { ok: true, ads: [], sources: {}, notes: {}, _checkedAt: Date.now() };
       const merged = { ...base, ads: [...base.ads.filter(a => (a.plat || '') !== 'Meta'), ...mt.ads], sources: { ...(base.sources || {}), meta: mt.ads.length }, notes: { ...(base.notes || {}), meta: mt.ads.length ? 'ok' : 'no_ads' }, _metaAt: Date.now() };
@@ -868,12 +948,20 @@ ${items}
     // up on next view.
     if (pull && Array.isArray(pull.ads)) {
       pull.ads = dropJunkCreatives(pull.ads);
-      pull.ads = ownedPerPlatform(pull.ads, { domain: body.domain, company: body.company }); // per platform: a LinkedIn name match must not drop Google's domain-matched ads
+      // Per platform: a LinkedIn name match must not drop Google's domain-matched ads. Meta is held out
+      // of this name guard on purpose: its ownership is already settled at fetch (an exact page-id pull,
+      // or a domain pull the actor already filtered to this brand's destination domain). Re-checking Meta
+      // by advertiser NAME here would wrongly drop a brand's ads that run under a differently named page
+      // (Damani's ads run under a "Damani Consulting Services" page the name/partner guard rejects).
+      const keptNonMeta = new Set(ownedPerPlatform(pull.ads.filter(a => (a.plat || '') !== 'Meta'), { domain: body.domain, company: body.company }));
+      pull.ads = pull.ads.filter(a => (a.plat || '') === 'Meta' || keptNonMeta.has(a));
       // Meta off, or its image links about to die: hide what's cached (the cache isn't rewritten) and
       // the board goes back to Coming soon / the button. meta_on tells the client which of the two.
-      const metaLive = META_ON && pull._metaAt && Date.now() - pull._metaAt < META_TTL_MS;
+      // Show Meta whenever a pull is still fresh (its image links are alive): someone paid for it on
+      // demand, so it rides the board for its TTL without re-billing. Independent of the global switch.
+      const metaLive = META_ONDEMAND && pull._metaAt && Date.now() - pull._metaAt < META_TTL_MS;
       if (!metaLive) { pull.ads = pull.ads.filter(a => (a.plat || '') !== 'Meta'); pull.sources = { ...(pull.sources || {}), meta: 0 }; }
-      pull.notes = { ...(pull.notes || {}), meta: metaLive ? (pull.notes || {}).meta : 'on_demand', meta_on: META_ON };
+      pull.notes = { ...(pull.notes || {}), meta: metaLive ? (pull.notes || {}).meta : 'on_demand', meta_on: META_ONDEMAND };
     }
 
     // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.
@@ -1114,7 +1202,9 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
     const icpUnknown = icpIsUnknown(icp.icp_text);
     if (icpUnknown) { icp.icp_text = ''; icp.company = ''; icp.icp_unknown = true; }
 
-    const result = { brand, domain, url, ...icp };
+    // The Facebook page read off their own site, so the board can tell "running Meta ads", "not
+    // currently running" and "no Meta presence on their site" apart, and pull by that page on demand.
+    const result = { brand, domain, url, ...icp, metaPage: (site && site.metaPage) || null };
 
     /* Cache a confident, clean inference. Also cache on an explicit refresh so the
        "Re-detect" button OVERWRITES a previously poisoned entry (e.g. the cached

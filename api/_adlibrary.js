@@ -1169,73 +1169,186 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
 // OFF unless APIFY_META=1 in Vercel. ON, it never runs on a board load: only when a signed-in account
 // asks for it (`only: 'meta'` in ads-fetch). Same APIFY_TOKEN as LinkedIn.
 export const META_ON = process.env.APIFY_META === '1';
+// ON-DEMAND gate, separate from the global APIFY_META switch. Meta never runs on a board load (the
+// button is the only trigger, signed-in accounts only, day-capped), so there is no per-board cost to
+// gate out. This lets Marina keep the global flag off yet still serve the button: it is live whenever
+// an Apify token exists, and `APIFY_META_ONDEMAND=0` is a hard kill switch if a pull ever needs stopping.
+export const META_ONDEMAND = !!process.env.APIFY_TOKEN && process.env.APIFY_META_ONDEMAND !== '0';
 // Facebook's image links die after ~4 days, so Meta ads can't live as long as the rest of the board.
 export const META_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 const META_DAY_CAP = 100; // runs per day across all accounts, at most ~$0.84
-async function fetchMetaAdsViaApify({ company, domain, limit = 12, redis = null } = {}) {
+async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null } = {}) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
   const dom = String(domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
-  if (!dom) return { ok: false, reason: 'no_domain', ads: [] };
+  // Pull one exact page's ads regardless of how the page is named. `pageId` forces this as the primary
+  // (a pasted Ad Library link). Accept a bare numeric id or anything we can read a numeric id out of.
+  const toPid = (v) => { const s = String(v || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; };
+  const pid = toPid(pageId);
+  // A HINT page id (the Facebook page linked on the advertiser's own site). NOT the primary -- that is
+  // exactly what broke Damani (their site links a dead profile). Used only as a last fallback signal on
+  // an empty domain pull, to catch ads that run under the linked page but neither click to the domain
+  // nor name the brand in copy. Numeric only (a vanity would cost a resolve on every click).
+  const hintPid = toPid(hintPageId);
+  if (!pid && !dom) return { ok: false, reason: 'no_domain', ads: [] };
+  // Cache the Apify run per resolved target (this exact page, or this domain) for the life of the
+  // image links. A re-view of the board, a second account opening it, or re-pasting the same link
+  // reuses the dataset and spends NO Apify token and NO day-cap slot. We cache the empty result too,
+  // so finding out an advertiser has no matchable ads is paid for once, not every open.
+  const runKey = 'meta:apify:run:' + (pid ? 'p:' + pid : 'd:' + dom);
   if (redis) {
+    try {
+      const hit = await redis.get(runKey);
+      if (hit) {
+        const parsed = typeof hit === 'string' ? JSON.parse(hit) : hit;
+        if (parsed && Array.isArray(parsed.ads)) return { ...parsed, cached: true };
+      }
+    } catch (e) {}
+  }
+  // Day cap, counted per Apify RUN (a cache hit above never reaches here). Each actor call bumps it.
+  const bumpDay = async () => {
+    if (!redis) return true;
     try {
       const dayKey = 'meta:apify:day:' + new Date().toISOString().slice(0, 10);
       const n = await redis.incr(dayKey);
       if (n === 1) await redis.expire(dayKey, 60 * 60 * 48);
-      if (n > META_DAY_CAP) return { ok: false, reason: 'meta_day_cap', ads: [] };
-    } catch (e) {}
-  }
-  const input = { advertiserDomains: [dom], countries: ['US'], activeStatus: 'active', maxAds: 14 };
-  const url = 'https://api.apify.com/v2/acts/sukhdipp~meta-ad-library-scraper/run-sync-get-dataset-items?timeout=45&maxTotalChargeUsd=0.02&clean=true&token=' + encodeURIComponent(token);
-  let items;
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), 50000);
-  try {
-    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal });
-    if (!r.ok) return { ok: false, reason: 'apify_meta_' + r.status, ads: [] };
-    items = await r.json();
-  } catch (e) { return { ok: false, reason: 'apify_meta_error:' + String(e && e.message || e).slice(0, 40), ads: [] }; }
-  finally { clearTimeout(t); }
-  if (!Array.isArray(items)) return { ok: false, reason: 'apify_meta_bad_response', ads: [] };
+      return n <= META_DAY_CAP;
+    } catch (e) { return true; }
+  };
+  // One actor run. Returns { ok:true, items } or { ok:false, reason }. countries 'ALL', never 'US':
+  // advertisers run outside the US (Damani in IN) and a US filter returned nothing for them.
+  const runActor = async (input) => {
+    const url = 'https://api.apify.com/v2/acts/sukhdipp~meta-ad-library-scraper/run-sync-get-dataset-items?timeout=45&maxTotalChargeUsd=0.02&clean=true&token=' + encodeURIComponent(token);
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 50000);
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal });
+      if (!r.ok) return { ok: false, reason: 'apify_meta_' + r.status };
+      const items = await r.json();
+      if (!Array.isArray(items)) return { ok: false, reason: 'apify_meta_bad_response' };
+      return { ok: true, items };
+    } catch (e) { return { ok: false, reason: 'apify_meta_error:' + String(e && e.message || e).slice(0, 40) }; }
+    finally { clearTimeout(t); }
+  };
   // Catalog / dynamic ads carry template tokens ("{{product.name}}"): skip any value still a template.
   const firstTxt = (...vs) => { for (const v of vs) { const x = String(v || '').trim(); if (x && !/\{\{[^}]*\}\}/.test(x)) return x; } return ''; };
   const list = (v) => (Array.isArray(v) ? v : []);
-  const seen = new Set();
-  const out = [];
-  for (const it of items) {
-    if (!it || !it.pageName || it.isActive === false) continue;
-    const i0 = list(it.images)[0] || {};
-    const v0 = list(it.videos)[0] || {};
-    const img = i0.originalUrl || i0.resizedUrl || v0.previewImageUrl || null;
-    const body = firstTxt(it.body, ...list(it.creativeBodies));
-    const title = firstTxt(it.title, ...list(it.creativeTitles), it.linkDescription);
-    // Collapse exact duplicates (Meta advertisers run the same creative in many ad sets).
-    const sig = (img ? String(img).split('?')[0] : '') + '|' + body.slice(0, 120);
-    if (seen.has(sig)) continue;
-    seen.add(sig);
-    out.push({
-      plat: 'Meta',
-      head: title || (body ? body.slice(0, 80) : '(untitled ad)'),
-      body,
-      img,
-      cta: it.ctaText || null,
-      ctaUrl: it.linkUrl || null,
-      dom: null,
-      advertiser: it.pageName,
-      region: 'US',
-      detailUrl: it.adLibraryUrl || null,
-      adId: String(it.adId || it.id || '') || null,
-    });
+  const parseItems = (items) => {
+    const seen = new Set();
+    const out = [];
+    for (const it of items) {
+      if (!it || !it.pageName || it.isActive === false) continue;
+      const i0 = list(it.images)[0] || {};
+      const v0 = list(it.videos)[0] || {};
+      const img = i0.originalUrl || i0.resizedUrl || v0.previewImageUrl || null;
+      const body = firstTxt(it.body, ...list(it.creativeBodies));
+      const title = firstTxt(it.title, ...list(it.creativeTitles), it.linkDescription);
+      // Collapse exact duplicates (Meta advertisers run the same creative in many ad sets).
+      const sig = (img ? String(img).split('?')[0] : '') + '|' + body.slice(0, 120);
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      out.push({
+        plat: 'Meta',
+        head: title || (body ? body.slice(0, 80) : '(untitled ad)'),
+        body,
+        img,
+        cta: it.ctaText || null,
+        ctaUrl: it.linkUrl || null,
+        caption: firstTxt(it.caption),                               // Meta's display-link / byline line
+        linkDomain: String(it.linkDomain || '').toLowerCase() || null, // the ad's click-destination domain
+        adPageId: String(it.pageId || '') || null,                   // the Facebook page actually running the ad
+        dom: null,
+        advertiser: it.pageName,
+        region: null,
+        detailUrl: it.adLibraryUrl || null,
+        adId: String(it.adId || it.id || '') || null,
+      });
+    }
+    return out;
+  };
+
+  // PRIMARY run: by page id when we have one (one exact page), else by advertiser DOMAIN (the actor
+  // keeps only ads whose click-destination is that domain, so other brands cost nothing before billing).
+  if (!(await bumpDay())) return { ok: false, reason: 'meta_day_cap', ads: [] };
+  const primary = await runActor(pid
+    ? { pageIds: [pid], countries: ['ALL'], activeStatus: 'active', maxAds: 14 }
+    : { advertiserDomains: [dom], countries: ['ALL'], activeStatus: 'active', maxAds: 14 });
+  if (!primary.ok) return { ok: false, reason: primary.reason, ads: [] };
+  const out = parseItems(primary.items);
+  // A page-id pull is one exact page, so every ad is owned by definition: no name re-check (it would
+  // wrongly drop a page whose name doesn't echo the brand). A domain pull already kept only ads whose
+  // destination is this brand's domain (ownership proof), so fall back to that set when the name check
+  // finds no match (the name guard still trims a stray homonym the search let through when it matches).
+  let finalAds;
+  if (pid) {
+    finalAds = out;
+  } else {
+    const owned = ownedByAdvertiser(out, { domain: dom, company, strict: true });
+    finalAds = owned.length ? owned : out;
   }
-  // A landing-domain match isn't proof on its own: Banco Bolivariano linked through
-  // us-west-2.protection.sophos.com. The page name has to be the company's too.
-  const owned = ownedByAdvertiser(out, { domain: dom, company, strict: true });
-  return { ok: true, empty: !owned.length, ads: owned.slice(0, limit), total: owned.length, reason: owned.length ? 'ok' : 'no_ads', via: 'apify' };
+
+  // AUTO-FALLBACK (domain pull only, on a zero). An advertiser's ads can be found three independent
+  // ways and each catches what the others miss, so we try them in order and stop at the first that
+  // yields ads -- an advertiser is thus missed only if ALL of them fail. `advertiserDomains` (the
+  // primary above) filters by CLICK DESTINATION, so it comes back empty for ads that point at an
+  // Instagram profile or a lead form while naming the site only in the caption (Damani). Each extra
+  // signal fires only while still empty, is capped and day-counted, and the merged result caches under
+  // the domain key -- so the common advertiser stays one run, Damani two, and a re-view spends nothing.
+  if (!pid && !finalAds.length) {
+    // Signal 2: keyword search on the company NAME. Keeps the ads that are theirs -- the advertiser name
+    // echoes the company, or their domain shows in the ad text / display link / destination.
+    if (String(company || '').trim() && await bumpDay()) {
+      const kw = await runActor({ searchTerms: [String(company).trim()], countries: ['ALL'], activeStatus: 'active', maxAds: 20 });
+      if (kw.ok) {
+        const kwOut = parseItems(kw.items);
+        const nn = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const coN = nn(company);
+        const domStem = nn(String(dom).replace(/\.[a-z.]+$/i, ''));
+        const hIg = String(hintIg || '').toLowerCase().replace(/[^a-z0-9._]/g, '');
+        const hFb = String(hintFb || '').toLowerCase().replace(/[^a-z0-9._-]/g, '');
+        // An ad is theirs if ANY independent signal matches -- none of these is brand-specific, every
+        // value comes from this board's own ICP (name, domain, social handles read off the site):
+        //  - the advertiser name echoes the company (looser than the shared guard, which rejects
+        //    "<brand> Consulting" pages as agencies);
+        //  - their domain shows in the ad text / display link / click destination;
+        //  - the ad runs under the exact Facebook page linked on their site;
+        //  - the ad's click destination is their own Instagram or Facebook account. This last one is
+        //    what recognises ads that send clicks to Instagram with the domain nowhere in the copy.
+        const looseName = (adv) => { const a = nn(adv); return coN.length >= 5 && !!a && (a.includes(coN) || coN.includes(a)); };
+        const refsDomain = (a) => {
+          if (a.linkDomain && dom && (a.linkDomain.includes(dom) || dom.includes(a.linkDomain))) return true;
+          const hay = nn([a.body, a.head, a.cta, a.ctaUrl, a.caption].join(' '));
+          return domStem.length >= 5 && hay.includes(domStem);
+        };
+        const pageMatch = (a) => hintPid && a.adPageId && String(a.adPageId) === String(hintPid);
+        const normH = (h) => String(h || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const destHandle = (a, host) => { const m = String(a.ctaUrl || '').toLowerCase().match(new RegExp(host.replace('.', '\\.') + '\\/([a-z0-9._-]{1,30})')); return m ? m[1] : ''; };
+        const handleMatch = (a) => (!!hIg && normH(destHandle(a, 'instagram.com')) === normH(hIg)) || (!!hFb && normH(destHandle(a, 'facebook.com')) === normH(hFb));
+        finalAds = kwOut.filter(a => looseName(a.advertiser) || refsDomain(a) || pageMatch(a) || handleMatch(a));
+      }
+    }
+    // Signal 3: the Facebook page linked on the advertiser's OWN site. Catches ads that run under that
+    // exact page but neither click to the domain nor name the brand in copy. A page pull is one exact
+    // page, so every ad is owned by definition -- no filter. Last resort, so it fires only when the
+    // domain and name signals both found nothing.
+    if (!finalAds.length && hintPid && hintPid !== pid && await bumpDay()) {
+      const hp = await runActor({ pageIds: [hintPid], countries: ['ALL'], activeStatus: 'active', maxAds: 14 });
+      if (hp.ok) finalAds = parseItems(hp.items);
+    }
+  }
+
+  const result = { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify' };
+  // Cache a HIT for the life of the image links. Cache an EMPTY result only briefly, so a miss (or a
+  // stale empty cached before this fallback existed) self-heals fast and never masks an advertiser who
+  // is in fact running ads. The day cap still bounds re-pulls of a genuinely empty advertiser.
+  const cacheSec = finalAds.length ? Math.floor(META_TTL_MS / 1000) : 6 * 60 * 60;
+  if (redis) { try { await redis.set(runKey, JSON.stringify(result), { ex: cacheSec }); } catch (e) {} }
+  return result;
 }
 
-export async function fetchMetaAds({ company, domain, limit = 12, redis = null } = {}) {
-  if (!META_ON) return { ok: false, reason: 'meta_off', ads: [] };
-  return fetchMetaAdsViaApify({ company, domain, limit, redis });
+export async function fetchMetaAds({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null } = {}) {
+  if (!META_ONDEMAND) return { ok: false, reason: 'meta_off', ads: [] };
+  return fetchMetaAdsViaApify({ company, domain, pageId, hintPageId, hintIg, hintFb, limit, redis });
 }
 
 // Merge a company's real ads across sources (LinkedIn + Google), score the whole set in one pass,
