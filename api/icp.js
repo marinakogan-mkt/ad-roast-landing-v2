@@ -872,11 +872,14 @@ ${items}
       // falsely reported as having no Meta presence just because no page was linked on their site.
       let metaPid = (() => { const s = String(body.pageId || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; })();
       if (!metaPid && body.metaForce && body.vanity) metaPid = await resolveFbVanity(body.vanity, _redis).catch(() => '');
+      // The Facebook page read off the advertiser's own site, passed only as a LAST-RESORT fallback
+      // signal (used when the domain and name pulls both come back empty), never as the primary target.
+      const metaHintPid = (() => { const s = String(body.hintPageId || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; })();
       // A fresh pull already on the board is reused (the run cache also guards the Apify cost), unless
       // the user forced a re-pull (the last-resort pasted link).
       if (!body.metaForce && cachedCopy && cachedCopy._metaAt && Date.now() - cachedCopy._metaAt < META_TTL_MS) return res.status(200).json({ ok: true, cached: true });
       if (metaAcct.plan === 'free' && await metaFreeLimitHit(_redis, metaAcct.email)) return res.status(200).json({ ok: false, reason: 'meta_free_limit' });
-      const mt = await fetchMetaAds({ company: body.company, domain: body.domain, pageId: metaPid, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
+      const mt = await fetchMetaAds({ company: body.company, domain: body.domain, pageId: metaPid, hintPageId: metaHintPid, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
       if (!mt.ok) return res.status(200).json({ ok: false, reason: mt.reason });
       const base = cachedCopy || { ok: true, ads: [], sources: {}, notes: {}, _checkedAt: Date.now() };
       const merged = { ...base, ads: [...base.ads.filter(a => (a.plat || '') !== 'Meta'), ...mt.ads], sources: { ...(base.sources || {}), meta: mt.ads.length }, notes: { ...(base.notes || {}), meta: mt.ads.length ? 'ok' : 'no_ads' }, _metaAt: Date.now() };

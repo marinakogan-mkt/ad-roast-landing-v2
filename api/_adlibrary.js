@@ -1177,21 +1177,19 @@ export const META_ONDEMAND = !!process.env.APIFY_TOKEN && process.env.APIFY_META
 // Facebook's image links die after ~4 days, so Meta ads can't live as long as the rest of the board.
 export const META_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 const META_DAY_CAP = 100; // runs per day across all accounts, at most ~$0.84
-async function fetchMetaAdsViaApify({ company, domain, pageId = null, limit = 12, redis = null } = {}) {
+async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId = null, limit = 12, redis = null } = {}) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
   const dom = String(domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
-  // A page id (resolved from the advertiser's Ad Library link) is the reliable way in: it pulls that
-  // exact page's ads regardless of how the page is named, which a domain search misses when the page
-  // name does not echo the brand (Damani Consulting runs under a "Vijay Damani" page). Accept a bare
-  // numeric id or anything we can read `view_all_page_id=` / `page_id=` / `id=` out of.
-  const pid = (() => {
-    const s = String(pageId || '').trim();
-    if (!s) return '';
-    if (/^\d{5,}$/.test(s)) return s;
-    const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i);
-    return m ? m[1] : '';
-  })();
+  // Pull one exact page's ads regardless of how the page is named. `pageId` forces this as the primary
+  // (a pasted Ad Library link). Accept a bare numeric id or anything we can read a numeric id out of.
+  const toPid = (v) => { const s = String(v || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; };
+  const pid = toPid(pageId);
+  // A HINT page id (the Facebook page linked on the advertiser's own site). NOT the primary -- that is
+  // exactly what broke Damani (their site links a dead profile). Used only as a last fallback signal on
+  // an empty domain pull, to catch ads that run under the linked page but neither click to the domain
+  // nor name the brand in copy. Numeric only (a vanity would cost a resolve on every click).
+  const hintPid = toPid(hintPageId);
   if (!pid && !dom) return { ok: false, reason: 'no_domain', ads: [] };
   // Cache the Apify run per resolved target (this exact page, or this domain) for the life of the
   // image links. A re-view of the board, a second account opening it, or re-pasting the same link
@@ -1288,15 +1286,17 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, limit = 12
     finalAds = owned.length ? owned : out;
   }
 
-  // AUTO-FALLBACK (domain pull only, on a zero). `advertiserDomains` filters by the ad's CLICK
-  // DESTINATION, so an advertiser whose ads point at an Instagram profile or a lead form while naming
-  // their site only in the caption copy (Damani: destination instagram.com, "damaniconsulting.com" in
-  // the body, one even typo'd) comes back empty. On an empty domain pull, run ONE keyword search on the
-  // company name and keep the ads that are theirs: the advertiser name echoes the company, or their
-  // domain shows in the ad text / display link / destination. Fires only on a zero; the merged result
-  // is cached under the domain key, so the common case stays one run and a re-view spends nothing.
-  if (!pid && !finalAds.length && String(company || '').trim()) {
-    if (await bumpDay()) {
+  // AUTO-FALLBACK (domain pull only, on a zero). An advertiser's ads can be found three independent
+  // ways and each catches what the others miss, so we try them in order and stop at the first that
+  // yields ads -- an advertiser is thus missed only if ALL of them fail. `advertiserDomains` (the
+  // primary above) filters by CLICK DESTINATION, so it comes back empty for ads that point at an
+  // Instagram profile or a lead form while naming the site only in the caption (Damani). Each extra
+  // signal fires only while still empty, is capped and day-counted, and the merged result caches under
+  // the domain key -- so the common advertiser stays one run, Damani two, and a re-view spends nothing.
+  if (!pid && !finalAds.length) {
+    // Signal 2: keyword search on the company NAME. Keeps the ads that are theirs -- the advertiser name
+    // echoes the company, or their domain shows in the ad text / display link / destination.
+    if (String(company || '').trim() && await bumpDay()) {
       const kw = await runActor({ searchTerms: [String(company).trim()], countries: ['ALL'], activeStatus: 'active', maxAds: 20 });
       if (kw.ok) {
         const kwOut = parseItems(kw.items);
@@ -1314,6 +1314,14 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, limit = 12
         finalAds = kwOut.filter(a => looseName(a.advertiser) || refsDomain(a));
       }
     }
+    // Signal 3: the Facebook page linked on the advertiser's OWN site. Catches ads that run under that
+    // exact page but neither click to the domain nor name the brand in copy. A page pull is one exact
+    // page, so every ad is owned by definition -- no filter. Last resort, so it fires only when the
+    // domain and name signals both found nothing.
+    if (!finalAds.length && hintPid && hintPid !== pid && await bumpDay()) {
+      const hp = await runActor({ pageIds: [hintPid], countries: ['ALL'], activeStatus: 'active', maxAds: 14 });
+      if (hp.ok) finalAds = parseItems(hp.items);
+    }
   }
 
   const result = { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify' };
@@ -1325,9 +1333,9 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, limit = 12
   return result;
 }
 
-export async function fetchMetaAds({ company, domain, pageId = null, limit = 12, redis = null } = {}) {
+export async function fetchMetaAds({ company, domain, pageId = null, hintPageId = null, limit = 12, redis = null } = {}) {
   if (!META_ONDEMAND) return { ok: false, reason: 'meta_off', ads: [] };
-  return fetchMetaAdsViaApify({ company, domain, pageId, limit, redis });
+  return fetchMetaAdsViaApify({ company, domain, pageId, hintPageId, limit, redis });
 }
 
 // Merge a company's real ads across sources (LinkedIn + Google), score the whole set in one pass,

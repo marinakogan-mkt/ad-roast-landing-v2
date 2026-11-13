@@ -2124,10 +2124,13 @@
         // Normal pull: no page id, so the server goes by DOMAIN. advertiserDomains searches the brand
         // and keeps only ads whose destination is their domain, so it finds the advertiser's ads under
         // whichever page runs them (the page linked on a site is often a dead profile; the live ads run
-        // elsewhere). A pasted Ad Library link forces a pull of that exact page id (last resort).
+        // elsewhere). The Facebook page read off their site rides along as a hintPageId -- a last-resort
+        // fallback signal the server uses only if the domain and name pulls both find nothing, never as
+        // the primary target. A pasted Ad Library link forces a pull of that exact page id (last resort).
+        const mp = real.co.metaPage || null;
         const extra = (opts && opts.pasteLink)
           ? { only: 'meta', pageId: opts.pasteLink, metaForce: true }
-          : { only: 'meta' };
+          : { only: 'meta', hintPageId: (mp && mp.pageId) || '' };
         const mySeq = loadSeqRef.current;
         const post = (ex) => fetch('/api/icp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'ads-fetch', company: real.co.name, domain: real.co.domain, icp: real.icp, ...ex }) }).then(r => r.json()).catch(() => null);
         setMetaBusy(true); setMetaFailed(false);
