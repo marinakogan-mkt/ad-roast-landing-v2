@@ -21,6 +21,7 @@
 // _downscale caps what a creative's pixels can cost when one does have to be scored.
 import { recordUsage } from './_usage.js';
 import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
+import zlib from 'node:zlib';
 
 // ANTHROPIC_SCORE_MODEL overrides the board scorer ALONE, which is what makes a model comparison
 // safe to run in production: ANTHROPIC_ICP_MODEL (kept as a fallback for existing deploys) also
@@ -1086,6 +1087,51 @@ export function isJunkCreative(a) {
 }
 export const dropJunkCreatives = (ads) => (Array.isArray(ads) ? ads.filter(a => !isJunkCreative(a)) : ads);
 
+// A Google "responsive"/search creative carries no static simgad image: its copy lives in a
+// gzipped protobuf blob on the creative's preview URL (cr['1']['4'], a googleusercontent.com
+// /ads/preview/content.js?...&overlay=<gzip-base64url>). Decode it to the ad's headline +
+// description so search/responsive TEXT ads show on the board (scored from copy, no vision call)
+// instead of being dropped the way they were before. Tolerant by design: any malformed blob
+// returns null and that one ad is simply skipped — this never throws and never blocks the pull.
+function _gproto(buf) {
+  // minimal protobuf wire reader -> { fieldNo: [value, ...] } (Buffer for length-delimited, Number for varint)
+  const out = {}; let i = 0;
+  const vint = () => { let r = 0, s = 0; for (;;) { const b = buf[i++]; r += (b & 0x7f) * Math.pow(2, s); if (!(b & 0x80) || i > buf.length) break; s += 7; } return r; };
+  while (i < buf.length) {
+    const tag = vint(), fn = tag >> 3, wt = tag & 7; let v;
+    if (wt === 0) v = vint();
+    else if (wt === 2) { const ln = vint(); v = buf.slice(i, i + ln); i += ln; }
+    else if (wt === 5) { v = buf.slice(i, i + 4); i += 4; }
+    else if (wt === 1) { v = buf.slice(i, i + 8); i += 8; }
+    else break;
+    (out[fn] = out[fn] || []).push(v);
+  }
+  return out;
+}
+export function decodeGoogleOverlay(previewUrl) {
+  try {
+    const at = previewUrl.indexOf('overlay=');
+    if (at < 0) return null;                       // asset-only responsive display ad: no inline copy
+    let blob = previewUrl.slice(at + 'overlay='.length);
+    const amp = blob.indexOf('&'); if (amp >= 0) blob = blob.slice(0, amp);
+    blob = decodeURIComponent(blob).replace(/^=+/, '').replace(/-/g, '+').replace(/_/g, '/');
+    const raw = zlib.gunzipSync(Buffer.from(blob, 'base64'));
+    const top = _gproto(raw);
+    const m = {};
+    for (const chunk of (top[9] || [])) {          // repeated field 9 = { 1: key, 2: { 1: value } }
+      if (!Buffer.isBuffer(chunk)) continue;
+      const inner = _gproto(chunk);
+      const name = inner[1] && Buffer.isBuffer(inner[1][0]) ? inner[1][0].toString('utf8') : '';
+      let val = '';
+      if (inner[2] && Buffer.isBuffer(inner[2][0])) { const sub = _gproto(inner[2][0]); if (sub[1] && Buffer.isBuffer(sub[1][0])) val = sub[1][0].toString('utf8'); }
+      if (name && !(name in m)) m[name] = val;
+    }
+    const head = (m.headline || '').trim(), body = (m.description || '').trim();
+    if (!head && !body) return null;
+    return { head, body, visurl: (m.visurl || '').trim() };
+  } catch (e) { return null; }
+}
+
 export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
   const dom = (domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
   if (!dom) return { ok: false, reason: 'no_domain', ads: [] };
@@ -1130,21 +1176,42 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
       const m = htmlImg.match(/https:\/\/tpc\.googlesyndication\.com\/archive\/simgad\/\d+/);
       if (m) img = m[0];
     }
-    if (!img || seen.has(img)) continue;
-    // Drop Google's "collapsed ad" placeholder at the source (by known id or tiny render size) so it
-    // never gets scored (wasted vision call) or shown as an empty slot.
-    const _w = parseFloat((htmlImg.match(/width="?([\d.]+)/) || [])[1] || 0);
-    const _h = parseFloat((htmlImg.match(/height="?([\d.]+)/) || [])[1] || 0);
-    if (isJunkCreative({ img, _w, _h })) continue;
-    seen.add(img);
     const AR = c['1'], CR = c['2'];
-    ads.push({
-      plat: 'Google', head: '', body: '', img,
-      cta: null, ctaUrl: null, dom,
-      advertiser: c['12'] || null,
-      detailUrl: (AR && CR) ? `https://adstransparency.google.com/advertiser/${AR}/creative/${CR}?region=anywhere` : 'https://adstransparency.google.com/?region=anywhere&domain=' + encodeURIComponent(dom),
-      adId: CR || null,
-    });
+    const detailUrl = (AR && CR) ? `https://adstransparency.google.com/advertiser/${AR}/creative/${CR}?region=anywhere` : 'https://adstransparency.google.com/?region=anywhere&domain=' + encodeURIComponent(dom);
+    if (img) {
+      if (seen.has(img)) continue;
+      // Drop Google's "collapsed ad" placeholder at the source (by known id or tiny render size) so it
+      // never gets scored (wasted vision call) or shown as an empty slot.
+      const _w = parseFloat((htmlImg.match(/width="?([\d.]+)/) || [])[1] || 0);
+      const _h = parseFloat((htmlImg.match(/height="?([\d.]+)/) || [])[1] || 0);
+      if (isJunkCreative({ img, _w, _h })) continue;
+      seen.add(img);
+      ads.push({
+        plat: 'Google', head: '', body: '', img,
+        cta: null, ctaUrl: null, dom,
+        advertiser: c['12'] || null,
+        detailUrl,
+        adId: CR || null,
+      });
+      continue;
+    }
+    // No static image: a responsive / search creative. Recover its copy from the preview overlay blob
+    // so it shows as a TEXT ad (scored from copy, no vision cost) instead of being dropped. Asset-only
+    // responsive display creatives carry no inline text and still get skipped (decodeGoogleOverlay -> null).
+    const previewUrl = cr && cr['1'] && cr['1']['4'];
+    const txt = (typeof previewUrl === 'string') ? decodeGoogleOverlay(previewUrl) : null;
+    if (txt) {
+      const sig = 'g-txt|' + (txt.head || '').toLowerCase() + '|' + (txt.body || '').toLowerCase();
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      ads.push({
+        plat: 'Google', head: txt.head, body: txt.body, img: null, format: 'search',
+        cta: null, ctaUrl: null, dom,
+        advertiser: c['12'] || null,
+        detailUrl,
+        adId: CR || null,
+      });
+    }
   }
   // Google's domain search returns creatives from EVERY advertiser whose ads point at this domain.
   // For a normal company that's just them (semgrep.dev -> one advertiser). But a shared site-host
