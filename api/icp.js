@@ -27,6 +27,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    (hashed): each distinct ad link gets its own entry, and re-detecting the exact same link
    still hits cache. Pass { refresh: true } to force a fresh inference. Redis is optional:
    if it's unavailable we just skip the cache and infer. */
+import { withUsage } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
 import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
@@ -245,7 +246,8 @@ function ogByPlat(scoredAll) {
   return out;
 }
 
-export default async function handler(req, res) {
+export default withUsage(handler);
+async function handler(req, res) {
   /* MCP server (/api/mcp, rewritten to /api/icp?mcp=1). Folded in here to stay under the Hobby
      12-function cap; the actual JSON-RPC handler lives in _mcp.js (an underscore helper). */
   if (req.query && req.query.mcp === '1') {

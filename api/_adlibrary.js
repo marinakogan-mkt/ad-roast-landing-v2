@@ -19,6 +19,7 @@
 // Token cost is bounded HARD by scoreAdsCached: only creatives NOT already in the score cache
 // are sent to the model, so a re-scored board pays Sonnet vision only for new/changed ads, and
 // _downscale caps what a creative's pixels can cost when one does have to be scored.
+import { recordUsage } from './_usage.js';
 import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
 
 // ANTHROPIC_SCORE_MODEL overrides the board scorer ALONE, which is what makes a model comparison
@@ -37,6 +38,7 @@ export function logClaudeUsage(site, model, data, extra) {
   try {
     const u = (data && data.usage) || null;
     if (!u) return;
+    recordUsage(site, model, u);
     const cc = u.cache_creation || {};
     console.log('[claude-usage] site=' + site + ' model=' + model + ' in=' + (u.input_tokens || 0) + ' cw=' + (u.cache_creation_input_tokens || 0) + (cc.ephemeral_1h_input_tokens ? ' cw1h=' + cc.ephemeral_1h_input_tokens : '') + ' cr=' + (u.cache_read_input_tokens || 0) + ' out=' + (u.output_tokens || 0) + ' stop=' + ((data && data.stop_reason) || '') + (extra ? ' ' + extra : ''));
   } catch (e) { /* logging only */ }

@@ -185,6 +185,27 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  /* Admin-only: Anthropic token counts by day / feature / origin / model, written by api/_usage.js.
+     ?days=N (default 14, max 120). Raw counts only; the reader prices them. */
+  if (req.query.action === 'usage') {
+    if (!(await isAdmin(req)) && !(await isAdminKey(req))) {
+      return res.status(401).json({ error: 'Admin only' });
+    }
+    try {
+      const days = Math.min(Math.max(parseInt(req.query.days || '14', 10) || 14, 1), 120);
+      const out = {};
+      for (let i = 0; i < days; i++) {
+        const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+        const h = await redis.hgetall('usage:day:' + d);
+        if (h && Object.keys(h).length) out[d] = h;
+      }
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).json({ days: out });
+    } catch (e) {
+      return res.status(500).json({ error: 'usage read failed' });
+    }
+  }
+
   /* Admin-only: list the most recent roasts from the Redis index. */
   if (req.query.action === 'list') {
     // Cookie session OR an admin API key, same as the visits dashboard: the outreach

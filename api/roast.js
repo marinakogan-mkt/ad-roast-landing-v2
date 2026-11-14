@@ -1,3 +1,4 @@
+import { withUsage } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import crypto from 'node:crypto';
 import { readSessionCookie } from './auth/_allowlist.js';
@@ -283,7 +284,8 @@ async function recomputePolicyFlags({ platform, adText, visualDescription, landi
   }
 }
 
-export default async function handler(req, res) {
+export default withUsage(handler);
+async function handler(req, res) {
   const _t0 = Date.now(); // handler-start clock, so late best-effort work can bail before the 60s cap
   const API_VERSION = 'v4';
   /* Bumped whenever the scoring PROMPT changes in a way that should invalidate

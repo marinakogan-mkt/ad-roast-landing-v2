@@ -97,7 +97,7 @@ const TOOLS = [
 
 async function detectSite(website, key, asHdr) {
   const url = /^https?:\/\//i.test(website) ? website : 'https://' + website;
-  const r = await fetch(`${ORIGIN}/api/icp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, ...(asHdr ? { 'x-adroast-as': asHdr } : {}) }, body: JSON.stringify({ url }) });
+  const r = await fetch(`${ORIGIN}/api/icp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'x-adroast-via': 'mcp', ...(asHdr ? { 'x-adroast-as': asHdr } : {}) }, body: JSON.stringify({ url }) });
   const d = await r.json().catch(() => ({}));
   return { company: d.company || d.brand || '', domain: d.domain || '', icp: d.icp_text || '' };
 }
@@ -107,7 +107,7 @@ async function callTool(name, args, key, asHdr) {
   if (name === 'list_live_ads') {
     if (!args.website) throw new Error('website is required');
     const site = await detectSite(args.website, key, asHdr);
-    const r = await fetch(`${ORIGIN}/api/icp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, ...(asHdr ? { 'x-adroast-as': asHdr } : {}) }, body: JSON.stringify({ action: 'ads-fetch', company: site.company, domain: site.domain || args.website, icp: site.icp }) });
+    const r = await fetch(`${ORIGIN}/api/icp`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'x-adroast-via': 'mcp', ...(asHdr ? { 'x-adroast-as': asHdr } : {}) }, body: JSON.stringify({ action: 'ads-fetch', company: site.company, domain: site.domain || args.website, icp: site.icp }) });
     const d = await r.json().catch(() => ({}));
     // Never surface a wrong-advertiser / homonym ad (a conveyor-belt maker under "Conveyor" the SaaS,
     // a trademark-filing firm under "Clutch"). icp.js already drops these, but filter here too so an
@@ -165,7 +165,7 @@ async function callTool(name, args, key, asHdr) {
       website: args.website || '',
       offerType: 'other',
     };
-    const r = await fetch(`${ORIGIN}/api/roast`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, ...(asHdr ? { 'x-adroast-as': asHdr } : {}) }, body: JSON.stringify(payload) });
+    const r = await fetch(`${ORIGIN}/api/roast`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'x-adroast-via': 'mcp', ...(asHdr ? { 'x-adroast-as': asHdr } : {}) }, body: JSON.stringify(payload) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error((d && d.error) || 'Roast failed');
     // The landing and ICP gates in api/roast.js answer 200 with needsLanding /
