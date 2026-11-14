@@ -1338,10 +1338,11 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
   }
 
   const result = { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify' };
-  // Cache a HIT for the life of the image links. Cache an EMPTY result only briefly, so a miss (or a
-  // stale empty cached before this fallback existed) self-heals fast and never masks an advertiser who
-  // is in fact running ads. The day cap still bounds re-pulls of a genuinely empty advertiser.
-  const cacheSec = finalAds.length ? Math.floor(META_TTL_MS / 1000) : 6 * 60 * 60;
+  // Cache a HIT for the life of the image links (~3d). An EMPTY result has no images to expire and
+  // means all four ownership signals found nothing -- a fairly confident negative -- so cache it for a
+  // week: a board with no Meta then costs nothing to re-open for 7 days instead of re-running the pull.
+  // (A week, not forever, so an advertiser who STARTS running ads still gets picked up before long.)
+  const cacheSec = finalAds.length ? Math.floor(META_TTL_MS / 1000) : 7 * 24 * 60 * 60;
   if (redis) { try { await redis.set(runKey, JSON.stringify(result), { ex: cacheSec }); } catch (e) {} }
   return result;
 }
