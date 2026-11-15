@@ -1281,7 +1281,7 @@ async function persistMetaImgs(redis, ads) {
     } catch (e) {}
   }));
 }
-async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null } = {}) {
+async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null, refresh = false } = {}) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
   const dom = String(domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
@@ -1299,8 +1299,12 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
   // image links. A re-view of the board, a second account opening it, or re-pasting the same link
   // reuses the dataset and spends NO Apify token and NO day-cap slot. We cache the empty result too,
   // so finding out an advertiser has no matchable ads is paid for once, not every open.
+  // `refresh` (a manual Refresh on the board) SKIPS this read and forces a fresh run, exactly as it
+  // already re-pulls the Layer A list -- so a stale empty (e.g. cached under old detection code) can be
+  // corrected on demand instead of waiting out the 7-day empty TTL. The fresh result still overwrites
+  // the cache below, so later normal opens reuse it. The day cap still applies (the global cost guard).
   const runKey = 'meta:apify:run:' + (pid ? 'p:' + pid : 'd:' + dom);
-  if (redis) {
+  if (redis && !refresh) {
     try {
       const hit = await redis.get(runKey);
       if (hit) {
@@ -1475,9 +1479,9 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
   return result;
 }
 
-export async function fetchMetaAds({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null } = {}) {
+export async function fetchMetaAds({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null, refresh = false } = {}) {
   if (!META_ON) return { ok: false, reason: 'meta_off', ads: [] };
-  return fetchMetaAdsViaApify({ company, domain, pageId, hintPageId, hintIg, hintFb, limit, redis });
+  return fetchMetaAdsViaApify({ company, domain, pageId, hintPageId, hintIg, hintFb, limit, redis, refresh });
 }
 
 // The FREE pre-filter: a Meta footprint on the advertiser's OWN site (read off their HTML during the ICP
@@ -1499,7 +1503,7 @@ export function metaHasFootprint(metaPage) {
 // Instagram handle), or we never spend an Apify credit and report 'no_meta_footprint'. Damani carries a
 // Facebook link, so it passes and the domain/name pull finds its live page; a site with no Meta footprint
 // at all is skipped for free.
-export async function fetchAllAds({ company, domain, icp, metaPage = null, limit = 80, redis = null } = {}) {
+export async function fetchAllAds({ company, domain, icp, metaPage = null, limit = 80, redis = null, refresh = false } = {}) {
   // Pull MANY creatives (cheap): the board shows the most-urgent few in full and the rest greyed/locked
   // for upsell, and the "X of N" count needs the real volume. Only a bounded batch gets scored (icp.js).
   const metaFoot = metaHasFootprint(metaPage);
@@ -1508,7 +1512,7 @@ export async function fetchAllAds({ company, domain, icp, metaPage = null, limit
     fetchLinkedInAds({ company, domain, limit: 30 }).catch(() => ({ ok: false, ads: [] })),
     fetchGoogleAds({ domain, company, limit: 40 }).catch(() => ({ ok: false, ads: [] })),
     metaTried
-      ? fetchMetaAds({ company, domain, hintPageId: (metaPage && metaPage.pageId) || '', hintIg: (metaPage && metaPage.igHandle) || '', hintFb: (metaPage && metaPage.vanity) || '', limit: 12, redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }))
+      ? fetchMetaAds({ company, domain, hintPageId: (metaPage && metaPage.pageId) || '', hintIg: (metaPage && metaPage.igHandle) || '', hintFb: (metaPage && metaPage.vanity) || '', limit: 12, redis, refresh }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }))
       : Promise.resolve({ ok: false, reason: metaFoot ? 'meta_off' : 'no_meta_footprint', ads: [] }),
   ]);
   const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length, meta: (mt.ads || []).length };
