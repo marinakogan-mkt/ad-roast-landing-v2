@@ -910,6 +910,41 @@ ${items}
     if (!metaPage && _redis && domKey) {
       try { const g = await _redis.get('geo:icp:' + domKey); const go = g ? (typeof g === 'string' ? JSON.parse(g) : g) : null; metaPage = (go && go.metaPage) || null; } catch (e) {}
     }
+    // AUTO-MIGRATE the Meta footprint. Boards whose ICP was cached before extractMetaPage existed have no
+    // metaPage -- not in the cached ICP the client echoes back, not in the stored geo:icp record -- so the
+    // footprint gate would skip Meta on them FOREVER (meta_tried:false, no_meta_footprint), with no re-detect.
+    // When we have no footprint, re-read it straight from the site HTML (we fetch that HTML during an ICP
+    // build anyway; here once, only when it is missing) and persist it back into geo:icp so later opens are
+    // free. Fixes every old board on its next open/refresh, not just Damani. A footprint already present
+    // (new boards) returns immediately -- no fetch. Only called when we are about to pull Meta live.
+    const ensureFootprint = async () => {
+      if (metaHasFootprint(metaPage) || !body.domain) return;
+      try {
+        const _siteUrl = /^https?:\/\//i.test(String(body.domain)) ? String(body.domain) : 'https://' + String(body.domain).replace(/^www\./i, '');
+        const _site = await fetchSite(_siteUrl);
+        if (_site && metaHasFootprint(_site.metaPage)) {
+          metaPage = _site.metaPage;
+          if (_redis && domKey) {
+            try {
+              const g = await _redis.get('geo:icp:' + domKey);
+              const go = g ? (typeof g === 'string' ? JSON.parse(g) : g) : null;
+              if (go && typeof go === 'object') { go.metaPage = metaPage; await _redis.set('geo:icp:' + domKey, JSON.stringify(go), { ex: ICP_CACHE_TTL }); }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    };
+
+    // ADMIN-ONLY Meta pull trace (body.metaDebug, behind the admin check -- never public). Forces one fresh
+    // Meta pull and returns the full diagnostic: every actor call's input + HTTP status + raw item count +
+    // error body, and how many items each filter (30-day window, 4-signal ownership) kept. One call tells us
+    // whether an empty board is an actor input error, a transient failure, or our own filtering. Side-effect
+    // free: it does not write the board cache or persist images.
+    if (body.metaDebug && await icpIsAdmin(req, _redis)) {
+      await ensureFootprint();
+      const d = await fetchMetaAds({ company: body.company, domain: body.domain, hintPageId: (metaPage && metaPage.pageId) || '', hintIg: (metaPage && metaPage.igHandle) || '', hintFb: (metaPage && metaPage.vanity) || '', limit: 12, redis: _redis, refresh: true, debug: true }).catch((e) => ({ ok: false, reason: 'debug_threw:' + String(e && e.message || e).slice(0, 80), ads: [], _debug: null }));
+      return res.status(200).json({ ok: !!d.ok, reason: d.reason || null, meta_on: META_ON, metaPage, metaHasFootprint: metaHasFootprint(metaPage), adsFound: (d.ads || []).length, ads: (d.ads || []).slice(0, 12).map(a => ({ head: a.head, advertiser: a.advertiser, adPageId: a.adPageId, linkDomain: a.linkDomain, img: a.img, lastDeliveredAt: a.lastDeliveredAt })), debug: d._debug });
+    }
 
     let pull = null, listCached = false, stale = false, lastChecked = null;
     if ((!refresh && cacheFresh) || (adminRescore && cachedCopy && cachedCopy.ads && cachedCopy.ads.length)) {
@@ -917,29 +952,9 @@ ${items}
       pull = cachedCopy; listCached = true; lastChecked = cachedCopy._checkedAt;
     } else {
       // Go live: the user asked to refresh, or the copy is stale (>1 week), or we've never pulled.
-      // AUTO-MIGRATE the Meta footprint. Boards whose ICP was cached before extractMetaPage existed have
-      // no metaPage -- not in the cached ICP the client echoes back, not in the stored geo:icp record --
-      // so the footprint gate would skip Meta on them FOREVER (meta_tried:false, no_meta_footprint), with
-      // no re-detect. When we're about to pull live and still have no footprint, re-read it straight from
-      // the site HTML now (we fetch that HTML during an ICP build anyway; here we fetch once, only when it
-      // is missing) and persist it back into geo:icp so later opens are free. Fixes every old board on its
-      // next open/refresh, not just Damani. A footprint already present (new boards) skips this entirely.
-      if (!metaHasFootprint(metaPage) && body.domain) {
-        try {
-          const _siteUrl = /^https?:\/\//i.test(String(body.domain)) ? String(body.domain) : 'https://' + String(body.domain).replace(/^www\./i, '');
-          const _site = await fetchSite(_siteUrl);
-          if (_site && metaHasFootprint(_site.metaPage)) {
-            metaPage = _site.metaPage;
-            if (_redis && domKey) {
-              try {
-                const g = await _redis.get('geo:icp:' + domKey);
-                const go = g ? (typeof g === 'string' ? JSON.parse(g) : g) : null;
-                if (go && typeof go === 'object') { go.metaPage = metaPage; await _redis.set('geo:icp:' + domKey, JSON.stringify(go), { ex: ICP_CACHE_TTL }); }
-              } catch (e) {}
-            }
-          }
-        } catch (e) {}
-      }
+      // Re-read the Meta footprint from the site HTML if the stored one is missing (auto-migrates old
+      // boards -- see ensureFootprint above). A footprint already present skips the fetch.
+      await ensureFootprint();
       // `metaPage` lets fetchAllAds run the free footprint pre-filter and pull Meta inline when it passes.
       // Pass `refresh` so a manual Refresh force-busts the Meta run cache too (not just Layer A): a stale
       // empty from before a detection fix corrects on demand instead of waiting out the 7-day empty TTL.
