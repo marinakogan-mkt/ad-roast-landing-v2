@@ -30,7 +30,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 import { withUsage } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaImgKey, META_ON, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, META_ON, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -917,6 +917,29 @@ ${items}
       pull = cachedCopy; listCached = true; lastChecked = cachedCopy._checkedAt;
     } else {
       // Go live: the user asked to refresh, or the copy is stale (>1 week), or we've never pulled.
+      // AUTO-MIGRATE the Meta footprint. Boards whose ICP was cached before extractMetaPage existed have
+      // no metaPage -- not in the cached ICP the client echoes back, not in the stored geo:icp record --
+      // so the footprint gate would skip Meta on them FOREVER (meta_tried:false, no_meta_footprint), with
+      // no re-detect. When we're about to pull live and still have no footprint, re-read it straight from
+      // the site HTML now (we fetch that HTML during an ICP build anyway; here we fetch once, only when it
+      // is missing) and persist it back into geo:icp so later opens are free. Fixes every old board on its
+      // next open/refresh, not just Damani. A footprint already present (new boards) skips this entirely.
+      if (!metaHasFootprint(metaPage) && body.domain) {
+        try {
+          const _siteUrl = /^https?:\/\//i.test(String(body.domain)) ? String(body.domain) : 'https://' + String(body.domain).replace(/^www\./i, '');
+          const _site = await fetchSite(_siteUrl);
+          if (_site && metaHasFootprint(_site.metaPage)) {
+            metaPage = _site.metaPage;
+            if (_redis && domKey) {
+              try {
+                const g = await _redis.get('geo:icp:' + domKey);
+                const go = g ? (typeof g === 'string' ? JSON.parse(g) : g) : null;
+                if (go && typeof go === 'object') { go.metaPage = metaPage; await _redis.set('geo:icp:' + domKey, JSON.stringify(go), { ex: ICP_CACHE_TTL }); }
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
       // `metaPage` lets fetchAllAds run the free footprint pre-filter and pull Meta inline when it passes.
       // Pass `refresh` so a manual Refresh force-busts the Meta run cache too (not just Layer A): a stale
       // empty from before a detection fix corrects on demand instead of waiting out the 7-day empty TTL.
@@ -1126,7 +1149,9 @@ ${items}
           try {
             const gk = String(cached.domain || domain || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
             if (gk) {
-              await _redis.set('geo:icp:' + gk, JSON.stringify({ company: cached.company, website: cached.website || cached.url || '', icp_text: cached.icp_text || '', summary: cached.summary || '', tags: Array.isArray(cached.tags) ? cached.tags.slice(0, 8) : [] }), { ex: ICP_CACHE_TTL });
+              // Carry metaPage through: a fresh build stored it on the cached ICP, and rewriting geo:icp
+              // without it would CLOBBER the footprint, re-breaking the Meta gate on the next open.
+              await _redis.set('geo:icp:' + gk, JSON.stringify({ company: cached.company, website: cached.website || cached.url || '', icp_text: cached.icp_text || '', summary: cached.summary || '', tags: Array.isArray(cached.tags) ? cached.tags.slice(0, 8) : [], metaPage: cached.metaPage || null }), { ex: ICP_CACHE_TTL });
               if ((await _redis.sadd('geo:companies', gk)) === 1) await pingNewBoard(_redis, gk);
             }
           } catch (e) {}
