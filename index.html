@@ -3549,6 +3549,7 @@
       const [showReroast, setShowReroast] = useState(false);
       const [reroastLink, setReroastLink] = useState('');
       const [reroastErr, setReroastErr] = useState('');
+      const [tempEditing, setTempEditing] = useState(false); // audience-temperature chip: editing the inferred temperature
       const [activeTab, setActiveTab] = useState('scores'); // results-page section tabs
       // Deep link / embed: /report/<id>?section=issues opens that section and scrolls to it, so the
       // landing page can embed one section per block. Stops re-aligning once the viewer scrolls.
@@ -4411,6 +4412,7 @@
          full=true means a token was spent and the roast is shown in full; full=false
          means the account is out of tokens, so we blur it and sell a plan. */
       const applyRoastResult = (data) => {
+        setTempEditing(false); // close the audience-temperature editor when a fresh result lands
         /* Landing-page gate: the server refused to fabricate an ad<->landing match from a page it
            couldn't read. Don't show a (falsely bad) result: open the gate to fix the landing URL,
            paste its copy, or explicitly roast the ad only. Covers every roast path (guided, board,
@@ -4473,6 +4475,31 @@
           if (!res.ok) throw new Error(data.error || 'API error');
           applyRoastResult(data);
         } catch (err) { setError(err.message); setView('guided'); setLoading(false); }
+      };
+
+      /* Audience-temperature chip: re-roast against a PINNED temperature. Same pattern as the
+         landing-URL edit (resubmitRoast): resend this ad's exact payload with audienceTemp set, so
+         the server re-scores against the cold/warm/hot bar the user picked. Reuses the original
+         payload (pendingRoastRef) when present, else rebuilds it from the report's state. audienceTemp
+         is in the dedupe hash, so re-picking a temperature already scored costs no token. */
+      const reroastWithTemp = async (temp) => {
+        setTempEditing(false);
+        // No-op when the picked temperature is already the one shown (inferred or pinned): re-scoring
+        // against the same bar would spend a token for the same result.
+        const cur = (result && result.audience_temp && result.audience_temp.temp) || '';
+        if (!temp || temp === cur) return;
+        const base = pendingRoastRef.current;
+        const payload = base
+          ? { ...base, audienceTemp: temp }
+          : { platform, offerType, offerDetail: offerType === 'other' ? offerDetail.trim() : '', icpDescription: icp, landingUrl: inputs.url, adCopy: inputs.copy, visualDescription: inputs.visual, landingCopy: '', adScreenshot: inputs.adScreenshot || null, adScreenshotType: inputs.adScreenshotType || null, company: companyName || '', website: siteUrl || '', adUrl: (isValidUrl(inputs.copy) ? inputs.copy.trim() : adLink), isVideo: adVideo, adImageUrl: adPoster || null, audienceTemp: temp };
+        pendingRoastRef.current = payload;
+        setError(null); setLoading(true); setView('processing');
+        try {
+          const res = await fetch('/api/roast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'API error');
+          applyRoastResult(data);
+        } catch (err) { setError(err.message); setView('results'); setLoading(false); }
       };
 
       const generate = async (extraLandingCopy, forceFresh, opts) => {
@@ -7403,6 +7430,46 @@
                               </span>
                             ))}
                           </div>
+                        </div>
+                      );
+                    })()}
+                    {/* AUDIENCE TEMPERATURE (p9): a second lens, separate from the job. Who the ad speaks
+                        to inside the funnel (cold/warm/hot), inferred from the ad, editable by the owner.
+                        Editing re-roasts against the picked bar. The copy-vs-ask mismatch shows as a
+                        warning here, never folded into the score. */}
+                    {result.audience_temp && result.audience_temp.temp && (() => {
+                      const at = result.audience_temp;
+                      const TC = { cold: { label: 'Cold', c: '#0a66c2', bg: '#eff6ff', b: '#dbeafe' }, warm: { label: 'Warm', c: '#b45309', bg: '#fffbeb', b: '#fde68a' }, hot: { label: 'Hot', c: '#b91c1c', bg: '#fef2f2', b: '#fecaca' } };
+                      const cur = TC[at.temp] || TC.cold;
+                      const mm = at.mismatch;
+                      return (
+                        <div className="mt-3 pt-3 border-t" style={{ borderColor: hexForScore(result.overall_score) + '33' }}>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-gray-500" style={{ fontSize: 12 }}>Audience {at.pinned ? 'set to' : 'inferred'}:</span>
+                            {!tempEditing ? (<>
+                              <span className="inline-flex items-center gap-1.5 rounded-md font-bold" style={{ fontSize: 11.5, height: 24, padding: '0 9px', background: cur.bg, border: '1px solid ' + cur.b, color: cur.c }}>
+                                <span style={{ width: 7, height: 7, borderRadius: 999, background: cur.c, display: 'inline-block' }} />{cur.label}
+                              </span>
+                              {at.pinned && <span className="text-gray-400" style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>pinned</span>}
+                              {canReroast && <button onClick={() => setTempEditing(true)} className="font-semibold cursor-pointer bg-transparent border-none" style={{ fontSize: 11.5, color: '#0a66c2', padding: 0 }}>· edit</button>}
+                            </>) : (<>
+                              {['cold', 'warm', 'hot'].map((k) => {
+                                const t = TC[k]; const on = at.temp === k;
+                                return (<button key={k} onClick={() => reroastWithTemp(k)} className="inline-flex items-center gap-1.5 rounded-md font-bold cursor-pointer" style={{ fontSize: 11.5, height: 24, padding: '0 9px', background: on ? t.bg : '#fff', border: '1px solid ' + (on ? t.b : '#e5e7eb'), color: on ? t.c : '#64748b' }}>
+                                  <span style={{ width: 7, height: 7, borderRadius: 999, background: t.c, display: 'inline-block' }} />{t.label}
+                                </button>);
+                              })}
+                              <button onClick={() => setTempEditing(false)} className="font-semibold cursor-pointer bg-transparent border-none" style={{ fontSize: 11.5, color: '#94a3b8', padding: 0 }}>cancel</button>
+                            </>)}
+                          </div>
+                          {tempEditing && <div className="text-gray-400 mt-1.5" style={{ fontSize: 10.5, lineHeight: 1.4 }}>Pick who this ad really targets. We re-score it against that bar: a cold reader needs the problem named, a hot one a concrete offer.</div>}
+                          {!tempEditing && at.evidence && <div className="text-gray-400 mt-1.5" style={{ fontSize: 10.5, lineHeight: 1.4 }}>Inferred, not known targeting. {at.evidence}</div>}
+                          {mm && mm.detail && (
+                            <div className="flex items-start gap-2 mt-2.5 p-2.5 rounded-lg" style={{ background: mm.level === 'hard' ? '#fef2f2' : '#fffbeb' }}>
+                              <span className="flex-shrink-0 px-1.5 py-0.5 rounded font-bold uppercase" style={{ fontSize: 9.5, letterSpacing: '0.04em', background: mm.level === 'hard' ? '#fee2e2' : '#fef3c7', color: mm.level === 'hard' ? '#b91c1c' : '#b45309' }}>Temp mismatch</span>
+                              <p className="text-gray-700" style={{ fontSize: 12, lineHeight: 1.5, margin: 0 }}>{mm.detail}</p>
+                            </div>
+                          )}
                         </div>
                       );
                     })()}

@@ -188,6 +188,81 @@ export function cleanDims(job, dims, plat) {
   return out;
 }
 
+// AUDIENCE TEMPERATURE (2026-11-11). A SECOND lens, ORTHOGONAL to the job. The JOB is what the ad
+// is built to DO (awareness / consideration / conversion); the TEMPERATURE is WHO it speaks to
+// inside the funnel: how warmed-up the reader is. It never changes the job or its dimension weights.
+// It recalibrates HOW each dimension is read (what "good" looks like at that temperature) and it
+// surfaces a WARNING, kept OUT of the numeric score, when the copy is written for one temperature
+// but the ask (CTA / destination) is pitched at another. The ad platforms do NOT expose targeting,
+// so the temperature is always INFERRED from the ad itself, never presented as a known fact.
+export const TEMPS = {
+  cold: { label: 'Cold', blurb: 'never heard of the brand; the problem itself still has to be explained',
+    rewards: 'problem clarity, naming the pain, relevance to the reader, a low-commitment next step',
+    penalizes: 'jumping to a demo, trial or pricing ask before the problem is even framed',
+    signals: 'offer: a guide, "learn", a lead magnet. CTA: Learn more / Read. copy: defines the problem from zero. destination: a blog or guide' },
+  warm: { label: 'Warm', blurb: 'knows the problem or the brand and is actively evaluating',
+    rewards: 'proof, specificity, a concrete reason to believe, moving the reader to the next stage',
+    penalizes: 're-explaining a problem they already feel, or pushing a buy before they have evaluated',
+    signals: 'offer: a webinar replay, a case study, a comparison. CTA: Watch / Register / gated Download. copy: assumes the problem, talks solution. destination: a registration or replay page' },
+  hot: { label: 'Hot', blurb: 'ready to decide; retargeting and bottom-funnel',
+    rewards: 'urgency, a concrete offer, differentiation vs the alternative, low friction to the CTA',
+    penalizes: 'top-of-funnel education, a vague benefit, or a soft CTA that wastes buying intent',
+    signals: 'offer: a demo, a trial, pricing. CTA: Book a demo / Start trial / Buy. copy: product vs a competitor, price, urgency. destination: pricing / demo / signup' },
+};
+export const TEMP_KEYS = Object.keys(TEMPS);
+const TEMP_ORD = { cold: 0, warm: 1, hot: 2 };
+
+// Map whatever the model (or a user pin) returns onto the three-value axis. Returns '' for an
+// unreadable value so the caller decides a fallback rather than guessing a wrong temperature.
+export function normalizeTemp(t) {
+  const s = String(t || '').toLowerCase().trim();
+  if (TEMPS[s]) return s;
+  if (/(^|[^a-z])(cold|tofu|top.?funnel|unaware|problem.?unaware|awareness)/.test(s)) return 'cold';
+  if (/(^|[^a-z])(warm|mofu|mid.?funnel|middle|evaluat|consider|solution.?aware)/.test(s)) return 'warm';
+  if (/(^|[^a-z])(hot|bofu|bottom.?funnel|ready|decis|retarget|product.?aware|purchase)/.test(s)) return 'hot';
+  return '';
+}
+
+// The temperature lens as prompt text, generated from TEMPS so the prompt and the mismatch code can
+// never drift. Injected into the roast system prompt next to the job rubric (both are cached).
+export function temperaturePrompt() {
+  const rows = TEMP_KEYS.map(k => {
+    const t = TEMPS[k];
+    return `- ${k} (${t.label}): ${t.blurb}. REWARD: ${t.rewards}. PENALIZE: ${t.penalizes}. Typical signals -> ${t.signals}.`;
+  }).join('\n');
+  return `AUDIENCE TEMPERATURE (a SECOND lens, separate from the job: the job is what the ad DOES, the temperature is how warmed-up the reader it speaks to is). The platform never exposes targeting, so INFER the temperature from the ad itself and NEVER present it as a known fact.
+${rows}
+HOW TO INFER: read four signals and decide the temperature each one points to, then pick the overall temperature the COPY is written for: (1) offer / format, (2) the CTA, (3) the copy (does it define the problem from zero, assume it, or push the decision), (4) the destination when known.
+CALIBRATE THE JOB'S DIMENSIONS TO THAT TEMPERATURE (this recalibrates what "good" looks like, it does NOT change the job or its weights): for a COLD reader reward problem clarity and relevance and do NOT reward a hard demo/trial ask; for a WARM reader reward proof, specificity and the move to the next stage; for a HOT reader reward urgency, a concrete offer, differentiation and low CTA friction. A cold-audience ad with a soft "Learn more" CTA is doing the RIGHT thing; a hot-audience retargeting ad that only educates is wasting intent.
+TEMPERATURE MISMATCH (a WARNING, never a score change): when the COPY is written for one temperature but the ASK (CTA and destination) is pitched at another, that is a mismatch, e.g. copy that still defines the problem from zero (cold) under a "Book a demo" CTA (hot). Report it so the reader can fix the ask or warm the reader up first. It is surfaced separately, like a policy flag, and must NOT lower the numeric score on its own.
+OUTPUT: fill audience_temp with temp (the overall inferred temperature: cold|warm|hot), signals (the temperature each of offer / cta / copy / dest points to, or null when a signal is absent), evidence (the quoted words or destination that set it, <=20 words), and mismatch (one short sentence naming the copy-vs-ask divergence, or "" when the copy and the ask sit at the same temperature).`;
+}
+
+// Deterministic temperature-mismatch check from the per-signal reads the model returned. The COPY
+// temperature is the message; the hottest of offer / cta / destination is the ASK. When they diverge
+// by a step or more, there is a mismatch. The model's own sentence (modelDetail) is preferred when it
+// is present (it reads naturally and cites the ad); a generated line is the fallback. Returns
+// { level, detail, message, ask } or null. The WARNING stays OUT of the score: callers render it like
+// a policy flag. Returning null when the signals agree means a model-claimed mismatch with no actual
+// divergence is dropped, so a stray warning can never contradict the scores.
+export function tempMismatch(signals, modelDetail) {
+  const s = signals || {};
+  const msg = normalizeTemp(s.copy);
+  const askSignals = [normalizeTemp(s.offer), normalizeTemp(s.cta), normalizeTemp(s.dest)].filter(Boolean);
+  if (!msg || !askSignals.length) return null;
+  const ask = askSignals.reduce((a, b) => (TEMP_ORD[b] > TEMP_ORD[a] ? b : a));
+  const gap = TEMP_ORD[ask] - TEMP_ORD[msg];
+  if (gap === 0) return null;
+  const level = Math.abs(gap) >= 2 ? 'hard' : 'soft';
+  let detail = (typeof modelDetail === 'string' && modelDetail.trim()) ? modelDetail.trim() : '';
+  if (!detail) {
+    detail = gap > 0
+      ? `The ask runs ahead of the copy: a ${ask} CTA or destination over copy still written for a ${msg} reader. Warm them up first, or soften the ask to match.`
+      : `The copy pitches a ${msg} reader, but the CTA and destination only offer a ${ask} next step, so the intent has nowhere to go.`;
+  }
+  return { level, detail: detail.replace(/\s+/g, ' ').trim().slice(0, 200), message: msg, ask };
+}
+
 // The rubric as prompt text, generated from JOBS so the prompt and the scoring code can never disagree.
 export function rubricPrompt() {
   const rows = JOB_KEYS.map(k => {

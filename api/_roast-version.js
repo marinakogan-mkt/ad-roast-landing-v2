@@ -19,10 +19,16 @@
      p7 (2026-10-29): AD TAXONOMY (api/_rubrics.js, shared with the board).
      p8 (2026-10-30): PLATFORM FORMAT & POLICY RISK + policy_flags. The platform rules
        themselves live in api/_platform-rules.js with their own RULES_VERSION in the
-       version string, so a rule update needs no bump here. */
+       version string, so a rule update needs no bump here.
+     p9 (2026-11-11): AUDIENCE TEMPERATURE lens (api/_rubrics.js). A second axis, separate
+       from the job: the roast infers how warm the reader is (cold/warm/hot), calibrates the
+       job's dimensions to that temperature, and surfaces a copy-vs-ask mismatch as a WARNING
+       kept out of the score. The user can pin the temperature from the report; a pin
+       re-roasts against that bar (audienceTemp is in the hash, so each distinct pin scores
+       once). */
 import { RULES_VERSION } from './_platform-rules.js';
 
-export const PROMPT_VERSION = 'p8';
+export const PROMPT_VERSION = 'p9';
 
 // The version stamped on every roast record and compared on open. A mismatch
 // (or a missing ver) means the stored roast predates the current prompt/rules
