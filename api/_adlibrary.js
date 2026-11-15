@@ -1281,7 +1281,11 @@ async function persistMetaImgs(redis, ads) {
     } catch (e) {}
   }));
 }
-async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null, refresh = false } = {}) {
+async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null, refresh = false, debug = false } = {}) {
+  // debug (admin-gated in icp.js): collect a trace of every actor call -- input, HTTP status, raw item
+  // count, the error body on a non-2xx -- and how many items each filter kept, so one run pinpoints
+  // whether an empty board is an actor input error, a transient failure, or our own filtering.
+  const dbg = debug ? { calls: [], filters: [] } : null;
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
   const dom = String(domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').replace(/^www\./i, '').toLowerCase();
@@ -1324,28 +1328,45 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
     } catch (e) { return true; }
   };
   // One actor run. Returns { ok:true, items } or { ok:false, reason }. countries 'ALL', never 'US':
-  // advertisers run outside the US (Damani in IN) and a US filter returned nothing for them.
-  const runActor = async (input) => {
+  // advertisers run outside the US (Damani in IN) and a US filter returned nothing for them. On a non-2xx
+  // we READ the body and fold a snippet into the reason (a bare 'apify_meta_400' hid WHY -- input error vs
+  // billing vs block), and record it in the debug trace.
+  const runActor = async (input, label = '') => {
     const url = 'https://api.apify.com/v2/acts/sukhdipp~meta-ad-library-scraper/run-sync-get-dataset-items?timeout=45&maxTotalChargeUsd=0.02&clean=true&token=' + encodeURIComponent(token);
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), 50000);
     try {
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal });
-      if (!r.ok) return { ok: false, reason: 'apify_meta_' + r.status };
+      if (!r.ok) {
+        let errBody = '';
+        try { errBody = (await r.text()).slice(0, 800); } catch (e) {}
+        if (dbg) dbg.calls.push({ label, input, httpStatus: r.status, ok: false, errBody });
+        const snip = errBody.replace(/\s+/g, ' ').trim().slice(0, 120);
+        return { ok: false, reason: 'apify_meta_' + r.status + (snip ? ':' + snip : ''), httpStatus: r.status, errBody };
+      }
       const items = await r.json();
-      if (!Array.isArray(items)) return { ok: false, reason: 'apify_meta_bad_response' };
+      if (!Array.isArray(items)) {
+        if (dbg) dbg.calls.push({ label, input, httpStatus: r.status, ok: false, errBody: 'non_array_response' });
+        return { ok: false, reason: 'apify_meta_bad_response' };
+      }
+      if (dbg) dbg.calls.push({ label, input, httpStatus: r.status, ok: true, rawCount: items.length });
       return { ok: true, items };
-    } catch (e) { return { ok: false, reason: 'apify_meta_error:' + String(e && e.message || e).slice(0, 40) }; }
+    } catch (e) {
+      const msg = String(e && e.message || e).slice(0, 60);
+      if (dbg) dbg.calls.push({ label, input, ok: false, errBody: 'fetch_error: ' + msg });
+      return { ok: false, reason: 'apify_meta_error:' + msg.slice(0, 40) };
+    }
     finally { clearTimeout(t); }
   };
   // Catalog / dynamic ads carry template tokens ("{{product.name}}"): skip any value still a template.
   const firstTxt = (...vs) => { for (const v of vs) { const x = String(v || '').trim(); if (x && !/\{\{[^}]*\}\}/.test(x)) return x; } return ''; };
   const list = (v) => (Array.isArray(v) ? v : []);
-  // 30-day live window, the SAME one Google (field 7 last-shown), LinkedIn (last-30-days) and Meta's own
-  // activeStatus:'active' already use. An item's delivery STOP time is when it last ran; an active ad
-  // with no stop time is still delivering (no cutoff, kept). We never drop on START time -- a long-running
-  // ad has an old start but is live. Belt-and-braces on top of activeStatus, so a dead creative's image
-  // never reaches the board even if the scraper hands one back. No date = kept (same as Google).
+  // 30-day live window, a SAFE backstop on top of the actor's own activeStatus:'active' (which already
+  // excludes dead ads at the source, unlike Google's transparency search that returns full history and so
+  // NEEDS our client-side window). The actor returns `endDate` (YYYY-MM-DD, null while an ad is running).
+  // We only drop on an old endDate when the item is NOT explicitly active -- a confirmed-active ad is kept
+  // even with a populated endDate, because second-guessing Meta's own active flag would wrongly drop a
+  // live ad (Damani's ads could carry an old endDate artifact). No date, or isActive:true, => kept.
   const _winCutoff = Date.now() - META_LIVE_WINDOW_MS;
   const _toMs = (v) => {
     if (v == null) return 0;
@@ -1355,17 +1376,24 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
     if (/^\d{10}$/.test(s)) return Number(s) * 1000;
     const t = Date.parse(s); return isFinite(t) ? t : 0; // ISO / YYYY-MM-DD
   };
-  // Field names vary by actor version, so read any plausible delivery-stop key.
+  // endDate is this actor's delivery-stop field; keep the other names as defensive fallbacks.
   const _lastDeliveryMs = (it) => _toMs(
     it.endDate ?? it.end_date ?? it.adDeliveryStopTime ?? it.ad_delivery_stop_time ?? it.stopDate ?? it.deliveryStopTime ?? null
   );
-  const parseItems = (items) => {
+  const parseItems = (items, tag = '') => {
+    const st = dbg ? { tag, raw: Array.isArray(items) ? items.length : 0, noName: 0, inactive: 0, dropped30: 0, dup: 0, kept: 0, firstKeys: null, sampleDates: [] } : null;
+    if (st && Array.isArray(items) && items[0]) {
+      st.firstKeys = Object.keys(items[0]).slice(0, 50);
+      for (const s of items.slice(0, 3)) st.sampleDates.push({ isActive: s.isActive, startDate: s.startDate ?? null, endDate: s.endDate ?? null, totalActiveDays: s.totalActiveDays ?? null, pageName: s.pageName, adId: s.adId ?? s.id ?? null });
+    }
     const seen = new Set();
     const out = [];
     for (const it of items) {
-      if (!it || !it.pageName || it.isActive === false) continue;
+      if (!it || !it.pageName) { if (st) st.noName++; continue; }
+      if (it.isActive === false) { if (st) st.inactive++; continue; }
       const lastMs = _lastDeliveryMs(it);
-      if (lastMs && lastMs < _winCutoff) continue; // last delivered >30 days ago -> treat as dead, like Google
+      // Drop as dead only when it is old AND the item is not flagged active -- trust Meta's active flag.
+      if (lastMs && lastMs < _winCutoff && it.isActive !== true) { if (st) st.dropped30++; continue; }
       const i0 = list(it.images)[0] || {};
       const v0 = list(it.videos)[0] || {};
       const img = i0.originalUrl || i0.resizedUrl || v0.previewImageUrl || null;
@@ -1373,7 +1401,7 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
       const title = firstTxt(it.title, ...list(it.creativeTitles), it.linkDescription);
       // Collapse exact duplicates (Meta advertisers run the same creative in many ad sets).
       const sig = (img ? String(img).split('?')[0] : '') + '|' + body.slice(0, 120);
-      if (seen.has(sig)) continue;
+      if (seen.has(sig)) { if (st) st.dup++; continue; }
       seen.add(sig);
       out.push({
         plat: 'Meta',
@@ -1393,17 +1421,21 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
         lastDeliveredAt: lastMs || null,               // delivery stop time (ms); null = still delivering
       });
     }
+    if (st) { st.kept = out.length; dbg.filters.push(st); }
     return out;
   };
 
   // PRIMARY run: by page id when we have one (one exact page), else by advertiser DOMAIN (the actor
   // keeps only ads whose click-destination is that domain, so other brands cost nothing before billing).
-  if (!(await bumpDay())) return { ok: false, reason: 'meta_day_cap', ads: [] };
+  if (!(await bumpDay())) return { ok: false, reason: 'meta_day_cap', ads: [], _debug: dbg };
+  // Tracks whether any actor call ERRORED (vs genuinely returned zero). An error-tainted empty must NOT be
+  // cached as a confirmed "no ads" -- that is what froze a transient 400 as "no Meta" for the empty TTL.
+  let lastErr = null;
   const primary = await runActor(pid
     ? { pageIds: [pid], countries: ['ALL'], activeStatus: 'active', maxAds: 14 }
-    : { advertiserDomains: [dom], countries: ['ALL'], activeStatus: 'active', maxAds: 14 });
-  if (!primary.ok) return { ok: false, reason: primary.reason, ads: [] };
-  const out = parseItems(primary.items);
+    : { advertiserDomains: [dom], countries: ['ALL'], activeStatus: 'active', maxAds: 14 }, 'primary');
+  if (!primary.ok) return { ok: false, reason: primary.reason, ads: [], _debug: dbg };
+  const out = parseItems(primary.items, 'primary');
   // A page-id pull is one exact page, so every ad is owned by definition: no name re-check (it would
   // wrongly drop a page whose name doesn't echo the brand). A domain pull already kept only ads whose
   // destination is this brand's domain (ownership proof), so fall back to that set when the name check
@@ -1427,9 +1459,10 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
     // Signal 2: keyword search on the company NAME. Keeps the ads that are theirs -- the advertiser name
     // echoes the company, or their domain shows in the ad text / display link / destination.
     if (String(company || '').trim() && await bumpDay()) {
-      const kw = await runActor({ searchTerms: [String(company).trim()], countries: ['ALL'], activeStatus: 'active', maxAds: 20 });
+      const kw = await runActor({ searchTerms: [String(company).trim()], countries: ['ALL'], activeStatus: 'active', maxAds: 20 }, 'kw');
+      if (!kw.ok) lastErr = kw.reason;
       if (kw.ok) {
-        const kwOut = parseItems(kw.items);
+        const kwOut = parseItems(kw.items, 'kw');
         const nn = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
         const coN = nn(company);
         const domStem = nn(String(dom).replace(/\.[a-z.]+$/i, ''));
@@ -1454,6 +1487,7 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
         const destHandle = (a, host) => { const m = String(a.ctaUrl || '').toLowerCase().match(new RegExp(host.replace('.', '\\.') + '\\/([a-z0-9._-]{1,30})')); return m ? m[1] : ''; };
         const handleMatch = (a) => (!!hIg && normH(destHandle(a, 'instagram.com')) === normH(hIg)) || (!!hFb && normH(destHandle(a, 'facebook.com')) === normH(hFb));
         finalAds = kwOut.filter(a => looseName(a.advertiser) || refsDomain(a) || pageMatch(a) || handleMatch(a));
+        if (dbg) dbg.filters.push({ tag: 'kw_ownership', parsed: kwOut.length, kept: finalAds.length, hints: { company, dom, hintPid, hintIg, hintFb }, droppedSample: kwOut.filter(a => !(looseName(a.advertiser) || refsDomain(a) || pageMatch(a) || handleMatch(a))).slice(0, 5).map(a => ({ advertiser: a.advertiser, linkDomain: a.linkDomain, adPageId: a.adPageId, ctaUrl: a.ctaUrl })) });
       }
     }
     // Signal 3: the Facebook page linked on the advertiser's OWN site. Catches ads that run under that
@@ -1461,27 +1495,38 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
     // page, so every ad is owned by definition -- no filter. Last resort, so it fires only when the
     // domain and name signals both found nothing.
     if (!finalAds.length && hintPid && hintPid !== pid && await bumpDay()) {
-      const hp = await runActor({ pageIds: [hintPid], countries: ['ALL'], activeStatus: 'active', maxAds: 14 });
-      if (hp.ok) finalAds = parseItems(hp.items);
+      const hp = await runActor({ pageIds: [hintPid], countries: ['ALL'], activeStatus: 'active', maxAds: 14 }, 'hintPid');
+      if (!hp.ok) lastErr = hp.reason;
+      if (hp.ok) finalAds = parseItems(hp.items, 'hintPid');
     }
   }
 
-  const result = { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify' };
-  // Store our own copy of each creative's image NOW, while Facebook's signed link is still alive (it dies
-  // ~4 days out). This is the one real Apify run for this board this week, so it's the right moment to
-  // grab the bytes; the image proxy serves them for the 30-day life of the copy. Bounded + best-effort.
-  if (redis && finalAds.length) { try { await persistMetaImgs(redis, result.ads); } catch (e) {} }
-  // Cache a HIT 24h (lets a forced refresh pick up new ads next day) and an EMPTY result a WEEK, so a site
-  // that passed the free footprint gate but runs no ads costs at most one Apify run a week, not one per
-  // open. The board's own weekly cadence (Layer A) is what re-pulls a live advertiser, so one run/board/week.
-  const cacheSec = finalAds.length ? META_HIT_TTL : META_EMPTY_TTL;
-  if (redis) { try { await redis.set(runKey, JSON.stringify(result), { ex: cacheSec }); } catch (e) {} }
+  // An empty result after a FALLBACK errored is not a confirmed "no ads" -- return the error (uncached) so
+  // a retry/refresh re-runs, instead of freezing a transient Apify hiccup as "no Meta" for the empty TTL.
+  if (!finalAds.length && lastErr) return { ok: false, reason: lastErr, ads: [], _debug: dbg };
+
+  const result = { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify', _debug: dbg };
+  // A debug run is a diagnostic: never persist images or write the board cache from it (no side effects,
+  // no overwriting the real board result). The normal pull path does the caching.
+  if (!debug) {
+    // Store our own copy of each creative's image NOW, while Facebook's signed link is still alive (it dies
+    // ~4 days out). This is the one real Apify run for this board this week, so it's the right moment to
+    // grab the bytes; the image proxy serves them for the 30-day life of the copy. Bounded + best-effort.
+    if (redis && finalAds.length) { try { await persistMetaImgs(redis, result.ads); } catch (e) {} }
+    // Cache a HIT 24h (lets a forced refresh pick up new ads next day) and an EMPTY result a WEEK, so a site
+    // that passed the free footprint gate but runs no ads costs at most one Apify run a week, not one per
+    // open. The board's weekly cadence (Layer A) re-pulls a live advertiser, so one run/board/week. Strip
+    // the debug payload before caching (it is null here anyway, since debug never reaches this write).
+    const cacheSec = finalAds.length ? META_HIT_TTL : META_EMPTY_TTL;
+    const { _debug, ...toCache } = result;
+    if (redis) { try { await redis.set(runKey, JSON.stringify(toCache), { ex: cacheSec }); } catch (e) {} }
+  }
   return result;
 }
 
-export async function fetchMetaAds({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null, refresh = false } = {}) {
-  if (!META_ON) return { ok: false, reason: 'meta_off', ads: [] };
-  return fetchMetaAdsViaApify({ company, domain, pageId, hintPageId, hintIg, hintFb, limit, redis, refresh });
+export async function fetchMetaAds({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null, refresh = false, debug = false } = {}) {
+  if (!META_ON) return { ok: false, reason: 'meta_off', ads: [], _debug: debug ? { calls: [], filters: [], note: 'meta_off' } : null };
+  return fetchMetaAdsViaApify({ company, domain, pageId, hintPageId, hintIg, hintFb, limit, redis, refresh, debug });
 }
 
 // The FREE pre-filter: a Meta footprint on the advertiser's OWN site (read off their HTML during the ICP
