@@ -917,8 +917,10 @@ ${items}
       pull = cachedCopy; listCached = true; lastChecked = cachedCopy._checkedAt;
     } else {
       // Go live: the user asked to refresh, or the copy is stale (>1 week), or we've never pulled.
-      // `metaPage` lets fetchAllAds run the free FB pre-filter and pull Meta inline when it passes.
-      const r = await fetchAllAds({ company: body.company, domain: body.domain, metaPage, redis: _redis });
+      // `metaPage` lets fetchAllAds run the free footprint pre-filter and pull Meta inline when it passes.
+      // Pass `refresh` so a manual Refresh force-busts the Meta run cache too (not just Layer A): a stale
+      // empty from before a detection fix corrects on demand instead of waiting out the 7-day empty TTL.
+      const r = await fetchAllAds({ company: body.company, domain: body.domain, metaPage, redis: _redis, refresh });
       if (r && r.ok && r.ads && r.ads.length) {
         // Preserve last-seen ads PER PLATFORM: a pull that got Google but not LinkedIn (LinkedIn
         // flaky this run) must not wipe the LinkedIn ads we already had — otherwise the LinkedIn card
