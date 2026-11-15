@@ -49,3 +49,24 @@ export const RULES_VERSION = RULES.version;
 export function platformRulesPrompt() {
   return RULES.prompt.join('\n').replace(/\{(\w+)\.(\w+)\}/g, (_, platform, key) => RULES.limits[platform][key]);
 }
+
+/* Deterministic, ZERO-TOKEN policy flags for the cheap rules-version re-roast (api/roast.js
+   migrate-flags). This covers only the fully mechanical, structure-free case: LinkedIn excessive
+   emoji, measured straight off the stored ad text. Everything else in the rules needs either the
+   ad's per-asset structure (char limits: the stored text is one blob, not individual headlines /
+   descriptions) or judgment (trademark needs to know who the competitor is; editorial tone), so
+   those are left to the tiny text-only model pass that unions its result with this one. Kept
+   conservative on purpose: a false policy flag would degrade a permanent report. */
+export function mechanicalPolicyFlags({ platform, adText, visualDescription } = {}) {
+  const text = [adText, visualDescription].filter(Boolean).join('\n');
+  if (!text.trim()) return [];
+  const plat = String(platform || '').toLowerCase().replace(/[\s_]+/g, '');
+  const flags = [];
+  if (plat === 'linkedin') {
+    const emoji = (text.match(/\p{Extended_Pictographic}/gu) || []).length;
+    if (emoji > RULES.limits.linkedin.emoji_max) {
+      flags.push({ type: 'format', severity: 'soft', detail: `Ad text uses ${emoji} emojis; LinkedIn treats more than about ${RULES.limits.linkedin.emoji_max} as non-standard formatting.` });
+    }
+  }
+  return flags;
+}

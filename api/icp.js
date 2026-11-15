@@ -27,9 +27,10 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    (hashed): each distinct ad link gets its own entry, and re-detecting the exact same link
    still hits cache. Pass { refresh: true } to force a fresh inference. Redis is optional:
    if it's unavailable we just skip the cache and infer. */
+import { withUsage } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -245,7 +246,8 @@ function ogByPlat(scoredAll) {
   return out;
 }
 
-export default async function handler(req, res) {
+export default withUsage(handler);
+async function handler(req, res) {
   /* MCP server (/api/mcp, rewritten to /api/icp?mcp=1). Folded in here to stay under the Hobby
      12-function cap; the actual JSON-RPC handler lives in _mcp.js (an underscore helper). */
   if (req.query && req.query.mcp === '1') {
@@ -423,7 +425,14 @@ ${items}
       }
     } catch (e) { /* miss -> render/cache */ }
     if (!SHOT_KEY) { return redirectThumb(3600); }
-    const cacheKey = 'shot:v1:' + target.toString();
+    // v2: v1 may hold a bot-wall page (Cloudflare "Performing security verification") rendered as if it
+    // were the site, so those entries are orphaned rather than served again.
+    const cacheKey = 'shot:v2:' + target.toString();
+    const blockedKey = 'shot:blocked:' + target.toString();
+    // A site that bot-walls our renderer has no honest screenshot: answer 404 so the report shows its
+    // "Open <url>" fallback card instead of a challenge page that reads as the real landing.
+    const sendBlocked = () => { res.setHeader('Cache-Control', 'public, max-age=3600'); return res.status(404).json({ error: 'blocked_by_site' }); };
+    try { if (_redis && await _redis.get(blockedKey)) return sendBlocked(); } catch (e) {}
     try {
       if (_redis) {
         const hit = await _redis.get(cacheKey);
@@ -446,20 +455,32 @@ ${items}
       so.searchParams.set('block_ads', 'true');
       so.searchParams.set('block_chats', 'true');
       so.searchParams.set('timeout', '30');
+      // Bot-wall pages render fine as images, so ScreenshotOne reports success; refuse them by their text.
+      ['Performing security verification', 'Verify you are human', 'Verifying you are human', 'Just a moment...', 'Checking your browser', 'Enable JavaScript and cookies to continue', 'Attention Required'].forEach(m => so.searchParams.append('fail_if_content_contains', m));
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 28000);
       let up;
       try { up = await fetch(so.toString(), { signal: controller.signal }); } finally { clearTimeout(t); }
       const ct = up.headers.get('content-type') || '';
       if (!up.ok || !/^image\//i.test(ct)) {
-        return redirectThumb(600);
+        let walled = false;
+        try { const j = await up.json(); walled = !!(j && /content_contains_specified_string/.test(JSON.stringify(j))); } catch (e) {}
+        if (walled) {
+          try { if (_redis) await _redis.set(blockedKey, '1', { ex: 60 * 60 * 6 }); } catch (e) {}
+          return sendBlocked();
+        }
+        // Not thum.io: it renders the same bot wall (that is how 6sense's report got a Cloudflare page),
+        // and a missing screenshot is better than a wrong one. The card falls back to the live link.
+        res.setHeader('Cache-Control', 'public, max-age=600');
+        return res.status(404).json({ error: 'render_failed' });
       }
       const buf = Buffer.from(await up.arrayBuffer());
       try { if (_redis && buf.length && buf.length < 800000) await _redis.set(cacheKey, buf.toString('base64'), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
       await pin(buf); // freeze this fresh render to the report id too
       return sendImg(buf, ct);
     } catch (e) {
-      return redirectThumb(600);
+      res.setHeader('Cache-Control', 'public, max-age=600');
+      return res.status(404).json({ error: 'render_failed' });
     }
   }
 
@@ -994,7 +1015,7 @@ ${items}
     try {
       const raw = await _redis.get(icpCacheKey);
       const cached = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
-      if (cached && cached.icp_text) {
+      if (cached && cached.icp_text && !icpIsUnknown(cached.icp_text)) {
         // Backfill the domain-keyed GEO positioning record even when the ICP is served from
         // cache (the fresh path below also writes it), so no-ad companies get their page.
         if (cached.company) {
@@ -1090,13 +1111,18 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
     const poisoned = namedVendor && !inputIsVendor;
     if (poisoned) { icp.company = ''; icp.website = ''; }
 
+    // An unreadable site (parked domain, empty page) must not pass for a buyer: blank it so the
+    // board asks for the real site instead of scoring ads against "Cannot be determined".
+    const icpUnknown = icpIsUnknown(icp.icp_text);
+    if (icpUnknown) { icp.icp_text = ''; icp.company = ''; icp.icp_unknown = true; }
+
     const result = { brand, domain, url, ...icp };
 
     /* Cache a confident, clean inference. Also cache on an explicit refresh so the
        "Re-detect" button OVERWRITES a previously poisoned entry (e.g. the cached
        Cloudflare result) with the cleaned one, clearing it for good. Never cache the
        raw poisoned inference itself. */
-    if (_redis && !poisoned && (body.refresh || icp.company)) {
+    if (_redis && !poisoned && !icpUnknown && (body.refresh || icp.company)) {
       try { await _redis.set(icpCacheKey, JSON.stringify(result), { ex: ICP_CACHE_TTL }); } catch (e) {}
     }
     // GEO phase 2: a domain-keyed positioning record so /b/<domain> can render a crawlable

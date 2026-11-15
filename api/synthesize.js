@@ -14,6 +14,7 @@
  *   Returns the stored synthesis: { id, markdown, sourceLinks, createdAt }
  */
 
+import { withUsage } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import { isPrivateSynth, readSessionCookie } from './auth/_allowlist.js';
 import { logClaudeUsage } from './_adlibrary.js';
@@ -89,7 +90,8 @@ function randomId(n = 10) {
   return out;
 }
 
-export default async function handler(req, res) {
+export default withUsage(handler);
+async function handler(req, res) {
   if (req.method === 'GET') {
     const id = (req.query?.id || '').trim();
     if (!id) return res.status(400).json({ error: 'Missing id' });

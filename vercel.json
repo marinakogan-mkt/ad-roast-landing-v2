@@ -9,6 +9,9 @@
     "api/roast.js": {
       "maxDuration": 60,
       "includeFiles": "node_modules/ffmpeg-static/**"
+    },
+    "api/roast-view.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

@@ -19,6 +19,7 @@
 // Token cost is bounded HARD by scoreAdsCached: only creatives NOT already in the score cache
 // are sent to the model, so a re-scored board pays Sonnet vision only for new/changed ads, and
 // _downscale caps what a creative's pixels can cost when one does have to be scored.
+import { recordUsage } from './_usage.js';
 import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
 
 // ANTHROPIC_SCORE_MODEL overrides the board scorer ALONE, which is what makes a model comparison
@@ -37,6 +38,7 @@ export function logClaudeUsage(site, model, data, extra) {
   try {
     const u = (data && data.usage) || null;
     if (!u) return;
+    recordUsage(site, model, u);
     const cc = u.cache_creation || {};
     console.log('[claude-usage] site=' + site + ' model=' + model + ' in=' + (u.input_tokens || 0) + ' cw=' + (u.cache_creation_input_tokens || 0) + (cc.ephemeral_1h_input_tokens ? ' cw1h=' + cc.ephemeral_1h_input_tokens : '') + ' cr=' + (u.cache_read_input_tokens || 0) + ' out=' + (u.output_tokens || 0) + ' stop=' + ((data && data.stop_reason) || '') + (extra ? ' ' + extra : ''));
   } catch (e) { /* logging only */ }
@@ -704,8 +706,17 @@ async function verifyLowScores(ads, icp, redis) {
   });
 }
 
+// A buyer the ICP step could NOT read (parked or for-sale domain, empty page, bot wall) comes back as
+// prose like "Cannot be determined. The page is a domain parking page...". Scoring ads against that
+// sentence produced a full board of confident verdicts with no buyer behind them (onitsecurity.com,
+// 11 nov 2026: the real site is onit.security). No buyer, no score: the ads stay unscored and the
+// buyer has to be fixed first (house rule: sin ICP deducible no se roastea).
+export const ICP_UNKNOWN = /^\W*(the\s+)?((buyer|icp|ideal customer|advertiser|audience|target)\b[^.]{0,40}?\s)?(cannot|can ?not|could not|unable to)\s+(be\s+)?(determined|identified|inferred|reliably determined)|\b(domain|website|page) (is )?(parked|for sale)\b|\bdomain[\s-](parking|for[\s-]sale|auction)\b|\bparked domain\b|\bno (advertiser|company) identity\b/i;
+export function icpIsUnknown(icp) { const t = String(icp || '').trim(); return !t || ICP_UNKNOWN.test(t.slice(0, 400)); }
+
 export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0 } = {}) {
   if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0, pending: 0 };
+  if (icpIsUnknown(icp)) return { ads, scoredNew: 0, reused: 0, pending: ads.length, noIcp: true };
   if (!redis) {
     try { const scored = await scoreAds(ads, icp); const n = scored.filter(a => typeof a.score === 'number' || a.textless).length; return { ads: scored, scoredNew: n, reused: 0, pending: ads.length - n }; }
     catch (e) { return { ads, scoredNew: 0, reused: 0, pending: ads.length, scoreError: e.message, rateLimited: !!e.rateLimited }; }
@@ -794,7 +805,22 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // pull + scoring must fit Vercel's 60s function limit. On a big FRESH board that one call 504s, so
   // we score at most `limit` per request and report `pending`; the client re-calls to score the rest
   // (the list is cached by then, so those calls skip the pull). limit 0 = no cap (score everything).
-  const toScore = (limit > 0 && need.length > limit) ? need.slice(0, limit) : need;
+  let toScore = (limit > 0 && need.length > limit) ? need.slice(0, limit) : need;
+  // In-flight lock per creative (2026-11-11). Two requests for the same board often land in the
+  // same second (Vercel logs: 6 of 16 board-score calls were the SAME batch billed twice, identical
+  // input tokens, same second). Both missed the cache, both paid for the vision call. Now each
+  // creative is claimed with SET NX before scoring; a request that loses the claim does not score it,
+  // it waits for the winner's result in the cache instead. Same model, same prompt, same score: the
+  // only change is that a creative is billed once. The lock expires on its own (90s) if the winner
+  // dies, so nothing can stay stuck. force (admin re-score) never waits.
+  const lockOf = (a) => 'adscoring:' + keyOf(a);
+  let waitOn = [];
+  if (toScore.length && !force) {
+    const got = await Promise.all(toScore.map(a => redis.set(lockOf(a), '1', { nx: true, ex: 90 }).catch(() => 'OK')));
+    waitOn = toScore.filter((a, i) => !got[i]);
+    toScore = toScore.filter((a, i) => !!got[i]);
+  }
+  const waitStart = Date.now();
   const freshBySig = {};
   const failBySig = {}; // creatives our capture couldn't feed the scorer: dropped, never shown as broken
   let scoreError = null, rateLimited = false;
@@ -840,13 +866,32 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
         writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL }));
       }
       try { await Promise.all(writes); } catch (e) { /* best-effort */ }
+      try { await Promise.all(toScore.map(a => redis.del(lockOf(a)))); } catch (e) { /* expires on its own */ }
     } catch (e) {
+      try { await Promise.all(toScore.map(a => redis.del(lockOf(a)))); } catch (e2) { /* expires on its own */ }
       // The scoring call hard-failed (rate limit, no credit, overloaded). Do NOT count these as
       // scored: leave them unscored so pending stays accurate and the client stops looping instead
       // of hammering the API. Surface the real reason so it shows up in the API response + logs.
       scoreError = e.message; rateLimited = !!e.rateLimited;
       console.error('[scoreAdsCached] scoring batch failed:', e.message, 'rateLimited=' + rateLimited);
     }
+  }
+  // Creatives another request is scoring right now: read its result from the cache as it lands, for
+  // up to 25s (the scoring call takes ~10-20s). Whatever has not landed by then stays unscored and
+  // counts as pending, so the client's normal re-call picks it up from the cache, never re-billed.
+  while (waitOn.length && Date.now() - waitStart < 25000) {
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const vals = await redis.mget(...waitOn.map(keyOf));
+      const still = [];
+      waitOn.forEach((a, i) => {
+        const v = vals && vals[i];
+        const o = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null;
+        if (o && (typeof o.score === 'number' || o.textless || o.talent || o._unscored || o._captureFail)) cachedBySig[creativeSig(a)] = o;
+        else still.push(a);
+      });
+      waitOn = still;
+    } catch (e) { break; }
   }
   const out = ads.map(a => {
     const o = cachedBySig[creativeSig(a)] || freshBySig[creativeSig(a)];
@@ -871,7 +916,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // creative doesn't loop the client's re-score forever waiting on an ad that can never score.
   const scoredNew = Object.keys(freshBySig).length;
   const failedNew = Object.keys(failBySig).length;
-  return { ads: outChecked, scoredNew, reused: Object.keys(cachedBySig).length, pending: Math.max(0, need.length - scoredNew - failedNew), scoreError, rateLimited };
+  return { ads: outChecked, scoredNew, reused: Object.keys(cachedBySig).length, pending: Math.max(0, need.length - scoredNew - failedNew - need.filter(a => cachedBySig[creativeSig(a)]).length), scoreError, rateLimited };
 }
 
 // --- LinkedIn (free, via Jina Reader) -------------------------------------------------
@@ -1069,7 +1114,15 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
   const arr = Array.isArray(data && data['1']) ? data['1'] : [];
   const ads = [];
   const seen = new Set();
+  // Only ads Google showed in the last 30 days (2026-11-11). The transparency search has no date
+  // filter and returns a creative's whole history: highspot.com came back 82 of 100 creatives last
+  // shown more than 30 days ago, sana.ai 30 of 30. Those were scored at full vision cost and shown as
+  // "live" ads. Field 7 is the last-shown time in epoch seconds, the same 30-day window LinkedIn
+  // (dateOption last-30-days) and Meta (activeStatus active) already use. No date = kept.
+  const _cutoff = Date.now() / 1000 - 30 * 24 * 60 * 60;
   for (const c of arr) {
+    const _last = Number(c && c['7'] && c['7']['1']);
+    if (_last && _last < _cutoff) continue;
     const cr = c && c['3'];
     const htmlImg = cr && cr['3'] && cr['3']['2'];   // image creatives: an <img src="...simgad..."> string
     let img = null;
