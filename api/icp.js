@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaSiteHasFb, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaImgKey, META_ON, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -180,8 +180,11 @@ function extractMetaPage(html) {
   const IG_NON = /^(p|reel|reels|explore|stories|tv|accounts|about|developer|developers|directory|web|direct|legal|privacy|graphql|api|your_activity|sitemap)$/i;
   const im = s.match(/instagram\.com\/([A-Za-z0-9._]{1,30})(?=["'<>\s/?#]|$)/i);
   if (im) { const h = im[1].replace(/\.$/, '').toLowerCase(); if (h && !IG_NON.test(h)) igHandle = h; }
-  if (!pageId && !vanity && !igHandle) return null;
-  return { pageId, vanity, igHandle };
+  // Meta Pixel: the strongest free signal that they run Meta ads at all (the Pixel exists to optimise and
+  // measure them). Either the loader script (connect.facebook.net/.../fbevents.js) or an fbq() call counts.
+  const hasPixel = /connect\.facebook\.net\/[^"'<>\s]*fbevents\.js/i.test(s) || /\bfbq\s*\(/i.test(s);
+  if (!pageId && !vanity && !igHandle && !hasPixel) return null;
+  return { pageId, vanity, igHandle, hasPixel };
 }
 
 /* Turn a Facebook vanity handle (facebook.com/<handle>) into the numeric page id the Ad Library
@@ -424,6 +427,26 @@ ${items}
       if (u.protocol !== 'https:' || !ALLOW.test(u.hostname)) {
         return res.status(400).json({ error: 'Host not allowed' });
       }
+      // Meta creatives live on Facebook's CDN behind a signed URL that dies ~4 days after the pull, so we
+      // persist our own copy (keyed by the stable asset path) at pull time and keep it 30 days. Serve that
+      // copy first: it is a free, stable read and it is the ONLY source once the signed link has expired.
+      // Non-fbcdn hosts (Google/LinkedIn, whose links don't expire) get a null key and skip all of this.
+      const fbKey = metaImgKey(raw);
+      const serveStored = async () => {
+        if (!fbKey || !_redis) return false;
+        try {
+          const s = await _redis.get(fbKey);
+          const o = s ? (typeof s === 'string' ? JSON.parse(s) : s) : null;
+          if (o && o.data) {
+            res.setHeader('Content-Type', o.ct || 'image/jpeg');
+            res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000, immutable');
+            res.status(200).send(Buffer.from(o.data, 'base64'));
+            return true;
+          }
+        } catch (e) {}
+        return false;
+      };
+      if (await serveStored()) return;
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 9000);
       let upstream;
@@ -437,6 +460,11 @@ ${items}
       const ct = upstream.headers.get('content-type') || 'image/jpeg';
       if (!/^image\//i.test(ct)) return res.status(415).json({ error: 'Not an image' });
       const buf = Buffer.from(await upstream.arrayBuffer());
+      // Self-heal: if the pull-time store missed this creative (fetch failed then), keep the copy now while
+      // the link still works. `nx` so a live full-res fetch never clobbers the copy already stored.
+      if (fbKey && _redis && buf.length && buf.length < 2_000_000) {
+        try { await _redis.set(fbKey, JSON.stringify({ ct, data: buf.toString('base64') }), { ex: 60 * 60 * 24 * 30, nx: true }); } catch (e) {}
+      }
       res.setHeader('Content-Type', ct);
       res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, immutable');
       return res.status(200).send(buf);
@@ -871,15 +899,15 @@ ${items}
       return res.status(200).json({ ok: true, ads: scGads, sources: { google: scGads.length }, notes: { google: 'ok' }, _fast: true, fresh: { checked: Date.now(), checkedAt: null, stale: false, listCached: false, count: scGads.length, scoredNew: scG.scoredNew, reused: scG.reused, pending: scG.pending, scoreError: scG.scoreError || null, rateLimited: !!scG.rateLimited } });
     }
 
-    // Meta is pulled INLINE now (in fetchAllAds, alongside LinkedIn and Google) -- no button, no sign-in.
-    // The free pre-filter + warm refresh below need the Facebook page / social handles read off the
-    // advertiser's own site during the ICP build. The client sends `metaPage` on the full pull; for a
-    // server render (crawler, og-image) that has no client, fall back to the domain-keyed GEO record.
+    // Meta is pulled INLINE now (in fetchAllAds, alongside LinkedIn and Google) -- no button, no sign-in,
+    // and no Meta-only refresh: it rides the board's own weekly cadence (Layer A) like the other two. The
+    // free footprint pre-filter inside fetchAllAds needs the Pixel / Facebook page / social handles read
+    // off the advertiser's own site during the ICP build. The client sends `metaPage` on the full pull;
+    // for a server render (crawler, og-image) that has no client, fall back to the domain-keyed GEO record.
     let metaPage = (body.metaPage && typeof body.metaPage === 'object') ? body.metaPage : null;
     if (!metaPage && _redis && domKey) {
       try { const g = await _redis.get('geo:icp:' + domKey); const go = g ? (typeof g === 'string' ? JSON.parse(g) : g) : null; metaPage = (go && go.metaPage) || null; } catch (e) {}
     }
-    const metaFb = metaSiteHasFb(metaPage);
 
     let pull = null, listCached = false, stale = false, lastChecked = null;
     if ((!refresh && cacheFresh) || (adminRescore && cachedCopy && cachedCopy.ads && cachedCopy.ads.length)) {
@@ -912,9 +940,7 @@ ${items}
           }
         }
         r._checkedAt = Date.now();
-        // This pull attempted Meta (the pre-filter passed), so stamp the Meta freshness clock now even if
-        // it came back empty -- otherwise carry forward the previous pull's Meta timestamp. The clock
-        // drives the once-a-day warm refresh and the dead-image backstop below.
+        // Timestamp the last real Meta pull (debug / freshness only now that Meta rides the weekly cadence).
         r._metaAt = (r.notes && r.notes.meta_tried) ? Date.now() : (prevCopy && prevCopy._metaAt);
         pull = r; lastChecked = r._checkedAt;
         if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(r), { ex: CACHE_TTL }); } catch (e) {} }
@@ -927,23 +953,10 @@ ${items}
       }
     }
 
-    // Warm board served from cache: keep Meta as fresh as Google/LinkedIn WITHOUT re-pulling them. Meta's
-    // creative image links die ~4 days after a pull, but LinkedIn (Jina, ~30s) is what makes a full pull
-    // slow, so we don't want to go live weekly just for Meta. Instead, when the site links a Facebook page
-    // and the last Meta pull is over a day old, re-pull ONLY Meta and merge it in. The 24h run cache means
-    // this is at most one Apify run a day per board (shared across viewers); LinkedIn/Google stay cached.
-    // Only on a scoring call (the real board), never a display-only read, and never while refreshing (the
-    // live pull above already did Meta).
-    if (listCached && pull && wantScore && !refresh && META_ON && metaFb) {
-      const metaStale = !pull._metaAt || (Date.now() - pull._metaAt > META_TTL_MS);
-      if (metaStale) {
-        const mt = await fetchMetaAds({ company: body.company, domain: body.domain, hintPageId: metaPage.pageId || '', hintIg: metaPage.igHandle || '', hintFb: metaPage.vanity || '', limit: 12, redis: _redis }).catch(() => ({ ok: false, ads: [] }));
-        if (mt.ok) {
-          pull = { ...pull, ads: [...(pull.ads || []).filter(a => (a.plat || '') !== 'Meta'), ...mt.ads], sources: { ...(pull.sources || {}), meta: mt.ads.length }, notes: { ...(pull.notes || {}), meta: mt.ads.length ? 'ok' : 'no_ads', meta_tried: true }, _metaAt: Date.now() };
-          if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(pull), { ex: CACHE_TTL }); } catch (e) {} }
-        }
-      }
-    }
+    // (Meta no longer has a warm per-board refresh. Facebook's signed creative links die ~4 days out, but
+    // we persist our own copy of each image at pull time -- see persistMetaImgs in _adlibrary.js and the
+    // image proxy above -- so a cached board keeps showing them without a Meta-only re-pull. Meta re-pulls
+    // only when the whole board goes live on its weekly cadence, exactly like Google and LinkedIn.)
 
     // Strip Google "collapsed ad" placeholders from whatever we're about to show (fresh OR a cached
     // copy from before this filter existed), so they never count toward "ads to fix" / "badly off".
@@ -961,15 +974,8 @@ ${items}
       // (Damani's ads run under a "Damani Consulting Services" page the name/partner guard rejects).
       const keptNonMeta = new Set(ownedPerPlatform(pull.ads.filter(a => (a.plat || '') !== 'Meta'), { domain: body.domain, company: body.company }));
       pull.ads = pull.ads.filter(a => (a.plat || '') === 'Meta' || keptNonMeta.has(a));
-      // Dead-image backstop: Meta's creative image links die ~4 days after a pull. The warm refresh above
-      // keeps a viewed board's Meta under a day old, but if every refresh pull has failed for days (Apify
-      // down), drop the dead-image Meta ads rather than render broken creatives -- the next successful
-      // pull brings them back. A fresh or sub-day Meta pull always passes this.
-      if (pull._metaAt && Date.now() - pull._metaAt > 4 * 24 * 60 * 60 * 1000) {
-        pull.ads = pull.ads.filter(a => (a.plat || '') !== 'Meta');
-        pull.sources = { ...(pull.sources || {}), meta: 0 };
-        if (pull.notes && pull.notes.meta === 'ok') pull.notes = { ...pull.notes, meta: 'no_ads' };
-      }
+      // No dead-image backstop any more: a Meta ad that stopped running is dropped at the source by the
+      // 30-day delivery window (_adlibrary.js), and a still-live ad's image survives via our stored copy.
     }
 
     // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.

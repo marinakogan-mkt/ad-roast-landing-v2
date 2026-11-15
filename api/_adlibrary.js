@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 // Helper (underscore prefix => NOT a Vercel Serverless Function, so it does not count
 // against the Hobby 12-function cap). Pulls a company's REAL live LinkedIn ads (with the
 // actual creative images) for the "Your Live Ads" dashboard.
@@ -1168,15 +1170,48 @@ export async function fetchGoogleAds({ domain, company, limit = 12 } = {}) {
 // Chosen 30 oct over lergassy's ($0.00015): that one has no preview image on video ads.
 // Meta runs INLINE in fetchAllAds, alongside LinkedIn and Google -- no button, no sign-in. The only
 // thing between a board and an Apify charge is the FREE pre-filter: fetchAllAds asks for a Meta pull
-// only when the advertiser's OWN site (already read for the ICP, zero extra cost) links a Facebook
-// page. So the pull is live whenever an Apify token exists; APIFY_META=0 is a hard kill switch.
+// only when the advertiser's OWN site (already read for the ICP, zero extra cost) carries a Meta
+// footprint -- a Pixel, a Facebook page, or an Instagram handle (metaHasFootprint). So the pull is live
+// whenever an Apify token exists and that footprint is present; APIFY_META=0 is a hard kill switch.
 export const META_ON = !!process.env.APIFY_TOKEN && process.env.APIFY_META !== '0';
-// Facebook's creative image links die ~4 days after a pull, so a shown Meta pull is refreshed about
-// once a day (the ads barely change hour to hour). This drives the warm-board refresh in icp.js.
-export const META_TTL_MS = 24 * 60 * 60 * 1000;
-const META_HIT_TTL = 24 * 60 * 60;   // positive run cache: a pull that found ads is reused for 24h
-const META_EMPTY_TTL = 6 * 60 * 60;  // empty run cache: short, so a new advertiser is picked up same day
+// Meta rides the board's own weekly cadence now (Layer A FRESH_MS, 7 days): it re-pulls only when the
+// board is opened and its list is stale, exactly like Google and LinkedIn -- no Meta-only refresh. The
+// ~4-day death of Facebook's signed creative links is handled by persisting our own copy of each image
+// (persistMetaImgs below + the image proxy in icp.js), not by re-pulling, so an open board costs at most
+// one Apify run a week, not one a day.
+const META_HIT_TTL = 24 * 60 * 60;        // positive run cache: a pull that found ads is reused for 24h
+const META_EMPTY_TTL = 7 * 24 * 60 * 60;  // empty run cache: a week, so a non-advertiser costs at most one run a week
 const META_DAY_CAP = 100; // runs per day across all accounts, at most ~$0.84
+const META_IMG_TTL = 30 * 24 * 60 * 60;   // our stored copy of a creative: 30 days (dead ads fall off via the 30-day window)
+const META_LIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000; // drop a Meta ad last delivered >30 days ago, same window as Google
+
+// A creative's image lives on Facebook's CDN behind a signed URL that dies ~4 days after the pull. We
+// store our own copy keyed by the STABLE part of that URL (the asset path; the signature/query is what
+// rotates) so the board can still show it for the 30-day life of the copy. The image proxy in icp.js
+// reads the same key, so a store written here is served there. Non-fbcdn hosts (Google, LinkedIn) are
+// not stored -- their links don't expire -- so this returns null for them.
+export function metaImgKey(url) {
+  try {
+    const u = new URL(String(url));
+    if (!/(^|\.)fbcdn\.net$/i.test(u.hostname)) return null;
+    return 'meta:img:' + crypto.createHash('sha1').update(u.pathname).digest('hex');
+  } catch (e) { return null; }
+}
+// Persist each Meta creative's bytes once per pull, reusing the same server-side fetch + downscale the
+// scorer uses (_fetchImgB64). Best-effort and bounded: it runs only on a real Apify run (not a cache
+// hit), over the <=12 ads we're about to show, in parallel, and `nx` so a re-pull never re-writes a copy
+// that's already there. No tokens, no Apify -- just the image bytes, which we'd fetch to render anyway.
+async function persistMetaImgs(redis, ads) {
+  if (!redis || !Array.isArray(ads) || !ads.length) return;
+  await Promise.all(ads.slice(0, 12).map(async (a) => {
+    const key = metaImgKey(a && a.img);
+    if (!key) return;
+    try {
+      const b = await _fetchImgB64(a.img);
+      if (b && b.data) await redis.set(key, JSON.stringify({ ct: b.media_type, data: b.data }), { ex: META_IMG_TTL, nx: true });
+    } catch (e) {}
+  }));
+}
 async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId = null, hintIg = '', hintFb = '', limit = 12, redis = null } = {}) {
   const token = process.env.APIFY_TOKEN;
   if (!token) return { ok: false, reason: 'no_apify_token', ads: [] };
@@ -1233,11 +1268,31 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
   // Catalog / dynamic ads carry template tokens ("{{product.name}}"): skip any value still a template.
   const firstTxt = (...vs) => { for (const v of vs) { const x = String(v || '').trim(); if (x && !/\{\{[^}]*\}\}/.test(x)) return x; } return ''; };
   const list = (v) => (Array.isArray(v) ? v : []);
+  // 30-day live window, the SAME one Google (field 7 last-shown), LinkedIn (last-30-days) and Meta's own
+  // activeStatus:'active' already use. An item's delivery STOP time is when it last ran; an active ad
+  // with no stop time is still delivering (no cutoff, kept). We never drop on START time -- a long-running
+  // ad has an old start but is live. Belt-and-braces on top of activeStatus, so a dead creative's image
+  // never reaches the board even if the scraper hands one back. No date = kept (same as Google).
+  const _winCutoff = Date.now() - META_LIVE_WINDOW_MS;
+  const _toMs = (v) => {
+    if (v == null) return 0;
+    if (typeof v === 'number' && isFinite(v)) return v > 1e12 ? v : v * 1000; // epoch ms vs epoch seconds
+    const s = String(v).trim(); if (!s) return 0;
+    if (/^\d{13}$/.test(s)) return Number(s);
+    if (/^\d{10}$/.test(s)) return Number(s) * 1000;
+    const t = Date.parse(s); return isFinite(t) ? t : 0; // ISO / YYYY-MM-DD
+  };
+  // Field names vary by actor version, so read any plausible delivery-stop key.
+  const _lastDeliveryMs = (it) => _toMs(
+    it.endDate ?? it.end_date ?? it.adDeliveryStopTime ?? it.ad_delivery_stop_time ?? it.stopDate ?? it.deliveryStopTime ?? null
+  );
   const parseItems = (items) => {
     const seen = new Set();
     const out = [];
     for (const it of items) {
       if (!it || !it.pageName || it.isActive === false) continue;
+      const lastMs = _lastDeliveryMs(it);
+      if (lastMs && lastMs < _winCutoff) continue; // last delivered >30 days ago -> treat as dead, like Google
       const i0 = list(it.images)[0] || {};
       const v0 = list(it.videos)[0] || {};
       const img = i0.originalUrl || i0.resizedUrl || v0.previewImageUrl || null;
@@ -1262,6 +1317,7 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
         region: null,
         detailUrl: it.adLibraryUrl || null,
         adId: String(it.adId || it.id || '') || null,
+        lastDeliveredAt: lastMs || null,               // delivery stop time (ms); null = still delivering
       });
     }
     return out;
@@ -1338,9 +1394,13 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
   }
 
   const result = { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify' };
-  // Cache a HIT 24h (the ads barely change hour to hour, and a day keeps their image links alive). Cache
-  // an EMPTY result only 6h -- short, so an advertiser who has just started running ads is picked up the
-  // same day instead of being written off for longer. One Apify run per board inside each window.
+  // Store our own copy of each creative's image NOW, while Facebook's signed link is still alive (it dies
+  // ~4 days out). This is the one real Apify run for this board this week, so it's the right moment to
+  // grab the bytes; the image proxy serves them for the 30-day life of the copy. Bounded + best-effort.
+  if (redis && finalAds.length) { try { await persistMetaImgs(redis, result.ads); } catch (e) {} }
+  // Cache a HIT 24h (lets a forced refresh pick up new ads next day) and an EMPTY result a WEEK, so a site
+  // that passed the free footprint gate but runs no ads costs at most one Apify run a week, not one per
+  // open. The board's own weekly cadence (Layer A) is what re-pulls a live advertiser, so one run/board/week.
   const cacheSec = finalAds.length ? META_HIT_TTL : META_EMPTY_TTL;
   if (redis) { try { await redis.set(runKey, JSON.stringify(result), { ex: cacheSec }); } catch (e) {} }
   return result;
@@ -1351,31 +1411,36 @@ export async function fetchMetaAds({ company, domain, pageId = null, hintPageId 
   return fetchMetaAdsViaApify({ company, domain, pageId, hintPageId, hintIg, hintFb, limit, redis });
 }
 
-// A Facebook PAGE link on the advertiser's own site is the FREE signal that they have a Meta presence
-// worth paying Apify to look up. A plain Instagram link or a facebook.com share widget is not a page
-// link, so it does not trip this -- that is the whole point of the pre-filter (skip the no-FB sites).
-// `metaPage` comes from extractMetaPage (icp.js), read off their HTML during the ICP build at no cost.
-export function metaSiteHasFb(metaPage) {
-  return !!(metaPage && (metaPage.pageId || metaPage.vanity));
+// The FREE pre-filter: a Meta footprint on the advertiser's OWN site (read off their HTML during the ICP
+// build, zero cost) is what earns a paid Apify lookup. Any one of three signals counts, strongest first:
+//   - a Meta Pixel (connect.facebook.net/.../fbevents.js or an fbq() call) -- the clearest proof they
+//     run Meta ads at all, since the Pixel exists to optimise and measure them;
+//   - a Facebook PAGE link (pageId or vanity);
+//   - an Instagram link / handle (Instagram ads are Meta ads; an IG-only advertiser has no FB page).
+// No footprint at all -> we never spend an Apify credit and report 'no_meta_footprint'. `metaPage` comes
+// from extractMetaPage (icp.js). Damani passes on its Facebook link.
+export function metaHasFootprint(metaPage) {
+  return !!(metaPage && (metaPage.pageId || metaPage.vanity || metaPage.igHandle || metaPage.hasPixel));
 }
 
 // Merge a company's real ads across sources (LinkedIn + Google + Meta), score the whole set in one
 // pass, and return one list. Each source is best-effort: one failing never sinks the others. Meta runs
 // here now (it used to be a separate on-demand button) but ONLY when the free pre-filter passes: the
-// advertiser's own site has to link a Facebook page (`metaPage`), or we never spend an Apify credit and
-// report 'no_fb'. Damani links a (dead) Facebook profile, so it passes and the domain/name pull finds
-// its live page; a site with no Facebook page at all is skipped for free.
+// advertiser's own site has to carry a Meta footprint (`metaPage`: a Pixel, a Facebook page, or an
+// Instagram handle), or we never spend an Apify credit and report 'no_meta_footprint'. Damani carries a
+// Facebook link, so it passes and the domain/name pull finds its live page; a site with no Meta footprint
+// at all is skipped for free.
 export async function fetchAllAds({ company, domain, icp, metaPage = null, limit = 80, redis = null } = {}) {
   // Pull MANY creatives (cheap): the board shows the most-urgent few in full and the rest greyed/locked
   // for upsell, and the "X of N" count needs the real volume. Only a bounded batch gets scored (icp.js).
-  const metaFb = metaSiteHasFb(metaPage);
-  const metaTried = META_ON && metaFb; // true = we actually ran (or cache-served) a Meta pull
+  const metaFoot = metaHasFootprint(metaPage);
+  const metaTried = META_ON && metaFoot; // true = we actually ran (or cache-served) a Meta pull
   const [li, gg, mt] = await Promise.all([
     fetchLinkedInAds({ company, domain, limit: 30 }).catch(() => ({ ok: false, ads: [] })),
     fetchGoogleAds({ domain, company, limit: 40 }).catch(() => ({ ok: false, ads: [] })),
     metaTried
       ? fetchMetaAds({ company, domain, hintPageId: (metaPage && metaPage.pageId) || '', hintIg: (metaPage && metaPage.igHandle) || '', hintFb: (metaPage && metaPage.vanity) || '', limit: 12, redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }))
-      : Promise.resolve({ ok: false, reason: metaFb ? 'meta_off' : 'no_fb', ads: [] }),
+      : Promise.resolve({ ok: false, reason: metaFoot ? 'meta_off' : 'no_meta_footprint', ads: [] }),
   ]);
   const sources = { linkedin: (li.ads || []).length, google: (gg.ads || []).length, meta: (mt.ads || []).length };
   // Surface why a source came back empty (LinkedIn Jina rate-limit, no Facebook page, etc.) even when
@@ -1384,8 +1449,8 @@ export async function fetchAllAds({ company, domain, icp, metaPage = null, limit
     linkedin: (li.ads && li.ads.length) ? 'ok' : (li.reason || 'no_ads'),
     linkedin_apify: li._apify || null, // debug: why Apify was/wasn't used for LinkedIn
     google: (gg.ads && gg.ads.length) ? 'ok' : (gg.reason || 'no_ads'),
-    // 'ok' = live Meta ads. 'no_ads' = we paid for a pull and it came back empty. 'no_fb' = the free
-    // pre-filter skipped it (no Facebook page on their site). 'meta_off' = kill switch / no token.
+    // 'ok' = live Meta ads. 'no_ads' = we paid for a pull and it came back empty. 'no_meta_footprint' =
+    // the free pre-filter skipped it (no Pixel / FB page / IG on their site). 'meta_off' = kill switch.
     meta: (mt.ads && mt.ads.length) ? 'ok' : (mt.reason || 'no_ads'),
     meta_tried: metaTried,
   };

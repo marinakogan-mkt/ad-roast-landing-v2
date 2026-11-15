@@ -2914,17 +2914,17 @@
                   {/* Meta empty state. Meta is pulled INLINE now (alongside LinkedIn and Google), so this
                       card shows only when the pull returned no ads. It mirrors the "No live ads" card the
                       supported platforms use, and distinguishes "we checked, they're not running Meta"
-                      (no_ads) from "no Facebook page on their site, so there was nothing to pull" (no_fb)
-                      -- it never reads as us failing to look. While the first pull is still in flight the
-                      card says "Checking". */}
+                      (no_ads) from "no Meta footprint on their site, so there was nothing to pull"
+                      (no_meta_footprint) -- it never reads as us failing to look. While the first pull is
+                      still in flight the card says "Checking". */}
                   {SOON_SOURCES.filter(p => !ads.some(a => a.plat === p)).map(p => {
                     const notes = (real && real.notes) || {};
                     const mstate = notes.meta || '';
-                    // Any server note about Meta means the pull resolved (no_ads / no_fb / a cap or error);
-                    // only a missing note (the full pull still in flight) shows "Checking".
+                    // Any server note about Meta means the pull resolved (no_ads / no_meta_footprint / a cap
+                    // or error); only a missing note (the full pull still in flight) shows "Checking".
                     const checked = !!mstate;
-                    const msg = mstate === 'no_fb'
-                      ? ('No Facebook page on ' + (CO.name || 'their') + "'s site, so there's nothing to pull.")
+                    const msg = mstate === 'no_meta_footprint'
+                      ? ('No Meta footprint on ' + (CO.name || 'their') + "'s site, so there's nothing to pull.")
                       : checked
                         ? ((CO.name || 'They') + " isn't advertising on " + p + ' right now.')
                         : ('Checking ' + p + ' for live ads…');
