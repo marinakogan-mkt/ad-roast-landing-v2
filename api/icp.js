@@ -29,7 +29,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    if it's unavailable we just skip the cache and infer. */
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, META_ONDEMAND, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaSiteHasFb, META_ON, META_TTL_MS, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -843,8 +843,13 @@ ${items}
         _checkedAt: Date.now(),
         _metaAt: cachedCopy._metaAt,
       };
-      const scM = await scoreAdsCached(merged.ads, body.icp, _redis, { force: false, limit: 3 });
-      const mergedAll = dropJunkCreatives(scM.ads); // keep every template variant in the cache; collapse only what we return
+      // Keep the 1-Meta-per-board scoring cap on a LinkedIn retry too: send LinkedIn/Google + only the
+      // first Meta ad to the scorer, and carry the extra (greyed) Meta ads along UNSCORED, exactly as the
+      // full board does. Without this, a retry would score the greyed Meta extras the main path holds back.
+      const _mRetry = merged.ads.filter(a => (a.plat || '') === 'Meta');
+      const _toScoreRetry = [...merged.ads.filter(a => (a.plat || '') !== 'Meta'), ..._mRetry.slice(0, 1)];
+      const scM = await scoreAdsCached(_toScoreRetry, body.icp, _redis, { force: false, limit: 3 });
+      const mergedAll = dropJunkCreatives(scM.ads).concat(_mRetry.slice(1)); // keep every template variant in the cache; collapse only what we return
       merged.ads = collapseTemplateGroups(mergedAll);
       if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify({ ...merged, ads: mergedAll }), { ex: CACHE_TTL }); } catch (e) {} }
       return res.status(200).json({ ...merged, fresh: { checked: Date.now(), checkedAt: merged._checkedAt, stale: false, listCached: false, count: merged.ads.length, scoredNew: scM.scoredNew, reused: scM.reused, pending: scM.pending, scoreError: scM.scoreError || null, rateLimited: !!scM.rateLimited } });
@@ -866,40 +871,15 @@ ${items}
       return res.status(200).json({ ok: true, ads: scGads, sources: { google: scGads.length }, notes: { google: 'ok' }, _fast: true, fresh: { checked: Date.now(), checkedAt: null, stale: false, listCached: false, count: scGads.length, scoredNew: scG.scoredNew, reused: scG.reused, pending: scG.pending, scoreError: scG.scoreError || null, rateLimited: !!scG.rateLimited } });
     }
 
-    // On-demand Meta: the board's button, signed-in accounts only. The ONLY Apify run on the Meta
-    // path, one cached run per advertiser. By default it pulls BY DOMAIN: advertiserDomains searches
-    // the brand and keeps only ads whose destination is the advertiser's domain, so it finds their ads
-    // under whichever Facebook page runs them -- the page a site links is often a dead profile while the
-    // live ads run under a differently named page (Damani's ads run under a separate page, not the
-    // /people/ profile their footer links). A pasted Ad Library link forces that exact page id instead.
-    // Folds the result into the pull cache and answers with the count; the client re-reads to score.
-    if (body.only === 'meta') {
-      if (!META_ONDEMAND) return res.status(200).json({ ok: false, reason: 'meta_off' });
-      const metaAcct = await icpAccount(req, _redis);
-      if (!metaAcct) return res.status(401).json({ ok: false, reason: 'sign_in' });
-      // A pasted Ad Library link (last resort) forces a pull of that exact page id. Normally there is no
-      // page id and the pull goes by domain. We never require a page id, so an advertiser is never
-      // falsely reported as having no Meta presence just because no page was linked on their site.
-      let metaPid = (() => { const s = String(body.pageId || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; })();
-      if (!metaPid && body.metaForce && body.vanity) metaPid = await resolveFbVanity(body.vanity, _redis).catch(() => '');
-      // The social identities read off the advertiser's own site. The FB page id is a last-resort pull
-      // signal (used only when the domain and name pulls both come back empty); the FB/IG handles are
-      // ownership signals the name-search filter matches against the ads' destination accounts, so an ad
-      // whose click target is their Instagram (domain nowhere in the copy) is still recognised as theirs.
-      const metaHintPid = (() => { const s = String(body.hintPageId || '').trim(); if (/^\d{5,}$/.test(s)) return s; const m = s.match(/(?:view_all_page_id|page_id|[?&]id)=(\d{5,})/i); return m ? m[1] : ''; })();
-      const metaHintIg = String(body.hintIg || '').trim().replace(/[^A-Za-z0-9._]/g, '').slice(0, 30).toLowerCase();
-      const metaHintFb = String(body.hintFb || '').trim().replace(/[^A-Za-z0-9._-]/g, '').slice(0, 80).toLowerCase();
-      // A fresh pull already on the board is reused (the run cache also guards the Apify cost), unless
-      // the user forced a re-pull (the last-resort pasted link).
-      if (!body.metaForce && cachedCopy && cachedCopy._metaAt && Date.now() - cachedCopy._metaAt < META_TTL_MS) return res.status(200).json({ ok: true, cached: true });
-      if (metaAcct.plan === 'free' && await metaFreeLimitHit(_redis, metaAcct.email)) return res.status(200).json({ ok: false, reason: 'meta_free_limit' });
-      const mt = await fetchMetaAds({ company: body.company, domain: body.domain, pageId: metaPid, hintPageId: metaHintPid, hintIg: metaHintIg, hintFb: metaHintFb, limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
-      if (!mt.ok) return res.status(200).json({ ok: false, reason: mt.reason });
-      const base = cachedCopy || { ok: true, ads: [], sources: {}, notes: {}, _checkedAt: Date.now() };
-      const merged = { ...base, ads: [...base.ads.filter(a => (a.plat || '') !== 'Meta'), ...mt.ads], sources: { ...(base.sources || {}), meta: mt.ads.length }, notes: { ...(base.notes || {}), meta: mt.ads.length ? 'ok' : 'no_ads' }, _metaAt: Date.now() };
-      if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(merged), { ex: CACHE_TTL }); } catch (e) {} }
-      return res.status(200).json({ ok: true, count: mt.ads.length });
+    // Meta is pulled INLINE now (in fetchAllAds, alongside LinkedIn and Google) -- no button, no sign-in.
+    // The free pre-filter + warm refresh below need the Facebook page / social handles read off the
+    // advertiser's own site during the ICP build. The client sends `metaPage` on the full pull; for a
+    // server render (crawler, og-image) that has no client, fall back to the domain-keyed GEO record.
+    let metaPage = (body.metaPage && typeof body.metaPage === 'object') ? body.metaPage : null;
+    if (!metaPage && _redis && domKey) {
+      try { const g = await _redis.get('geo:icp:' + domKey); const go = g ? (typeof g === 'string' ? JSON.parse(g) : g) : null; metaPage = (go && go.metaPage) || null; } catch (e) {}
     }
+    const metaFb = metaSiteHasFb(metaPage);
 
     let pull = null, listCached = false, stale = false, lastChecked = null;
     if ((!refresh && cacheFresh) || (adminRescore && cachedCopy && cachedCopy.ads && cachedCopy.ads.length)) {
@@ -907,7 +887,8 @@ ${items}
       pull = cachedCopy; listCached = true; lastChecked = cachedCopy._checkedAt;
     } else {
       // Go live: the user asked to refresh, or the copy is stale (>1 week), or we've never pulled.
-      const r = await fetchAllAds({ company: body.company, domain: body.domain, redis: _redis });
+      // `metaPage` lets fetchAllAds run the free FB pre-filter and pull Meta inline when it passes.
+      const r = await fetchAllAds({ company: body.company, domain: body.domain, metaPage, redis: _redis });
       if (r && r.ok && r.ads && r.ads.length) {
         // Preserve last-seen ads PER PLATFORM: a pull that got Google but not LinkedIn (LinkedIn
         // flaky this run) must not wipe the LinkedIn ads we already had — otherwise the LinkedIn card
@@ -915,6 +896,11 @@ ${items}
         if (prevCopy && Array.isArray(prevCopy.ads)) {
           for (const plat of ['LinkedIn', 'Google', 'Meta']) {
             const gotNow = r.ads.some(a => (a.plat || '') === plat);
+            // Meta: a pull that actually ran and found none is a REAL negative -- don't resurrect the
+            // last-seen Meta ads (that would flip a stopped advertiser back to "running"). Only carry Meta
+            // forward when we did NOT pull it this run (pre-filter skipped it / no metaPage), same intent
+            // as keeping a flaky LinkedIn fetch's last-seen list.
+            if (plat === 'Meta' && r.notes && r.notes.meta_tried) continue;
             if (!gotNow) {
               const prev = prevCopy.ads.filter(a => (a.plat || '') === plat);
               if (prev.length) {
@@ -926,8 +912,10 @@ ${items}
           }
         }
         r._checkedAt = Date.now();
-        r._metaAt = prevCopy && prevCopy._metaAt;
-        if (r._metaAt && r.notes && r.notes.meta === 'on_demand') r.notes.meta = (prevCopy.notes || {}).meta;
+        // This pull attempted Meta (the pre-filter passed), so stamp the Meta freshness clock now even if
+        // it came back empty -- otherwise carry forward the previous pull's Meta timestamp. The clock
+        // drives the once-a-day warm refresh and the dead-image backstop below.
+        r._metaAt = (r.notes && r.notes.meta_tried) ? Date.now() : (prevCopy && prevCopy._metaAt);
         pull = r; lastChecked = r._checkedAt;
         if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(r), { ex: CACHE_TTL }); } catch (e) {} }
       } else if (cachedCopy) {
@@ -936,6 +924,24 @@ ${items}
       } else {
         // Nothing cached and the pull failed — genuinely nothing to show yet.
         return res.status(200).json(r || { ok: false, ads: [] });
+      }
+    }
+
+    // Warm board served from cache: keep Meta as fresh as Google/LinkedIn WITHOUT re-pulling them. Meta's
+    // creative image links die ~4 days after a pull, but LinkedIn (Jina, ~30s) is what makes a full pull
+    // slow, so we don't want to go live weekly just for Meta. Instead, when the site links a Facebook page
+    // and the last Meta pull is over a day old, re-pull ONLY Meta and merge it in. The 24h run cache means
+    // this is at most one Apify run a day per board (shared across viewers); LinkedIn/Google stay cached.
+    // Only on a scoring call (the real board), never a display-only read, and never while refreshing (the
+    // live pull above already did Meta).
+    if (listCached && pull && wantScore && !refresh && META_ON && metaFb) {
+      const metaStale = !pull._metaAt || (Date.now() - pull._metaAt > META_TTL_MS);
+      if (metaStale) {
+        const mt = await fetchMetaAds({ company: body.company, domain: body.domain, hintPageId: metaPage.pageId || '', hintIg: metaPage.igHandle || '', hintFb: metaPage.vanity || '', limit: 12, redis: _redis }).catch(() => ({ ok: false, ads: [] }));
+        if (mt.ok) {
+          pull = { ...pull, ads: [...(pull.ads || []).filter(a => (a.plat || '') !== 'Meta'), ...mt.ads], sources: { ...(pull.sources || {}), meta: mt.ads.length }, notes: { ...(pull.notes || {}), meta: mt.ads.length ? 'ok' : 'no_ads', meta_tried: true }, _metaAt: Date.now() };
+          if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(pull), { ex: CACHE_TTL }); } catch (e) {} }
+        }
       }
     }
 
@@ -955,13 +961,15 @@ ${items}
       // (Damani's ads run under a "Damani Consulting Services" page the name/partner guard rejects).
       const keptNonMeta = new Set(ownedPerPlatform(pull.ads.filter(a => (a.plat || '') !== 'Meta'), { domain: body.domain, company: body.company }));
       pull.ads = pull.ads.filter(a => (a.plat || '') === 'Meta' || keptNonMeta.has(a));
-      // Meta off, or its image links about to die: hide what's cached (the cache isn't rewritten) and
-      // the board goes back to Coming soon / the button. meta_on tells the client which of the two.
-      // Show Meta whenever a pull is still fresh (its image links are alive): someone paid for it on
-      // demand, so it rides the board for its TTL without re-billing. Independent of the global switch.
-      const metaLive = META_ONDEMAND && pull._metaAt && Date.now() - pull._metaAt < META_TTL_MS;
-      if (!metaLive) { pull.ads = pull.ads.filter(a => (a.plat || '') !== 'Meta'); pull.sources = { ...(pull.sources || {}), meta: 0 }; }
-      pull.notes = { ...(pull.notes || {}), meta: metaLive ? (pull.notes || {}).meta : 'on_demand', meta_on: META_ONDEMAND };
+      // Dead-image backstop: Meta's creative image links die ~4 days after a pull. The warm refresh above
+      // keeps a viewed board's Meta under a day old, but if every refresh pull has failed for days (Apify
+      // down), drop the dead-image Meta ads rather than render broken creatives -- the next successful
+      // pull brings them back. A fresh or sub-day Meta pull always passes this.
+      if (pull._metaAt && Date.now() - pull._metaAt > 4 * 24 * 60 * 60 * 1000) {
+        pull.ads = pull.ads.filter(a => (a.plat || '') !== 'Meta');
+        pull.sources = { ...(pull.sources || {}), meta: 0 };
+        if (pull.notes && pull.notes.meta === 'ok') pull.notes = { ...pull.notes, meta: 'no_ads' };
+      }
     }
 
     // Layer B: score only the creatives we've never scored (new ads). Reuse the rest for free.
@@ -1221,7 +1229,9 @@ ${site.body || '(the page content could not be read: it was empty, JS-rendered, 
       try {
         const gk = String(domain || '').toLowerCase().replace(/[^a-z0-9.]/g, '');
         if (gk) {
-          await _redis.set('geo:icp:' + gk, JSON.stringify({ company: icp.company, website: icp.website || url, icp_text: icp.icp_text || '', summary: icp.summary || '', tags: Array.isArray(icp.tags) ? icp.tags.slice(0, 8) : [] }), { ex: ICP_CACHE_TTL });
+          // Carry the Facebook page read off the site: lets the ads-fetch handler run the free Meta
+          // pre-filter on a server render (crawler, og-image) that has no client to send metaPage.
+          await _redis.set('geo:icp:' + gk, JSON.stringify({ company: icp.company, website: icp.website || url, icp_text: icp.icp_text || '', summary: icp.summary || '', tags: Array.isArray(icp.tags) ? icp.tags.slice(0, 8) : [], metaPage: (site && site.metaPage) || null }), { ex: ICP_CACHE_TTL });
           if ((await _redis.sadd('geo:companies', gk)) === 1) await pingNewBoard(_redis, gk);
         }
       } catch (e) {}
