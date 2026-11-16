@@ -858,6 +858,22 @@ ${items}
     // one call. Gated to admin so a prospect viewing a shared board can't trigger expensive re-scores.
     const adminRescore = !!body.rescore && await icpIsAdmin(req, _redis);
 
+    /* Bots & link-preview crawlers (facebookexternalhit, embedly, lighthouse, headless, Claude/,
+       Electron/, python/curl, etc.) hit ads-fetch the same way a person does, but they never buy and a
+       shared-board preview card is built from the page's static OG meta, not from this scored JSON. So
+       we NEVER spend scorer tokens on them: serve the last board we have as-is (0 tokens, no re-pull, no
+       scoring), or an empty board if we've never pulled this company. `pending:0` stops the client loop
+       from re-calling. Admin re-score is exempt. Measured 2026-11-16: web-bot was ~15% of AdRoast spend
+       (100 board-score calls / 3 days), pure waste since a bot can't convert. */
+    const _isBot = NOT_HUMAN_UA.test(String((req.headers || {})['user-agent'] || ''));
+    if (_isBot && !adminRescore && wantScore) {
+      if (cachedCopy) {
+        const _botAds = collapseTemplateGroups(dropJunkCreatives(cachedCopy.ads || []));
+        return res.status(200).json({ ...cachedCopy, ads: _botAds, fresh: { checked: Date.now(), checkedAt: cachedCopy._checkedAt || null, stale: cacheAge >= FRESH_MS, listCached: true, count: _botAds.length, scoredNew: 0, reused: 0, pending: 0, bot: true } });
+      }
+      return res.status(200).json({ ok: true, ads: [], sources: {}, notes: {}, fresh: { checked: Date.now(), checkedAt: null, stale: true, listCached: false, count: 0, scoredNew: 0, reused: 0, pending: 0, bot: true } });
+    }
+
     // LinkedIn-only retry: Google and the ICP are already done, so "Retry LinkedIn" should re-pull ONLY
     // LinkedIn and merge it with the cached Google/Meta — not redo everything. Needs a cached copy to
     // merge into; without one we fall through to a normal full pull.
