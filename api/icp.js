@@ -30,10 +30,11 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 import { withUsage } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, META_ON, scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, META_ON, scoreAdsCached, prescorePrepare, prescoreCommit, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
+import { isAdminKey } from './_adminkey.js';
 import { pingNewBoard } from './_indexnow.js';
 
 // Admin emails (the portal master role) — the only accounts allowed to force a re-score of a board.
@@ -795,6 +796,14 @@ ${items}
     }
   }
 
+  /* Batch API pre-scoring, step 2 (admin API key only; see prescorePrepare in _adlibrary.js). The outreach
+     engine ran the requests prepare handed it through the Batch API and posts the answers here; they go
+     through the live scorer's own parser into the same adscore keys. No model call happens here. */
+  if (body.action === 'prescore-commit') {
+    if (!(await isAdminKey(req, _redis))) return res.status(403).json({ ok: false, error: 'admin only' });
+    return res.status(200).json(await prescoreCommit(String(body.jobId || ''), body.results, _redis));
+  }
+
   // Ad Library dashboard (real ad creatives, free) is served from this same function to stay
   // under the Hobby 12-function cap. It carries no url, so handle it before normalizeUrl
   // (which requires one). Pulls LinkedIn (Jina) + Google (Ads Transparency RPC) in parallel,
@@ -821,6 +830,12 @@ ${items}
     const domKey = String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
     const pullKey = 'ads:pull:v8:' + domKey; // v8: capture the advertiser's /company/<vanity> per card so the exact-homonym guard can drop a same-named different company's ads. v7: template-campaign variants kept + scored, folded to the worst after scoring
     const wantScore = !!body.icp; // the board always sends the ICP; display-only calls don't
+    // Batch pre-scoring, step 1 (admin API key only): run the normal list pull, then answer with the Batch
+    // requests for the creatives that are not scored yet INSTEAD of scoring them here. Never reaches a
+    // live scorer call: the `only` branches below score inline, so they are refused for this mode.
+    const prescoreOk = body.prescore === 'prepare' && wantScore && !body.only;
+    const prescoreAdmin = prescoreOk && await isAdminKey(req, _redis);
+    if (body.prescore && !prescoreAdmin) return res.status(prescoreOk ? 403 : 400).json({ ok: false, error: 'prescore needs prescore:"prepare", an icp, no "only" and an admin API key' });
     const refresh = !!body.refresh;
     // A company's live ads barely change day-to-day, and pulling them costs money/rate-limit (Jina).
     // So we DON'T re-pull on every visit: we keep the last successful pull durably (30d) and SHOW it
@@ -866,7 +881,7 @@ ${items}
        from re-calling. Admin re-score is exempt. Measured 2026-11-16: web-bot was ~15% of AdRoast spend
        (100 board-score calls / 3 days), pure waste since a bot can't convert. */
     const _isBot = NOT_HUMAN_UA.test(String((req.headers || {})['user-agent'] || ''));
-    if (_isBot && !adminRescore && wantScore) {
+    if (_isBot && !adminRescore && !prescoreAdmin && wantScore) {
       if (cachedCopy) {
         const _botAds = collapseTemplateGroups(dropJunkCreatives(cachedCopy.ads || []));
         return res.status(200).json({ ...cachedCopy, ads: _botAds, fresh: { checked: Date.now(), checkedAt: cachedCopy._checkedAt || null, stale: cacheAge >= FRESH_MS, listCached: true, count: _botAds.length, scoredNew: 0, reused: 0, pending: 0, bot: true } });
@@ -1065,6 +1080,10 @@ ${items}
     const META_SCORE_CAP = 1;
     const _toRank = [..._notMeta.slice(0, SCORE_CAP), ..._meta.slice(0, META_SCORE_CAP)];
     const _extras = [..._notMeta.slice(SCORE_CAP), ..._meta.slice(META_SCORE_CAP)];
+    if (prescoreAdmin) {
+      const prep = await prescorePrepare(_toRank, body.icp, _redis);
+      return res.status(200).json({ ...prep, listCount: pull.ads.length, rankCount: _toRank.length, listCached });
+    }
     const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
     // Drop capture_fail ads (homonym / wrong-advertiser / scrape artifact) from the board ENTIRELY,
     // not just from the OG image and worst-pick: a different company that merely shares the name

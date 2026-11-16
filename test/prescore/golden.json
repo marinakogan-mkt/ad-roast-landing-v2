@@ -1,0 +1,554 @@
+{
+ "clean": {
+  "result": {
+   "ads": [
+    {
+     "adId": "li-100",
+     "plat": "LinkedIn",
+     "advertiser": "Acme Sec",
+     "head": "Stop phishing before it lands",
+     "body": "See how 300 security teams cut risk by 40%. Book a demo.",
+     "img": "https://media.example.com/li-100.png",
+     "score": 3,
+     "verdict": "Generic hook, proof is vague.",
+     "tags": [
+      "Weak Hook",
+      "No Proof"
+     ],
+     "title": "Stop phishing before it lands",
+     "job": "demand_gen",
+     "jobLabel": "Direct conversion",
+     "conversion": true,
+     "audienceKind": "primary",
+     "contentKind": null,
+     "dims": {
+      "buyer_fit": 4,
+      "value": 3,
+      "proof": 2,
+      "offer_cta": 4
+     },
+     "audience": "CISOs at mid-market firms",
+     "fit": true,
+     "stage": "conversion"
+    },
+    {
+     "adId": "g-200",
+     "plat": "Google",
+     "advertiser": "Acme Sec",
+     "head": "",
+     "body": "",
+     "img": "https://tpc.example.com/g-200.png",
+     "textless": true
+    },
+    {
+     "adId": "li-300",
+     "plat": "LinkedIn",
+     "advertiser": "Acme Sec",
+     "head": "We are hiring a SOC analyst",
+     "body": "Join our team in Austin.",
+     "img": "https://media.example.com/li-300.png",
+     "talent": true,
+     "job": "talent",
+     "jobLabel": "Hiring / employer brand",
+     "stage": "talent",
+     "conversion": false
+    },
+    {
+     "adId": "li-400",
+     "plat": "LinkedIn",
+     "advertiser": "Acme Sec",
+     "head": "4821937462",
+     "body": "",
+     "img": "https://media.example.com/li-400.png",
+     "_captureFail": true
+    },
+    {
+     "adId": "li-500",
+     "plat": "LinkedIn",
+     "advertiser": "Acme Sec",
+     "head": "Zero trust for the rest of us",
+     "body": "A plain guide. Download it free.",
+     "img": "https://media.example.com/li-500.png"
+    },
+    {
+     "adId": "g-600",
+     "plat": "Google",
+     "advertiser": "Acme Sec",
+     "head": "Endpoint protection pricing",
+     "body": "Compare plans and start a trial today.",
+     "img": "",
+     "score": 7,
+     "verdict": "Clear offer matched to query.",
+     "tags": [
+      "Clear Offer",
+      "Strong CTA"
+     ],
+     "title": "Endpoint protection pricing",
+     "job": "demand_gen",
+     "jobLabel": "Direct conversion",
+     "conversion": true,
+     "audienceKind": "primary",
+     "contentKind": null,
+     "dims": {
+      "buyer_fit": 7,
+      "value": 7,
+      "offer_cta": 8
+     },
+     "audience": "IT buyers",
+     "fit": true,
+     "stage": "conversion"
+    },
+    {
+     "adId": "li-700",
+     "plat": "LinkedIn",
+     "advertiser": "Acme Sec",
+     "head": "Meet us at RSA booth 412",
+     "body": "Come say hi.",
+     "img": "",
+     "score": 6,
+     "verdict": "Event draw is thin, logistics clear.",
+     "tags": [
+      "Thin Draw"
+     ],
+     "title": "Meet us at RSA",
+     "job": "event",
+     "jobLabel": "Event",
+     "conversion": false,
+     "audienceKind": "primary",
+     "contentKind": null,
+     "dims": {
+      "draw": 5,
+      "logistics": 8
+     },
+     "audience": "RSA attendees",
+     "fit": false,
+     "stage": "consideration"
+    }
+   ],
+   "scoredNew": 6,
+   "reused": 0,
+   "pending": 0,
+   "scoreError": null,
+   "rateLimited": false
+  },
+  "writes": [
+   {
+    "key": "adscoring:adscore:v20:1tos3p2:LinkedIn:id:li-100",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v16:1tos3p2:Google:id:g-200",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v20:1tos3p2:LinkedIn:id:li-300",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v20:1tos3p2:LinkedIn:id:li-400",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v20:1tos3p2:LinkedIn:id:li-500",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v16:1tos3p2:Google:id:g-600",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v20:1tos3p2:LinkedIn:id:li-700",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscore:v20:1tos3p2:LinkedIn:id:li-100",
+    "val": "{\"score\":3,\"verdict\":\"Generic hook, proof is vague.\",\"tags\":[\"Weak Hook\",\"No Proof\"],\"title\":\"Stop phishing before it lands\",\"job\":\"demand_gen\",\"audienceKind\":\"primary\",\"contentKind\":null,\"dims\":{\"buyer_fit\":4,\"value\":3,\"proof\":2,\"offer_cta\":4},\"audience\":\"CISOs at mid-market firms\",\"fit\":true}",
+    "ex": 15552000,
+    "nx": false
+   },
+   {
+    "key": "adscore:v16:1tos3p2:Google:id:g-200",
+    "val": "{\"textless\":true}",
+    "ex": 15552000,
+    "nx": false
+   },
+   {
+    "key": "adscore:v20:1tos3p2:LinkedIn:id:li-300",
+    "val": "{\"talent\":true,\"job\":\"talent\"}",
+    "ex": 15552000,
+    "nx": false
+   },
+   {
+    "key": "adscore:v20:1tos3p2:LinkedIn:id:li-400",
+    "val": "{\"_captureFail\":true,\"n\":1,\"retryAt\":1800043200000}",
+    "ex": 15552000,
+    "nx": false
+   },
+   {
+    "key": "adscore:v20:1tos3p2:LinkedIn:id:li-500",
+    "val": "{\"_unscored\":true}",
+    "ex": 21600,
+    "nx": false
+   },
+   {
+    "key": "adscore:v16:1tos3p2:Google:id:g-600",
+    "val": "{\"score\":7,\"verdict\":\"Clear offer matched to query.\",\"tags\":[\"Clear Offer\",\"Strong CTA\"],\"title\":\"Endpoint protection pricing\",\"job\":\"demand_gen\",\"audienceKind\":\"primary\",\"contentKind\":null,\"dims\":{\"buyer_fit\":7,\"value\":7,\"offer_cta\":8},\"audience\":\"IT buyers\",\"fit\":true,\"head\":\"Endpoint protection pricing\",\"body\":\"Compare plans and start a trial today.\"}",
+    "ex": 15552000,
+    "nx": false
+   },
+   {
+    "key": "adscore:v20:1tos3p2:LinkedIn:id:li-700",
+    "val": "{\"score\":6,\"verdict\":\"Event draw is thin, logistics clear.\",\"tags\":[\"Thin Draw\"],\"title\":\"Meet us at RSA\",\"job\":\"event\",\"audienceKind\":\"primary\",\"contentKind\":null,\"dims\":{\"draw\":5,\"logistics\":8},\"audience\":\"RSA attendees\",\"fit\":false}",
+    "ex": 15552000,
+    "nx": false
+   }
+  ],
+  "secondPassNewCalls": 1,
+  "second": {
+   "scoredNew": 0,
+   "reused": 7,
+   "pending": 0
+  },
+  "anthropicRequest": {
+   "model": "claude-sonnet-4-6",
+   "max_tokens": 3000,
+   "temperature": 0,
+   "system": [
+    {
+     "type": "text",
+     "text": "sha256:e41f9ed80e32c041f1ffcebf7ecca1161deb383f694c431a36803117ed03b97f len=22298",
+     "cache_control": {
+      "type": "ephemeral",
+      "ttl": "1h"
+     }
+    }
+   ],
+   "messages": [
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "ICP: B2B cybersecurity buyers: CISOs and security directors at mid-market companies\n\nClassify each ad's JOB and score it 1-10 on that job's dimensions for its intended reader (1 = fails its job, 10 = excellent). This ICP is the primary buyer; buyer-fit to it is scored only for direct-conversion ads. Several ads include their creative image below; READ the copy/text rendered on each creative and judge it as the ad's copy. Ads:\n#0 [LinkedIn] advertiser=\"Acme Sec\" headline=\"Stop phishing before it lands\" body=\"See how 300 security teams cut risk by 40%. Book a demo.\"\n#1 [Google] advertiser=\"Acme Sec\" headline=\"\" body=\"\"\n#2 [LinkedIn] advertiser=\"Acme Sec\" headline=\"We are hiring a SOC analyst\" body=\"Join our team in Austin.\"\n#3 [LinkedIn] advertiser=\"Acme Sec\" headline=\"4821937462\" body=\"\"\n#4 [LinkedIn] advertiser=\"Acme Sec\" headline=\"Zero trust for the rest of us\" body=\"A plain guide. Download it free.\"\n#5 [Google] advertiser=\"Acme Sec\" headline=\"Endpoint protection pricing\" body=\"Compare plans and start a trial today.\"\n#6 [LinkedIn] advertiser=\"Acme Sec\" headline=\"Meet us at RSA booth 412\" body=\"Come say hi.\""
+      },
+      {
+       "type": "text",
+       "text": "Creative image for ad #0:"
+      },
+      {
+       "type": "image",
+       "source": {
+        "type": "base64",
+        "media_type": "image/png",
+        "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+       }
+      },
+      {
+       "type": "text",
+       "text": "Creative image for ad #1:"
+      },
+      {
+       "type": "image",
+       "source": {
+        "type": "base64",
+        "media_type": "image/png",
+        "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+       }
+      },
+      {
+       "type": "text",
+       "text": "Creative image for ad #2:"
+      },
+      {
+       "type": "image",
+       "source": {
+        "type": "url",
+        "url": "https://media.example.com/li-300.png"
+       }
+      },
+      {
+       "type": "text",
+       "text": "Creative image for ad #3:"
+      },
+      {
+       "type": "image",
+       "source": {
+        "type": "url",
+        "url": "https://media.example.com/li-400.png"
+       }
+      },
+      {
+       "type": "text",
+       "text": "Creative image for ad #4:"
+      },
+      {
+       "type": "image",
+       "source": {
+        "type": "url",
+        "url": "https://media.example.com/li-500.png"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "broken": {
+  "result": {
+   "ads": [
+    {
+     "adId": "li-100",
+     "plat": "LinkedIn",
+     "advertiser": "Acme Sec",
+     "head": "Stop phishing before it lands",
+     "body": "See how 300 security teams cut risk by 40%. Book a demo.",
+     "img": "https://media.example.com/li-100.png"
+    },
+    {
+     "adId": "g-200",
+     "plat": "Google",
+     "advertiser": "Acme Sec",
+     "head": "",
+     "body": "",
+     "img": "https://tpc.example.com/g-200.png",
+     "textless": true
+    },
+    {
+     "adId": "li-300",
+     "plat": "LinkedIn",
+     "advertiser": "Acme Sec",
+     "head": "We are hiring a SOC analyst",
+     "body": "Join our team in Austin.",
+     "img": "https://media.example.com/li-300.png"
+    },
+    {
+     "adId": "li-400",
+     "plat": "LinkedIn",
+     "advertiser": "Acme Sec",
+     "head": "4821937462",
+     "body": "",
+     "img": "https://media.example.com/li-400.png",
+     "_captureFail": true
+    },
+    {
+     "adId": "li-500",
+     "plat": "LinkedIn",
+     "advertiser": "Acme Sec",
+     "head": "Zero trust for the rest of us",
+     "body": "A plain guide. Download it free.",
+     "img": "https://media.example.com/li-500.png"
+    },
+    {
+     "adId": "g-600",
+     "plat": "Google",
+     "advertiser": "Acme Sec",
+     "head": "Endpoint protection pricing",
+     "body": "Compare plans and start a trial today.",
+     "img": ""
+    },
+    {
+     "adId": "li-700",
+     "plat": "LinkedIn",
+     "advertiser": "Acme Sec",
+     "head": "Meet us at RSA booth 412",
+     "body": "Come say hi.",
+     "img": ""
+    }
+   ],
+   "scoredNew": 6,
+   "reused": 0,
+   "pending": 0,
+   "scoreError": null,
+   "rateLimited": false
+  },
+  "writes": [
+   {
+    "key": "adscoring:adscore:v20:1tos3p2:LinkedIn:id:li-100",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v16:1tos3p2:Google:id:g-200",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v20:1tos3p2:LinkedIn:id:li-300",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v20:1tos3p2:LinkedIn:id:li-400",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v20:1tos3p2:LinkedIn:id:li-500",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v16:1tos3p2:Google:id:g-600",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscoring:adscore:v20:1tos3p2:LinkedIn:id:li-700",
+    "val": "1",
+    "ex": 90,
+    "nx": true
+   },
+   {
+    "key": "adscore:v20:1tos3p2:LinkedIn:id:li-100",
+    "val": "{\"_unscored\":true}",
+    "ex": 21600,
+    "nx": false
+   },
+   {
+    "key": "adscore:v16:1tos3p2:Google:id:g-200",
+    "val": "{\"textless\":true}",
+    "ex": 15552000,
+    "nx": false
+   },
+   {
+    "key": "adscore:v20:1tos3p2:LinkedIn:id:li-300",
+    "val": "{\"_unscored\":true}",
+    "ex": 21600,
+    "nx": false
+   },
+   {
+    "key": "adscore:v20:1tos3p2:LinkedIn:id:li-400",
+    "val": "{\"_captureFail\":true,\"n\":1,\"retryAt\":1800043200000}",
+    "ex": 15552000,
+    "nx": false
+   },
+   {
+    "key": "adscore:v20:1tos3p2:LinkedIn:id:li-500",
+    "val": "{\"_unscored\":true}",
+    "ex": 21600,
+    "nx": false
+   },
+   {
+    "key": "adscore:v16:1tos3p2:Google:id:g-600",
+    "val": "{\"_unscored\":true}",
+    "ex": 21600,
+    "nx": false
+   },
+   {
+    "key": "adscore:v20:1tos3p2:LinkedIn:id:li-700",
+    "val": "{\"_unscored\":true}",
+    "ex": 21600,
+    "nx": false
+   }
+  ],
+  "secondPassNewCalls": 0,
+  "second": {
+   "scoredNew": 0,
+   "reused": 7,
+   "pending": 0
+  },
+  "anthropicRequest": {
+   "model": "claude-sonnet-4-6",
+   "max_tokens": 3000,
+   "temperature": 0,
+   "system": [
+    {
+     "type": "text",
+     "text": "sha256:e41f9ed80e32c041f1ffcebf7ecca1161deb383f694c431a36803117ed03b97f len=22298",
+     "cache_control": {
+      "type": "ephemeral",
+      "ttl": "1h"
+     }
+    }
+   ],
+   "messages": [
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "ICP: B2B cybersecurity buyers: CISOs and security directors at mid-market companies\n\nClassify each ad's JOB and score it 1-10 on that job's dimensions for its intended reader (1 = fails its job, 10 = excellent). This ICP is the primary buyer; buyer-fit to it is scored only for direct-conversion ads. Several ads include their creative image below; READ the copy/text rendered on each creative and judge it as the ad's copy. Ads:\n#0 [LinkedIn] advertiser=\"Acme Sec\" headline=\"Stop phishing before it lands\" body=\"See how 300 security teams cut risk by 40%. Book a demo.\"\n#1 [Google] advertiser=\"Acme Sec\" headline=\"\" body=\"\"\n#2 [LinkedIn] advertiser=\"Acme Sec\" headline=\"We are hiring a SOC analyst\" body=\"Join our team in Austin.\"\n#3 [LinkedIn] advertiser=\"Acme Sec\" headline=\"4821937462\" body=\"\"\n#4 [LinkedIn] advertiser=\"Acme Sec\" headline=\"Zero trust for the rest of us\" body=\"A plain guide. Download it free.\"\n#5 [Google] advertiser=\"Acme Sec\" headline=\"Endpoint protection pricing\" body=\"Compare plans and start a trial today.\"\n#6 [LinkedIn] advertiser=\"Acme Sec\" headline=\"Meet us at RSA booth 412\" body=\"Come say hi.\""
+      },
+      {
+       "type": "text",
+       "text": "Creative image for ad #0:"
+      },
+      {
+       "type": "image",
+       "source": {
+        "type": "base64",
+        "media_type": "image/png",
+        "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+       }
+      },
+      {
+       "type": "text",
+       "text": "Creative image for ad #1:"
+      },
+      {
+       "type": "image",
+       "source": {
+        "type": "base64",
+        "media_type": "image/png",
+        "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+       }
+      },
+      {
+       "type": "text",
+       "text": "Creative image for ad #2:"
+      },
+      {
+       "type": "image",
+       "source": {
+        "type": "url",
+        "url": "https://media.example.com/li-300.png"
+       }
+      },
+      {
+       "type": "text",
+       "text": "Creative image for ad #3:"
+      },
+      {
+       "type": "image",
+       "source": {
+        "type": "url",
+        "url": "https://media.example.com/li-400.png"
+       }
+      },
+      {
+       "type": "text",
+       "text": "Creative image for ad #4:"
+      },
+      {
+       "type": "image",
+       "source": {
+        "type": "url",
+        "url": "https://media.example.com/li-500.png"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

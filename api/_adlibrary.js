@@ -428,9 +428,11 @@ const _ocr = (v) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 300);
 const DESCRIBED_TITLE = /\bad\s*$|\b(display|banner|image) creative\s*$|^(ad|sponsored|promoted)?\s*(image|photo|graphic|logo|picture)s?$/i;
 const _ownWords = (v) => { const s = String(v || '').trim(); return s && !DESCRIBED_TITLE.test(s) ? s : ''; };
 
-async function scoreAds(ads, icp) {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key || !icp || !ads.length) return ads;
+// The exact Anthropic request scoreAds sends for `ads`, split out so the Batch API path (see
+// prescorePrepare) can ship the SAME prompt, the same images and the same parameters: one place owns
+// the scorer's prompt, so a rubric bump can never leave the batch and the live call out of sync.
+// Returns { params, hadImg }: params is the /v1/messages body, hadImg[i] says whether ad i went as base64.
+export async function buildScoreRequest(ads, icp) {
   const IMG_CAP = 14; // bound the vision tokens per board load
   // Pre-fetch the creatives (parallel, server-side) as base64 so the model actually sees them.
   const toFetch = [];
@@ -497,26 +499,34 @@ PLATFORM LENS: judge each ad by the RIGHT bar for its platform (given as [Google
 [Meta]: cold consumer context feed. Judge the CREATIVE first: the opening frame and first few words must stop the scroll, and the creative should feel native, vertical, and readable with sound off. Tags like "Thumb-stop Fail", "Weak First Words", "Wrong Aspect", "Too Polished".
 
 No markdown. Never use em dashes or en dashes; use commas or periods. Output MUST be valid JSON: inside any string value do NOT use raw double quotes (use single quotes for any quoted phrase) and do not use raw newlines.`;
+  // Determinism: the SAME ads must score the SAME way run to run. Default temp made the board
+  // swing (e.g. Google avg 1.1 one run, 7.7 the next), pure sampling noise, not signal. On
+  // Sonnet 4.6 that is temperature 0; a 5.x model rejects temperature, so modelParams sends
+  // thinking off instead and determinism rests on the rubric, which since the v20 taxonomy
+  // scores every dimension explicitly and has the code compute the final score.
+  // max_tokens 2000: headroom for up to 14 terse JSON rows. A truncated output fails the JSON
+  // parse and wastes the WHOLE call (incl. the expensive vision input), so the cap sits just
+  // above real need rather than at it. Billing is by actual output, so the cap is not a cost.
+  // 3000 (2026-10-16): Google rows now also carry the OCR'd head/body, and an admin re-score
+  // sends up to 18 rows in one call, which could truncate at 2000.
+  // Prompt caching (2026-10-19): `sys` is byte-identical for every board and every user (~2.9K
+  // tokens, above Sonnet 4.6's 1024 minimum), and every per-request piece (ICP, ad lines,
+  // images) lives in the user message after it. So the system block is the cache breakpoint.
+  // 1h TTL: a board scores in several batches seconds apart (limit 3/6/8) and boards from
+  // different users arrive minutes apart, so one 2x write is read many times inside the hour.
+  const params = { model: SCORE_MODEL, max_tokens: 3000, ...modelParams(SCORE_MODEL), system: [{ type: 'text', text: sys, cache_control: { type: 'ephemeral', ttl: '1h' } }], messages: [{ role: 'user', content }] };
+  return { params, hadImg: ads.map((a, i) => !!imgByIdx[i]) };
+}
+
+async function scoreAds(ads, icp) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key || !icp || !ads.length) return ads;
+  const { params, hadImg } = await buildScoreRequest(ads, icp);
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      // Determinism: the SAME ads must score the SAME way run to run. Default temp made the board
-      // swing (e.g. Google avg 1.1 one run, 7.7 the next), pure sampling noise, not signal. On
-      // Sonnet 4.6 that is temperature 0; a 5.x model rejects temperature, so modelParams sends
-      // thinking off instead and determinism rests on the rubric, which since the v20 taxonomy
-      // scores every dimension explicitly and has the code compute the final score.
-      // max_tokens 2000: headroom for up to 14 terse JSON rows. A truncated output fails the JSON
-      // parse and wastes the WHOLE call (incl. the expensive vision input), so the cap sits just
-      // above real need rather than at it. Billing is by actual output, so the cap is not a cost.
-      // 3000 (2026-10-16): Google rows now also carry the OCR'd head/body, and an admin re-score
-      // sends up to 18 rows in one call, which could truncate at 2000.
-      // Prompt caching (2026-10-19): `sys` is byte-identical for every board and every user (~2.9K
-      // tokens, above Sonnet 4.6's 1024 minimum), and every per-request piece (ICP, ad lines,
-      // images) lives in the user message after it. So the system block is the cache breakpoint.
-      // 1h TTL: a board scores in several batches seconds apart (limit 3/6/8) and boards from
-      // different users arrive minutes apart, so one 2x write is read many times inside the hour.
-      body: JSON.stringify({ model: SCORE_MODEL, max_tokens: 3000, ...modelParams(SCORE_MODEL), system: [{ type: 'text', text: sys, cache_control: { type: 'ephemeral', ttl: '1h' } }], messages: [{ role: 'user', content }] }),
+      body: JSON.stringify(params),
     });
     const d = await r.json().catch(() => null);
     logClaudeUsage('board-score', SCORE_MODEL, d, 'ads=' + ads.length);
@@ -533,56 +543,61 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
       err.rateLimited = r.status === 429 || r.status === 529 || /rate.?limit|overloaded|credit|billing|quota/i.test((e.type || '') + ' ' + (e.message || ''));
       throw err;
     }
-    const txt = d.content?.[0]?.text || '';
-    const mm = txt.match(/\[[\s\S]*\]/);
-    if (!mm) { console.error('[scoreAds] no JSON array in response:', txt.slice(0, 200)); throw new Error('scoreAds: unparseable response'); }
-    let scores;
-    try {
-      scores = JSON.parse(mm[0]);
-    } catch (e1) {
-      // ONE malformed row (e.g. an unescaped quote inside a title/verdict) used to fail the whole
-      // JSON.parse and waste the entire batch, so the board could never get past that creative.
-      // Salvage every well-formed {...} row and skip only the broken one; it retries next pull.
-      scores = [];
-      const objs = mm[0].match(/\{[^{}]*\}/g) || [];
-      for (const o of objs) { try { scores.push(JSON.parse(o)); } catch (e2) { /* skip the bad row */ } }
-      if (!scores.length) { console.error('[scoreAds] JSON salvage failed:', String(e1.message), mm[0].slice(0, 300)); throw new Error('scoreAds: JSON parse failed'); }
-      console.error('[scoreAds] salvaged ' + scores.length + '/' + objs.length + ' rows after parse error: ' + String(e1.message));
-    }
-    const byI = {};
-    for (const s of scores) if (typeof s.i === 'number') byI[s.i] = s;
-    // head falls back to the model's title so image-only Google ads (no headline text) still
-    // show a real name in the board/preview instead of "Live creative".
-    return ads.map((a, i) => {
-      // CAPTURE FAILURE, not a bad ad: the ad reached the model with NO copy (empty headline+body)
-      // AND we never got its creative as base64. The model then had nothing real to judge and scores
-      // it "broken" (a false low score). That is OUR capture failing, not the advertiser's ad, so it
-      // must never appear on the prospect's board as their broken ad. Flag it; isJunkCreative drops it.
-      // The model flagged this as a capture artifact (error page, internal identifier, wrong
-      // advertiser's brand, UI chrome) - our capture, not the advertiser's ad. Drop it.
-      if (byI[i] && byI[i].flag === 'capture_fail') return { ...a, _captureFail: true };
-      const blind = !(a.head || '').trim() && !(a.body || '').trim() && !imgByIdx[i];
-      if (blind) return { ...a, _captureFail: true };
-      if (!byI[i]) return a;
-      // Image-only ad with no readable copy: shown unscored (greyed), never with an invented title.
-      if (byI[i].textless === true && !(a.head || '').trim() && !(a.body || '').trim()) return { ...a, textless: true };
-      if (typeof byI[i].score !== 'number' && normalizeJob(byI[i].job) !== 'talent') return a;
-      const t = _ownWords(byI[i].title);
-      const job = normalizeJob(byI[i].job);
-      const aud = /^(secondary|segment|localized)$/.test(String(byI[i].audience_kind || '')) ? byI[i].audience_kind : 'primary';
-      // Hiring / employer-brand posts speak to candidates, not buyers: kept off the board and out of every average.
-      if (JOBS[job].unscored) return { ...a, talent: true, job };
-      const dims = cleanDims(job, byI[i].dims, a.plat);
-      const sc = scoreFromDims(job, dims, byI[i].score, a.plat);
-      if (sc == null) return a;
-      return { ...a, score: sc, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.filter((t) => !ARTIFACT_TAG.test(String(t))).slice(0, 4) : [], title: t || null, job, audienceKind: aud, contentKind: job === 'content' ? (byI[i].content_kind || null) : null, dims, audience: byI[i].audience || null, fit: job === 'demand_gen' && aud === 'primary', evidence: byI[i].evidence || null, ocrHead: _ocr(byI[i].head), ocrBody: _ocr(byI[i].body), head: a.head || _ocr(byI[i].head) || t || '', body: a.body || _ocr(byI[i].body) || '' };
-    });
+    return parseScoreText(ads, d.content?.[0]?.text || '', hadImg);
   } catch (e) {
     // A parse error or a thrown hard-failure: re-throw so scoreAdsCached reports it instead of
     // silently returning unscored ads. (fetch/network errors also land here and propagate.)
     console.error('[scoreAds] failed:', e.message);
     throw e;
   }
+}
+
+// Turn the model's text into scored ads (the half of scoreAds after the call). Throws the same errors,
+// with the same messages, as before. hadImg[i]: ad i's creative reached the model as base64.
+export function parseScoreText(ads, txt, hadImg) {
+  const mm = txt.match(/\[[\s\S]*\]/);
+  if (!mm) { console.error('[scoreAds] no JSON array in response:', txt.slice(0, 200)); throw new Error('scoreAds: unparseable response'); }
+  let scores;
+  try {
+    scores = JSON.parse(mm[0]);
+  } catch (e1) {
+    // ONE malformed row (e.g. an unescaped quote inside a title/verdict) used to fail the whole
+    // JSON.parse and waste the entire batch, so the board could never get past that creative.
+    // Salvage every well-formed {...} row and skip only the broken one; it retries next pull.
+    scores = [];
+    const objs = mm[0].match(/\{[^{}]*\}/g) || [];
+    for (const o of objs) { try { scores.push(JSON.parse(o)); } catch (e2) { /* skip the bad row */ } }
+    if (!scores.length) { console.error('[scoreAds] JSON salvage failed:', String(e1.message), mm[0].slice(0, 300)); throw new Error('scoreAds: JSON parse failed'); }
+    console.error('[scoreAds] salvaged ' + scores.length + '/' + objs.length + ' rows after parse error: ' + String(e1.message));
+  }
+  const byI = {};
+  for (const s of scores) if (typeof s.i === 'number') byI[s.i] = s;
+  // head falls back to the model's title so image-only Google ads (no headline text) still
+  // show a real name in the board/preview instead of "Live creative".
+  return ads.map((a, i) => {
+    // CAPTURE FAILURE, not a bad ad: the ad reached the model with NO copy (empty headline+body)
+    // AND we never got its creative as base64. The model then had nothing real to judge and scores
+    // it "broken" (a false low score). That is OUR capture failing, not the advertiser's ad, so it
+    // must never appear on the prospect's board as their broken ad. Flag it; isJunkCreative drops it.
+    // The model flagged this as a capture artifact (error page, internal identifier, wrong
+    // advertiser's brand, UI chrome) - our capture, not the advertiser's ad. Drop it.
+    if (byI[i] && byI[i].flag === 'capture_fail') return { ...a, _captureFail: true };
+    const blind = !(a.head || '').trim() && !(a.body || '').trim() && !hadImg[i];
+    if (blind) return { ...a, _captureFail: true };
+    if (!byI[i]) return a;
+    // Image-only ad with no readable copy: shown unscored (greyed), never with an invented title.
+    if (byI[i].textless === true && !(a.head || '').trim() && !(a.body || '').trim()) return { ...a, textless: true };
+    if (typeof byI[i].score !== 'number' && normalizeJob(byI[i].job) !== 'talent') return a;
+    const t = _ownWords(byI[i].title);
+    const job = normalizeJob(byI[i].job);
+    const aud = /^(secondary|segment|localized)$/.test(String(byI[i].audience_kind || '')) ? byI[i].audience_kind : 'primary';
+    // Hiring / employer-brand posts speak to candidates, not buyers: kept off the board and out of every average.
+    if (JOBS[job].unscored) return { ...a, talent: true, job };
+    const dims = cleanDims(job, byI[i].dims, a.plat);
+    const sc = scoreFromDims(job, dims, byI[i].score, a.plat);
+    if (sc == null) return a;
+    return { ...a, score: sc, verdict: byI[i].verdict, tags: Array.isArray(byI[i].tags) ? byI[i].tags.filter((t) => !ARTIFACT_TAG.test(String(t))).slice(0, 4) : [], title: t || null, job, audienceKind: aud, contentKind: job === 'content' ? (byI[i].content_kind || null) : null, dims, audience: byI[i].audience || null, fit: job === 'demand_gen' && aud === 'primary', evidence: byI[i].evidence || null, ocrHead: _ocr(byI[i].head), ocrBody: _ocr(byI[i].body), head: a.head || _ocr(byI[i].head) || t || '', body: a.body || _ocr(byI[i].body) || '' };
+  });
 }
 
 // --- Per-creative score cache (token optimization) ------------------------------------
@@ -717,6 +732,88 @@ async function verifyLowScores(ads, icp, redis) {
 export const ICP_UNKNOWN = /^\W*(the\s+)?((buyer|icp|ideal customer|advertiser|audience|target)\b[^.]{0,40}?\s)?(cannot|can ?not|could not|unable to)\s+(be\s+)?(determined|identified|inferred|reliably determined)|\b(domain|website|page) (is )?(parked|for sale)\b|\bdomain[\s-](parking|for[\s-]sale|auction)\b|\bparked domain\b|\bno (advertiser|company) identity\b/i;
 export function icpIsUnknown(icp) { const t = String(icp || '').trim(); return !t || ICP_UNKNOWN.test(t.slice(0, 400)); }
 
+// The cache key of one creative's score under this ICP. Shared by scoreAdsCached (live) and the Batch
+// API path (prescorePrepare / prescoreCommit), so both read and write the SAME slot. The history of
+// the v16 / v20 namespaces and SCORE_NS lives in the long comment inside scoreAdsCached.
+export function scoreKeyFn(icp) {
+  const ih = icpHash(icp);
+  return (a) => 'adscore:' + (/google/i.test(String(a.plat || '')) ? 'v16' : 'v20') + ':' + ih + ':' + creativeSig(a) + SCORE_NS;
+}
+
+// Read the per-creative score cache for `ads`: { cachedBySig, failSeen }. An ad in cachedBySig is
+// "known" (leaves `need`); everything else is a miss that has to be scored.
+async function loadScoreCache(ads, keyOf, redis) {
+  const cachedBySig = {};
+  const failSeen = {}; // past capture-failures, including ones whose retry window has already opened
+  try {
+    const vals = await redis.mget(...ads.map(keyOf));
+    ads.forEach((a, i) => {
+      const v = vals && vals[i];
+      const o = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null;
+      if (!o) return;
+      // A cached capture-failure counts as "known" so the ad leaves `need` (no re-score loop) and
+      // still gets dropped downstream, but only until its retry window opens. Entries written
+      // before the backoff have no retryAt: treat those as still inside the window, so a deploy
+      // doesn't re-bill every known failure at once.
+      if (o._captureFail) {
+        failSeen[creativeSig(a)] = o;
+        if (!o.retryAt || Date.now() < o.retryAt) cachedBySig[creativeSig(a)] = o;
+        return;
+      }
+      // Otherwise only a real numeric score (or a known textless / talent / unscorable row) is a
+      // cache hit. _unscored is the short-lived marker for a creative the scorer handed back with
+      // no number: without it that creative never enters the cache and is re-billed for ever.
+      if (typeof o.score === 'number' || o.textless || o.talent || o._unscored) cachedBySig[creativeSig(a)] = o;
+    });
+  } catch (e) { /* miss -> score all */ }
+  return { cachedBySig, failSeen };
+}
+
+// What to remember about a freshly scored batch: { entries: [{ key, val, ex }], freshBySig, failBySig }.
+// The caller does the writing (live: plain SET; the Batch commit: SET NX, so it never overwrites a score
+// a person already paid for live).
+function scoredRowsToEntries(scored, keyOf, failSeen) {
+  const entries = [], freshBySig = {}, failBySig = {};
+  for (const a of scored) {
+    // Capture failure: remember it so it drops out of `need` and doesn't loop the client's
+    // re-score. The retry window now BACKS OFF (12h, then 3d, 14d, 60d) instead of reopening
+    // every 12 hours for ever. A creative that failed once transiently (a timeout / 429) still
+    // comes back and scores fairly within the day, which is all the short window was for, but a
+    // permanently uncapturable one stops buying a full vision score twice a day: at a flat 12h
+    // that was about 60 paid scores a month each, for a row the board drops and never shows.
+    if (a._captureFail) {
+      failBySig[creativeSig(a)] = true;
+      const n = ((failSeen[creativeSig(a)] || {}).n || 0) + 1;
+      const wait = n === 1 ? 60 * 60 * 12 : n === 2 ? 60 * 60 * 24 * 3 : n === 3 ? 60 * 60 * 24 * 14 : 60 * 60 * 24 * 60;
+      entries.push({ key: keyOf(a), val: { _captureFail: true, n, retryAt: Date.now() + wait * 1000 }, ex: ADSCORE_TTL });
+      continue;
+    }
+    // No readable copy on the creative: remember it (it won't grow text) so it leaves `need`.
+    if (a.textless) { const o = { textless: true }; freshBySig[creativeSig(a)] = o; entries.push({ key: keyOf(a), val: o, ex: ADSCORE_TTL }); continue; }
+    // Hiring / employer-brand post: known (leaves `need`), never scored, dropped from the board.
+    if (a.talent) { const o = { talent: true, job: 'talent' }; freshBySig[creativeSig(a)] = o; entries.push({ key: keyOf(a), val: o, ex: ADSCORE_TTL }); continue; }
+    // The scorer returned this creative with no number (or skipped its index entirely), and it
+    // is not textless / talent / capture-fail. Before 2026-11-09 we cached NOTHING here, so the
+    // creative never entered the 30-day cache and was re-sent to the vision call on EVERY board
+    // open, for ever: the outreach gate alone re-billed the same "N ads sin puntaje" companies
+    // three times a day (see reports/2026-11-05-anthropic-api-costos.md). Remember it for a few
+    // hours so it leaves `need`, with a SHORT ttl so a creative that only failed transiently
+    // still gets a fair score the same day. The board shows it exactly as before: unscored.
+    if (typeof a.score !== 'number') {
+      const o = { _unscored: true };
+      freshBySig[creativeSig(a)] = o;
+      entries.push({ key: keyOf(a), val: o, ex: 60 * 60 * 6 });
+      continue;
+    }
+    const o = { score: a.score, verdict: a.verdict, tags: Array.isArray(a.tags) ? a.tags.slice(0, 4) : [], title: a.title || null, job: a.job || null, audienceKind: a.audienceKind || 'primary', contentKind: a.contentKind || null, dims: a.dims || {}, audience: a.audience || null, fit: a.fit === false ? false : true };
+    if (a.ocrHead) o.head = a.ocrHead;
+    if (a.ocrBody) o.body = a.ocrBody;
+    freshBySig[creativeSig(a)] = o;
+    entries.push({ key: keyOf(a), val: o, ex: ADSCORE_TTL });
+  }
+  return { entries, freshBySig, failBySig };
+}
+
 export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0 } = {}) {
   if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0, pending: 0 };
   if (icpIsUnknown(icp)) return { ads, scoredNew: 0, reused: 0, pending: ads.length, noIcp: true };
@@ -777,32 +874,9 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // nothing already cached is invalidated. With it, the trial model writes into its own namespace.
   // Without this the test was not a test: scoring one board with another model stored that model's
   // verdict for 180 days under the key production reads, with no way back except a full re-score.
-  const keyOf = (a) => 'adscore:' + (/google/i.test(String(a.plat || '')) ? 'v16' : 'v20') + ':' + ih + ':' + creativeSig(a) + SCORE_NS;
-  const cachedBySig = {};
-  const failSeen = {}; // past capture-failures, including ones whose retry window has already opened
-  if (!force) {
-    try {
-      const vals = await redis.mget(...ads.map(keyOf));
-      ads.forEach((a, i) => {
-        const v = vals && vals[i];
-        const o = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null;
-        if (!o) return;
-        // A cached capture-failure counts as "known" so the ad leaves `need` (no re-score loop) and
-        // still gets dropped downstream, but only until its retry window opens. Entries written
-        // before the backoff have no retryAt: treat those as still inside the window, so a deploy
-        // doesn't re-bill every known failure at once.
-        if (o._captureFail) {
-          failSeen[creativeSig(a)] = o;
-          if (!o.retryAt || Date.now() < o.retryAt) cachedBySig[creativeSig(a)] = o;
-          return;
-        }
-        // Otherwise only a real numeric score (or a known textless / talent / unscorable row) is a
-        // cache hit. _unscored is the short-lived marker for a creative the scorer handed back with
-        // no number: without it that creative never enters the cache and is re-billed for ever.
-        if (typeof o.score === 'number' || o.textless || o.talent || o._unscored) cachedBySig[creativeSig(a)] = o;
-      });
-    } catch (e) { /* miss -> score all */ }
-  }
+  const keyOf = scoreKeyFn(icp);
+  // failSeen: past capture-failures, including ones whose retry window has already opened
+  const { cachedBySig, failSeen } = force ? { cachedBySig: {}, failSeen: {} } : await loadScoreCache(ads, keyOf, redis);
   const need = ads.filter(a => !cachedBySig[creativeSig(a)]);
   // Bound how many NEW creatives we score in one call: scoreAds is a Sonnet vision call, and the
   // pull + scoring must fit Vercel's 60s function limit. On a big FRESH board that one call 504s, so
@@ -830,44 +904,10 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   if (toScore.length) {
     try {
       const scored = await scoreAds(toScore, icp);
-      const writes = [];
-      for (const a of scored) {
-        // Capture failure: remember it so it drops out of `need` and doesn't loop the client's
-        // re-score. The retry window now BACKS OFF (12h, then 3d, 14d, 60d) instead of reopening
-        // every 12 hours for ever. A creative that failed once transiently (a timeout / 429) still
-        // comes back and scores fairly within the day, which is all the short window was for, but a
-        // permanently uncapturable one stops buying a full vision score twice a day: at a flat 12h
-        // that was about 60 paid scores a month each, for a row the board drops and never shows.
-        if (a._captureFail) {
-          failBySig[creativeSig(a)] = true;
-          const n = ((failSeen[creativeSig(a)] || {}).n || 0) + 1;
-          const wait = n === 1 ? 60 * 60 * 12 : n === 2 ? 60 * 60 * 24 * 3 : n === 3 ? 60 * 60 * 24 * 14 : 60 * 60 * 24 * 60;
-          writes.push(redis.set(keyOf(a), JSON.stringify({ _captureFail: true, n, retryAt: Date.now() + wait * 1000 }), { ex: ADSCORE_TTL }));
-          continue;
-        }
-        // No readable copy on the creative: remember it (it won't grow text) so it leaves `need`.
-        if (a.textless) { const o = { textless: true }; freshBySig[creativeSig(a)] = o; writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL })); continue; }
-        // Hiring / employer-brand post: known (leaves `need`), never scored, dropped from the board.
-        if (a.talent) { const o = { talent: true, job: 'talent' }; freshBySig[creativeSig(a)] = o; writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL })); continue; }
-        // The scorer returned this creative with no number (or skipped its index entirely), and it
-        // is not textless / talent / capture-fail. Before 2026-11-09 we cached NOTHING here, so the
-        // creative never entered the 30-day cache and was re-sent to the vision call on EVERY board
-        // open, for ever: the outreach gate alone re-billed the same "N ads sin puntaje" companies
-        // three times a day (see reports/2026-11-05-anthropic-api-costos.md). Remember it for a few
-        // hours so it leaves `need`, with a SHORT ttl so a creative that only failed transiently
-        // still gets a fair score the same day. The board shows it exactly as before: unscored.
-        if (typeof a.score !== 'number') {
-          const o = { _unscored: true };
-          freshBySig[creativeSig(a)] = o;
-          writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: 60 * 60 * 6 }));
-          continue;
-        }
-        const o = { score: a.score, verdict: a.verdict, tags: Array.isArray(a.tags) ? a.tags.slice(0, 4) : [], title: a.title || null, job: a.job || null, audienceKind: a.audienceKind || 'primary', contentKind: a.contentKind || null, dims: a.dims || {}, audience: a.audience || null, fit: a.fit === false ? false : true };
-        if (a.ocrHead) o.head = a.ocrHead;
-        if (a.ocrBody) o.body = a.ocrBody;
-        freshBySig[creativeSig(a)] = o;
-        writes.push(redis.set(keyOf(a), JSON.stringify(o), { ex: ADSCORE_TTL }));
-      }
+      const built = scoredRowsToEntries(scored, keyOf, failSeen);
+      Object.assign(freshBySig, built.freshBySig);
+      Object.assign(failBySig, built.failBySig);
+      const writes = built.entries.map(e => redis.set(e.key, JSON.stringify(e.val), { ex: e.ex }));
       try { await Promise.all(writes); } catch (e) { /* best-effort */ }
       try { await Promise.all(toScore.map(a => redis.del(lockOf(a)))); } catch (e) { /* expires on its own */ }
     } catch (e) {
@@ -920,6 +960,85 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   const scoredNew = Object.keys(freshBySig).length;
   const failedNew = Object.keys(failBySig).length;
   return { ads: outChecked, scoredNew, reused: Object.keys(cachedBySig).length, pending: Math.max(0, need.length - scoredNew - failedNew - need.filter(a => cachedBySig[creativeSig(a)]).length), scoreError, rateLimited };
+}
+
+// --- Batch API pre-scoring (admin only; nothing calls it until the outreach engine does) ----------
+// The outreach engine scores the board of every candidate it DISCOVERS, and nobody is waiting on that
+// answer: it is the one place where the Batch API (50% price, up to 24h) fits without making anyone
+// wait. The split is: the SERVER owns the prompt and the parsing (so a rubric bump can never leave
+// the batch out of sync with the live scorer), the CLIENT owns the transport (lotes.py in the engine).
+//   prescorePrepare: the creatives that are NOT in the score cache, as ready-to-send batch requests
+//                    (identical to what scoreAds would send), plus a job in Redis to commit against.
+//   prescoreCommit:  the batch's answers go through the SAME parser and write the SAME adscore keys,
+//                    so the board the engine reads next is a pure cache hit (0 tokens).
+// Anything the batch does not resolve (expired, cancelled, unparseable) stays a cache miss and is
+// scored live exactly as before, so this can only ever save money, never leave a board unscored.
+const PRESCORE_TTL = 60 * 60 * 48;
+const PRESCORE_PER_REQUEST = 8; // what the live path scores per call on a cached list
+const PRESCORE_MAX_BYTES = 3_800_000; // Vercel caps a response at 4.5 MB; base64 creatives are the weight
+const prescoreJobKey = (id) => 'prescore:job:' + id;
+
+export async function prescorePrepare(ads, icp, redis, { perRequest = PRESCORE_PER_REQUEST } = {}) {
+  if (!redis) return { ok: false, reason: 'no_redis' };
+  if (!icp || icpIsUnknown(icp)) return { ok: false, reason: 'no_icp' };
+  const keyOf = scoreKeyFn(icp);
+  const { cachedBySig } = await loadScoreCache(ads, keyOf, redis);
+  const seen = new Set();
+  const need = ads.filter(a => { const sig = creativeSig(a); if (cachedBySig[sig] || seen.has(sig)) return false; seen.add(sig); return true; });
+  const out = { ok: true, jobId: null, requests: [], need: need.length, cached: Object.keys(cachedBySig).length, truncated: false };
+  if (!need.length) return out;
+  const jobId = crypto.randomBytes(8).toString('hex');
+  const chunks = [];
+  let bytes = 0;
+  for (let i = 0, n = 0; i < need.length; i += perRequest, n++) {
+    const part = need.slice(i, i + perRequest);
+    const { params, hadImg } = await buildScoreRequest(part, icp);
+    const size = JSON.stringify(params).length;
+    if (chunks.length && bytes + size > PRESCORE_MAX_BYTES) { out.truncated = true; break; } // the rest scores live later
+    bytes += size;
+    const cid = jobId + '-' + n;
+    chunks.push({ cid, ads: part, hadImg });
+    out.requests.push({ custom_id: cid, params });
+  }
+  await redis.set(prescoreJobKey(jobId), JSON.stringify({ icp, at: Date.now(), chunks }), { ex: PRESCORE_TTL });
+  out.jobId = jobId;
+  return out;
+}
+
+// results: { custom_id: { texto, usage } } as lotes.correr returns it. Missing / unparseable chunks are
+// skipped (they stay cache misses). A score a person already paid for live is never overwritten.
+export async function prescoreCommit(jobId, results, redis) {
+  if (!redis) return { ok: false, reason: 'no_redis' };
+  if (!/^[0-9a-f]{16}$/.test(String(jobId || ''))) return { ok: false, reason: 'bad_job' };
+  const raw = await redis.get(prescoreJobKey(jobId));
+  if (!raw) return { ok: false, reason: 'job_expired_or_done' };
+  const job = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  const keyOf = scoreKeyFn(job.icp);
+  const res = { ok: true, written: 0, alreadyThere: 0, skipped: 0, failed: [] };
+  for (const ch of job.chunks || []) {
+    const r = results && results[ch.cid];
+    if (!r || typeof r.texto !== 'string') { res.skipped += ch.ads.length; continue; }
+    if (r.usage) recordUsage('board-score-lote', SCORE_MODEL, r.usage);
+    let scored;
+    try { scored = parseScoreText(ch.ads, r.texto, ch.hadImg); }
+    catch (e) { res.failed.push({ custom_id: ch.cid, error: String(e.message).slice(0, 120) }); continue; }
+    const { failSeen } = await loadScoreCache(ch.ads, keyOf, redis);
+    const { entries } = scoredRowsToEntries(scored, keyOf, failSeen);
+    let existing = [];
+    try { existing = await redis.mget(...entries.map(e => e.key)); } catch (e) { existing = []; }
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      const cur = existing[i] ? (typeof existing[i] === 'string' ? JSON.parse(existing[i]) : existing[i]) : null;
+      // Only an empty slot, or a placeholder (an unscored marker / a capture failure whose retry window
+      // opened), may be written. A real score, textless or talent row is somebody's finished work.
+      const placeholder = !cur || cur._unscored || (cur._captureFail && !(cur.retryAt && Date.now() < cur.retryAt));
+      if (!placeholder) { res.alreadyThere++; continue; }
+      const wrote = await redis.set(e.key, JSON.stringify(e.val), cur ? { ex: e.ex } : { ex: e.ex, nx: true });
+      if (wrote) res.written++; else res.alreadyThere++;
+    }
+  }
+  try { await redis.del(prescoreJobKey(jobId)); } catch (e) { /* expires in 48h */ }
+  return res;
 }
 
 // --- LinkedIn (free, via Jina Reader) -------------------------------------------------
