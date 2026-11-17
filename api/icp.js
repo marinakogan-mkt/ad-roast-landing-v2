@@ -30,7 +30,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 import { withUsage } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, META_ON, scoreAdsCached, prescorePrepare, prescoreCommit, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, META_ON, scoreAdsCached, prescorePrepare, prescoreCommit, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams, scoreKeyFn } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -1078,8 +1078,34 @@ ${items}
     // daily top-ups started. One scored Meta ad is what the /b/<domain>/meta card and the outreach
     // cover need; the rest ride along greyed like any other extras, same as before.
     const META_SCORE_CAP = 1;
-    const _toRank = [..._notMeta.slice(0, SCORE_CAP), ..._meta.slice(0, META_SCORE_CAP)];
-    const _extras = [..._notMeta.slice(SCORE_CAP), ..._meta.slice(META_SCORE_CAP)];
+    /* Point the cap at creatives we have ALREADY paid to score.
+       The cap is a slice over `pull.ads`, and that list's order is NOT stable between pulls: when the
+       list is re-pulled the "first SCORE_CAP" is a DIFFERENT set, so a board that was fully scored two
+       days ago comes back and buys SCORE_CAP fresh scores while the ones it already owns sit in the
+       cache, still on the board, asked for by nobody.
+       Measured 2026-11-17 on boards opened on the 14th and not since: chilipiper.com (43 ads) reused
+       3 of 18 and re-scored the rest, while cast.ai (25) and cloudprotection.com (6) reused
+       everything. Creative rotation is NOT the cause: both of those boards carry `adId` on 100% of
+       their ads, so `creativeSig` is stable; what changed is WHICH 18 the slice picked.
+       `_NEW_SLOTS` of the cap stay reserved for unscored creatives, or a board whose cache is already
+       full would never score an ad that appeared later. Same model, same prompt, same verdict: the
+       only thing this changes is which ads take the paid slots. */
+    const _NEW_SLOTS = 4;
+    const preferScored = async (ads) => {
+      if (!_redis || !Array.isArray(ads) || ads.length <= SCORE_CAP) return ads;
+      try {
+        const keyOf = scoreKeyFn(body.icp);
+        const vals = await _redis.mget(...ads.map(keyOf));
+        const paid = [], nuevos = [];
+        ads.forEach((a, i) => ((vals && vals[i]) ? paid : nuevos).push(a));
+        if (!paid.length || !nuevos.length) return ads;
+        const keep = Math.max(0, SCORE_CAP - _NEW_SLOTS);
+        return [...paid.slice(0, keep), ...nuevos, ...paid.slice(keep)];
+      } catch (e) { return ads; }
+    };
+    const _notMetaRanked = await preferScored(_notMeta);
+    const _toRank = [..._notMetaRanked.slice(0, SCORE_CAP), ..._meta.slice(0, META_SCORE_CAP)];
+    const _extras = [..._notMetaRanked.slice(SCORE_CAP), ..._meta.slice(META_SCORE_CAP)];
     if (prescoreAdmin) {
       const prep = await prescorePrepare(_toRank, body.icp, _redis);
       return res.status(200).json({ ...prep, listCount: pull.ads.length, rankCount: _toRank.length, listCached });
