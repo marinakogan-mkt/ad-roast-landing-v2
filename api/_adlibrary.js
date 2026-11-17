@@ -1549,8 +1549,13 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
       const img = i0.originalUrl || i0.resizedUrl || v0.previewImageUrl || null;
       const body = firstTxt(it.body, ...list(it.creativeBodies));
       const title = firstTxt(it.title, ...list(it.creativeTitles), it.linkDescription);
-      // Collapse exact duplicates (Meta advertisers run the same creative in many ad sets).
-      const sig = (img ? String(img).split('?')[0] : '') + '|' + body.slice(0, 120);
+      // Collapse duplicates. The SAME creative runs across many ad sets and placements (Facebook /
+      // Instagram / Reels), each served under a DIFFERENT CDN image URL, so an image-keyed signature
+      // misses them. Key on the TEXT (title + body) first, and fall back to the image only when there
+      // is too little text to key on. (Damani: 6 of 8 cards were the same ad under IG/FB placements.)
+      const _nrm = (x) => String(x || '').toLowerCase().replace(/[^\w ]+/g, ' ').replace(/\s+/g, ' ').trim();
+      const _txt = (_nrm(title) + ' ' + _nrm(body)).trim();
+      const sig = _txt.length >= 12 ? ('t:' + _txt.slice(0, 180)) : ('i:' + (img ? String(img).split('?')[0] : String(seen.size)));
       if (seen.has(sig)) { if (st) st.dup++; continue; }
       seen.add(sig);
       out.push({
@@ -1722,14 +1727,32 @@ export async function fetchAllAds({ company, domain, icp, metaPage = null, limit
     meta: (mt.ads && mt.ads.length) ? 'ok' : (mt.reason || 'no_ads'),
     meta_tried: metaTried,
   };
-  let ads = [...(li.ads || []), ...(gg.ads || []), ...(mt.ads || [])].slice(0, limit);
+  let ads = [...(li.ads || []), ...(gg.ads || []), ...(mt.ads || [])];
+  // Collapse same-creative dupes that each platform's own image/id dedup misses: the SAME ad under
+  // different placements (Meta Instagram vs Facebook) or re-rendered at different sizes (Google
+  // responsive) arrives as distinct image URLs / ad ids but identical copy. Key WITHIN a platform by
+  // normalized visible text; fall back to image/id/detail only when an ad carries no readable copy, so
+  // genuinely image-only creatives stay distinct. Runs before scoring, so we never pay to score a dupe,
+  // and before the slice, so uniques are never dropped in favour of a dupe. (Damani showed the same
+  // reel 6x under IG/FB placements; SmartBear showed one Google creative 6x at different sizes.)
+  const _nrmTxt = (x) => String(x || '').toLowerCase().replace(/[^\w ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const _dedupeKey = (a) => {
+    const t = (_nrmTxt(a.head || a.headline) + ' ' + _nrmTxt(a.body)).trim();
+    const base = t.length >= 12 ? ('t:' + t.slice(0, 180))
+      : a.img ? ('i:' + String(a.img).split('?')[0])
+      : a.adId ? ('a:' + a.adId)
+      : a.detailUrl ? ('d:' + String(a.detailUrl).split('?')[0]) : null;
+    return base ? (String(a.plat || '') + '|' + base) : null;
+  };
+  const _seenAll = new Set();
+  ads = ads.filter((a) => { const k = _dedupeKey(a); if (!k) return true; if (_seenAll.has(k)) return false; _seenAll.add(k); return true; });
+  // Totals are the honest distinct-creative count PER PLATFORM, taken from the deduped list so the
+  // board's "showing X of N" never counts the dupes we just collapsed.
+  const _platCount = (p) => ads.filter((a) => String(a.plat || '').toLowerCase() === p).length;
+  const totals = { linkedin: _platCount('linkedin'), google: _platCount('google'), meta: _platCount('meta') };
+  ads = ads.slice(0, limit);
   if (!ads.length) return { ok: false, reason: (li.reason || gg.reason || mt.reason || 'no_ads'), ads: [], sources, notes };
   if (icp) ads = await scoreAds(ads, icp);
-  const totals = {
-    linkedin: (typeof li.total === 'number' ? li.total : (li.ads || []).length),
-    google: (typeof gg.total === 'number' ? gg.total : (gg.ads || []).length),
-    meta: (typeof mt.total === 'number' ? mt.total : (mt.ads || []).length),
-  };
   return { ok: true, ads, count: ads.length, sources, notes, totals };
 }
 

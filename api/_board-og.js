@@ -244,6 +244,15 @@ export async function boardOgHandler(req, res) {
     // Platform view: its own title and numbers, from the same clean list filtered to that platform.
     const platAds = plat ? ads.filter(a => String(a.plat || '').toLowerCase() === plat) : [];
     const platStats = platAds.length ? boardStats(platAds) : null;
+    // Which platforms this company actually has clean live ads on, so the board-wide title and
+    // description name only those (a company with 0 Google ads never reads "LinkedIn & Google", and
+    // the list reflects Meta now that it is live). Falls back to all three only when there are no ads.
+    const _present = ['LinkedIn', 'Google', 'Meta'].filter(P => ads.some(a => String(a.plat || '').toLowerCase() === P.toLowerCase()));
+    const _join = (arr, amp) => arr.length === 0 ? (amp ? 'LinkedIn, Google & Meta' : 'LinkedIn, Google and Meta')
+      : arr.length === 1 ? arr[0]
+      : arr.slice(0, -1).join(', ') + (amp ? ' & ' : ' and ') + arr[arr.length - 1];
+    const platsAnd = _join(_present, false);
+    const platsAmp = _join(_present, true);
     // Marina's own copy, 9 nov 2026. One line per card, and the two never repeat: the board link
     // names the company, the platform link names the ad. That split is the point of the card split,
     // so a company on a single platform does not get the identical preview under both messages.
@@ -256,13 +265,15 @@ export async function boardOgHandler(req, res) {
         ? company + "'s live " + platLabel + ' ads, each scored against their ideal buyer. ' + platStats.count + ' live ' + platLabel + ' ads, ' + platStats.avg + '/10 average fit, ' + platStats.toFix + ' to fix.'
         : company + "'s live " + platLabel + ' ads, each scored against their ideal buyer, with the exact fix for the ones to change first.')
       : stats
-      ? company + "'s live LinkedIn and Google ads, each scored against their ideal buyer. " + stats.count + ' live ads, ' + stats.avg + '/10 average fit, ' + stats.toFix + ' to fix. See the board.'
-      : company + "'s live LinkedIn and Google ads, each scored against their ideal buyer, with the exact fixes. Free, no card.";
+      ? company + "'s live " + platsAnd + " ads, each scored against their ideal buyer. " + stats.count + ' live ads, ' + stats.avg + '/10 average fit, ' + stats.toFix + ' to fix. See the board.'
+      : company + "'s live " + platsAnd + " ads, each scored against their ideal buyer, with the exact fixes. Free, no card.";
 
     // Search-engine identity of the page: without these the board ships the home's <title>,
     // meta description and canonical (https://www.adroast.in/), so Google folds every board into
     // the home as a duplicate and never indexes it. Board-specific, self-canonical.
-    const docTitle = company + ' LinkedIn & Google ads, scored against their buyer | AdRoast';
+    const docTitle = (plat
+      ? company + ' live ' + platLabel + ' ads, scored against their buyer'
+      : company + ' ' + platsAmp + ' ads, scored against their buyer') + ' | AdRoast';
     html = replaceTag(html, /<title>[^<]*<\/title>/, `<title>${attr(docTitle)}</title>`);
     html = replaceTag(html, /(<meta name="description" content=")[^"]*(">)/, `$1${attr(desc)}$2`);
     html = replaceTag(html, /(<link rel="canonical" href=")[^"]*(">)/, `$1${attr(boardUrl)}$2`);
@@ -316,7 +327,7 @@ export async function boardOgHandler(req, res) {
         return `<li><strong>${h}</strong>${sc}${v}</li>`;
       }).join('');
       const statLine = stats ? ` Their average fit to their own ideal buyer is ${stats.avg} out of 10, and ${stats.toFix === 1 ? '1 ad needs fixing' : stats.toFix + ' ads need fixing'}.` : '';
-      const intro = `${attr(company)} is running ${listable.length} live ads on LinkedIn and Google.${statLine} Each ad below is one of ${attr(company)}&rsquo;s real live creatives, read straight from the ad libraries.`;
+      const intro = `${attr(company)} is running ${listable.length} live ads on ${attr(platsAnd)}.${statLine} Each ad below is one of ${attr(company)}&rsquo;s real live creatives, read straight from the ad libraries.`;
       const content = '<main style="max-width:720px;margin:0 auto;padding:40px 20px;font-family:system-ui,-apple-system,sans-serif;color:#1f2937;line-height:1.65">'
         + `<h1 style="font-size:26px;font-weight:600;letter-spacing:-.3px">${attr(title)}</h1>`
         + `<p>${intro}</p>`
