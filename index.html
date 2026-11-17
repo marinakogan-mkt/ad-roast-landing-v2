@@ -2357,7 +2357,7 @@
         const platSet = allPlat ? Array.from(new Set(sc.map(a => a.plat).filter(Boolean))) : [];
         // Honest count: how many DISTINCT live creatives we found vs how many we're showing, so the
         // board never implies the shown ads are all of them. totals come from the pull (per platform).
-        const _liveTotal = (real && real.totals) ? ((real.totals.linkedin || 0) + (real.totals.google || 0)) : 0;
+        const _liveTotal = (real && real.totals) ? ((real.totals.linkedin || 0) + (real.totals.google || 0) + (real.totals.meta || 0)) : 0;
         // "Fix first" is the worst CONVERSION ad (AD TAXONOMY): a brand or content post can score lower
         // for its own reasons, but it must not be the ad the board leads with (Leadfeeder, 5 nov 2026).
         const _hasConv = sc.some(a => a.conversion !== false);
@@ -2439,7 +2439,7 @@
                 <div className="rounded-full mt-3" style={{ height: 6, background: '#eef1f5', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: (barReady ? offPct : 0) + '%', borderRadius: 99, background: gravOff.c, transition: 'width 1s cubic-bezier(.22,1,.36,1)' }} />
                 </div>
-                <div className="text-gray-500" style={{ fontSize: 11.5, marginTop: 7 }}>of your live ads reach the wrong buyer</div>
+                <div className="text-gray-500" style={{ fontSize: 11.5, marginTop: 7 }}>{off + ' of ' + sc.length + ' scored ' + (sc.length === 1 ? 'ad reaches' : 'ads reach') + ' the wrong buyer'}</div>
               </div>
               <div className="card-lift bg-white border rounded-2xl" style={{ borderColor: fitSev.bd, padding: '14px 18px 16px', boxShadow: '0 1px 2px rgba(11,15,26,.04), 0 8px 22px rgba(11,15,26,.05)' }}>
                 <div style={{ marginBottom: 9 }}><span className="inline-flex items-center gap-1.5 rounded-full font-bold" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.03em', color: fitSev.c, background: fitSev.bg, border: '1px solid ' + fitSev.bd, padding: '2px 8px' }}><span style={{ width: 5, height: 5, borderRadius: 99, background: fitSev.c, display: 'inline-block' }} />{fitSev.label}</span></div>
@@ -2447,7 +2447,7 @@
                   <span className="font-extrabold" style={{ fontSize: 'clamp(26px,5vw,34px)', color: fitSev.c, lineHeight: 1, letterSpacing: '-0.02em' }}>{avgFit.toFixed(1)}<span className="text-gray-400 font-bold" style={{ fontSize: '0.45em' }}>/10</span></span>
                   <span className="font-bold text-gray-900" style={{ fontSize: 13.5 }}>avg fit</span>
                 </div>
-                <div className="text-gray-500" style={{ fontSize: 11.5, marginTop: 7 }}>across all your live ads</div>
+                <div className="text-gray-500" style={{ fontSize: 11.5, marginTop: 7 }}>{'across your ' + sc.length + ' scored live ' + (sc.length === 1 ? 'ad' : 'ads')}</div>
               </div>
             </div>
             {/* Ranked spectrum in its OWN card: title + platform logos + count, then preview + track. */}
@@ -3043,7 +3043,20 @@
                             <div className="text-gray-700" style={{ fontSize: 12.5, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.5em' }}>{a.verdict || a.body}</div>
                           </div>
                         );
-                      })() : ((a.verdict || a.body) && <div className="text-gray-500" style={{ fontSize: 13, lineHeight: 1.4 }}>{a.verdict || a.body}</div>)}
+                      })() : (() => {
+                        // Unscored cards (e.g. the Meta extras held back by META_SCORE_CAP) must read like
+                        // a scored card, not dump the raw ad copy. Same left-rail + label structure, body
+                        // stripped of hashtags / emails / phone numbers and clamped to 2 lines.
+                        const raw = a.verdict || a.body || '';
+                        const clean = String(raw).replace(/#[^\s#]+/g, '').replace(/[\w.+-]+@[\w.-]+\.\w{2,}/g, '').replace(/\+?\d[\d\s().-]{7,}\d/g, '').replace(/\s{2,}/g, ' ').trim();
+                        if (!clean) return null;
+                        return (
+                          <div style={{ borderLeft: '3px solid #e2e8f0', padding: '1px 0 1px 12px' }}>
+                            <div className="flex items-center gap-1.5" style={{ marginBottom: 7, color: '#94a3b8' }}><span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Not scored yet</span></div>
+                            <div className="text-gray-500" style={{ fontSize: 12.5, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.5em' }}>{clean}</div>
+                          </div>
+                        );
+                      })()}
                       {free
                         ? <button onClick={() => setSel(a)} className="w-full font-bold text-white rounded-lg mt-3 hover:opacity-90 transition-opacity inline-flex items-center justify-center gap-1.5" style={{ fontSize: 13.5, padding: '10px', background: '#0a66c2' }}><Icon name="flame" className="w-4 h-4" />Roast this ad →</button>
                         : <button onClick={() => setSel(a)} className="w-full font-bold rounded-lg mt-3" style={{ fontSize: 13.5, padding: '10px', border: '1px dashed #cbd5e1', color: '#0a66c2', background: '#fff' }}>Roast this ad →</button>}
@@ -3067,7 +3080,7 @@
             </>)}
             </>)}
 
-            {(usingReal || !attemptedReal) && <p className="text-gray-400 mt-8" style={{ fontSize: 12.5, maxWidth: '70ch' }}>{usingReal ? (ads.some(a => a.plat === 'Meta') ? 'Real live ads pulled from the LinkedIn Ad Library, Google Ads Transparency Center and Meta Ad Library.' : 'Real live ads pulled from the LinkedIn Ad Library and Google Ads Transparency Center. Meta is coming next.') : 'Sample data for the preview. Enter a website above to pull that company’s real live ads.'}</p>}
+            {(usingReal || !attemptedReal) && <p className="text-gray-400 mt-8" style={{ fontSize: 12.5, maxWidth: '70ch' }}>{usingReal ? (() => { const NM = { LinkedIn: 'the LinkedIn Ad Library', Google: 'the Google Ads Transparency Center', Meta: 'the Meta Ad Library' }; const pr = ['LinkedIn', 'Google', 'Meta'].filter(p => ads.some(a => a.plat === p)).map(p => NM[p]); const s = pr.length ? pr : [NM.LinkedIn, NM.Google, NM.Meta]; const j = s.length === 1 ? s[0] : s.slice(0, -1).join(', ') + ' and ' + s[s.length - 1]; return 'Real live ads pulled from ' + j + '.'; })() : 'Sample data for the preview. Enter a website above to pull that company’s real live ads.'}</p>}
           </main>
 
           {/* "Coming soon" detail for a platform we don't pull yet (e.g. Meta): clickable, not a
