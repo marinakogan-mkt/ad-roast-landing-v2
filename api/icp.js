@@ -873,13 +873,14 @@ ${items}
         _checkedAt: Date.now(),
         _metaAt: cachedCopy._metaAt,
       };
-      // Keep the 1-Meta-per-board scoring cap on a LinkedIn retry too: send LinkedIn/Google + only the
-      // first Meta ad to the scorer, and carry the extra (greyed) Meta ads along UNSCORED, exactly as the
-      // full board does. Without this, a retry would score the greyed Meta extras the main path holds back.
+      // Mirror the main path's Meta scoring cap on a LinkedIn retry: send LinkedIn/Google + the first
+      // META_SCORE_CAP Meta ads to the scorer, and carry any beyond that along UNSCORED, exactly as the
+      // full board does. Without this the two paths would score a different number of Meta ads.
+      const META_SCORE_CAP = 8;
       const _mRetry = merged.ads.filter(a => (a.plat || '') === 'Meta');
-      const _toScoreRetry = [...merged.ads.filter(a => (a.plat || '') !== 'Meta'), ..._mRetry.slice(0, 1)];
+      const _toScoreRetry = [...merged.ads.filter(a => (a.plat || '') !== 'Meta'), ..._mRetry.slice(0, META_SCORE_CAP)];
       const scM = await scoreAdsCached(_toScoreRetry, body.icp, _redis, { force: false, limit: 3 });
-      const mergedAll = dropJunkCreatives(scM.ads).concat(_mRetry.slice(1)); // keep every template variant in the cache; collapse only what we return
+      const mergedAll = dropJunkCreatives(scM.ads).concat(_mRetry.slice(META_SCORE_CAP)); // keep every template variant in the cache; collapse only what we return
       merged.ads = collapseTemplateGroups(mergedAll);
       if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify({ ...merged, ads: mergedAll }), { ex: CACHE_TTL }); } catch (e) {} }
       return res.status(200).json({ ...merged, fresh: { checked: Date.now(), checkedAt: merged._checkedAt, stale: false, listCached: false, count: merged.ads.length, scoredNew: scM.scoredNew, reused: scM.reused, pending: scM.pending, scoreError: scM.scoreError || null, rateLimited: !!scM.rateLimited } });
@@ -1042,11 +1043,15 @@ ${items}
     // the first few get scored; the rest ride along greyed like any other extras.
     const _meta = pull.ads.filter(a => (a.plat || '') === 'Meta');
     const _notMeta = pull.ads.filter(a => (a.plat || '') !== 'Meta');
-    // 2026-11-09, Marina: 6 -> 1. Scoring is the expensive part of a board (Sonnet 4.6 vision, 89%
-    // of the Anthropic bill in the 30 days to 5 Nov), and Meta went live on 1 Nov, the same day the
-    // daily top-ups started. One scored Meta ad is what the /b/<domain>/meta card and the outreach
-    // cover need; the rest ride along greyed like any other extras, same as before.
-    const META_SCORE_CAP = 1;
+    // 2026-11-09, Marina: 6 -> 1, because scoring is the expensive part of a board (Sonnet 4.6 vision,
+    // 89% of the Anthropic bill in the 30 days to 5 Nov) and Meta had just gone live, un-deduped, so one
+    // scored Meta ad kept the bill down while most Meta cards were the SAME creative anyway.
+    // 2026-11-18, Marina: 1 -> 8 ("puntuá todos, pero optimizá costo"). The cross-platform text dedup
+    // (fetchAllAds) now collapses the IG/FB-placement dupes, so a normal board has ~2-3 UNIQUE Meta ads
+    // and 8 scores all of them while still bounding a rare big advertiser. The spend is held by the real
+    // levers, not by starving Meta: the 30-day per-creative cache, the in-flight lock (billed once), the
+    // per-request `limit` below (3/8 new creatives, rest pending), and IMG_CAP=14 vision calls per board.
+    const META_SCORE_CAP = 8;
     const _toRank = [..._notMeta.slice(0, SCORE_CAP), ..._meta.slice(0, META_SCORE_CAP)];
     const _extras = [..._notMeta.slice(SCORE_CAP), ..._meta.slice(META_SCORE_CAP)];
     const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
