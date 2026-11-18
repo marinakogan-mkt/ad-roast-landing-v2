@@ -829,6 +829,12 @@ ${items}
        the Sonnet scorer, so it is never forced; a changed ICP re-scores on its own via the icpHash. */
     const domKey = String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
     setUsageBoard(domKey); // spend per board, read with /api/roast-view?action=usage&boards=1
+    /* Junk slugs from a scraper that concatenates a missing variable: the 17 Nov visits briefing
+       logged one hitting `/b/<domain>undefined` over and over. There is no such company, so a pull
+       and an ICP detection would be bought for nothing. Answer empty and free. */
+    if (/undefined$|^undefined/.test(domKey)) {
+      return res.status(200).json({ ok: true, ads: [], sources: {}, notes: {}, fresh: { checked: Date.now(), checkedAt: null, stale: true, listCached: false, count: 0, scoredNew: 0, reused: 0, pending: 0, junk: true } });
+    }
     const pullKey = 'ads:pull:v8:' + domKey; // v8: capture the advertiser's /company/<vanity> per card so the exact-homonym guard can drop a same-named different company's ads. v7: template-campaign variants kept + scored, folded to the worst after scoring
     const wantScore = !!body.icp; // the board always sends the ICP; display-only calls don't
     // Batch pre-scoring, step 1 (admin API key only): run the normal list pull, then answer with the Batch
@@ -882,7 +888,33 @@ ${items}
        from re-calling. Admin re-score is exempt. Measured 2026-11-16: web-bot was ~15% of AdRoast spend
        (100 board-score calls / 3 days), pure waste since a bot can't convert. */
     const _isBot = NOT_HUMAN_UA.test(String((req.headers || {})['user-agent'] || ''));
-    if (_isBot && !adminRescore && !prescoreAdmin && wantScore) {
+    /* The User-Agent gate above only catches a crawler that admits to being one, and a disguise costs
+       nothing to put on: measured 2026-11-18, one visitor sending a plain Firefox-on-Windows UA opened
+       14 different boards in 49 seconds, 3.3 s apart, with no scroll and no click, and 78 of the 196
+       board visits in five days (40%) never interacted at all, several of them from Microsoft, Amazon
+       and Google datacenters. Behaviour cannot be disguised the way a header can, so count distinct
+       boards per visitor per hour and, past the limit, fall into the same cached-and-free path the
+       declared bots already take. This is NOT a spending cap: nothing is blocked, the board still
+       opens with every creative we already paid to score, only the fresh buying stops. A prospect
+       opens the single board we linked them and never comes near the limit; a signed-in account is
+       exempt, and so is anything with an API key, which is how the outreach engine calls in. */
+    const BOARDS_POR_HORA = 5;
+    let _toomany = false;
+    if (!_isBot && wantScore && _redis && domKey) {
+      try {
+        const h = req.headers || {};
+        const ip = String(h['x-real-ip'] || h['x-forwarded-for'] || '').split(',')[0].trim();
+        const logueado = !!readSessionCookie(req);
+        if (ip && !logueado) {
+          const kv = 'board:ritmo:' + Buffer.from(ip).toString('base64url').slice(0, 24);
+          const vistos = await _redis.sadd(kv, domKey);
+          if (vistos === 1) await _redis.expire(kv, 3600);
+          const n = await _redis.scard(kv);
+          _toomany = n > BOARDS_POR_HORA;
+        }
+      } catch (e) { _toomany = false; } // medir nunca niega el board
+    }
+    if ((_isBot || _toomany) && !adminRescore && !prescoreAdmin && wantScore) {
       if (cachedCopy) {
         const _botAds = collapseTemplateGroups(dropJunkCreatives(cachedCopy.ads || []));
         return res.status(200).json({ ...cachedCopy, ads: _botAds, fresh: { checked: Date.now(), checkedAt: cachedCopy._checkedAt || null, stale: cacheAge >= FRESH_MS, listCached: true, count: _botAds.length, scoredNew: 0, reused: 0, pending: 0, bot: true } });
