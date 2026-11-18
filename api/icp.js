@@ -1129,10 +1129,19 @@ ${items}
        3 of 18 and re-scored the rest, while cast.ai (25) and cloudprotection.com (6) reused
        everything. Creative rotation is NOT the cause: both of those boards carry `adId` on 100% of
        their ads, so `creativeSig` is stable; what changed is WHICH 18 the slice picked.
-       `_NEW_SLOTS` of the cap stay reserved for unscored creatives, or a board whose cache is already
-       full would never score an ad that appeared later. Same model, same prompt, same verdict: the
-       only thing this changes is which ads take the paid slots. */
-    const _NEW_SLOTS = 4;
+       NO slot is reserved for unscored creatives. Reserving some was this fix's first shape and it was
+       wrong twice over, which the counter below showed with 85 real requests on 2026-11-18: the old
+       ordering bought 1.62 unscored creatives per request and the reserved slots bought 4.12, so the
+       reordering cost 212 extra scores in half a day. 62 of those 85 requests were boards whose cap
+       was ALREADY full of paid creatives, and on those the reservation bought 4 scores the old order
+       would never have bought. A board that is full inside the cap did not score a late-arriving
+       creative before this fix either, so reserving slots was not a cost cut with the same output, it
+       was buying a different, more complete board. Marina asked for the first, not the second.
+       What is left is only the ordering: already-paid creatives take the paid slots first, unscored
+       ones fill whatever is left. The window can then never hold fewer paid creatives than the
+       original order did, so this is provably never worse, and the ceiling it can save is exactly
+       what the old order was buying: 138 creatives in half a day, about 32 USD/mes. */
+    const _NEW_SLOTS = 0;
     const preferScored = async (ads) => {
       if (!_redis || !Array.isArray(ads) || ads.length <= SCORE_CAP) return ads;
       try {
@@ -1141,17 +1150,7 @@ ${items}
         const paid = [], nuevos = [];
         ads.forEach((a, i) => ((vals && vals[i]) ? paid : nuevos).push(a));
         if (!paid.length || !nuevos.length) return ads;
-        /* Hold slots back for unscored creatives ONLY once the cap is already full of paid ones.
-           Holding them back unconditionally was a defect, caught by the counter below six hours after
-           it shipped: with 16 paid out of 43, keep=14 pushed 2 already-paid creatives OUT of the cap
-           and pulled 2 unscored ones IN, so the reordering bought 2 scores the old order would not
-           have. Measured 2026-11-18: 20 requests, ads_viejo 80 vs ads_nuevo 94, i.e. 14 scores WORSE.
-           With paid below the cap there are unscored creatives inside the window already, so no slot
-           needs reserving, and the window can never hold fewer paid ones than the original order did:
-           the reordering is then provably never worse. Above the cap the 4 slots are deliberate, and a
-           board that is already fully scored inside the cap would otherwise never score a creative the
-           advertiser added later. */
-        const keep = paid.length >= SCORE_CAP ? Math.max(0, SCORE_CAP - _NEW_SLOTS) : SCORE_CAP;
+        const keep = Math.max(0, SCORE_CAP - _NEW_SLOTS);
         const orden = [...paid.slice(0, keep), ...nuevos, ...paid.slice(keep)];
         /* Exact count of what the reordering saves on THIS request, so the saving never has to be
            inferred from a week of billing: `ads_viejo` is how many fresh scores the OLD order would
@@ -1168,8 +1167,8 @@ ${items}
           pl.hincrby(kk, 'llamadas', 1);
           pl.hincrby(kk, 'ads_viejo', viejo);
           pl.hincrby(kk, 'ads_nuevo', nuevo);
-          // Paid-so-far, so a negative day can be read apart: above the cap the 4 reserved slots buy
-          // genuinely new creatives on purpose, which is spending, not waste.
+          // Paid-so-far and how often the cap was already full: the two numbers that showed the
+          // reserved slots were buying scores instead of saving them.
           pl.hincrby(kk, 'pagos', paid.length);
           if (paid.length >= SCORE_CAP) pl.hincrby(kk, 'llamadas_cap_lleno', 1);
           pl.expire(kk, 60 * 60 * 24 * 120);
