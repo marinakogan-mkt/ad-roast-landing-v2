@@ -194,13 +194,27 @@ export default async function handler(req, res) {
     try {
       const days = Math.min(Math.max(parseInt(req.query.days || '14', 10) || 14, 1), 120);
       const out = {};
+      const slice = {};
+      const boards = {};
+      const porBoard = String(req.query.boards || '') === '1';
       for (let i = 0; i < days; i++) {
         const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
         const h = await redis.hgetall('usage:day:' + d);
         if (h && Object.keys(h).length) out[d] = h;
+        // `slice`: how many creatives the board scorer's cap bought under the old ordering vs the
+        // one that prefers already-scored creatives (api/icp.js -> preferScored). ads_viejo minus
+        // ads_nuevo is exactly how many paid re-scores the reordering avoided that day.
+        const sl = await redis.hgetall('usage:slice:' + d);
+        if (sl && Object.keys(sl).length) slice[d] = sl;
+        // Per-board rows only when asked: a busy day carries hundreds of companies and the default
+        // reader (scripts/gasto_adroast.py) does not need them.
+        if (porBoard) {
+          const bh = await redis.hgetall('usage:boards:' + d);
+          if (bh && Object.keys(bh).length) boards[d] = bh;
+        }
       }
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ days: out });
+      return res.status(200).json({ days: out, slice, ...(porBoard ? { boards } : {}) });
     } catch (e) {
       return res.status(500).json({ error: 'usage read failed' });
     }

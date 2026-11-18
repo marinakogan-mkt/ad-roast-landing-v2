@@ -71,6 +71,19 @@ function keepAlive(p) {
   } catch (e) { /* best effort */ }
 }
 
+/* Name the company whose board this request is about, so spend can be read per board and not only
+   per origin. Needed because `web` mixes three very different payers: a prospect who clicked the
+   link we sent, a stranger who found the site, and a crawler whose User-Agent the bot gate missed.
+   Crossing the domain against the outreach database tells them apart after the fact, with no marker
+   in the DM and no extra character in a 300-character invite note. Best effort: an unset board just
+   means no per-board row. */
+export function setUsageBoard(dom) {
+  try {
+    const st = als.getStore();
+    if (st) st.board = tag(String(dom || '').replace(/^https?:\/\//i, '').split('/')[0].replace(/^www\./i, ''));
+  } catch (e) { /* nunca rompe el pedido */ }
+}
+
 /* Count one Anthropic response. `u` is data.usage. */
 export function recordUsage(site, model, u) {
   if (!u) return;
@@ -93,6 +106,15 @@ export function recordUsage(site, model, u) {
     if (u.cache_read_input_tokens) pl.hincrby(k, base + 'cr', u.cache_read_input_tokens);
     if (u.output_tokens) pl.hincrby(k, base + 'out', u.output_tokens);
     pl.expire(k, 60 * 60 * 24 * 120);
+    // Per-board rows, only for requests that named a board. Output tokens go in too because they are
+    // ~58% of the cost of a score, so calls alone would misprice a board with long verdicts.
+    if (st && st.board) {
+      const kb = 'usage:boards:' + day;
+      const bb = `${st.board}|${origin}|`;
+      pl.hincrby(kb, bb + 'calls', 1);
+      if (u.output_tokens) pl.hincrby(kb, bb + 'out', u.output_tokens);
+      pl.expire(kb, 60 * 60 * 24 * 120);
+    }
     await pl.exec();
   })().catch(() => {});
   keepAlive(p);

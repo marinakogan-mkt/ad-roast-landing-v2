@@ -27,7 +27,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
    (hashed): each distinct ad link gets its own entry, and re-detecting the exact same link
    still hits cache. Pass { refresh: true } to force a fresh inference. Redis is optional:
    if it's unavailable we just skip the cache and infer. */
-import { withUsage } from './_usage.js';
+import { withUsage, setUsageBoard } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
 import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, META_ON, scoreAdsCached, prescorePrepare, prescoreCommit, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams, scoreKeyFn } from './_adlibrary.js';
@@ -828,6 +828,7 @@ ${items}
        ones keep their cached score). A full re-score from scratch would blow Vercel's 60s limit with
        the Sonnet scorer, so it is never forced; a changed ICP re-scores on its own via the icpHash. */
     const domKey = String(body.domain || body.company || '').trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
+    setUsageBoard(domKey); // spend per board, read with /api/roast-view?action=usage&boards=1
     const pullKey = 'ads:pull:v8:' + domKey; // v8: capture the advertiser's /company/<vanity> per card so the exact-homonym guard can drop a same-named different company's ads. v7: template-campaign variants kept + scored, folded to the worst after scoring
     const wantScore = !!body.icp; // the board always sends the ICP; display-only calls don't
     // Batch pre-scoring, step 1 (admin API key only): run the normal list pull, then answer with the Batch
@@ -1100,7 +1101,26 @@ ${items}
         ads.forEach((a, i) => ((vals && vals[i]) ? paid : nuevos).push(a));
         if (!paid.length || !nuevos.length) return ads;
         const keep = Math.max(0, SCORE_CAP - _NEW_SLOTS);
-        return [...paid.slice(0, keep), ...nuevos, ...paid.slice(keep)];
+        const orden = [...paid.slice(0, keep), ...nuevos, ...paid.slice(keep)];
+        /* Exact count of what the reordering saves on THIS request, so the saving never has to be
+           inferred from a week of billing: `ads_viejo` is how many fresh scores the OLD order would
+           have bought here, `ads_nuevo` how many this order buys. The difference, times the measured
+           ~0.0078 USD per creative, is the money saved. Read it with
+           /api/roast-view?action=usage (`slice` in the response, Redis key `usage:slice:<day>`).
+           Fire and forget: never awaited, cannot throw, cannot delay the board. */
+        try {
+          const pagos = new Set(paid);
+          const viejo = ads.slice(0, SCORE_CAP).filter(a => !pagos.has(a)).length;
+          const nuevo = orden.slice(0, SCORE_CAP).filter(a => !pagos.has(a)).length;
+          const kk = 'usage:slice:' + new Date().toISOString().slice(0, 10);
+          const pl = _redis.pipeline();
+          pl.hincrby(kk, 'llamadas', 1);
+          pl.hincrby(kk, 'ads_viejo', viejo);
+          pl.hincrby(kk, 'ads_nuevo', nuevo);
+          pl.expire(kk, 60 * 60 * 24 * 120);
+          Promise.resolve(pl.exec()).catch(() => {});
+        } catch (e) { /* medir nunca rompe el board */ }
+        return orden;
       } catch (e) { return ads; }
     };
     const _notMetaRanked = await preferScored(_notMeta);
