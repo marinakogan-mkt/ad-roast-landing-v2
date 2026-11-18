@@ -1248,15 +1248,29 @@ ${items}
        board que el motor ya pago entero. Asi que primero entran TODOS los que ya estan en el cache,
        que no cuestan nada, y despues se completa hasta `cap` por plataforma con los que habria que
        comprar. Un board ya puntuado no compra nada y no pierde nada; uno nuevo compra dos filas. */
-    const _dosFilas = (lista, cap) => {
+    /* `tope` es el total y `cap` las dos filas por plataforma, y el orden de las dos reglas importa.
+       Primero entran los que ya estan pagos, hasta `tope`: no cuestan nada y sacarlos del board le
+       cambiaria los numeros del encabezado a un prospecto sobre un board que el motor ya pago. Solo
+       si queda lugar bajo `tope` se completa con los que habria que comprar, hasta `cap` por
+       plataforma, contando los pagos que esa plataforma ya tiene.
+       `tope` esta por una razon concreta, encontrada verificando en produccion el 18 nov: sin el,
+       cast.ai devolvia 18 creativos puntuados con la clave del motor y 25 sin clave, porque el
+       camino exento corta en 18 y el otro se quedaba con los 25 pagos. Ninguno de los dos gastaba
+       un token, pero el promedio y el "cuantos hay que arreglar" del board salian calculados sobre
+       distinto numero, y el DM del motor cita los suyos. Con `tope` los dos caminos coinciden.
+       Y el tope va ANTES de comprar, no despues: al reves se pagaba una segunda fila que el corte
+       final dejaba afuera del board. */
+    const _dosFilas = (lista, cap, tope) => {
       const usado = {}, elegido = new Set();
       for (const a of lista) {
+        if (elegido.size >= tope) break;
         if (!(_pagos && _pagos.has(a))) continue;
         const k = a.plat || '?';
         usado[k] = (usado[k] || 0) + 1;
         elegido.add(a);
       }
       for (const a of lista) {
+        if (elegido.size >= tope) break;
         if (elegido.has(a)) continue;
         const k = a.plat || '?';
         if ((usado[k] || 0) >= cap) continue;
@@ -1269,7 +1283,7 @@ ${items}
     };
     let _toRank, _extras;
     if (_recorte) {
-      const [_dentro, _fuera] = _dosFilas(_notMetaRanked, Math.min(CAP_POR_PLAT, SCORE_CAP));
+      const [_dentro, _fuera] = _dosFilas(_notMetaRanked, Math.min(CAP_POR_PLAT, SCORE_CAP), SCORE_CAP);
       _toRank = [..._dentro, ..._meta.slice(0, META_SCORE_CAP)];
       _extras = [..._fuera, ..._meta.slice(META_SCORE_CAP)];
       /* Lo que el recorte hace de verdad, contado en el momento, para no tener que inferirlo de una
