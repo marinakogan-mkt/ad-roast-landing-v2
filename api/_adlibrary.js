@@ -31,9 +31,15 @@ import zlib from 'node:zlib';
 // hash is part of every score cache key. So flipping that one would re-score boards as their 60-day
 // ICP cache turns over, which is the single most expensive thing this product can do. Flip
 // ANTHROPIC_SCORE_MODEL to try a scorer, and leave ICP detection where it is.
-const SCORE_MODEL = process.env.ANTHROPIC_SCORE_MODEL || process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
-// Suffix for the score cache namespace: empty unless a scorer is being tried on purpose.
-const SCORE_NS = process.env.ANTHROPIC_SCORE_MODEL ? ':' + String(process.env.ANTHROPIC_SCORE_MODEL).replace(/[^a-z0-9]+/gi, '') : '';
+const SCORE_DEFAULT = 'claude-sonnet-4-6';
+const SCORE_MODEL = process.env.ANTHROPIC_SCORE_MODEL || process.env.ANTHROPIC_ICP_MODEL || SCORE_DEFAULT;
+// Suffix for the score cache namespace: empty unless a scorer is being tried on purpose. Comparing
+// against SCORE_DEFAULT, not against the var being set at all (2026-11-18): the only way to try
+// another ICP model without dragging the scorer along is to PIN the scorer, and pinning it to the
+// model it already runs meant setting ANTHROPIC_SCORE_MODEL=claude-sonnet-4-6, which used to add a
+// suffix and orphan every score already paid for. Pinning the current model is now a no-op on the
+// cache, which is what makes an ICP-model test affordable.
+const SCORE_NS = (process.env.ANTHROPIC_SCORE_MODEL && process.env.ANTHROPIC_SCORE_MODEL !== SCORE_DEFAULT) ? ':' + String(process.env.ANTHROPIC_SCORE_MODEL).replace(/[^a-z0-9]+/gi, '') : '';
 
 // One compact line per Anthropic call so prompt-cache hits can be checked in Vercel runtime logs
 // (grep "[claude-usage]"). in = uncached input, cw = cache write, cr = cache read. Never throws.
