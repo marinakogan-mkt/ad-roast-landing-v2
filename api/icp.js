@@ -1289,6 +1289,16 @@ ${items}
     } catch (e) { /* cache miss / outage -> infer below */ }
   }
 
+  /* A declared crawler that lands on a company we have never analysed still got the paid ICP
+     detection: the board scorer's bot gate sits further down, after this point. Measured 2026-11-18:
+     board-score calls from `web-bot` went 87 -> 8 -> 0 once that gate shipped, while `icp` calls from
+     the same bots stayed at 16 a day. A crawler reads whatever is cached, and a cache miss costs it
+     nothing from here on. Nothing is written to the cache, so the next real visitor still gets a
+     proper detection. */
+  if (NOT_HUMAN_UA.test(String((req.headers || {})['user-agent'] || ''))) {
+    return res.status(200).json({ company: '', website: '', summary: '', icp_text: '', tags: [], _bot: true });
+  }
+
   // Fetch the site (best-effort — if it fails we infer from the domain alone).
   let site = { title: brand, desc: '', body: '' };
   try { site = await fetchSite(url); } catch (e) { /* keep fallback */ }
