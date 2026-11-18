@@ -79,7 +79,19 @@ try {
     _redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
   }
 } catch (e) { _redis = null; }
-const ICP_CACHE_TTL = 60 * 60 * 24 * 60; // 60 days
+// 180 days, DELIBERATELY the same as ADSCORE_TTL in _adlibrary.js, and that is the whole point.
+// Measured 2026-11-18: the per-creative score key is `adscore:<icpHash>:<creativeSig>`, so the ICP
+// TEXT is part of it. With the ICP cached 60 days and the scores 180, every board crossed day 61
+// with a regenerated (and never byte-identical) ICP, the hash moved, and its 18 already-paid scores
+// were orphaned: the next open re-scored the whole board at full price while the old scores sat in
+// Redis for another 120 days. Probe over the oldest boards in the engine: of 4 boards first scored
+// in September, 3 came back need=18 cached=0 under today's ICP; of 3 scored this week, 0 did. The
+// cliff was about to land on October's 209 boards through December, ~29 USD of re-scoring that buys
+// nothing. Aligning the two TTLs means the ICP and the scores expire together, so a board re-scores
+// once every 180 days under a genuinely fresh ICP instead of every 60 under a cosmetically new one.
+// What a visitor sees does not change: same model, same prompt, same scores, just not recomputed.
+// If you ever shorten this, shorten ADSCORE_TTL with it or the leak comes back.
+const ICP_CACHE_TTL = 60 * 60 * 24 * 180;
 
 function normalizeUrl(input) {
   let raw = (input || '').trim();
