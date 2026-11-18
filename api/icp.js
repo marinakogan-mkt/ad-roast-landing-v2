@@ -1141,7 +1141,17 @@ ${items}
         const paid = [], nuevos = [];
         ads.forEach((a, i) => ((vals && vals[i]) ? paid : nuevos).push(a));
         if (!paid.length || !nuevos.length) return ads;
-        const keep = Math.max(0, SCORE_CAP - _NEW_SLOTS);
+        /* Hold slots back for unscored creatives ONLY once the cap is already full of paid ones.
+           Holding them back unconditionally was a defect, caught by the counter below six hours after
+           it shipped: with 16 paid out of 43, keep=14 pushed 2 already-paid creatives OUT of the cap
+           and pulled 2 unscored ones IN, so the reordering bought 2 scores the old order would not
+           have. Measured 2026-11-18: 20 requests, ads_viejo 80 vs ads_nuevo 94, i.e. 14 scores WORSE.
+           With paid below the cap there are unscored creatives inside the window already, so no slot
+           needs reserving, and the window can never hold fewer paid ones than the original order did:
+           the reordering is then provably never worse. Above the cap the 4 slots are deliberate, and a
+           board that is already fully scored inside the cap would otherwise never score a creative the
+           advertiser added later. */
+        const keep = paid.length >= SCORE_CAP ? Math.max(0, SCORE_CAP - _NEW_SLOTS) : SCORE_CAP;
         const orden = [...paid.slice(0, keep), ...nuevos, ...paid.slice(keep)];
         /* Exact count of what the reordering saves on THIS request, so the saving never has to be
            inferred from a week of billing: `ads_viejo` is how many fresh scores the OLD order would
@@ -1158,6 +1168,10 @@ ${items}
           pl.hincrby(kk, 'llamadas', 1);
           pl.hincrby(kk, 'ads_viejo', viejo);
           pl.hincrby(kk, 'ads_nuevo', nuevo);
+          // Paid-so-far, so a negative day can be read apart: above the cap the 4 reserved slots buy
+          // genuinely new creatives on purpose, which is spending, not waste.
+          pl.hincrby(kk, 'pagos', paid.length);
+          if (paid.length >= SCORE_CAP) pl.hincrby(kk, 'llamadas_cap_lleno', 1);
           pl.expire(kk, 60 * 60 * 24 * 120);
           Promise.resolve(pl.exec()).catch(() => {});
         } catch (e) { /* medir nunca rompe el board */ }
