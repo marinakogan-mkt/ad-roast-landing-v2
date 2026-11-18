@@ -510,17 +510,23 @@ No markdown. Never use em dashes or en dashes; use commas or periods. Output MUS
   // Sonnet 4.6 that is temperature 0; a 5.x model rejects temperature, so modelParams sends
   // thinking off instead and determinism rests on the rubric, which since the v20 taxonomy
   // scores every dimension explicitly and has the code compute the final score.
-  // max_tokens 2000: headroom for up to 14 terse JSON rows. A truncated output fails the JSON
-  // parse and wastes the WHOLE call (incl. the expensive vision input), so the cap sits just
-  // above real need rather than at it. Billing is by actual output, so the cap is not a cost.
-  // 3000 (2026-10-16): Google rows now also carry the OCR'd head/body, and an admin re-score
-  // sends up to 18 rows in one call, which could truncate at 2000.
+  // max_tokens: headroom so the JSON array always closes. A truncated output fails the parse and
+  // wastes the WHOLE call, vision input included, so the cap sits well above real need. Billing is
+  // by actual output, so a high cap costs nothing: only the tokens actually written are charged.
+  // 8000 (2026-11-18), measured, not guessed. A row with OCR'd head/body is far bigger than the
+  // "terse row" the old cap was sized for: 12 Google creatives with no copy of their own (dremio.com)
+  // came back at EXACTLY 3000 output tokens, i.e. cut off, so the parse threw and the whole call,
+  // 45 seconds and 8340 input tokens of it, bought nothing. An admin re-score sends up to 18 rows in
+  // one call with limit 0, which needs about 4500, so that path was truncating on any OCR-heavy board.
+  // 8000 also covers the newer tokenizer: Sonnet 5.5 wrote about 8% more output tokens than 4.6 for
+  // the same 12 rows, so a switch under the old cap would have truncated sooner, not later.
+  // 3000 (2026-10-16): Google rows started carrying the OCR'd head/body. 2000 before that.
   // Prompt caching (2026-10-19): `sys` is byte-identical for every board and every user (~2.9K
   // tokens, above Sonnet 4.6's 1024 minimum), and every per-request piece (ICP, ad lines,
   // images) lives in the user message after it. So the system block is the cache breakpoint.
   // 1h TTL: a board scores in several batches seconds apart (limit 3/6/8) and boards from
   // different users arrive minutes apart, so one 2x write is read many times inside the hour.
-  const params = { model: SCORE_MODEL, max_tokens: 3000, ...modelParams(SCORE_MODEL), system: [{ type: 'text', text: sys, cache_control: { type: 'ephemeral', ttl: '1h' } }], messages: [{ role: 'user', content }] };
+  const params = { model: SCORE_MODEL, max_tokens: 8000, ...modelParams(SCORE_MODEL), system: [{ type: 'text', text: sys, cache_control: { type: 'ephemeral', ttl: '1h' } }], messages: [{ role: 'user', content }] };
   return { params, hadImg: ads.map((a, i) => !!imgByIdx[i]) };
 }
 
