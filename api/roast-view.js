@@ -195,6 +195,7 @@ export default async function handler(req, res) {
       const days = Math.min(Math.max(parseInt(req.query.days || '14', 10) || 14, 1), 120);
       const out = {};
       const slice = {};
+      const recorte = {};
       const boards = {};
       const porBoard = String(req.query.boards || '') === '1';
       for (let i = 0; i < days; i++) {
@@ -206,6 +207,11 @@ export default async function handler(req, res) {
         // ads_nuevo is exactly how many paid re-scores the reordering avoided that day.
         const sl = await redis.hgetall('usage:slice:' + d);
         if (sl && Object.keys(sl).length) slice[d] = sl;
+        // `recorte`: el corte de dos filas por plataforma para visitantes sin clave y sin plan
+        // (api/icp.js -> _dosFilas). cap_18 menos compra es lo que ahorro ese dia; top_up cuenta los
+        // pedidos donde completar la segunda fila de una plataforma costo mas que el cap viejo.
+        const rc = await redis.hgetall('usage:recorte:' + d);
+        if (rc && Object.keys(rc).length) recorte[d] = rc;
         // Per-board rows only when asked: a busy day carries hundreds of companies and the default
         // reader (scripts/gasto_adroast.py) does not need them.
         if (porBoard) {
@@ -214,7 +220,7 @@ export default async function handler(req, res) {
         }
       }
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ days: out, slice, ...(porBoard ? { boards } : {}) });
+      return res.status(200).json({ days: out, slice, recorte, ...(porBoard ? { boards } : {}) });
     } catch (e) {
       return res.status(500).json({ error: 'usage read failed' });
     }

@@ -49,6 +49,20 @@ async function icpIsAdmin(req, redis) {
   } catch (e) { return false; }
 }
 
+/* Una clave de API que resuelve a una cuenta: admin (el motor, los scripts de Marina) o un cliente
+   que paga. Una clave inventada no resuelve a nada y no gana nada. Compartido por el tope por IP y
+   por el recorte de dos filas, para que las dos exenciones no se puedan separar por accidente. */
+async function conClaveDeCuenta(req, redis) {
+  try {
+    if (!redis) return false;
+    const h = req.headers || {};
+    const m = /^Bearer\s+(ak_[A-Za-z0-9_]+)/i.exec(h.authorization || '');
+    const k = String((m && m[1]) || h['x-api-key'] || '');
+    if (!/^ak_[A-Za-z0-9_]+$/.test(k)) return false;
+    return !!(await redis.get('roast:apikey:' + k));
+  } catch (e) { return false; }
+}
+
 // Meta costs per ad, so only a signed-in roast account can trigger a pull. Free accounts get a daily limit.
 const META_FREE_DAY = 3;
 async function icpAccount(req, redis) {
@@ -923,9 +937,7 @@ ${items}
            after the limit shipped: tarjetas_cron got Basware back with 10 ads and 0 of them scored, and
            cast.ai, which had been returning reused 18, came back bot:true and reused 0. A key that does
            not resolve to an account earns no exemption. */
-        const _m = /^Bearer\s+(ak_[A-Za-z0-9_]+)/i.exec(h.authorization || '');
-        const _k = String((_m && _m[1]) || h['x-api-key'] || '');
-        const conClave = /^ak_[A-Za-z0-9_]+$/.test(_k) && !!(await _redis.get('roast:apikey:' + _k));
+        const conClave = await conClaveDeCuenta(req, _redis);
         if (ip && !logueado && !conClave) {
           const kv = 'board:ritmo:' + Buffer.from(ip).toString('base64url').slice(0, 24);
           const vistos = await _redis.sadd(kv, domKey);
@@ -1154,13 +1166,27 @@ ${items}
        original order did, so this is provably never worse, and the ceiling it can save is exactly
        what the old order was buying: 138 creatives in half a day, about 32 USD/mes. */
     const _NEW_SLOTS = 0;
-    const preferScored = async (ads) => {
-      if (!_redis || !Array.isArray(ads) || ads.length <= SCORE_CAP) return ads;
+    /* Quienes ya estan pagos, en UNA sola lectura del cache, compartida por el orden del cap y por el
+       recorte de dos filas de mas abajo. Antes cada uno hacia su propio mget. Importa que sea la
+       misma lectura: las dos decisiones tienen que estar de acuerdo sobre que creativo ya se pago, o
+       el recorte podria dejar afuera del board un puntaje que ya esta comprado. */
+    const _pagos = await (async () => {
       try {
+        if (!_redis) return null;
+        const todos = [..._notMeta, ..._meta];
+        if (!todos.length) return null;
         const keyOf = scoreKeyFn(body.icp);
-        const vals = await _redis.mget(...ads.map(keyOf));
-        const paid = [], nuevos = [];
-        ads.forEach((a, i) => ((vals && vals[i]) ? paid : nuevos).push(a));
+        const vals = await _redis.mget(...todos.map(keyOf));
+        const set = new Set();
+        todos.forEach((a, i) => { if (vals && vals[i]) set.add(a); });
+        return set;
+      } catch (e) { return null; }
+    })();
+    const preferScored = (ads) => {
+      if (!_pagos || !Array.isArray(ads) || ads.length <= SCORE_CAP) return ads;
+      try {
+        const paid = ads.filter(a => _pagos.has(a));
+        const nuevos = ads.filter(a => !_pagos.has(a));
         if (!paid.length || !nuevos.length) return ads;
         const keep = Math.max(0, SCORE_CAP - _NEW_SLOTS);
         const orden = [...paid.slice(0, keep), ...nuevos, ...paid.slice(keep)];
@@ -1171,9 +1197,8 @@ ${items}
            /api/roast-view?action=usage (`slice` in the response, Redis key `usage:slice:<day>`).
            Fire and forget: never awaited, cannot throw, cannot delay the board. */
         try {
-          const pagos = new Set(paid);
-          const viejo = ads.slice(0, SCORE_CAP).filter(a => !pagos.has(a)).length;
-          const nuevo = orden.slice(0, SCORE_CAP).filter(a => !pagos.has(a)).length;
+          const viejo = ads.slice(0, SCORE_CAP).filter(a => !_pagos.has(a)).length;
+          const nuevo = orden.slice(0, SCORE_CAP).filter(a => !_pagos.has(a)).length;
           const kk = 'usage:slice:' + new Date().toISOString().slice(0, 10);
           const pl = _redis.pipeline();
           pl.hincrby(kk, 'llamadas', 1);
@@ -1189,9 +1214,90 @@ ${items}
         return orden;
       } catch (e) { return ads; }
     };
-    const _notMetaRanked = await preferScored(_notMeta);
-    const _toRank = [..._notMetaRanked.slice(0, SCORE_CAP), ..._meta.slice(0, META_SCORE_CAP)];
-    const _extras = [..._notMetaRanked.slice(SCORE_CAP), ..._meta.slice(META_SCORE_CAP)];
+    const _notMetaRanked = preferScored(_notMeta);
+    /* DOS FILAS POR PLATAFORMA para quien mira el board sin clave y sin plan (Marina, 18 nov 2026).
+       La grilla de cada plataforma entra 3 tarjetas por fila en el ancho del board, y a quien no tiene
+       plan le destapa 6 (FREE_LIMIT en index.html): de la septima en adelante la tarjeta se renderiza
+       borrosa detras de "Unlock with Pro". O sea que el puntaje de la 7 a la 18 se compraba y se
+       publicaba ilegible. Dos filas es exactamente lo que se puede leer.
+       Medido el 18 nov sobre 10 boards cacheados, sin gastar un token: 166 creativos puntuados con el
+       cap de 18 contra 112 con este corte, un 33% menos. El reparto real de esos 10 boards fue Google
+       94, LinkedIn 71 y Meta 1, sobre 422 creativos bajados, asi que el corte muerde donde esta el
+       volumen (Google: 333 bajados, 94 puntuados) y casi no toca LinkedIn, que ya entra completo.
+       Meta se queda en META_SCORE_CAP, que Marina bajo a 1 el 9 de noviembre por costo: dos filas es
+       un TECHO, nunca un piso, asi que esto no revierte esa decision ni gasta mas en Meta.
+       NO se le aplica a una clave de API (el motor, los scripts, los clientes que pagan) ni a una
+       cuenta con plan: ahi se leen TODOS los puntajes, el gate de envio del motor juzga solo los ads
+       puntuados (memoria board-v2-gate-grises) y el motor los compra por Batch API a mitad de precio.
+       Los dos caminos COMPARTEN los puntajes, porque el cache es por creativo: un board que entro
+       recortado y despues lo pide el motor paga solo los que faltan, nunca dos veces los mismos. */
+    const CAP_POR_PLAT = 6;
+    const _conPlan = async () => {
+      try {
+        if (!readSessionCookie(req)) return false;
+        const a = await icpAccount(req, _redis);
+        return !!(a && a.plan && a.plan !== 'free');
+      } catch (e) { return false; }
+    };
+    const _recorte = !(adminRescore || prescoreAdmin
+      || await conClaveDeCuenta(req, _redis) || await _conPlan());
+    /* El cap limita lo que se COMPRA, no lo que se muestra, y esa distincion es la que salva el
+       outreach: un prospecto al que Marina le manda el link abre el board como visitante anonimo, o
+       sea por este mismo camino. Si el recorte sacara del board puntajes ya pagados, ese prospecto
+       veria 12 ads puntuados en lugar de 18 y los numeros del encabezado le cambiarian, sobre un
+       board que el motor ya pago entero. Asi que primero entran TODOS los que ya estan en el cache,
+       que no cuestan nada, y despues se completa hasta `cap` por plataforma con los que habria que
+       comprar. Un board ya puntuado no compra nada y no pierde nada; uno nuevo compra dos filas. */
+    const _dosFilas = (lista, cap) => {
+      const usado = {}, elegido = new Set();
+      for (const a of lista) {
+        if (!(_pagos && _pagos.has(a))) continue;
+        const k = a.plat || '?';
+        usado[k] = (usado[k] || 0) + 1;
+        elegido.add(a);
+      }
+      for (const a of lista) {
+        if (elegido.has(a)) continue;
+        const k = a.plat || '?';
+        if ((usado[k] || 0) >= cap) continue;
+        usado[k] = (usado[k] || 0) + 1;
+        elegido.add(a);
+      }
+      const dentro = [], fuera = [];
+      for (const a of lista) (elegido.has(a) ? dentro : fuera).push(a);
+      return [dentro, fuera];
+    };
+    let _toRank, _extras;
+    if (_recorte) {
+      const [_dentro, _fuera] = _dosFilas(_notMetaRanked, Math.min(CAP_POR_PLAT, SCORE_CAP));
+      _toRank = [..._dentro, ..._meta.slice(0, META_SCORE_CAP)];
+      _extras = [..._fuera, ..._meta.slice(META_SCORE_CAP)];
+      /* Lo que el recorte hace de verdad, contado en el momento, para no tener que inferirlo de una
+         semana de facturacion: `dentro` entra al board, `compra` es lo que este pedido paga de nuevo
+         y `cap_18` es lo que habria pagado el cap de 18. La diferencia, por los ~0,0078 USD por
+         creativo, es la plata. `top_up` cuenta los pedidos donde el recorte compro MAS que el cap
+         viejo, que pasa cuando una plataforma no llegaba a dos filas y esta regla la completa.
+         Se lee con /api/roast-view?action=usage. Nunca se espera, no puede romper el board. */
+      try {
+        if (_redis && _pagos) {
+          const compra = _dentro.filter(a => !_pagos.has(a)).length;
+          const cap18 = _notMetaRanked.slice(0, SCORE_CAP).filter(a => !_pagos.has(a)).length;
+          const kk = 'usage:recorte:' + new Date().toISOString().slice(0, 10);
+          const pl = _redis.pipeline();
+          pl.hincrby(kk, 'llamadas', 1);
+          pl.hincrby(kk, 'dentro', _dentro.length);
+          pl.hincrby(kk, 'fuera', _fuera.length);
+          pl.hincrby(kk, 'compra', compra);
+          pl.hincrby(kk, 'cap_18', cap18);
+          if (compra > cap18) pl.hincrby(kk, 'top_up', 1);
+          pl.expire(kk, 60 * 60 * 24 * 120);
+          Promise.resolve(pl.exec()).catch(() => {});
+        }
+      } catch (e) { /* medir nunca rompe el board */ }
+    } else {
+      _toRank = [..._notMetaRanked.slice(0, SCORE_CAP), ..._meta.slice(0, META_SCORE_CAP)];
+      _extras = [..._notMetaRanked.slice(SCORE_CAP), ..._meta.slice(META_SCORE_CAP)];
+    }
     if (prescoreAdmin) {
       const prep = await prescorePrepare(_toRank, body.icp, _redis);
       return res.status(200).json({ ...prep, listCount: pull.ads.length, rankCount: _toRank.length, listCached });
