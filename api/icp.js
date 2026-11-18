@@ -905,7 +905,16 @@ ${items}
         const h = req.headers || {};
         const ip = String(h['x-real-ip'] || h['x-forwarded-for'] || '').split(',')[0].trim();
         const logueado = !!readSessionCookie(req);
-        if (ip && !logueado) {
+        /* An API key is an account, admin or paying, and it is also how the outreach engine asks for
+           boards: a discovery run walks dozens of companies from one IP in minutes, so the limit was
+           starving exactly the caller it was never meant to touch. Measured 2026-11-18 at 13:45, hours
+           after the limit shipped: tarjetas_cron got Basware back with 10 ads and 0 of them scored, and
+           cast.ai, which had been returning reused 18, came back bot:true and reused 0. A key that does
+           not resolve to an account earns no exemption. */
+        const _m = /^Bearer\s+(ak_[A-Za-z0-9_]+)/i.exec(h.authorization || '');
+        const _k = String((_m && _m[1]) || h['x-api-key'] || '');
+        const conClave = /^ak_[A-Za-z0-9_]+$/.test(_k) && !!(await _redis.get('roast:apikey:' + _k));
+        if (ip && !logueado && !conClave) {
           const kv = 'board:ritmo:' + Buffer.from(ip).toString('base64url').slice(0, 24);
           const vistos = await _redis.sadd(kv, domKey);
           if (vistos === 1) await _redis.expire(kv, 3600);
