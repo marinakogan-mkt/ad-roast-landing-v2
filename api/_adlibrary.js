@@ -32,7 +32,12 @@ import zlib from 'node:zlib';
 // ICP cache turns over, which is the single most expensive thing this product can do. Flip
 // ANTHROPIC_SCORE_MODEL to try a scorer, and leave ICP detection where it is.
 const SCORE_DEFAULT = 'claude-sonnet-4-6';
-const SCORE_MODEL = process.env.ANTHROPIC_SCORE_MODEL || process.env.ANTHROPIC_ICP_MODEL || SCORE_DEFAULT;
+// The scorer does NOT inherit the ICP's model. It used to, and that was a trap: pointing the ICP
+// at a cheaper model (ANTHROPIC_ICP_MODEL, the var that exists precisely to try one) also moved
+// the model that writes the board's scores, silently, without touching SCORE_NS. So scores from
+// two different models landed in the SAME cache key with no way to tell which wrote which. The
+// two are now chosen independently (2026-11-19).
+const SCORE_MODEL = process.env.ANTHROPIC_SCORE_MODEL || SCORE_DEFAULT;
 // Suffix for the score cache namespace: empty unless a scorer is being tried on purpose. Comparing
 // against SCORE_DEFAULT, not against the var being set at all (2026-11-18): the only way to try
 // another ICP model without dragging the scorer along is to PIN the scorer, and pinning it to the
