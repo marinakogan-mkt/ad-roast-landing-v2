@@ -382,11 +382,20 @@ async function _fetchImgB64(url) {
     try {
       r = await fetch(url, { signal: c.signal, headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', Accept: 'image/avif,image/webp,image/*,*/*;q=0.8' } });
     } finally { clearTimeout(t); }
-    if (!r.ok) return null;
+    /* MUERTO, no "no pude": el servidor del anunciante contesto y dijo que esa imagen no esta
+       (404/403/410). Anthropic va a pedir la MISMA URL publica y va a recibir lo mismo, asi que
+       pasarsela no es un segundo intento, es garantizar un `invalid_request_error` que mata el
+       pedido COMPLETO, con los otros creativos adentro. Medido el 18 nov 2026: 2 de 28 pedidos del
+       lote volvieron "Unable to download the file" y sus boards se puntuaron en vivo a precio
+       entero. Un timeout o un error de red si merecen el reintento por URL, porque pueden ser
+       nuestros; un 404 no. El creativo sin imagen sigue el camino que ya existe: si tampoco tiene
+       copy, parseScoreText lo marca como fallo de captura y isJunkCreative lo saca del board. */
+    if (!r.ok) return 'muerto';
     let ct = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
     if (ct === 'image/jpg') ct = 'image/jpeg';
     const buf = Buffer.from(await r.arrayBuffer());
-    if (!buf.length || buf.length > IMG_HARD_BYTES) return null;
+    if (!buf.length) return 'muerto'; // contesto 200 con cero bytes: no hay imagen que bajar
+    if (buf.length > IMG_HARD_BYTES) return null;
     // Trust the BYTES, not the header. Google (simgad) sometimes serves a real PNG/JPEG with a
     // missing or generic content-type (octet-stream), so a strict header check dropped a valid
     // creative -> the ad reached the scorer with empty copy and no image and got scored "broken" (a
@@ -452,7 +461,12 @@ export async function buildScoreRequest(ads, icp) {
   }
   const b64s = await Promise.all(toFetch.map(i => _fetchImgB64(ads[i].img)));
   const imgByIdx = {};
-  toFetch.forEach((i, k) => { if (b64s[k]) imgByIdx[i] = b64s[k]; });
+  const muerto = new Set(); // la URL contesto 404/403/410 o cero bytes: no se la ofrecemos a Anthropic
+  toFetch.forEach((i, k) => {
+    if (b64s[k] === 'muerto') muerto.add(i);
+    else if (b64s[k]) imgByIdx[i] = b64s[k];
+  });
+  if (muerto.size) console.warn('[buildScoreRequest] ' + muerto.size + ' creativo(s) con imagen caida, van sin imagen');
 
   const lines = [];
   const content = [{ type: 'text', text: '' }]; // header filled in after the loop
@@ -466,7 +480,7 @@ export async function buildScoreRequest(ads, icp) {
     if (imgByIdx[i]) {
       content.push({ type: 'text', text: imgLabel });
       content.push({ type: 'image', source: { type: 'base64', media_type: imgByIdx[i].media_type, data: imgByIdx[i].data } });
-    } else if (a.img && /^https:\/\//i.test(a.img)) {
+    } else if (a.img && /^https:\/\//i.test(a.img) && !muerto.has(i)) {
       // Fallback: couldn't fetch it ourselves, let Anthropic try the URL.
       content.push({ type: 'text', text: imgLabel });
       content.push({ type: 'image', source: { type: 'url', url: a.img } });
