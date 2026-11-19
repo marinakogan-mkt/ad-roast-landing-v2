@@ -391,9 +391,14 @@ export async function boardOgHandler(req, res) {
 // ("free live-ad audit"), meta and empty SPA shell, so crawlers never see the
 // positioning offer. Static content (no Redis); React clears #root so humans boot the app.
 export async function servicesOgHandler(req, res) {
-  let html = await getShell();
+  // Lo mismo que en el board: /services y /work-with-us devolvian la app React entera, 178 KB
+  // gzipped medidos el 19 nov 2026, y de esa pagina un crawler usa el title, la description, el
+  // JSON-LD del Service y el texto de la oferta. Son dos URLs, no 1.074, pero estan en el sitemap
+  // principal y las pasan las mismas 7 familias de bots, y el contenido aca es fijo.
+  const bot = !(req.query && req.query.full) && isCrawler(req);
+  let html = bot ? null : await getShell();
   try {
-    if (!html) { res.setHeader('Location', '/'); res.status(302).end(); return; }
+    if (!html && !bot) { res.setHeader('Location', '/'); res.status(302).end(); return; }
     const url = 'https://www.adroast.in/services';
     const docTitle = 'Reposition your paid campaigns around the buyer | AdRoast';
     const desc = 'For B2B SaaS spending on paid: we find where your campaign loses the right buyers and reposition the whole ad-to-page journey. 10-day Campaign Repositioning Sprint.';
@@ -434,7 +439,7 @@ export async function servicesOgHandler(req, res) {
       + '<script>document.documentElement.classList.add("has-js")</script>';
     const GEO_LOADING = '<div class="geo-loading" style="min-height:70vh;align-items:center;justify-content:center">'
       + '<div style="width:34px;height:34px;border:3px solid #e7ecf3;border-top-color:#0a66c2;border-radius:50%;animation:geospin .8s linear infinite"></div></div>';
-    html = html.replace('<div id="root"></div>', '<div id="root">' + GEO_LOADING + '<div class="geo-shell">' + content + '</div></div>');
+    if (html) html = html.replace('<div id="root"></div>', '<div id="root">' + GEO_LOADING + '<div class="geo-shell">' + content + '</div></div>');
 
     const ld = {
       '@context': 'https://schema.org',
@@ -451,12 +456,24 @@ export async function servicesOgHandler(req, res) {
       ]
     };
     const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
-    html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
+    if (html) html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
+
+    // Misma razon que en el board para no cachear la liviana: el CDN guarda por URL y no por
+    // User-Agent, y una pagina chica cacheada le dejaria /services sin la pagina real a una persona.
+    if (bot) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.status(200).send(lightCrawlerPage({ docTitle, desc, title: ogTitle, boardUrl: url, shareUrl: url, imgUrl: 'https://www.adroast.in/og-hero.png?v=1', ld, content, noindex: false }));
+      return;
+    }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     res.status(200).send(html);
   } catch (e) {
+    // Igual que en el board: si es un crawler no hay cascara cargada, y un 302 al home desde
+    // /services le diria que la pagina no existe.
+    try { if (!html) html = await getShell(); } catch (e2) {}
     if (html) { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.status(200).send(html); }
     else { res.setHeader('Location', '/'); res.status(302).end(); }
   }
