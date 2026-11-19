@@ -70,13 +70,117 @@ function replaceTag(html, re, value) {
   return re.test(html) ? html.replace(re, value) : html;
 }
 
+/* Un crawler no corre JavaScript: de esta pagina usa el title, la description, el JSON-LD y el
+   texto. Igual le mandabamos la app React entera, 169,5 KB gzipped, y el sitemap de boards le da
+   1.074 URLs a 7 familias de bots. Medido el 19 nov 2026: la pagina completa pesa 169,5 KB
+   gzipped y la liviana, con el MISMO title, description, canonical, og/twitter, JSON-LD y texto
+   del board, pesa 2,2 KB. Son 78 veces menos, y el Fast Origin Transfer (el trafico CDN<->funcion,
+   que es lo que se paso de los 10 GB del plan) se cobra por byte que la funcion le manda al CDN.
+
+   La lista es por familia conocida, no por heuristica: si el User-Agent no cae con certeza en un
+   bot, se sirve el bundle completo. Gastar de mas no rompe nada; servirle la pagina chica a una
+   persona le rompe el board. Por eso no estan aca ni HeadlessChrome ni PhantomJS (Lighthouse y
+   cualquier chequeo de rendimiento tienen que ver la pagina real que ve una persona). */
+const BOT_RE = new RegExp([
+  // buscadores
+  'googlebot', 'google-inspectiontool', 'storebot-google', 'googleother', 'google-extended',
+  'bingbot', 'bingpreview', 'msnbot', 'duckduckbot', 'duckduckgo-favicons-bot', 'yandexbot',
+  'yandeximages', 'baiduspider', 'sogou', 'seznambot', 'naver', 'qwantify', 'applebot',
+  'petalbot', 'mojeekbot', 'yisouspider',
+  // motores de respuesta y crawlers de LLM
+  'gptbot', 'oai-searchbot', 'chatgpt-user', 'perplexitybot', 'perplexity-user', 'claudebot',
+  'claude-web', 'claude-searchbot', 'anthropic-ai', 'ccbot', 'cohere-ai', 'cohere-training-data-crawler',
+  'meta-externalagent', 'meta-externalfetcher', 'bytespider', 'amazonbot', 'youbot', 'diffbot',
+  'timpibot', 'omgili', 'omgilibot', 'webzio-extended', 'ai2bot', 'firecrawl', 'brightbot',
+  // tarjetas de preview al compartir un link (solo leen el <head>)
+  'linkedinbot', 'facebookexternalhit', 'facebookcatalog', 'facebookbot', 'twitterbot',
+  'slackbot', 'slack-imgproxy', 'discordbot', 'whatsapp', 'telegrambot', 'skypeuripreview',
+  'redditbot', 'pinterest', 'tumblr', 'vkshare', 'embedly', 'quora link preview',
+  'nuzzel', 'bitlybot', 'flipboard', 'outbrain', 'xing-contenttabreceiver', 'google-pagerenderer',
+  // SEO y archivo
+  'ahrefsbot', 'ahrefssiteaudit', 'semrushbot', 'mj12bot', 'dotbot', 'rogerbot', 'blexbot',
+  'dataforseobot', 'serpstatbot', 'seokicks', 'sistrix', 'screaming frog', 'barkrowler',
+  'megaindex', 'zoominfobot', 'linkdexbot', 'exabot', 'ia_archiver', 'archive.org_bot',
+  'wayback', 'heritrix', 'nutch', 'commoncrawl', 'exa-bot', 'imagesiftbot', 'awariobot',
+  'trendictionbot', 'gigablast', 'siteauditbot', 'semantic-visions'
+].map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'i');
+
+// Igual que arriba: un match generico ("bot", "crawler", "spider") solo cuenta cuando NO viene con
+// la pinta de un navegador real. Un Chrome o un Safari de verdad nunca traen estas palabras, pero
+// si alguna vez las trajera, se va por el bundle completo.
+const GENERIC_BOT_RE = /(crawler|spider|crawling|\bbot\b|bot\/|\bfeed(fetcher|burner)\b|scrapy|python-requests|python-urllib|node-fetch|go-http-client|okhttp|java\/|libwww-perl|axios\/|got\/|curl\/|wget)/i;
+const BROWSERISH_RE = /\b(firefox|edg|edge|opr|samsungbrowser|crios|fxios)\b/i;
+
+function isCrawler(req) {
+  try {
+    const ua = String((req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '');
+    if (!ua) return false;                 // sin User-Agent no se asume nada: bundle completo
+    if (BOT_RE.test(ua)) return true;
+    if (BROWSERISH_RE.test(ua)) return false;
+    return GENERIC_BOT_RE.test(ua);
+  } catch (e) { return false; }
+}
+
+/* La pagina que ve el crawler. Se arma de cero, sin leer index.html: asi la funcion no toca los
+   800 KB de la cascara ni los vuelve a comprimir, que es lo mas caro en CPU de este pedido (el
+   Fluid Active CPU del plan esta al 80%).
+
+   Lo que NO lleva, a proposito: el script de GEO_HEAD que pone html.has-js. En la pagina completa
+   ese script esconde el texto del crawler porque React lo reemplaza; aca no hay React, asi que
+   ponerlo dejaria la pagina en blanco para cualquier cliente que SI corra JavaScript, Googlebot
+   incluido, que renderiza con Chromium. El texto va siempre visible. */
+function lightCrawlerPage(o) {
+  const m = [];
+  const meta = (k, v, prop) => m.push('<meta ' + (prop ? 'property' : 'name') + '="' + k + '" content="' + attr(v) + '">');
+  m.push('<meta charset="utf-8">');
+  m.push('<meta name="viewport" content="width=device-width, initial-scale=1">');
+  m.push('<title>' + attr(o.docTitle) + '</title>');
+  meta('description', o.desc);
+  m.push('<link rel="canonical" href="' + attr(o.boardUrl) + '">');
+  if (o.noindex) meta('robots', 'noindex, follow');
+  meta('og:type', 'website', 1);
+  meta('og:site_name', 'AdRoast', 1);
+  meta('og:title', o.title, 1);
+  meta('og:description', o.desc, 1);
+  meta('og:url', o.shareUrl, 1);
+  meta('og:image', o.imgUrl, 1);
+  meta('og:image:secure_url', o.imgUrl, 1);
+  meta('og:image:width', '1200', 1);
+  meta('og:image:height', '630', 1);
+  meta('og:image:type', 'image/png', 1);
+  meta('og:image:alt', o.title, 1);
+  meta('twitter:card', 'summary_large_image');
+  meta('twitter:title', o.title);
+  meta('twitter:description', o.desc);
+  meta('twitter:image', o.imgUrl);
+  m.push('<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png?v=5">');
+  if (o.ld) m.push('<script type="application/ld+json">' + JSON.stringify(o.ld).replace(/</g, '\\u003c') + '</script>');
+  const body = o.content
+    || ('<main style="max-width:720px;margin:0 auto;padding:40px 20px;font-family:system-ui,-apple-system,sans-serif;color:#1f2937;line-height:1.65">'
+      + '<h1 style="font-size:26px;font-weight:600;letter-spacing:-.3px">' + attr(o.title) + '</h1>'
+      + '<p>AdRoast scores a company&rsquo;s live LinkedIn and Google ads against their own ideal buyer.</p>'
+      + '<p><a href="' + attr(o.boardUrl) + '">Open this board on AdRoast</a>.</p>'
+      + '</main>');
+  return '<!doctype html><html lang="en"><head>' + m.join('') + '</head><body>' + body + '</body></html>';
+}
+
 export async function boardOgHandler(req, res) {
   const slug = (req.query && (req.query.slug || req.query.s)) || '';
-  let html = await getShell();
+  // ?full=1 fuerza el bundle completo con cualquier User-Agent, para poder comparar las dos
+  // versiones de la misma URL sin tener que adivinar como la vio un bot.
+  const bot = !(req.query && req.query.full) && isCrawler(req);
+  // Un crawler no necesita la cascara: la pagina liviana se arma de cero mas abajo.
+  let html = bot ? null : await getShell();
   try {
-    if (!html) { res.setHeader('Location', '/'); res.status(302).end(); return; }
+    if (!html && !bot) { res.setHeader('Location', '/'); res.status(302).end(); return; }
     const domain = slugToDomain(slug);
-    if (!domain) { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.status(200).send(html); return; }
+    if (!domain) {
+      // Camino raro (/b/ sin slug). No se cambia lo que devolvia antes: la cascara con 200. Si es
+      // un bot todavia no la tenemos cargada, asi que se pide aca, que es barato por ser raro.
+      const shell = html || await getShell();
+      if (!shell) { res.setHeader('Location', '/'); res.status(302).end(); return; }
+      res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.status(200).send(shell); return;
+    }
 
     let company = nameFromDomain(domain);
     // Canonical form is the normalized domain (the sitemap lists /b/<domain>), so /b/wiz,
@@ -176,7 +280,11 @@ export async function boardOgHandler(req, res) {
       + '<script>document.documentElement.classList.add("has-js")</script>';
     const GEO_LOADING = '<div class="geo-loading" style="min-height:70vh;align-items:center;justify-content:center">'
       + '<div style="width:34px;height:34px;border:3px solid #e7ecf3;border-top-color:#0a66c2;border-radius:50%;animation:geospin .8s linear infinite"></div></div>';
-    const injectRoot = (h, content) => h.replace('<div id="root"></div>', '<div id="root">' + GEO_LOADING + '<div class="geo-shell">' + content + '</div></div>');
+    const injectRoot = (h, content) => h ? h.replace('<div id="root"></div>', '<div id="root">' + GEO_LOADING + '<div class="geo-shell">' + content + '</div></div>') : h;
+    // El texto y el JSON-LD se calculan una sola vez y los usan las dos versiones de la pagina:
+    // la completa los inyecta en la cascara, la liviana los sirve solos. Asi un bot y una persona
+    // nunca pueden ver un board distinto.
+    let botContent = null, botLd = null;
     const listable = ads.filter(a => a && (a.head || a.headline));
     if (listable.length > 0) {
       const items = listable.slice(0, 20).map(a => {
@@ -208,8 +316,9 @@ export async function boardOgHandler(req, res) {
         // were the advertiser. This pins the board's subject logo to the company, never to our brand.
         about: { '@type': 'Organization', name: company, url: 'https://' + domain, logo: 'https://www.adroast.in/api/icp?logo=' + encodeURIComponent(domain) }
       };
+      botContent = content; botLd = ld;
       const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
-      html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
+      if (html) html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
     } else if (posdata && posdata.company) {
       // GEO phase 2: no readable live ads, so render a positioning page (who they sell to)
       // instead, keeping a crawlable, citable page for a company with no ad footprint.
@@ -228,14 +337,33 @@ export async function boardOgHandler(req, res) {
       // logo: the company's own logo via our resolver (see the board branch above), so this positioning
       // page does not inherit AdRoast's logo as the only Organization logo on the page.
       const ld = { '@context': 'https://schema.org', '@type': 'Organization', name: posdata.company, url: posdata.website || ('https://' + domain), description: posdata.summary || posdata.icp_text || '', logo: 'https://www.adroast.in/api/icp?logo=' + encodeURIComponent(domain) };
+      botContent = content; botLd = ld;
       const ldScript = '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>';
-      html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
+      if (html) html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
     }
 
     // Nothing real to show (no clean ads, no positioning record): keep it out of the index so an
     // arbitrary /b/<anything> never becomes a thin indexed page. Humans still get the app.
-    if (!listable.length && !(posdata && posdata.company)) {
+    const noindex = !listable.length && !(posdata && posdata.company);
+    if (noindex && html) {
       html = html.replace('</head>', '<meta name="robots" content="noindex, follow"></head>');
+    }
+
+    /* Aca se parte: el crawler se lleva la pagina chica, la persona el bundle entero, sin cambiar
+       una coma de lo que recibe hoy. La chica NO se cachea en el CDN a proposito: el CDN guarda por
+       URL, no por User-Agent, asi que una pagina chica cacheada se le podria servir a una persona y
+       dejarla sin board. Un Vary: User-Agent lo arreglaria formalmente pero parte el cache por cada
+       variante de User-Agent, tambien las de los navegadores, y eso SUBIRIA el Fast Origin Transfer.
+       Sin cachear, cada pedido de bot invoca la funcion y cuesta 2,2 KB en vez de 169,5 KB; las
+       invocaciones estan al 12,8% de 1.000.000, hay lugar de sobra, y esta rama no lee ni comprime
+       los 800 KB de la cascara, asi que tambien gasta menos CPU que la completa. */
+    if (bot) {
+      const light = lightCrawlerPage({ docTitle, desc, title, boardUrl, shareUrl, imgUrl, ld: botLd, content: botContent, noindex });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('X-Robots-Tag', noindex ? 'noindex, follow' : 'index, follow');
+      res.status(200).send(light);
+      return;
     }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -249,7 +377,10 @@ export async function boardOgHandler(req, res) {
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     res.status(200).send(html);
   } catch (e) {
-    // Never break the board: serve the plain shell on any error.
+    // Never break the board: serve the plain shell on any error. Si el pedido venia de un crawler
+    // no hay cascara cargada (la rama liviana no la lee), asi que se pide aca: un 302 al home
+    // desde la URL de un board le diria al crawler que el board no existe.
+    try { if (!html) html = await getShell(); } catch (e2) {}
     if (html) { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.status(200).send(html); }
     else { res.setHeader('Location', '/'); res.status(302).end(); }
   }
