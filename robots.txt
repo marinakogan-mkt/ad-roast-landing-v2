@@ -29,5 +29,103 @@ Allow: /
 User-agent: CCBot
 Allow: /
 
+# Crawlers de herramientas de SEO y de scraping. 19 nov 2026: se bloquean los boards,
+# que son 1.074 URLs, porque estos no le traen a AdRoast ni una visita ni una cita en un
+# motor de respuesta. Son bases de datos de backlinks y de inteligencia competitiva: lo
+# unico que hacen aca es pasar el sitemap entero y pagar Fast Origin Transfer, que es la
+# metrica que se paso de los 10 GB del plan.
+#
+# NO estan aca, a proposito, y no hay que agregarlos: Googlebot, bingbot, DuckDuckBot,
+# Applebot y PetalBot, que son buscadores por donde un prospecto puede llegar; GPTBot,
+# OAI-SearchBot, PerplexityBot, ClaudeBot, CCBot y Google-Extended, que son el GEO de los
+# boards y parte del pitch; y LinkedInBot, facebookexternalhit, Twitterbot y Slackbot, que
+# son los que arman la tarjeta cuando se comparte el link de un board.
+#
+# Solo se les cierran /b/ y /board/. El resto del sitio les queda abierto, asi que el
+# perfil de backlinks de adroast.in se sigue viendo en esas herramientas.
+User-agent: AhrefsBot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: AhrefsSiteAudit
+Disallow: /b/
+Disallow: /board/
+
+User-agent: SemrushBot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: SiteAuditBot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: MJ12bot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: DotBot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: rogerbot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: BLEXBot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: DataForSeoBot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: SerpstatBot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: SEOkicks
+Disallow: /b/
+Disallow: /board/
+
+User-agent: MegaIndex
+Disallow: /b/
+Disallow: /board/
+
+User-agent: Barkrowler
+Disallow: /b/
+Disallow: /board/
+
+User-agent: linkdexbot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: sistrix
+Disallow: /b/
+Disallow: /board/
+
+User-agent: ZoominfoBot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: Screaming Frog SEO Spider
+Disallow: /b/
+Disallow: /board/
+
+User-agent: Bytespider
+Disallow: /b/
+Disallow: /board/
+
+User-agent: ImagesiftBot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: Awariobot
+Disallow: /b/
+Disallow: /board/
+
+User-agent: TrendictionBot
+Disallow: /b/
+Disallow: /board/
+
 Sitemap: https://www.adroast.in/sitemap.xml
 Sitemap: https://www.adroast.in/sitemap-boards.xml
