@@ -447,7 +447,13 @@ export async function boardOgImageHandler(req, res) {
         font: { fontBuffers: loadFonts(), defaultFontFamily: 'Inter', loadSystemFonts: false },
       }).render().asPng();
       res.setHeader('Content-Type', 'image/png');
-      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+      /* Un dia, igual que la pagina de board (_board-og.js). Tienen que ir juntos: la
+       descripcion del preview lleva los numeros del board ("18 live ads, 5.6/10 average
+       fit, 9 to fix") y esta imagen los dibuja. Si la pagina se guarda un dia y la imagen
+       una hora, la tarjeta compartida muestra un dibujo de hoy con un texto de ayer.
+       Ademas este PNG se arma con satori y resvg, que es lo mas caro que corre el sitio,
+       y el Fluid Active CPU del plan Hobby esta al 80%. (19 nov 2026) */
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
       res.status(200).send(Buffer.from(pngP));
       return;
     }
@@ -471,7 +477,7 @@ export async function boardOgImageHandler(req, res) {
     }).render().asPng();
 
     res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     res.status(200).send(Buffer.from(png));
   } catch (e) {
     console.error('[og-image] render failed:', e && (e.stack || e.message || String(e)));
