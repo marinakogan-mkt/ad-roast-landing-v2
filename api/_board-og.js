@@ -239,8 +239,14 @@ export async function boardOgHandler(req, res) {
     }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    // Let the crawler and CDN cache the personalized shell briefly; stats refresh within the hour.
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+    /* El CDN guarda esta pagina un DIA, y sirve la vieja hasta una semana mientras la refresca.
+       Antes era una hora. El motivo (19 nov 2026): sitemap-boards.xml le da a los crawlers 1.074
+       URLs de board, y cada una devuelve 174 KB de app desde la funcion. Con una hora de cache,
+       cada pasada de cada bot (Google, ahrefs, petalbot, exa, LinkedIn, Meta) vuelve a pedirlas
+       todas: 182 MB por pasada. El ciclo de Vercel cerro el 19 nov en 10,01 de 10 GB de Fast
+       Origin Transfer, o sea pasado. Una pagina de board es la cascara de la app con sus meta
+       tags: no cambia cada hora, y stale-while-revalidate la refresca sola por detras. */
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     res.status(200).send(html);
   } catch (e) {
     // Never break the board: serve the plain shell on any error.
@@ -317,7 +323,7 @@ export async function servicesOgHandler(req, res) {
     html = html.replace('</head>', GEO_HEAD + ldScript + '</head>');
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
     res.status(200).send(html);
   } catch (e) {
     if (html) { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.status(200).send(html); }
