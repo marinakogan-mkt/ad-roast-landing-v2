@@ -383,7 +383,33 @@ export async function boardOgHandler(req, res) {
       /* El og:image del board se renderiza con satori + resvg y pesa 290 KB (medido en produccion).
          Solo lo necesita el bot que arma la tarjeta al pegar el link; al resto le va el PNG estatico,
          que sale del CDN y no cuesta Fast Origin Transfer. og-hero.png mide 2400x1260 de verdad. */
-      const preview = isPreviewBot(req);
+      /* MEDIDA TEMPORAL CON VENCIMIENTO, 20 nov 2026.
+
+         Hasta esta fecha y hora, la tarjeta por empresa se apaga para TODOS, tambien
+         para LinkedIn, y el PNG dinamico deja de fabricarse por completo. Cada render
+         son 290 KB y, despues de bajar las paginas de 174 KB a 7,3 KB, los renders
+         pasaron a ser TODO el Fast Origin Transfer que queda: medido el 20 nov a las
+         20:20 UTC, 47 renders/h contra un presupuesto de 23/h. Apagarlos deja el
+         consumo en ~4,6 MB/h, abajo del presupuesto de 6,4 MB/h que hace falta para
+         bajar del limite antes de que Vercel pause la cuenta (plazo 15:27 UTC).
+
+         SE APAGA SOLO. No hace falta deployar nada ni que nadie se acuerde: pasada la
+         fecha, la condicion da false y vuelve la tarjeta por empresa, en el mismo
+         deploy que esta corriendo. Se eligio 16:00 UTC, media hora despues del plazo
+         de Vercel, y el vigilante que reactiva el outreach de ICP (cola-cron y
+         tarjetas-cron, pausados en la maquina de Marina) arranca a esa misma hora,
+         asi que las tarjetas vuelven a ser por empresa ANTES de que vuelva a salir un
+         mensaje con link de board.
+
+         Lo que se pierde mientras dura: un board compartido en LinkedIn muestra la
+         tarjeta generica de AdRoast en vez de la de la empresa. Por eso el outreach de
+         ICP quedo pausado en paralelo: Marina no quiere mandar outreach con tarjetas
+         que no esten bien. Los mensajes ya enviados NO se tocan, porque LinkedIn se
+         guarda su propia copia de la tarjeta cuando la arma. */
+      const FIN_EMERGENCIA = Date.parse('2026-11-20T16:00:00Z');
+      const tarjetaGenericaParaTodos = Date.now() < FIN_EMERGENCIA;
+
+      const preview = !tarjetaGenericaParaTodos && isPreviewBot(req);
       const bImg = preview ? imgUrl : 'https://www.adroast.in/og-hero.png?v=1';
       const light = lightCrawlerPage({ docTitle, desc, title, boardUrl, shareUrl,
         imgUrl: bImg, imgW: preview ? 1200 : 2400, imgH: preview ? 630 : 1260,
