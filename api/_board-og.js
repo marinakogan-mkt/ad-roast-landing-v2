@@ -111,6 +111,28 @@ const BOT_RE = new RegExp([
 const GENERIC_BOT_RE = /(crawler|spider|crawling|\bbot\b|bot\/|\bfeed(fetcher|burner)\b|scrapy|python-requests|python-urllib|node-fetch|go-http-client|okhttp|java\/|libwww-perl|axios\/|got\/|curl\/|wget)/i;
 const BROWSERISH_RE = /\b(firefox|edg|edge|opr|samsungbrowser|crios|fxios)\b/i;
 
+/* Los bots que arman la tarjeta cuando alguien PEGA el link en algun lado. Son los unicos que
+   necesitan el PNG por empresa, porque esa tarjeta es la que ve un prospecto cuando Marina le manda
+   el board: 290 KB medidos en produccion el 19 nov 2026, contra los 2,2 KB de la pagina liviana, o
+   sea que la imagen pesa 130 veces la pagina.
+
+   Un buscador o un crawler de LLM no muestra esa tarjeta, asi que se lleva el PNG estatico del CDN
+   (og-hero.png, el mismo que usa el home), que no cuesta Fast Origin Transfer porque no sale de la
+   funcion. Lo que cambia con esto es la imagen que Google pueda mostrar en resultados: pasa de la
+   del board a la generica de AdRoast. El texto, el title, la description y el JSON-LD no cambian.
+
+   Applebot esta aca y no en los buscadores a proposito: es el mismo agente que arma la preview de
+   un link en iMessage, asi que se le deja la imagen buena. Su volumen es bajo. */
+const PREVIEW_BOT_RE = /(linkedinbot|facebookexternalhit|facebookcatalog|facebookbot|twitterbot|slackbot|slack-imgproxy|discordbot|whatsapp|telegrambot|skypeuripreview|redditbot|pinterest|tumblr|vkshare|embedly|quora link preview|nuzzel|bitlybot|flipboard|outbrain|xing-contenttabreceiver|iframely|applebot|snapchat|viber|line-poker|googlebot-image)/i;
+
+function isPreviewBot(req) {
+  try {
+    const ua = String((req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '');
+    if (!ua) return true;        // sin User-Agent no se sabe quien es: la imagen buena
+    return PREVIEW_BOT_RE.test(ua);
+  } catch (e) { return true; }   // ante la duda, la imagen buena: gastar de mas no rompe la tarjeta
+}
+
 function isCrawler(req) {
   try {
     const ua = String((req.headers && (req.headers['user-agent'] || req.headers['User-Agent'])) || '');
@@ -145,8 +167,8 @@ function lightCrawlerPage(o) {
   meta('og:url', o.shareUrl, 1);
   meta('og:image', o.imgUrl, 1);
   meta('og:image:secure_url', o.imgUrl, 1);
-  meta('og:image:width', '1200', 1);
-  meta('og:image:height', '630', 1);
+  meta('og:image:width', String(o.imgW || 1200), 1);
+  meta('og:image:height', String(o.imgH || 630), 1);
   meta('og:image:type', 'image/png', 1);
   meta('og:image:alt', o.title, 1);
   meta('twitter:card', 'summary_large_image');
@@ -358,7 +380,14 @@ export async function boardOgHandler(req, res) {
        invocaciones estan al 12,8% de 1.000.000, hay lugar de sobra, y esta rama no lee ni comprime
        los 800 KB de la cascara, asi que tambien gasta menos CPU que la completa. */
     if (bot) {
-      const light = lightCrawlerPage({ docTitle, desc, title, boardUrl, shareUrl, imgUrl, ld: botLd, content: botContent, noindex });
+      /* El og:image del board se renderiza con satori + resvg y pesa 290 KB (medido en produccion).
+         Solo lo necesita el bot que arma la tarjeta al pegar el link; al resto le va el PNG estatico,
+         que sale del CDN y no cuesta Fast Origin Transfer. og-hero.png mide 2400x1260 de verdad. */
+      const preview = isPreviewBot(req);
+      const bImg = preview ? imgUrl : 'https://www.adroast.in/og-hero.png?v=1';
+      const light = lightCrawlerPage({ docTitle, desc, title, boardUrl, shareUrl,
+        imgUrl: bImg, imgW: preview ? 1200 : 2400, imgH: preview ? 630 : 1260,
+        ld: botLd, content: botContent, noindex });
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'private, no-store');
       res.setHeader('X-Robots-Tag', noindex ? 'noindex, follow' : 'index, follow');
@@ -463,7 +492,8 @@ export async function servicesOgHandler(req, res) {
     if (bot) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'private, no-store');
-      res.status(200).send(lightCrawlerPage({ docTitle, desc, title: ogTitle, boardUrl: url, shareUrl: url, imgUrl: 'https://www.adroast.in/og-hero.png?v=1', ld, content, noindex: false }));
+      res.status(200).send(lightCrawlerPage({ docTitle, desc, title: ogTitle, boardUrl: url, shareUrl: url,
+        imgUrl: 'https://www.adroast.in/og-hero.png?v=1', imgW: 2400, imgH: 1260, ld, content, noindex: false }));
       return;
     }
 
