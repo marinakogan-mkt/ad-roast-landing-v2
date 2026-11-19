@@ -452,8 +452,21 @@ export async function boardOgImageHandler(req, res) {
        fit, 9 to fix") y esta imagen los dibuja. Si la pagina se guarda un dia y la imagen
        una hora, la tarjeta compartida muestra un dibujo de hoy con un texto de ayer.
        Ademas este PNG se arma con satori y resvg, que es lo mas caro que corre el sitio,
-       y el Fluid Active CPU del plan Hobby esta al 80%. (19 nov 2026) */
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
+       y el Fluid Active CPU del plan Hobby esta al 80%. (19 nov 2026)
+
+       20 nov 2026: de un dia a UNA SEMANA. Pasada la semana, el primero que pida la
+       tarjeta recibe la guardada y por detras se fabrica la nueva para el siguiente,
+       asi que nadie espera. Cada render son 290 KB y varios segundos de CPU, y medido
+       el 19 nov los renders eran casi todo el Fast Origin Transfer que quedaba despues
+       de achicar las paginas. Con una semana se fabrican siete veces menos.
+
+       La contra, y Marina la acepto sabiendola: el TEXTO de la tarjeta ya no envejece
+       junto con la imagen. Un bot de preview se lleva la pagina liviana, que no se
+       cachea (ver _board-og.js), asi que la description le llega siempre fresca
+       mientras el dibujo puede tener hasta una semana. Si los numeros del board
+       cambiaron en esa semana, el texto dice una cosa y la imagen dibuja otra. Solo se
+       nota si cambiaron. Si alguna vez molesta, bajar los dos a 86400 otra vez. */
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=604800, stale-while-revalidate=604800');
       res.status(200).send(Buffer.from(pngP));
       return;
     }
@@ -477,7 +490,7 @@ export async function boardOgImageHandler(req, res) {
     }).render().asPng();
 
     res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=604800, stale-while-revalidate=604800');
     res.status(200).send(Buffer.from(png));
   } catch (e) {
     console.error('[og-image] render failed:', e && (e.stack || e.message || String(e)));
