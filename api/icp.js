@@ -906,6 +906,18 @@ ${items}
     // one call. Gated to admin so a prospect viewing a shared board can't trigger expensive re-scores.
     const adminRescore = !!body.rescore && await icpIsAdmin(req, _redis);
 
+    /* Segunda pasada del gate del motor (SOLO clave de admin). El motor descarta una empresa cuando
+       entre los ads que miro no llega a 3 malos de demanda, pero SCORE_CAP corta en 18 y una empresa
+       grande se queda con el resto sin mirar. Medido el 19 nov 2026 con el modelo de produccion:
+       snyk.io tiene 55 creativos, se puntuaron 14, y de los 24 que quedaron sin mirar habia 6 malos
+       MAS. Calificaba de sobra y quedo afuera por no haber mirado, igual que chainalysis.com. No es
+       que el puntuador se equivoque: es que nadie le pregunto.
+       `deep` sube el techo de puntuacion SOLO para ese pedido, y solo si quien pide es admin, asi que
+       lo paga el motor cuando una empresa quedo al borde y nunca un visitante del sitio. Un visitante
+       anonimo sigue viendo exactamente el mismo board: el cache es por creativo, asi que lo que esta
+       segunda pasada paga queda disponible para todos sin volver a pagarse. */
+    const deepScore = Number(body.deep) > 0 && await icpIsAdmin(req, _redis);
+
     /* Bots & link-preview crawlers (facebookexternalhit, embedly, lighthouse, headless, Claude/,
        Electron/, python/curl, etc.) hit ads-fetch the same way a person does, but they never buy and a
        shared-board preview card is built from the page's static OG meta, not from this scored JSON. So
@@ -1134,7 +1146,12 @@ ${items}
     // Score only the first SCORE_CAP creatives (the ones shown in full + a buffer); the rest ride along
     // UNSCORED for the greyed/locked gallery, so a big board (60+ ads) never scores -- and bills -- all of
     // them. The client's progressive re-call scores the unscored ones WITHIN this batch, not the extras.
-    const SCORE_CAP = 18;
+    /* 36 y no mas: a 12 creativos nuevos por pasada son tres vueltas del loop del cliente, que entran
+       de sobra en las 12 que hace lib/adroast.py, y el gate nunca necesita mas (pide 3 malos, no 30). */
+    const DEEP_SCORE_CAP = 36;
+    const SCORE_CAP = deepScore
+      ? Math.min(Math.max(18, Math.floor(Number(body.deep))), DEEP_SCORE_CAP)
+      : 18;
     // Meta ads were asked for by hand, so they don't compete for the cap with a big board, but only
     // the first few get scored; the rest ride along greyed like any other extras.
     const _meta = pull.ads.filter(a => (a.plat || '') === 'Meta');
