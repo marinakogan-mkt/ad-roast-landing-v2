@@ -3060,7 +3060,7 @@
             {!_paidView && shownOrdered.length > FREE_LIMIT && (
               <div className="mt-5 rounded-2xl border text-center mx-auto" style={{ borderColor: '#cfe0f5', background: '#f0f6fd', padding: '18px 20px', maxWidth: 640 }}>
                 <div className="font-semibold text-gray-900" style={{ fontSize: 15 }}>{shownOrdered.length - FREE_LIMIT} more live {(shownOrdered.length - FREE_LIMIT) === 1 ? 'creative' : 'creatives'}, locked</div>
-                <p className="text-gray-500 mt-1" style={{ fontSize: 13, lineHeight: 1.5 }}>You're seeing {FREE_LIMIT} of your live creatives, scored against your buyer. Unlock the rest with Pro.</p>
+                <p className="text-gray-500 mt-1" style={{ fontSize: 13, lineHeight: 1.5 }}>You're seeing the {FREE_LIMIT} most urgent. Unlock every creative, scored against your buyer, with Pro.</p>
                 <button onClick={() => { if (onUnlock) onUnlock(); }} className="inline-flex items-center gap-1.5 mt-3 rounded-full font-semibold text-white" style={{ fontSize: 13.5, padding: '10px 20px', background: '#0a66c2', border: 'none', cursor: 'pointer' }}>Unlock all &rarr;</button>
               </div>
             )}
