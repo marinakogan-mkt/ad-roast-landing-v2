@@ -22,7 +22,11 @@ function redis() {
   return _redis;
 }
 const ADMIN = new Set(((PORTAL_ROLES.find(r => r.mode === 'master') || {}).emails || []).map(e => String(e).toLowerCase()));
-const NOT_HUMAN_UA = /bot|crawl|spider|slurp|headless|lighthouse|facebookexternalhit|embedly|preview/i;
+// Igual, caracter por caracter, al de api/icp.js (que es el que BLOQUEA el puntaje).
+// Si las dos listas no coinciden, un pedido con UA de bot se bloquea bien pero, si por
+// algun camino llega a gastar, se contabiliza como `web` en vez de `web-bot`, y el
+// gasto de bot aparece como trafico humano. Las dos listas se cambian juntas.
+const NOT_HUMAN_UA = /bot|crawl|spider|slurp|headless|Claude\/|Electron\/|python|curl|wget|lighthouse|facebookexternalhit|embedly|preview/i;
 const tag = s => String(s || '').toLowerCase().replace(/[^a-z0-9_.-]/g, '').slice(0, 40);
 
 async function originOf(req) {
