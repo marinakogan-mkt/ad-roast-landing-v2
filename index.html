@@ -2325,6 +2325,12 @@
       const _convScored = convOf(scored);
       const worst = _convScored.length ? _convScored.reduce((m, a) => a.score < m.score ? a : m, _convScored[0]) : null;
       const isFree = (a) => !!worst && a === worst; // the worst-scoring ad gets the free roast
+      // Live ads the pull found on a platform that the board doesn't show (_cleanBoardAds drops brand /
+      // culture posts and empty slots). When that's ALL of a platform's ads, its card must not claim the
+      // company "isn't advertising" there (onit.security Google, pentera.io Meta, tacton.com LinkedIn,
+      // chequeo de boards 23 nov 2026): it is, we just don't score those ads against the buyer.
+      const hiddenOn = (p) => { const t = real && real.totals ? (real.totals[String(p).toLowerCase()] || 0) : 0; return t > 0 && !ads.some(a => a.plat === p) ? t : 0; };
+      const hiddenMsg = (p, n) => n + ' live ' + p + ' ad' + (n === 1 ? '' : 's') + ' found, none that we score against the buyer.';
       const shown = ads.filter(a => fP === 'all' || a.plat === fP);
       // Worst-scoring ad among what's on screen (the current platform), flagged as the free one.
       const shownScored = shown.filter(a => typeof a.score === 'number');
@@ -2873,15 +2879,15 @@
                         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                           <span style={{ opacity: 0.55 }}><PlatLogo plat={p} size={18} /></span>
                           <span className="font-bold text-gray-500" style={{ fontSize: 15 }}>{p}</span>
-                          <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>No live ads</span>
+                          <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>{hiddenOn(p) ? 'Not scored' : 'No live ads'}</span>
                         </div>
                         <div className="grid place-items-center px-4" style={{ height: 250, background: '#fafbfc' }}>
                           <div className="text-center">
                             <Icon name="target" className="w-6 h-6 mx-auto mb-2" style={{ color: '#cbd5e1' }} />
-                            <div className="text-gray-500 font-semibold" style={{ fontSize: 12.5 }}>Nothing running on {p}</div>
+                            <div className="text-gray-500 font-semibold" style={{ fontSize: 12.5 }}>{hiddenOn(p) ? ('Nothing to score on ' + p) : ('Nothing running on ' + p)}</div>
                           </div>
                         </div>
-                        <div className="px-4 py-3"><span className="text-gray-400" style={{ fontSize: 12 }}>{CO.name} isn't advertising on {p} right now.</span></div>
+                        <div className="px-4 py-3"><span className="text-gray-400" style={{ fontSize: 12 }}>{hiddenOn(p) ? hiddenMsg(p, hiddenOn(p)) : (CO.name + " isn't advertising on " + p + ' right now.')}</span></div>
                       </div>
                     );
 
@@ -2923,7 +2929,9 @@
                     // Any server note about Meta means the pull resolved (no_ads / no_meta_footprint / a cap
                     // or error); only a missing note (the full pull still in flight) shows "Checking".
                     const checked = !!mstate;
-                    const msg = mstate === 'no_meta_footprint'
+                    const msg = hiddenOn(p)
+                      ? hiddenMsg(p, hiddenOn(p))
+                      : mstate === 'no_meta_footprint'
                       ? ('No Meta footprint on ' + (CO.name || 'their') + "'s site, so there's nothing to pull.")
                       : checked
                         ? ((CO.name || 'They') + " isn't advertising on " + p + ' right now.')
@@ -2933,12 +2941,12 @@
                       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                         <span style={{ opacity: 0.55 }}><PlatLogo plat={p} size={18} /></span>
                         <span className="font-bold text-gray-500" style={{ fontSize: 15 }}>{p}</span>
-                        <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>{checked ? 'No live ads' : 'Checking'}</span>
+                        <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>{hiddenOn(p) ? 'Not scored' : checked ? 'No live ads' : 'Checking'}</span>
                       </div>
                       <div className="grid place-items-center px-4" style={{ height: 250, background: '#fafbfc' }}>
                         <div className="text-center">
                           <Icon name="target" className="w-6 h-6 mx-auto mb-2" style={{ color: '#cbd5e1' }} />
-                          <div className="text-gray-500 font-semibold" style={{ fontSize: 12.5 }}>{checked ? ('Nothing running on ' + p) : ('Reading ' + p + '…')}</div>
+                          <div className="text-gray-500 font-semibold" style={{ fontSize: 12.5 }}>{hiddenOn(p) ? ('Nothing to score on ' + p) : checked ? ('Nothing running on ' + p) : ('Reading ' + p + '…')}</div>
                         </div>
                       </div>
                       <div className="px-4 py-3"><span className="text-gray-400" style={{ fontSize: 12 }}>{msg}</span></div>
@@ -3055,7 +3063,7 @@
                   an empty platform means "not loaded yet", not "no ads": say so instead of a false "No ads". */}
               {shown.length === 0 && (pulling || phase === 'loading' || (real && real._partial))
                 ? <div className="text-gray-400 text-sm p-5">Loading {fP === 'all' ? 'your' : fP} ads…</div>
-                : shown.length === 0 && <div className="text-gray-400 text-sm p-5">No ads on this platform.</div>}
+                : shown.length === 0 && <div className="text-gray-400 text-sm p-5">{fP !== 'all' && hiddenOn(fP) ? hiddenMsg(fP, hiddenOn(fP)) : 'No ads on this platform.'}</div>}
             </div>
             {!_paidView && shownOrdered.length > FREE_LIMIT && (
               <div className="mt-5 rounded-2xl border text-center mx-auto" style={{ borderColor: '#cfe0f5', background: '#f0f6fd', padding: '18px 20px', maxWidth: 640 }}>
