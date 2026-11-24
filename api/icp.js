@@ -36,6 +36,7 @@ import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
 import { isAdminKey } from './_adminkey.js';
 import { pingNewBoard } from './_indexnow.js';
+import { renderShot } from './_shot.js';
 
 // Admin emails (the portal master role) — the only accounts allowed to force a re-score of a board.
 const ADMIN_EMAILS = new Set(((PORTAL_ROLES.find(r => r.mode === 'master') || {}).emails || []).map(e => String(e).toLowerCase()));
@@ -503,20 +504,15 @@ ${items}
   }
 
   /* Landing-page screenshot (GET /api/icp?shot=<url>), for the report showcase's "the page it
-     lands on" window. thum.io renders the live page as-is, so a cookie wall (Cookiebot etc.) ends
-     up in the shot instead of the hero. With SCREENSHOTONE_ACCESS_KEY set we render via ScreenshotOne
-     with cookie banners / ads / chat widgets blocked and only the viewport captured (the hero, not
-     the full page), cached 30d in Redis and on ScreenshotOne's own CDN (cached renders don't burn the
-     quota). Without a key we redirect to thum.io, so there is no regression until the key is set.
-     Folded in here (not a new function) to stay under the Hobby 12-function cap. */
+     lands on" window. Rendered by api/_shot.js: ScreenshotOne (cookie banners / ads / chats blocked,
+     viewport only), and when its monthly quota runs out or it fails, Cloudflare Browser Rendering,
+     then Microlink, then a thum.io redirect as last resort. Real images are cached 30d in Redis and
+     pinned to the report. Folded in here (not a new function) to stay under the Hobby 12-function cap. */
   if (req.method === 'GET' && req.query && req.query.shot) {
     const rawShot = Array.isArray(req.query.shot) ? req.query.shot[0] : req.query.shot;
     let target;
     try { target = new URL(/^https?:\/\//i.test(rawShot) ? rawShot : 'https://' + rawShot); } catch (e) { return res.status(400).json({ error: 'Bad url' }); }
     if (target.protocol !== 'http:' && target.protocol !== 'https:') return res.status(400).json({ error: 'Bad url' });
-    const thumb = 'https://image.thum.io/get/width/1000/crop/1200/' + target.toString();
-    const redirectThumb = (maxAge) => { res.setHeader('Cache-Control', 'public, max-age=' + maxAge); res.setHeader('Location', thumb); return res.status(302).end(); };
-    const SHOT_KEY = process.env.SCREENSHOTONE_ACCESS_KEY;
     // A ?report=<id> pins this render to that report, so the landing shot is frozen alongside the
     // roast text and the ad creative (both already frozen at roast time). The first time a report is
     // viewed the current render is pinned to its id and then never changes again, even if the page
@@ -541,7 +537,6 @@ ${items}
         if (pinned && typeof pinned === 'string') return sendImg(Buffer.from(pinned, 'base64'), 'image/jpeg');
       }
     } catch (e) { /* miss -> render/cache */ }
-    if (!SHOT_KEY) { return redirectThumb(3600); }
     // v2: v1 may hold a bot-wall page (Cloudflare "Performing security verification") rendered as if it
     // were the site, so those entries are orphaned rather than served again.
     const cacheKey = 'shot:v2:' + target.toString();
@@ -560,45 +555,26 @@ ${items}
         }
       }
     } catch (e) { /* miss -> render */ }
-    try {
-      const so = new URL('https://api.screenshotone.com/take');
-      so.searchParams.set('access_key', SHOT_KEY);
-      so.searchParams.set('url', target.toString());
-      so.searchParams.set('format', 'jpg');
-      so.searchParams.set('viewport_width', '1280');
-      so.searchParams.set('viewport_height', '900');
-      so.searchParams.set('image_quality', '82');
-      so.searchParams.set('block_cookie_banners', 'true');
-      so.searchParams.set('block_ads', 'true');
-      so.searchParams.set('block_chats', 'true');
-      so.searchParams.set('timeout', '30');
-      // Bot-wall pages render fine as images, so ScreenshotOne reports success; refuse them by their text.
-      ['Performing security verification', 'Verify you are human', 'Verifying you are human', 'Just a moment...', 'Checking your browser', 'Enable JavaScript and cookies to continue', 'Attention Required'].forEach(m => so.searchParams.append('fail_if_content_contains', m));
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 28000);
-      let up;
-      try { up = await fetch(so.toString(), { signal: controller.signal }); } finally { clearTimeout(t); }
-      const ct = up.headers.get('content-type') || '';
-      if (!up.ok || !/^image\//i.test(ct)) {
-        let walled = false;
-        try { const j = await up.json(); walled = !!(j && /content_contains_specified_string/.test(JSON.stringify(j))); } catch (e) {}
-        if (walled) {
-          try { if (_redis) await _redis.set(blockedKey, '1', { ex: 60 * 60 * 6 }); } catch (e) {}
-          return sendBlocked();
-        }
-        // Not thum.io: it renders the same bot wall (that is how 6sense's report got a Cloudflare page),
-        // and a missing screenshot is better than a wrong one. The card falls back to the live link.
-        res.setHeader('Cache-Control', 'public, max-age=600');
-        return res.status(404).json({ error: 'render_failed' });
-      }
-      const buf = Buffer.from(await up.arrayBuffer());
-      try { if (_redis && buf.length && buf.length < 800000) await _redis.set(cacheKey, buf.toString('base64'), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
-      await pin(buf); // freeze this fresh render to the report id too
-      return sendImg(buf, ct);
-    } catch (e) {
-      res.setHeader('Cache-Control', 'public, max-age=600');
-      return res.status(404).json({ error: 'render_failed' });
+    // ScreenshotOne first, then Cloudflare, then Microlink, thum.io last (see api/_shot.js).
+    // Only a real image is cached and pinned; a total failure is answered with no-store so the
+    // next open of the report asks again instead of keeping "no screenshot".
+    const r = await renderShot(target.toString(), { deadlineMs: 50000, allowThumio: true, redis: _redis });
+    if (r.walled) {
+      try { if (_redis) await _redis.set(blockedKey, '1', { ex: 60 * 60 * 6 }); } catch (e) {}
+      return sendBlocked();
     }
+    if (r.buf) {
+      try { if (_redis && r.buf.length < 800000) await _redis.set(cacheKey, r.buf.toString('base64'), { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
+      await pin(r.buf); // freeze this fresh render to the report id too
+      return sendImg(r.buf, r.ct);
+    }
+    if (r.redirect) {
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Location', r.redirect);
+      return res.status(302).end();
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(404).json({ error: 'render_failed' });
   }
 
   /* Company-logo resolver + proxy (GET /api/icp?logo=<domain>). The real logo of a company is the

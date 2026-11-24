@@ -8,6 +8,7 @@ import { scoreAdsCached, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform,
 import { JOBS, normalizeJob, isConversionJob, scoreFromDims, cleanDims, rubricPrompt } from './_rubrics.js';
 import { platformRulesPrompt, RULES_VERSION, mechanicalPolicyFlags } from './_platform-rules.js';
 import { PROMPT_VERSION, roastVer } from './_roast-version.js';
+import { renderShot } from './_shot.js';
 
 const _redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
@@ -1249,44 +1250,23 @@ Return the JSON object defined in the output contract. All fields required.`;
                landing exactly as it was when roasted: a page that later changes its hero, or dies,
                never alters this report. Best-effort: reuses icp.js's url-render cache when warm to
                avoid a fresh render, caps the fetch so it can't eat the function budget, and on any
-               failure falls back to the existing lazy first-view pin. Only when a shot key is set. */
+               failure falls back to the existing lazy first-view pin. */
             try {
               const _lu = (landingUrl || '').trim();
-              const SHOT_KEY = process.env.SCREENSHOTONE_ACCESS_KEY;
-              if (_lu && /^https?:\/\//i.test(_lu) && SHOT_KEY) {
-                const urlCacheKey = 'shot:v2:' + _lu; // challenge-guarded cache (icp.js shot renderer shares v2); v1 held pre-guard shots that could be a bot wall
+              if (_lu && /^https?:\/\//i.test(_lu)) {
+                const urlCacheKey = 'shot:v2:' + _lu; // challenge-guarded cache shared with icp.js's shot renderer
                 let shotB64 = null;
                 try { const hit = await _redis.get(urlCacheKey); if (hit && typeof hit === 'string') shotB64 = hit; } catch (e) {}
                 // Only kick off a FRESH render when there's budget left (video roasts can already be
                 // ~45s); otherwise skip and let the lazy first-view pin capture it. A cache hit is free.
-                if (!shotB64 && (Date.now() - _t0) < 40000) {
-                  const so = new URL('https://api.screenshotone.com/take');
-                  so.searchParams.set('access_key', SHOT_KEY);
-                  so.searchParams.set('url', _lu);
-                  so.searchParams.set('format', 'jpg');
-                  so.searchParams.set('viewport_width', '1280');
-                  so.searchParams.set('viewport_height', '900');
-                  so.searchParams.set('image_quality', '82');
-                  so.searchParams.set('block_cookie_banners', 'true');
-                  so.searchParams.set('block_ads', 'true');
-                  so.searchParams.set('block_chats', 'true');
-                  so.searchParams.set('timeout', '14');
-                  // Never pin a bot-wall / interstitial as the report's permanent landing: make
-                  // ScreenshotOne itself fail (non-image) when the rendered page is a challenge, so
-                  // the image guard below drops it and the lazy first-view pin retries later.
-                  for (const w of ['Performing security verification', 'Verify you are human', 'Verifying you are human', 'Just a moment...', 'Checking your browser', 'Enable JavaScript and cookies to continue', 'Attention Required']) {
-                    so.searchParams.append('fail_if_content_contains', w);
-                  }
-                  const sc = new AbortController();
-                  const st = setTimeout(() => sc.abort(), 15000);
-                  let up; try { up = await fetch(so.toString(), { signal: sc.signal }); } finally { clearTimeout(st); }
-                  const ct = (up && up.headers.get('content-type')) || '';
-                  if (up && up.ok && /^image\//i.test(ct)) {
-                    const b = Buffer.from(await up.arrayBuffer());
-                    if (b.length && b.length < 800000) {
-                      shotB64 = b.toString('base64');
-                      try { await _redis.set(urlCacheKey, shotB64, { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
-                    }
+                // Same provider chain as the report (api/_shot.js), minus thum.io: a thum.io shot is
+                // never pinned, the first view retries the real providers instead.
+                const _left = 52000 - (Date.now() - _t0);
+                if (!shotB64 && _left > 12000) {
+                  const r = await renderShot(_lu, { deadlineMs: Math.min(25000, _left - 2000), allowThumio: false, redis: _redis });
+                  if (r.buf && r.buf.length < 800000) {
+                    shotB64 = r.buf.toString('base64');
+                    try { await _redis.set(urlCacheKey, shotB64, { ex: 60 * 60 * 24 * 30 }); } catch (e) {}
                   }
                 }
                 if (shotB64) await _redis.set(`shot:report:${reportId}`, shotB64, { ex: 60 * 60 * 24 * 90 });
