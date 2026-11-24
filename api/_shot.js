@@ -15,7 +15,8 @@
    Every render goes out from the provider's servers, never from Marina's machine or accounts.
 
    Bot walls: a page that answers with a "verify you are human" challenge has no honest screenshot.
-   Any provider that sees one stops the chain (walled: true) so the caller can show the link card.
+   A provider that sees one passes to the next; only when every provider that answered saw a wall
+   (or the rest failed) is the result walled: true, so the caller shows the link card.
 
    Each provider used is logged ("[shot] provider=...") and counted per day in Redis under
    shot:prov:<YYYY-MM-DD>:<provider> (kept 40 days), so the recheck can see how often the
@@ -146,6 +147,7 @@ export async function renderShot(target, { deadlineMs = 45000, allowThumio = tru
   const t0 = Date.now();
   const left = () => deadlineMs - (Date.now() - t0);
   const errors = [];
+  const walledBy = [];
   const chain = [['screenshotone', viaScreenshotOne, 30000], ['cloudflare', viaCloudflare, 30000], ['microlink', viaMicrolink, 20000]];
   for (const [name, fn, cap] of chain) {
     const ms = Math.min(cap, left() - 1500);
@@ -153,10 +155,15 @@ export async function renderShot(target, { deadlineMs = 45000, allowThumio = tru
     let r;
     try { r = await fn(target, ms); } catch (e) { r = { error: name + ' ' + (e && e.name === 'AbortError' ? 'timeout' : (e && e.message) || 'error') }; }
     if (r.skip) continue;
-    if (r.walled) { await count(redis, name + '-walled', target, Date.now() - t0); return { walled: true, provider: name }; }
+    // A wall seen by one renderer is not the last word: they are detected differently (measured
+    // 24 nov: 6sense answers plain bots with a Cloudflare challenge, Microlink got the real hero).
+    // Note it and let the next provider try; only if no one gets through is the site "walled".
+    if (r.walled) { walledBy.push(name); await count(redis, name + '-walled', target, Date.now() - t0); continue; }
     if (r.buf && r.buf.length) { await count(redis, name, target, Date.now() - t0); return { buf: r.buf, ct: r.ct || 'image/jpeg', provider: name }; }
     errors.push(r.error || name + ' empty');
   }
+  // thum.io never gets through a wall (that is how 6sense's report got a Cloudflare page).
+  if (walledBy.length) return { walled: true, provider: walledBy.join(',') };
   if (allowThumio) {
     await count(redis, 'thumio', target, Date.now() - t0);
     return { redirect: 'https://image.thum.io/get/width/1000/crop/1200/' + target, provider: 'thumio', errors };
