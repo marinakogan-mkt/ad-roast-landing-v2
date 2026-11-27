@@ -964,7 +964,9 @@ ${items}
        45s Meta run inside a 60s function timed out (QA 28 nov: damani 72s, sectigo 67s, 504).
        `_liAt` marks the attempt either way, so a library that keeps serving old links costs at most
        one LinkedIn read a day. Bots and the hourly limit never get here (they returned above). */
+    let _liRetried = false;
     if (cacheFresh && _hasDeadImg && wantScore && !adminRescore && !prescoreAdmin && !body.only) {
+      _liRetried = true;
       try {
         const liPull = await fetchLinkedInAds({ company: body.company, domain: body.domain, limit: 12 }).catch(() => ({ ok: false, ads: [] }));
         const gotLi = !!(liPull.ok && liPull.ads && liPull.ads.length);
@@ -1060,6 +1062,36 @@ ${items}
       return res.status(200).json({ ok: !!d.ok, reason: d.reason || null, meta_on: META_ON, metaPage, metaHasFootprint: metaHasFootprint(metaPage), adsFound: (d.ads || []).length, ads: (d.ads || []).slice(0, 12).map(a => ({ head: a.head, advertiser: a.advertiser, adPageId: a.adPageId, linkDomain: a.linkDomain, img: a.img, lastDeliveredAt: a.lastDeliveredAt })), debug: d._debug });
     }
 
+    /* Meta that FAILED (Apify run FAILED / TIMED-OUT / 4xx) on an otherwise fresh list: the saved copy
+       kept the error note for the whole week until the next full pull (QA 28 nov: sectigo and damani
+       showed the same dead run ids for days). Retry ONLY Meta, at most every 6h per board, and merge it
+       into the saved list. Not on a call that already re-read LinkedIn (60s budget), never for bots. */
+    {
+      const _mNote = String((cachedCopy && cachedCopy.notes && cachedCopy.notes.meta) || '');
+      const _mFailed = !!_mNote && !/^(ok|no_ads|no_meta_footprint|meta_off)$/.test(_mNote);
+      if (META_ON && cacheFresh && !refresh && _mFailed && !_liRetried && wantScore && !adminRescore && !prescoreAdmin && !body.only
+        && Date.now() - Number(cachedCopy._metaRetryAt || 0) > 6 * 60 * 60 * 1000) {
+        try {
+          await ensureFootprint();
+          const mt = await fetchMetaAds({ company: body.company, domain: body.domain, hintPageId: (metaPage && metaPage.pageId) || '', hintIg: (metaPage && metaPage.igHandle) || '', hintFb: (metaPage && metaPage.vanity) || '', limit: 12, redis: _redis }).catch(() => ({ ok: false, reason: 'meta_fetch_failed', ads: [] }));
+          const got = !!(mt && mt.ads && mt.ads.length);
+          const nonMeta = (cachedCopy.ads || []).filter(a => (a.plat || '') !== 'Meta');
+          const oldMeta = (cachedCopy.ads || []).filter(a => (a.plat || '') === 'Meta');
+          const newMeta = got ? mt.ads : oldMeta;
+          const ads = dedupeBoardAds([...nonMeta, ...newMeta]);
+          const nMeta = ads.filter(a => (a.plat || '') === 'Meta').length;
+          cachedCopy = {
+            ...cachedCopy, ads,
+            sources: { ...(cachedCopy.sources || {}), meta: nMeta },
+            totals: cachedCopy.totals ? { ...cachedCopy.totals, meta: nMeta } : cachedCopy.totals,
+            notes: { ...(cachedCopy.notes || {}), meta: got ? 'ok' : (oldMeta.length ? 'ok' : ((mt && mt.reason) || 'no_ads')) },
+            _metaRetryAt: Date.now(),
+            _metaAt: got ? Date.now() : cachedCopy._metaAt,
+          };
+          if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(cachedCopy), { ex: CACHE_TTL }); } catch (e) {} }
+        } catch (e) { /* a Meta retry never breaks the board */ }
+      }
+    }
     let pull = null, listCached = false, stale = false, lastChecked = null;
     if ((!refresh && cacheFresh) || (adminRescore && cachedCopy && cachedCopy.ads && cachedCopy.ads.length)) {
       // Fresh enough (< a week), OR an admin re-score: show the last-seen list instantly, no live pull.
@@ -1084,7 +1116,8 @@ ${items}
             // last-seen Meta ads (that would flip a stopped advertiser back to "running"). Only carry Meta
             // forward when we did NOT pull it this run (pre-filter skipped it / no metaPage), same intent
             // as keeping a flaky LinkedIn fetch's last-seen list.
-            if (plat === 'Meta' && r.notes && r.notes.meta_tried) continue;
+            // A run that FAILED (Apify FAILED / TIMED-OUT, cut) is not a negative: keep last-seen Meta.
+            if (plat === 'Meta' && r.notes && r.notes.meta_tried && /^(ok|no_ads)$/.test(String(r.notes.meta || ''))) continue;
             if (!gotNow) {
               const prev = prevCopy.ads.filter(a => (a.plat || '') === plat);
               if (prev.length) {
