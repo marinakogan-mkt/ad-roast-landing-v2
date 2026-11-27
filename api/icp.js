@@ -1283,7 +1283,7 @@ ${items}
        (QA D01, tambien surveymonkey y augury). Ahora: 1) por plataforma, hasta `cap`, pagos
        primero y despues los que hay que comprar; 2) con lo que sobre de `tope`, el resto de los
        pagos, que no cuestan nada. Lo que se compra sigue siendo como mucho `cap` por plataforma. */
-    const _dosFilas = (lista, cap, tope) => {
+    const _dosFilas = (lista, cap, tope, completar = false) => {
       const usado = {}, elegido = new Set();
       const pago = (a) => !!(_pagos && _pagos.has(a));
       const tomar = (filtro, porPlat) => {
@@ -1298,7 +1298,9 @@ ${items}
       };
       tomar(pago, true);
       tomar((a) => !pago(a), true);
-      tomar(pago, false);
+      // completar (clave de API o plan): el resto de `tope` se llena en el orden de la lista, que
+      // ya trae los pagos primero (preferScored), igual que el slice de antes.
+      tomar(completar ? () => true : pago, false);
       const dentro = [], fuera = [];
       for (const a of lista) (elegido.has(a) ? dentro : fuera).push(a);
       return [dentro, fuera];
@@ -1331,8 +1333,11 @@ ${items}
         }
       } catch (e) { /* medir nunca rompe el board */ }
     } else {
-      _toRank = [..._notMetaRanked.slice(0, SCORE_CAP), ..._meta.slice(0, META_SCORE_CAP)];
-      _extras = [..._notMetaRanked.slice(SCORE_CAP), ..._meta.slice(META_SCORE_CAP)];
+      // Mismo arreglo del 28 nov: el slice de 18 sobre una lista con los pagos primero dejaba a
+      // LinkedIn afuera cuando Google ya tenia 18 pagos. Cada plataforma entra con sus dos filas.
+      const [_dentro, _fuera] = _dosFilas(_notMetaRanked, Math.min(CAP_POR_PLAT, SCORE_CAP), SCORE_CAP, true);
+      _toRank = [..._dentro, ..._meta.slice(0, META_SCORE_CAP)];
+      _extras = [..._fuera, ..._meta.slice(META_SCORE_CAP)];
     }
     if (prescoreAdmin) {
       const prep = await prescorePrepare(_toRank, body.icp, _redis);
