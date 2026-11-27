@@ -845,7 +845,7 @@ function scoredRowsToEntries(scored, keyOf, failSeen) {
   return { entries, freshBySig, failBySig };
 }
 
-export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0, touch = false } = {}) {
+export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0, touch = false, cacheOnly = false } = {}) {
   if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0, pending: 0 };
   if (icpIsUnknown(icp)) return { ads, scoredNew: 0, reused: 0, pending: ads.length, noIcp: true };
   if (!redis) {
@@ -923,6 +923,10 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // we score at most `limit` per request and report `pending`; the client re-calls to score the rest
   // (the list is cached by then, so those calls skip the pull). limit 0 = no cap (score everything).
   let toScore = (limit > 0 && need.length > limit) ? need.slice(0, limit) : need;
+  // cacheOnly: attach the scores already paid for, buy none. Used for bots and the hourly limit (they
+  // used to get the saved list with NO scores, so a board read by QA from a busy IP showed every
+  // LinkedIn card "Not scored yet") and by the GEO renewal of boards nobody visits (cache_only).
+  if (cacheOnly) toScore = [];
   // In-flight lock per creative (2026-11-11). Two requests for the same board often land in the
   // same second (Vercel logs: 6 of 16 board-score calls were the SAME batch billed twice, identical
   // input tokens, same second). Both missed the cache, both paid for the vision call. Now each
@@ -996,7 +1000,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // Label every scored row with its job, its stage and whether it is a conversion ad, AFTER the recheck
   // (which may move an ad to another job). `conversion` is what the board's "fix first", the free roast
   // pick and the outreach gate count: those are the ads the Conversion Roadmap fixes.
-  const outChecked = (await verifyLowScores(out, icp, redis)).map(a => {
+  const outChecked = (cacheOnly ? out : await verifyLowScores(out, icp, redis)).map(a => {
     if (!a || (typeof a.score !== 'number' && !a.talent)) return a;
     const j = normalizeJob(a.job);
     return { ...a, job: j, jobLabel: JOBS[j].label, stage: JOBS[j].stage, conversion: isConversionJob(j) };

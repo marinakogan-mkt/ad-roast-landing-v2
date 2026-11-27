@@ -886,8 +886,9 @@ ${items}
     // (QA 27 nov: augury/sectigo LinkedIn 502s). Treat such a list as due for a re-pull, but at most once
     // a day so a library that keeps handing back old links can't make every open re-pull.
     const _imgExpired = (a) => { const m = /[?&]e=(\d{9,10})(?:&|$)/.exec(String((a && a.img) || '')); return !!m && Number(m[1]) < 2147483647 && Number(m[1]) * 1000 < Date.now(); };
-    const _hasDeadImg = !!cachedCopy && cacheAge > 24 * 60 * 60 * 1000 && (cachedCopy.ads || []).some(_imgExpired);
-    const cacheFresh = !!cachedCopy && cacheAge < FRESH_MS && !_hasDeadImg;
+    const _liAge = cachedCopy ? Date.now() - (cachedCopy._liAt || cachedCopy._checkedAt || 0) : 0;
+    const _hasDeadImg = !!cachedCopy && _liAge > 24 * 60 * 60 * 1000 && (cachedCopy.ads || []).some(a => (a.plat || '') === 'LinkedIn' && _imgExpired(a));
+    const cacheFresh = !!cachedCopy && cacheAge < FRESH_MS;
     // Admin-only manual RE-SCORE: re-run the risk score on an already-pulled board on demand (the button
     // Marina sees). Uses the cached ad LIST (no re-pull) and forces a fresh score of every creative in
     // one call. Gated to admin so a prospect viewing a shared board can't trigger expensive re-scores.
@@ -936,7 +937,15 @@ ${items}
     }
     if ((_isBot || _toomany) && !adminRescore && !prescoreAdmin && wantScore) {
       if (cachedCopy) {
-        const _botAds = dedupeBoardAds(collapseTemplateGroups(dropJunkCreatives(cachedCopy.ads || [])));
+        let _botAds = dedupeBoardAds(collapseTemplateGroups(dropJunkCreatives(cachedCopy.ads || [])));
+        // Attach every score already paid for (free: one mget, no model call), so the saved board reads
+        // the same as it does for a person, instead of a grid of "Not scored yet".
+        if (body.icp && !icpIsUnknown(body.icp)) {
+          try {
+            const _scB = await scoreAdsCached(_botAds, body.icp, _redis, { cacheOnly: true });
+            _botAds = dedupeBoardAds(dropJunkCreatives(_scB.ads).filter(a => a.flag !== 'capture_fail' && !a._captureFail));
+          } catch (e) {}
+        }
         // The saved copy's per-platform counts can name ads this list no longer carries (a platform
         // merged in later, or dropped as junk here). Report what is actually served, so a platform tab
         // never opens onto "No ads on this platform" next to a count of 2 (onit.security/google, QA 26 nov).
@@ -950,6 +959,22 @@ ${items}
     // LinkedIn-only retry: Google and the ICP are already done, so "Retry LinkedIn" should re-pull ONLY
     // LinkedIn and merge it with the cached Google/Meta — not redo everything. Needs a cached copy to
     // merge into; without one we fall through to a normal full pull.
+    /* Dead LinkedIn image links on an otherwise fresh list: re-read ONLY LinkedIn (Jina, ~20-30s) and
+       merge it into the saved list, instead of the full LinkedIn + Google + Meta pull, which with a
+       45s Meta run inside a 60s function timed out (QA 28 nov: damani 72s, sectigo 67s, 504).
+       `_liAt` marks the attempt either way, so a library that keeps serving old links costs at most
+       one LinkedIn read a day. Bots and the hourly limit never get here (they returned above). */
+    if (cacheFresh && _hasDeadImg && wantScore && !adminRescore && !prescoreAdmin && !body.only) {
+      try {
+        const liPull = await fetchLinkedInAds({ company: body.company, domain: body.domain, limit: 12 }).catch(() => ({ ok: false, ads: [] }));
+        const gotLi = !!(liPull.ok && liPull.ads && liPull.ads.length);
+        const nonLi = (cachedCopy.ads || []).filter(a => (a.plat || '') !== 'LinkedIn');
+        const liAds = gotLi ? liPull.ads : (cachedCopy.ads || []).filter(a => (a.plat || '') === 'LinkedIn');
+        cachedCopy = { ...cachedCopy, ads: [...liAds, ...nonLi], sources: { ...(cachedCopy.sources || {}), linkedin: liAds.length }, _liAt: Date.now() };
+        if (_redis && domKey) { try { await _redis.set(pullKey, JSON.stringify(cachedCopy), { ex: CACHE_TTL }); } catch (e) {} }
+      } catch (e) {}
+    }
+
     if (refresh && body.only === 'linkedin' && cachedCopy) {
       const liPull = await fetchLinkedInAds({ company: body.company, domain: body.domain, limit: 12 }).catch(() => ({ ok: false, ads: [] }));
       const gotLi = !!(liPull.ok && liPull.ads && liPull.ads.length);
@@ -1308,7 +1333,11 @@ ${items}
       const prep = await prescorePrepare(_toRank, body.icp, _redis);
       return res.status(200).json({ ...prep, listCount: pull.ads.length, rankCount: _toRank.length, listCached });
     }
-    const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3), touch: !listCached });
+    // cache_only (renovar_geo, boards nobody visits): refresh the list, the og stats and ads:geo with the
+    // scores already paid for, buy none. New creatives stay unscored and off the GEO page until a
+    // person opens the board or a full renewal runs. Admin re-score ignores it.
+    const _cacheOnly = body.cache_only === true && !adminRescore;
+    const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3), touch: !listCached, cacheOnly: _cacheOnly });
     // Drop capture_fail ads (homonym / wrong-advertiser / scrape artifact) from the board ENTIRELY,
     // not just from the OG image and worst-pick: a different company that merely shares the name
     // (a conveyor-belt maker under "Conveyor" the SaaS, a trademark-filing firm under "Clutch") must
@@ -1321,6 +1350,7 @@ ${items}
     // Persist a compact stats snapshot for the link-preview image (og:image). The pull cache stores
     // UNSCORED ads, so the preview can't derive metrics from it; write the scored numbers + the worst
     // creative here, on every board render, so the shared card is always current. Cheap single set.
+    let _geoCount = null; // ads published on the GEO page by this call (null = not written)
     if (_redis && domKey) {
       try {
         const scoredAll = scAds.filter(a => typeof a.score === 'number');
@@ -1371,6 +1401,7 @@ ${items}
           const geoAds = ownScored
             .slice(0, 24)
             .map(a => ({ head: String(a.head || a.headline).slice(0, 200), score: a.score, verdict: a.verdict ? String(a.verdict).slice(0, 200) : '', plat: a.plat || '' }));
+          _geoCount = geoAds.length;
           if (geoAds.length) {
             await _redis.set('ads:geo:' + domKey, JSON.stringify(geoAds), { ex: 60 * 60 * 24 * 30 });
             // First time this board is public: ping IndexNow (deduped, capped, never throws).
@@ -1409,6 +1440,8 @@ ${items}
     return res.status(200).json({
       ...pull,
       totals: _fix(pull.totals),
+      geoCount: _geoCount == null ? 0 : _geoCount,
+      cacheOnly: _cacheOnly || undefined,
       sources: _fix(pull.sources),
       ads: scAds,
       fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: scAds.length, scoredNew: sc.scoredNew, reused: sc.reused, pending: sc.pending, scoreError: sc.scoreError || null, rateLimited: !!sc.rateLimited },
