@@ -30,7 +30,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 import { withUsage, setUsageBoard } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, storeMetaImgCopy, META_ON, scoreAdsCached, prescorePrepare, prescoreCommit, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams, scoreKeyFn } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, storeMetaImgCopy, dedupeBoardAds, META_ON, scoreAdsCached, prescorePrepare, prescoreCommit, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams, scoreKeyFn } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -881,7 +881,13 @@ ${items}
       }
     }
     const cacheAge = (cachedCopy && cachedCopy._checkedAt) ? (Date.now() - cachedCopy._checkedAt) : Infinity;
-    const cacheFresh = !!cachedCopy && cacheAge < FRESH_MS;
+    // A LinkedIn creative can carry a signed image link with a real expiry (`e=<unix seconds>`; most use
+    // 2147483647, i.e. never). Once it passes, the image proxy gets a 403 and the card shows no creative
+    // (QA 27 nov: augury/sectigo LinkedIn 502s). Treat such a list as due for a re-pull, but at most once
+    // a day so a library that keeps handing back old links can't make every open re-pull.
+    const _imgExpired = (a) => { const m = /[?&]e=(\d{9,10})(?:&|$)/.exec(String((a && a.img) || '')); return !!m && Number(m[1]) < 2147483647 && Number(m[1]) * 1000 < Date.now(); };
+    const _hasDeadImg = !!cachedCopy && cacheAge > 24 * 60 * 60 * 1000 && (cachedCopy.ads || []).some(_imgExpired);
+    const cacheFresh = !!cachedCopy && cacheAge < FRESH_MS && !_hasDeadImg;
     // Admin-only manual RE-SCORE: re-run the risk score on an already-pulled board on demand (the button
     // Marina sees). Uses the cached ad LIST (no re-pull) and forces a fresh score of every creative in
     // one call. Gated to admin so a prospect viewing a shared board can't trigger expensive re-scores.
@@ -930,7 +936,7 @@ ${items}
     }
     if ((_isBot || _toomany) && !adminRescore && !prescoreAdmin && wantScore) {
       if (cachedCopy) {
-        const _botAds = collapseTemplateGroups(dropJunkCreatives(cachedCopy.ads || []));
+        const _botAds = dedupeBoardAds(collapseTemplateGroups(dropJunkCreatives(cachedCopy.ads || [])));
         // The saved copy's per-platform counts can name ads this list no longer carries (a platform
         // merged in later, or dropped as junk here). Report what is actually served, so a platform tab
         // never opens onto "No ads on this platform" next to a count of 2 (onit.security/google, QA 26 nov).
@@ -1309,9 +1315,9 @@ ${items}
     // never appear on this company's board or inflate its metrics. The scorer flags these; here we
     // remove them. Unscored extras carry no flag yet and stay as greyed teasers; they clear as the
     // board finishes scoring (the client re-calls ads-fetch until pending hits 0).
-    const scAds = collapseTemplateGroups(dropJunkCreatives(sc.ads))
+    const scAds = dedupeBoardAds(collapseTemplateGroups(dropJunkCreatives(sc.ads))
       .filter(a => a.flag !== 'capture_fail' && !a._captureFail) // talent (hiring) posts already dropped by dropJunkCreatives
-      .concat(_extras); // scored batch (template-folded, homonyms removed) + unscored extras, shown greyed/locked
+      .concat(_extras)); // scored batch (template-folded, homonyms removed) + unscored extras, shown greyed/locked; then same-creative dupes collapsed
     // Persist a compact stats snapshot for the link-preview image (og:image). The pull cache stores
     // UNSCORED ads, so the preview can't derive metrics from it; write the scored numbers + the worst
     // creative here, on every board render, so the shared card is always current. Cheap single set.

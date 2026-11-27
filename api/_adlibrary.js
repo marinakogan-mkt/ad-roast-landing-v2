@@ -1557,12 +1557,18 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
   // advertisers run outside the US (Damani in IN) and a US filter returned nothing for them. On a non-2xx
   // we READ the body and fold a snippet into the reason (a bare 'apify_meta_400' hid WHY -- input error vs
   // billing vs block), and record it in the debug trace.
+  let _metaCut = false;
   const runActor = async (input, label = '') => {
     const url = 'https://api.apify.com/v2/acts/sukhdipp~meta-ad-library-scraper/run-sync-get-dataset-items?timeout=45&maxTotalChargeUsd=0.02&clean=true&token=' + encodeURIComponent(token);
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), 50000);
+    const _t0 = Date.now();
     try {
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: c.signal });
+      // A run that used up (nearly) its whole 45s timeout was CUT, even when Apify still answers 200
+      // with whatever the dataset held (often nothing). Remember it so an empty result from a cut run
+      // is never cached as "no Meta ads" (QA R09/D07: sanalabs TIMED-OUT, damani no_ads).
+      if (Date.now() - _t0 >= 40000) _metaCut = true;
       if (!r.ok) {
         let errBody = '';
         try { errBody = (await r.text()).slice(0, 800); } catch (e) {}
@@ -1735,6 +1741,7 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
   // An empty result after a FALLBACK errored is not a confirmed "no ads" -- return the error (uncached) so
   // a retry/refresh re-runs, instead of freezing a transient Apify hiccup as "no Meta" for the empty TTL.
   if (!finalAds.length && lastErr) return { ok: false, reason: lastErr, ads: [], _debug: dbg };
+  if (!finalAds.length && _metaCut) return { ok: false, reason: 'apify_meta_cut', ads: [], _debug: dbg };
 
   const result = { ok: true, empty: !finalAds.length, ads: finalAds.slice(0, limit), total: finalAds.length, reason: finalAds.length ? 'ok' : 'no_ads', via: 'apify', _debug: dbg };
   // A debug run is a diagnostic: never persist images or write the board cache from it (no side effects,
@@ -1748,7 +1755,10 @@ async function fetchMetaAdsViaApify({ company, domain, pageId = null, hintPageId
     // that passed the free footprint gate but runs no ads costs at most one Apify run a week, not one per
     // open. The board's weekly cadence (Layer A) re-pulls a live advertiser, so one run/board/week. Strip
     // the debug payload before caching (it is null here anyway, since debug never reaches this write).
-    const cacheSec = finalAds.length ? META_HIT_TTL : META_EMPTY_TTL;
+    // The site links to a Facebook/Instagram page (a hint) yet the library came back empty: likely a
+    // miss, not a non-advertiser. Re-check in 12h instead of freezing "no Meta" for a week.
+    const _hinted = !!(hintPageId || hintIg || hintFb || pageId);
+    const cacheSec = finalAds.length ? META_HIT_TTL : (_hinted ? 12 * 60 * 60 : META_EMPTY_TTL);
     const { _debug, ...toCache } = result;
     if (redis) { try { await redis.set(runKey, JSON.stringify(toCache), { ex: cacheSec }); } catch (e) {} }
   }
@@ -1779,6 +1789,30 @@ export function metaHasFootprint(metaPage) {
 // Instagram handle), or we never spend an Apify credit and report 'no_meta_footprint'. Damani carries a
 // Facebook link, so it passes and the domain/name pull finds its live page; a site with no Meta footprint
 // at all is skipped for free.
+// Same-creative dedupe, shared by the pull (fetchAllAds) and the board response in icp.js. The serve
+// side matters because lists saved BEFORE this dedupe existed keep their dupes for up to a week (QA 27
+// nov: Augury still showed one Meta ad 8 times). Keeps the first SCORED copy of each creative, else the
+// first copy, in the original order.
+export function dedupeBoardAds(list) {
+  const nrm = (x) => String(x || '').toLowerCase().replace(/[^\w ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const keyOf = (a) => {
+    const t = (nrm(a.head || a.headline) + ' ' + nrm(a.body)).trim();
+    const base = t.length >= 12 ? ('t:' + t.slice(0, 180))
+      : a.img ? ('i:' + String(a.img).split('?')[0])
+      : a.adId ? ('a:' + a.adId)
+      : a.detailUrl ? ('d:' + String(a.detailUrl).split('?')[0]) : null;
+    return base ? (String(a.plat || '') + '|' + base) : null;
+  };
+  const arr = Array.isArray(list) ? list : [];
+  const best = new Map();
+  arr.forEach((a, i) => {
+    const k = keyOf(a);
+    if (!k) return;
+    const cur = best.get(k);
+    if (cur === undefined || (typeof arr[cur].score !== 'number' && typeof a.score === 'number')) best.set(k, i);
+  });
+  return arr.filter((a, i) => { const k = keyOf(a); return !k || best.get(k) === i; });
+}
 export async function fetchAllAds({ company, domain, icp, metaPage = null, limit = 80, redis = null, refresh = false } = {}) {
   // Pull MANY creatives (cheap): the board shows the most-urgent few in full and the rest greyed/locked
   // for upsell, and the "X of N" count needs the real volume. Only a bounded batch gets scored (icp.js).
@@ -1820,8 +1854,7 @@ export async function fetchAllAds({ company, domain, icp, metaPage = null, limit
       : a.detailUrl ? ('d:' + String(a.detailUrl).split('?')[0]) : null;
     return base ? (String(a.plat || '') + '|' + base) : null;
   };
-  const _seenAll = new Set();
-  ads = ads.filter((a) => { const k = _dedupeKey(a); if (!k) return true; if (_seenAll.has(k)) return false; _seenAll.add(k); return true; });
+  ads = dedupeBoardAds(ads);
   // Totals are the honest distinct-creative count PER PLATFORM, taken from the deduped list so the
   // board's "showing X of N" never counts the dupes we just collapsed.
   const _platCount = (p) => ads.filter((a) => String(a.plat || '').toLowerCase() === p).length;
