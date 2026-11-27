@@ -1302,7 +1302,7 @@ ${items}
       const prep = await prescorePrepare(_toRank, body.icp, _redis);
       return res.status(200).json({ ...prep, listCount: pull.ads.length, rankCount: _toRank.length, listCached });
     }
-    const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3) });
+    const sc = await scoreAdsCached(_toRank, body.icp, _redis, { force: adminRescore, limit: adminRescore ? 0 : (listCached ? 8 : 3), touch: !listCached });
     // Drop capture_fail ads (homonym / wrong-advertiser / scrape artifact) from the board ENTIRELY,
     // not just from the OG image and worst-pick: a different company that merely shares the name
     // (a conveyor-belt maker under "Conveyor" the SaaS, a trademark-filing firm under "Clutch") must

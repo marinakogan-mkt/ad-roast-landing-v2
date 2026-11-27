@@ -845,7 +845,7 @@ function scoredRowsToEntries(scored, keyOf, failSeen) {
   return { entries, freshBySig, failBySig };
 }
 
-export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0 } = {}) {
+export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0, touch = false } = {}) {
   if (!icp || !ads.length) return { ads, scoredNew: 0, reused: 0, pending: 0 };
   if (icpIsUnknown(icp)) return { ads, scoredNew: 0, reused: 0, pending: ads.length, noIcp: true };
   if (!redis) {
@@ -909,6 +909,15 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // failSeen: past capture-failures, including ones whose retry window has already opened
   const { cachedBySig, failSeen } = force ? { cachedBySig: {}, failSeen: {} } : await loadScoreCache(ads, keyOf, redis);
   const need = ads.filter(a => !cachedBySig[creativeSig(a)]);
+  // touch (set by icp.js on a FRESH list pull, about once a week per board): every creative that came
+  // back is still live, so its paid score gets another ADSCORE_TTL. A score then lives as long as the ad
+  // runs, and an evergreen ad is never re-bought just because 180 days passed since its first score.
+  if (touch && redis && !force) {
+    try {
+      const hit = ads.filter(a => cachedBySig[creativeSig(a)]);
+      if (hit.length) { const pl = redis.pipeline(); for (const a of hit) pl.expire(keyOf(a), ADSCORE_TTL); await pl.exec(); }
+    } catch (e) { /* renewing never breaks a board */ }
+  }
   // Bound how many NEW creatives we score in one call: scoreAds is a Sonnet vision call, and the
   // pull + scoring must fit Vercel's 60s function limit. On a big FRESH board that one call 504s, so
   // we score at most `limit` per request and report `pending`; the client re-calls to score the rest
