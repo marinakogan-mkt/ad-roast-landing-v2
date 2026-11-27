@@ -1471,7 +1471,9 @@ ${items}
       cacheOnly: _cacheOnly || undefined,
       sources: _fix(pull.sources),
       ads: scAds,
-      fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: scAds.length, scoredNew: sc.scoredNew, reused: sc.reused, pending: sc.pending, scoreError: sc.scoreError || null, rateLimited: !!sc.rateLimited },
+      fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: scAds.length, scoredNew: sc.scoredNew, reused: sc.reused, pending: sc.pending, scoreError: sc.scoreError || null, rateLimited: !!sc.rateLimited,
+        // which ads went to the scorer, per platform, and how many paid ones the board drops (QA D01)
+        rank: (() => { const m = {}; for (const a of _toRank) { const k = (a.plat || '?') + (_pagos && _pagos.has(a) ? (_caidos.has(a) ? ':caido' : ':pago') : ':nuevo'); m[k] = (m[k] || 0) + 1; } return m; })(), recorte: _recorte },
     });
   }
 
