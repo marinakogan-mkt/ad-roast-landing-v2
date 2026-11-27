@@ -1277,23 +1277,28 @@ ${items}
        distinto numero, y el DM del motor cita los suyos. Con `tope` los dos caminos coinciden.
        Y el tope va ANTES de comprar, no despues: al reves se pagaba una segunda fila que el corte
        final dejaba afuera del board. */
+    /* 28 nov 2026: las dos filas de cada plataforma van PRIMERO. Antes los pagos llenaban `tope`
+       sin mirar la plataforma, y en sectigo.com los 18 lugares eran Google ya pagos: los 13 de
+       LinkedIn nunca entraban, pending daba 0 y el board mostraba "Not scored yet" para siempre
+       (QA D01, tambien surveymonkey y augury). Ahora: 1) por plataforma, hasta `cap`, pagos
+       primero y despues los que hay que comprar; 2) con lo que sobre de `tope`, el resto de los
+       pagos, que no cuestan nada. Lo que se compra sigue siendo como mucho `cap` por plataforma. */
     const _dosFilas = (lista, cap, tope) => {
       const usado = {}, elegido = new Set();
-      for (const a of lista) {
-        if (elegido.size >= tope) break;
-        if (!(_pagos && _pagos.has(a))) continue;
-        const k = a.plat || '?';
-        usado[k] = (usado[k] || 0) + 1;
-        elegido.add(a);
-      }
-      for (const a of lista) {
-        if (elegido.size >= tope) break;
-        if (elegido.has(a)) continue;
-        const k = a.plat || '?';
-        if ((usado[k] || 0) >= cap) continue;
-        usado[k] = (usado[k] || 0) + 1;
-        elegido.add(a);
-      }
+      const pago = (a) => !!(_pagos && _pagos.has(a));
+      const tomar = (filtro, porPlat) => {
+        for (const a of lista) {
+          if (elegido.size >= tope) break;
+          if (elegido.has(a) || !filtro(a)) continue;
+          const k = a.plat || '?';
+          if (porPlat && (usado[k] || 0) >= cap) continue;
+          usado[k] = (usado[k] || 0) + 1;
+          elegido.add(a);
+        }
+      };
+      tomar(pago, true);
+      tomar((a) => !pago(a), true);
+      tomar(pago, false);
       const dentro = [], fuera = [];
       for (const a of lista) (elegido.has(a) ? dentro : fuera).push(a);
       return [dentro, fuera];
