@@ -1432,9 +1432,9 @@ export function metaImgKey(url) {
 // The stored copy is only DISPLAYED (a board card a few hundred px wide), never scored, so it does not
 // need the scorer's 800px / q88. Measured 27 nov 2026: meta:img held 136 MB of the 250 MB Upstash
 // free tier at ~98 KB a copy and filled the database in 12 days, which made every write fail (scores
-// stopped caching, boards re-scored on every open). 480px WebP q70 lands around 20-30 KB. Any sharp
+// stopped caching, boards re-scored on every open). 640px WebP q78 lands around 30-40 KB and stays sharp on a retina card. Any sharp
 // failure keeps the scorer-sized bytes: a larger copy beats a missing image.
-const META_IMG_STORE_EDGE = 480;
+const META_IMG_STORE_EDGE = 640; // a board card is ~360px wide, so 640 stays sharp on a 2x screen
 async function _storeCopy(b) {
   try {
     if (_sharp === undefined) {
@@ -1444,12 +1444,26 @@ async function _storeCopy(b) {
     const out = await _sharp(Buffer.from(b.data, 'base64'), { animated: false, failOn: 'none' })
       .resize({ width: META_IMG_STORE_EDGE, height: META_IMG_STORE_EDGE, fit: 'inside', withoutEnlargement: true })
       .flatten({ background: '#ffffff' })
-      .webp({ quality: 70 })
+      .webp({ quality: 78 })
       .toBuffer();
     if (!out || !out.length) return b;
     const data = out.toString('base64');
     return data.length < b.data.length ? { media_type: 'image/webp', data } : b;
   } catch (e) { return b; }
+}
+let _blobMod; // undefined = not tried, null = unavailable
+async function _blobPut(key, st) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  try {
+    if (_blobMod === undefined) { try { _blobMod = await import('@vercel/blob'); } catch (e) { _blobMod = null; } }
+    if (!_blobMod) return null;
+    const ext = st.media_type === 'image/webp' ? 'webp' : st.media_type === 'image/png' ? 'png' : 'jpg';
+    const r = await _blobMod.put('meta-img/' + key.slice('meta:img:'.length) + '.' + ext, Buffer.from(st.data, 'base64'), {
+      access: 'public', addRandomSuffix: false, allowOverwrite: true, contentType: st.media_type,
+      cacheControlMaxAge: 60 * 60 * 24 * 30,
+    });
+    return (r && r.url) || null;
+  } catch (e) { console.error('[meta-img] blob put failed, storing in Redis:', String(e && e.message || e).slice(0, 120)); return null; }
 }
 async function persistMetaImgs(redis, ads) {
   if (!redis || !Array.isArray(ads) || !ads.length) return;
@@ -1460,7 +1474,13 @@ async function persistMetaImgs(redis, ads) {
       const b = await _fetchImgB64(a.img);
       if (b && b.data) {
         const st = await _storeCopy(b);
-        await redis.set(key, JSON.stringify({ ct: st.media_type, data: st.data }), { ex: META_IMG_TTL, nx: true });
+        // Images live in Vercel Blob when the project has a store (BLOB_READ_WRITE_TOKEN): Redis keeps
+        // only a ~120-byte pointer, so images can never fill the database again (27 nov 2026 they took
+        // 136 of 250 MB and every write, login included, failed). Without a store, or if the Blob write
+        // fails, the bytes go to Redis as before.
+        const url = await _blobPut(key, st);
+        const val = url ? { ct: st.media_type, blob: url } : { ct: st.media_type, data: st.data };
+        await redis.set(key, JSON.stringify(val), { ex: META_IMG_TTL, nx: true });
       }
     } catch (e) {}
   }));

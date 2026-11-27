@@ -467,6 +467,11 @@ ${items}
         try {
           const s = await _redis.get(fbKey);
           const o = s ? (typeof s === 'string' ? JSON.parse(s) : s) : null;
+          if (o && o.blob && /^https:\/\/[a-z0-9.-]+\.public\.blob\.vercel-storage\.com\//i.test(o.blob)) {
+            res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000');
+            res.redirect(302, o.blob);
+            return true;
+          }
           if (o && o.data) {
             res.setHeader('Content-Type', o.ct || 'image/jpeg');
             res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=2592000, immutable');
