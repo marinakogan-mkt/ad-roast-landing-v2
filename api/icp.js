@@ -1299,13 +1299,28 @@ ${items}
     const _dosFilas = (lista, cap, tope, completar = false) => {
       const usado = {}, elegido = new Set();
       const pago = (a) => !!(_pagos && _pagos.has(a));
+      /* Dos ads del mismo grupo (mismo tpl, o mismo texto: collapseTemplateGroups y dedupeBoardAds
+         los juntan en UNA tarjeta despues de puntuar) cuentan como un solo lugar. Sectigo mandaba 6
+         de LinkedIn pagos y el board mostraba 5, porque dos eran el mismo creativo. Uno nuevo de un
+         grupo que ya entro no se compra: se iba a juntar igual. */
+      const _nrm = (x) => String(x || '').toLowerCase().replace(/[^\w ]+/g, ' ').replace(/\s+/g, ' ').trim();
+      const _grupo = (a) => {
+        if (a.tpl) return (a.plat || '') + '|tpl:' + a.tpl;
+        const t = (_nrm(a.head || a.headline) + ' ' + _nrm(a.body)).trim();
+        return t.length >= 12 ? (a.plat || '') + '|t:' + t.slice(0, 180) : null;
+      };
+      const grupos = new Set();
       const tomar = (filtro, porPlat) => {
         for (const a of lista) {
           if (elegido.size >= tope) break;
           if (elegido.has(a) || !filtro(a)) continue;
+          const g = _grupo(a);
+          const repetido = !!(g && grupos.has(g));
+          if (repetido && !pago(a)) continue;
           const k = a.plat || '?';
-          if (porPlat && (usado[k] || 0) >= cap) continue;
-          if (!_caidos.has(a)) usado[k] = (usado[k] || 0) + 1;
+          if (porPlat && !repetido && (usado[k] || 0) >= cap) continue;
+          if (!_caidos.has(a) && !repetido) usado[k] = (usado[k] || 0) + 1;
+          if (g && !_caidos.has(a)) grupos.add(g);
           elegido.add(a);
         }
       };
