@@ -1310,6 +1310,10 @@ ${items}
         }
       };
       tomar(pago, true);
+      // Comprar primero los que tienen la imagen viva: uno con el link de LinkedIn vencido no se
+      // puede puntuar, se queda con el lugar y la tarjeta sale "Not scored yet" en cada visita
+      // (sectigo, 28 nov). Los vencidos entran solo si sobra lugar.
+      tomar((a) => !pago(a) && !_imgExpired(a), true);
       tomar((a) => !pago(a), true);
       // completar (clave de API o plan): el resto de `tope` se llena en el orden de la lista, que
       // ya trae los pagos primero (preferScored), igual que el slice de antes.
