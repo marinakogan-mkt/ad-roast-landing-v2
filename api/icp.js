@@ -926,7 +926,12 @@ ${items}
     if ((_isBot || _toomany) && !adminRescore && !prescoreAdmin && wantScore) {
       if (cachedCopy) {
         const _botAds = collapseTemplateGroups(dropJunkCreatives(cachedCopy.ads || []));
-        return res.status(200).json({ ...cachedCopy, ads: _botAds, fresh: { checked: Date.now(), checkedAt: cachedCopy._checkedAt || null, stale: cacheAge >= FRESH_MS, listCached: true, count: _botAds.length, scoredNew: 0, reused: 0, pending: 0, bot: true } });
+        // The saved copy's per-platform counts can name ads this list no longer carries (a platform
+        // merged in later, or dropped as junk here). Report what is actually served, so a platform tab
+        // never opens onto "No ads on this platform" next to a count of 2 (onit.security/google, QA 26 nov).
+        const _botCnt = (k) => _botAds.filter(a => String(a.plat || '').toLowerCase() === k).length;
+        const _botTot = { linkedin: _botCnt('linkedin'), google: _botCnt('google'), meta: _botCnt('meta') };
+        return res.status(200).json({ ...cachedCopy, totals: _botTot, sources: { ...(cachedCopy.sources || {}), ..._botTot }, ads: _botAds, fresh: { checked: Date.now(), checkedAt: cachedCopy._checkedAt || null, stale: cacheAge >= FRESH_MS, listCached: true, count: _botAds.length, scoredNew: 0, reused: 0, pending: 0, bot: true } });
       }
       return res.status(200).json({ ok: true, ads: [], sources: {}, notes: {}, fresh: { checked: Date.now(), checkedAt: null, stale: true, listCached: false, count: 0, scoredNew: 0, reused: 0, pending: 0, bot: true } });
     }
