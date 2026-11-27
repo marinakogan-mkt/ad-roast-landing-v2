@@ -30,7 +30,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 import { withUsage, setUsageBoard } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, storeMetaImgCopy, dedupeBoardAds, META_ON, scoreAdsCached, prescorePrepare, prescoreCommit, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams, scoreKeyFn } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, storeMetaImgCopy, dedupeBoardAds, META_ON, scoreAdsCached, prescorePrepare, prescoreCommit, dropJunkCreatives, isJunkCreative, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams, scoreKeyFn } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -1187,6 +1187,9 @@ ${items}
        recorte de dos filas de mas abajo. Antes cada uno hacia su propio mget. Importa que sea la
        misma lectura: las dos decisiones tienen que estar de acuerdo sobre que creativo ya se pago, o
        el recorte podria dejar afuera del board un puntaje que ya esta comprado. */
+    // Same test as _isBrandAd in index.html: the board hides these after scoring.
+    const _BRAND_RE = /\bnot a (direct )?demand[\s-]?gen\b|\bbrand \/ culture (post|story)\b|\bbrand or culture (post|story)\b|\bemployer[\s-]brand(ing)?\b/i;
+    const _caidos = new Set();
     const _pagos = await (async () => {
       try {
         if (!_redis) return null;
@@ -1195,7 +1198,17 @@ ${items}
         const keyOf = scoreKeyFn(body.icp);
         const vals = await _redis.mget(...todos.map(keyOf));
         const set = new Set();
-        todos.forEach((a, i) => { if (vals && vals[i]) set.add(a); });
+        todos.forEach((a, i) => {
+          if (!(vals && vals[i])) return;
+          set.add(a);
+          // Pagos que el board despues saca (captura fallida, aviso de empleo, post de marca, sin
+          // numero): no tienen que gastar uno de los lugares de su plataforma en _dosFilas.
+          try {
+            const o = typeof vals[i] === 'string' ? JSON.parse(vals[i]) : vals[i];
+            if (!o || typeof o.score !== 'number' || o.flag === 'capture_fail' || o._captureFail
+              || isJunkCreative({ ...a, ...o }) || _BRAND_RE.test(String(o.verdict || ''))) _caidos.add(a);
+          } catch (e) { /* sin leer, cuenta como pago normal */ }
+        });
         return set;
       } catch (e) { return null; }
     })();
@@ -1292,7 +1305,7 @@ ${items}
           if (elegido.has(a) || !filtro(a)) continue;
           const k = a.plat || '?';
           if (porPlat && (usado[k] || 0) >= cap) continue;
-          usado[k] = (usado[k] || 0) + 1;
+          if (!_caidos.has(a)) usado[k] = (usado[k] || 0) + 1;
           elegido.add(a);
         }
       };
