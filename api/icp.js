@@ -1310,9 +1310,10 @@ ${items}
         return t.length >= 12 ? (a.plat || '') + '|t:' + t.slice(0, 180) : null;
       };
       const grupos = new Set();
+      let enTope = 0; // tarjetas que se ven: un repetido o uno que se cae no gasta el tope
       const tomar = (filtro, porPlat) => {
         for (const a of lista) {
-          if (elegido.size >= tope) break;
+          if (enTope >= tope) break;
           if (elegido.has(a) || !filtro(a)) continue;
           const g = _grupo(a);
           const repetido = !!(g && grupos.has(g));
@@ -1321,6 +1322,7 @@ ${items}
           if (porPlat && !repetido && (usado[k] || 0) >= cap) continue;
           if (!_caidos.has(a) && !repetido) usado[k] = (usado[k] || 0) + 1;
           if (g && !_caidos.has(a)) grupos.add(g);
+          if (!_caidos.has(a) && !repetido) enTope++;
           elegido.add(a);
         }
       };
