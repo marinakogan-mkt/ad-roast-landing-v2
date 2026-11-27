@@ -1465,6 +1465,15 @@ async function _blobPut(key, st) {
     return (r && r.url) || null;
   } catch (e) { console.error('[meta-img] blob put failed, storing in Redis:', String(e && e.message || e).slice(0, 120)); return null; }
 }
+// Shared by the pull-time store and the image proxy's self-heal, so both keep the small copy and use
+// Blob when there is one (the self-heal used to write the full-size bytes straight to Redis).
+export async function storeMetaImgCopy(redis, key, b) {
+  if (!redis || !key || !b || !b.data) return;
+  const st = await _storeCopy(b);
+  const url = await _blobPut(key, st);
+  const val = url ? { ct: st.media_type, blob: url } : { ct: st.media_type, data: st.data };
+  await redis.set(key, JSON.stringify(val), { ex: META_IMG_TTL, nx: true });
+}
 async function persistMetaImgs(redis, ads) {
   if (!redis || !Array.isArray(ads) || !ads.length) return;
   await Promise.all(ads.slice(0, 12).map(async (a) => {

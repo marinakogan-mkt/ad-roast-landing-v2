@@ -30,7 +30,7 @@ const MODEL = process.env.ANTHROPIC_ICP_MODEL || 'claude-sonnet-4-6';
 import { withUsage, setUsageBoard } from './_usage.js';
 import { Redis } from '@upstash/redis';
 import crypto from 'crypto';
-import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, META_ON, scoreAdsCached, prescorePrepare, prescoreCommit, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams, scoreKeyFn } from './_adlibrary.js';
+import { fetchAdsViaJina, fetchAllAds, fetchGoogleAds, fetchLinkedInAds, fetchMetaAds, metaHasFootprint, metaImgKey, storeMetaImgCopy, META_ON, scoreAdsCached, prescorePrepare, prescoreCommit, dropJunkCreatives, ownedByAdvertiser, ownedPerPlatform, icpIsUnknown, collapseTemplateGroups, logClaudeUsage, modelParams, scoreKeyFn } from './_adlibrary.js';
 import { logoCandidates, normDomain } from './_logo.js';
 import { readSessionCookie, PORTAL_ROLES } from './auth/_allowlist.js';
 import { peekAccount } from './_tokens.js';
@@ -498,7 +498,7 @@ ${items}
       // Self-heal: if the pull-time store missed this creative (fetch failed then), keep the copy now while
       // the link still works. `nx` so a live full-res fetch never clobbers the copy already stored.
       if (fbKey && _redis && buf.length && buf.length < 2_000_000) {
-        try { await _redis.set(fbKey, JSON.stringify({ ct, data: buf.toString('base64') }), { ex: 60 * 60 * 24 * 30, nx: true }); } catch (e) {}
+        try { await storeMetaImgCopy(_redis, fbKey, { media_type: ct, data: buf.toString('base64') }); } catch (e) {}
       }
       res.setHeader('Content-Type', ct);
       res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, immutable');
