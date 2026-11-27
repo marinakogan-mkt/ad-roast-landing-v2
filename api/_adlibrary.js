@@ -1480,6 +1480,10 @@ async function persistMetaImgs(redis, ads) {
     const key = metaImgKey(a && a.img);
     if (!key) return;
     try {
+      // The ad is still live (it came back in this pull): keep the copy we already have for another
+      // META_IMG_TTL instead of letting it lapse 30 days after it was first stored, and skip the
+      // re-download. Only a creative we have no copy of is fetched and stored.
+      try { if (await redis.expire(key, META_IMG_TTL)) return; } catch (e) {}
       const b = await _fetchImgB64(a.img);
       if (b && b.data) {
         const st = await _storeCopy(b);
