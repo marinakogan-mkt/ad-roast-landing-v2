@@ -180,7 +180,7 @@ function lightCrawlerPage(o) {
   const body = o.content
     || ('<main style="max-width:720px;margin:0 auto;padding:40px 20px;font-family:system-ui,-apple-system,sans-serif;color:#1f2937;line-height:1.65">'
       + '<h1 style="font-size:26px;font-weight:600;letter-spacing:-.3px">' + attr(o.title) + '</h1>'
-      + '<p>AdRoast scores a company&rsquo;s live LinkedIn and Google ads against their own ideal buyer.</p>'
+      + '<p>AdRoast scores a company&rsquo;s live LinkedIn, Google and Meta ads against their own ideal buyer.</p>'
       + '<p><a href="' + attr(o.boardUrl) + '">Open this board on AdRoast</a>.</p>'
       + '</main>');
   return '<!doctype html><html lang="en"><head>' + m.join('') + '</head><body>' + body + '</body></html>';
@@ -262,10 +262,10 @@ export async function boardOgHandler(req, res) {
     // Nothing else goes under the title: the factual line below is what LinkedIn prints.
     const desc = plat
       ? (platStats
-        ? company + "'s live " + platLabel + ' ads, each scored against their ideal buyer. ' + platStats.count + ' live ' + platLabel + ' ads, ' + platStats.avg + '/10 average fit, ' + platStats.toFix + ' to fix.'
+        ? company + "'s live " + platLabel + ' ads, each scored against their ideal buyer. ' + platStats.count + ' live ' + platLabel + (platStats.count === 1 ? ' ad, ' : ' ads, ') + platStats.avg + '/10 average fit, ' + platStats.toFix + ' to fix.'
         : company + "'s live " + platLabel + ' ads, each scored against their ideal buyer, with the exact fix for the ones to change first.')
       : stats
-      ? company + "'s live " + platsAnd + " ads, each scored against their ideal buyer. " + stats.count + ' live ads, ' + stats.avg + '/10 average fit, ' + stats.toFix + ' to fix. See the board.'
+      ? company + "'s live " + platsAnd + " ads, each scored against their ideal buyer. " + stats.count + (stats.count === 1 ? ' live ad, ' : ' live ads, ') + stats.avg + '/10 average fit, ' + stats.toFix + ' to fix. See the board.'
       : company + "'s live " + platsAnd + " ads, each scored against their ideal buyer, with the exact fixes. Free, no card.";
 
     // Search-engine identity of the page: without these the board ships the home's <title>,
@@ -362,7 +362,7 @@ export async function boardOgHandler(req, res) {
         + (posdata.summary ? `<p>${attr(posdata.summary)}</p>` : '')
         + (posdata.icp_text ? `<h2 style="font-size:18px;font-weight:600;margin-top:26px">Who ${comp} sells to</h2><p>${attr(posdata.icp_text)}</p>` : '')
         + (tagList.length ? `<h2 style="font-size:18px;font-weight:600;margin-top:26px">Buyer and segments</h2><ul>${tagList.map(t => `<li>${attr(t)}</li>`).join('')}</ul>` : '')
-        + `<h2 style="font-size:18px;font-weight:600;margin-top:26px">Live ad presence</h2><p>We checked the LinkedIn and Google ad libraries and found no live ads we can read for ${comp} right now. When they run ads, AdRoast scores each one against the buyer above.</p>`
+        + `<h2 style="font-size:18px;font-weight:600;margin-top:26px">Live ad presence</h2><p>We checked the LinkedIn, Google and Meta ad libraries and found no live ads we can read for ${comp} right now. When they run ads, AdRoast scores each one against the buyer above.</p>`
         + `<p><a href="/b/${attr(slug)}">Score ${comp}&rsquo;s ads against this buyer on AdRoast</a>.</p>`
         + `<p>Learn the method: the AdRoast <a href="/guides">guides</a> cover how to <a href="/guides/audit-linkedin-ads-icp">audit ads against your ICP</a> and how to <a href="/guides/what-is-an-ad-teardown">run an ad teardown</a>.</p>`
         + '</main>';

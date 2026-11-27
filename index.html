@@ -13,12 +13,12 @@
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
   <title>AdRoast: free live-ad audit for B2B teams</title>
-  <meta name="description" content="AdRoast is a free tool for B2B teams. Enter your website and we pull every live ad you are running on LinkedIn and Google, score each one against your ideal buyer, and show the exact fixes. No credit card.">
+  <meta name="description" content="AdRoast is a free tool for B2B teams. Enter your website and we pull every live ad you are running on LinkedIn, Google and Meta, score each one against your ideal buyer, and show the exact fixes. No credit card.">
   <link rel="canonical" href="https://www.adroast.in/">
 
   <!-- Structured data: ties the "AdRoast" brand to this domain (helps Google rank the right AdRoast) -->
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"Organization","name":"AdRoast","alternateName":["Ad Roast","AdRoast.in"],"url":"https://www.adroast.in/","disambiguatingDescription":"Not affiliated with adroast.ai, an unrelated AI generator of Meta ads. AdRoast (adroast.in) audits live B2B LinkedIn and Google ads against the buyer; it does not generate ads.","logo":"https://www.adroast.in/apple-touch-icon.png","description":"Free, brutally honest ad and landing page audit for B2B teams. Scored in 2 minutes.","sameAs":["https://www.linkedin.com/in/koganmarinamkt","https://www.linkedin.com/company/96278250","https://www.youtube.com/@adroastin","https://marinakoganmkt.substack.com"]}
+  {"@context":"https://schema.org","@type":"Organization","name":"AdRoast","alternateName":["Ad Roast","AdRoast.in"],"url":"https://www.adroast.in/","disambiguatingDescription":"Not affiliated with adroast.ai, an unrelated AI generator of Meta ads. AdRoast (adroast.in) audits live B2B LinkedIn, Google and Meta ads against the buyer; it does not generate ads.","logo":"https://www.adroast.in/apple-touch-icon.png","description":"Free, brutally honest ad and landing page audit for B2B teams. Scored in 2 minutes.","sameAs":["https://www.linkedin.com/in/koganmarinamkt","https://www.linkedin.com/company/96278250","https://www.youtube.com/@adroastin","https://marinakoganmkt.substack.com"]}
   </script>
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"WebSite","name":"AdRoast","url":"https://www.adroast.in/"}
@@ -38,7 +38,7 @@
   <meta property="og:url" content="https://www.adroast.in/">
   <meta property="og:site_name" content="AdRoast">
   <meta property="og:title" content="Find out where your ad loses the buyer">
-  <meta property="og:description" content="Enter your website. AdRoast pulls every live ad you run on LinkedIn and Google, scores each against your ideal buyer, and shows the exact fixes. Free, no card.">
+  <meta property="og:description" content="Enter your website. AdRoast pulls every live ad you run on LinkedIn, Google and Meta, scores each against your ideal buyer, and shows the exact fixes. Free, no card.">
   <meta property="og:image" content="https://www.adroast.in/og-hero.png?v=1">
   <meta property="og:image:secure_url" content="https://www.adroast.in/og-hero.png?v=1">
   <meta property="og:image:type" content="image/png">
@@ -49,7 +49,7 @@
   <!-- Twitter/X Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Find out where your ad loses the buyer">
-  <meta name="twitter:description" content="Enter your website. AdRoast pulls every live ad you run on LinkedIn and Google, scores each against your ideal buyer, and shows the exact fixes. Free, no card.">
+  <meta name="twitter:description" content="Enter your website. AdRoast pulls every live ad you run on LinkedIn, Google and Meta, scores each against your ideal buyer, and shows the exact fixes. Free, no card.">
   <meta name="twitter:image" content="https://www.adroast.in/og-hero.png?v=1">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png?v=5">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=5">
@@ -2144,7 +2144,7 @@
           const coName = icpRes.company || icpRes.brand || hostOf(siteRaw);
           const co = { name: coName, domain: icpRes.domain || hostOf(siteRaw), initial: (coName || '?').charAt(0).toUpperCase(), color: '#334155', metaPage: icpRes.metaPage || null };
           const icpText = icpRes.icp_text || '';
-          if (!silent) { setLoadingCo(co); setStatusMsg('Pulling your live ads from LinkedIn and Google…'); }
+          if (!silent) { setLoadingCo(co); setStatusMsg('Pulling your live ads from LinkedIn, Google and Meta…'); }
           // Progressive first paint: fire the fast Google-only pull and the full pull CONCURRENTLY.
           // On a COLD board the full pull is slow (LinkedIn via Jina, ~30s) while Google returns in ~3s,
           // so Google paints first and the board is never blank for 30s. On a CACHED board the full pull
@@ -2923,8 +2923,13 @@
                     // Any server note about Meta means the pull resolved (no_ads / no_meta_footprint / a cap
                     // or error); only a missing note (the full pull still in flight) shows "Checking".
                     const checked = !!mstate;
+                    // A timeout, block or daily cap is NOT "they aren't advertising": we didn't get to look.
+                    // Say so, instead of claiming an absence we never saw (QA R09, sanalabs TIMED-OUT).
+                    const unread = checked && !/^(ok|no_ads|no_meta_footprint)$/.test(mstate);
                     const msg = mstate === 'no_meta_footprint'
                       ? ('No Meta footprint on ' + (CO.name || 'their') + "'s site, so there's nothing to pull.")
+                      : unread
+                        ? ("We couldn't read the " + p + " Ad Library this time. It's retried on the next visit.")
                       : checked
                         ? ((CO.name || 'They') + " isn't advertising on " + p + ' right now.')
                         : ('Checking ' + p + ' for live ads…');
@@ -2933,12 +2938,12 @@
                       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
                         <span style={{ opacity: 0.55 }}><PlatLogo plat={p} size={18} /></span>
                         <span className="font-bold text-gray-500" style={{ fontSize: 15 }}>{p}</span>
-                        <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>{checked ? 'No live ads' : 'Checking'}</span>
+                        <span className="ml-auto uppercase tracking-wider font-semibold" style={{ fontSize: 9, letterSpacing: '0.06em', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 6 }}>{unread ? 'Not read' : checked ? 'No live ads' : 'Checking'}</span>
                       </div>
                       <div className="grid place-items-center px-4" style={{ height: 250, background: '#fafbfc' }}>
                         <div className="text-center">
                           <Icon name="target" className="w-6 h-6 mx-auto mb-2" style={{ color: '#cbd5e1' }} />
-                          <div className="text-gray-500 font-semibold" style={{ fontSize: 12.5 }}>{checked ? ('Nothing running on ' + p) : ('Reading ' + p + '…')}</div>
+                          <div className="text-gray-500 font-semibold" style={{ fontSize: 12.5 }}>{unread ? ('Not read this time') : checked ? ('Nothing running on ' + p) : ('Reading ' + p + '…')}</div>
                         </div>
                       </div>
                       <div className="px-4 py-3"><span className="text-gray-400" style={{ fontSize: 12 }}>{msg}</span></div>
@@ -3040,7 +3045,7 @@
                           <div style={{ borderLeft: '3px solid ' + s.c, padding: '1px 0 1px 12px' }}>
                             <div className="flex items-center gap-1.5" style={{ marginBottom: 7, color: s.c }}><Icon name={ic} className="w-3.5 h-3.5" /><span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span></div>
                             <div className="flex flex-wrap gap-1.5" style={{ marginBottom: 8, minHeight: 44, alignContent: 'flex-start' }}>{tags.map((t, ti) => <span key={ti} className="inline-flex items-center font-bold rounded-md" style={{ height: 22, fontSize: 10.5, padding: '0 8px', color: s.c, background: '#fff', border: '1px solid ' + s.bd, whiteSpace: 'nowrap' }}>{t}</span>)}</div>
-                            <div className="text-gray-700" style={{ fontSize: 12.5, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.5em' }}>{a.verdict || a.body}</div>
+                            <div className="text-gray-700" style={{ fontSize: 12.5, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.5em' }}>{(() => { const t = String(a.verdict || a.body || ''); return t.length > 260 ? t.slice(0, 257).trimEnd() + '…' : t; })()}</div>
                           </div>
                         );
                       })() : (() => {
@@ -3053,7 +3058,7 @@
                         return (
                           <div style={{ borderLeft: '3px solid #e2e8f0', padding: '1px 0 1px 12px' }}>
                             <div className="flex items-center gap-1.5" style={{ marginBottom: 7, color: '#94a3b8' }}><span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Not scored yet</span></div>
-                            <div className="text-gray-500" style={{ fontSize: 12.5, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.5em' }}>{clean}</div>
+                            <div className="text-gray-500" style={{ fontSize: 12.5, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.5em' }}>{clean.length > 260 ? clean.slice(0, 257).trimEnd() + '…' : clean}</div>
                           </div>
                         );
                       })()}

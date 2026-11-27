@@ -392,7 +392,7 @@ async function handler(req, res) {
     return res.status(200).send(`<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Live ad boards by company | AdRoast</title>
-<meta name="description" content="Every company whose live LinkedIn and Google ads AdRoast has pulled and scored against their buyer. ${doms.length} boards and counting.">
+<meta name="description" content="Every company whose live LinkedIn, Google and Meta ads AdRoast has pulled and scored against their buyer. ${doms.length} boards and counting.">
 <link rel="canonical" href="https://www.adroast.in/boards">
 <link rel="stylesheet" href="/teardowns/roast.css">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Live ad boards by company","url":"https://www.adroast.in/boards","description":"Companies whose live ads AdRoast has scored against their buyer.","isPartOf":{"@type":"WebSite","name":"AdRoast","url":"https://www.adroast.in/"}}</script>
@@ -400,7 +400,7 @@ async function handler(req, res) {
 <main class="wrap" style="max-width:860px;margin:0 auto;padding:48px 20px">
   <p><a href="/">AdRoast</a> / Boards</p>
   <h1>Live ad boards by company</h1>
-  <p>Each board shows the ads a company is running right now on LinkedIn and Google, scored against the buyer those ads are meant to reach, and how much of the ad's promise survives on the landing page. Built from public ad libraries, no account access.</p>
+  <p>Each board shows the ads a company is running right now on LinkedIn, Google and Meta, scored against the buyer those ads are meant to reach, and how much of the ad's promise survives on the landing page. Built from public ad libraries, no account access.</p>
   <p>${doms.length} companies so far. Want yours? <a href="/?library=1">Roast your ads free</a>, or read the <a href="/guides">guides</a> and the <a href="/teardowns">teardowns</a>.</p>
   <ul style="columns:2;line-height:1.9">
 ${items}
@@ -1374,8 +1374,26 @@ ${items}
         }
       } catch (e) {}
     }
+    // The per-platform totals/sources come from the raw pull, BEFORE the scorer drops homonyms and
+    // scrape artifacts (capture_fail) and before template collapsing. A platform whose every ad was
+    // dropped there still reported "2 Google ads", so its tab opened onto "No ads on this platform"
+    // (onit.security/google, QA 26 nov). Discount what this request removed, never below what is shown.
+    const _pk = (a) => String((a && a.plat) || '').toLowerCase();
+    const _cnt = (arr, k) => arr.filter(a => _pk(a) === k).length;
+    const _fix = (obj) => {
+      if (!obj || typeof obj !== 'object') return obj;
+      const out = { ...obj };
+      for (const k of ['linkedin', 'google', 'meta']) {
+        if (typeof out[k] !== 'number') continue;
+        const removed = Math.max(0, _cnt(_toRank, k) - _cnt(scAds, k) + _cnt(_extras, k));
+        out[k] = Math.max(_cnt(scAds, k), out[k] - removed);
+      }
+      return out;
+    };
     return res.status(200).json({
       ...pull,
+      totals: _fix(pull.totals),
+      sources: _fix(pull.sources),
       ads: scAds,
       fresh: { checked: Date.now(), checkedAt: lastChecked, stale, listCached, count: scAds.length, scoredNew: sc.scoredNew, reused: sc.reused, pending: sc.pending, scoreError: sc.scoreError || null, rateLimited: !!sc.rateLimited },
     });

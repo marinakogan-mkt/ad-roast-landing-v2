@@ -75,7 +75,7 @@ const TOOLS = [
     name: 'list_live_ads',
     title: "List a company's live ads",
     annotations: { title: "List a company's live ads", readOnlyHint: true, openWorldHint: true },
-    description: "Pull a company's real live ads (LinkedIn + Google) and score each one against its buyer/ICP, worst first. Give the company website.",
+    description: "Pull a company's real live ads (LinkedIn + Google + Meta) and score each one against its buyer/ICP, worst first. Give the company website.",
     inputSchema: {
       type: 'object',
       properties: { website: { type: 'string', description: 'Company website, e.g. semgrep.dev (required).' } },

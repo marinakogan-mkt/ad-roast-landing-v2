@@ -931,7 +931,7 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   const waitStart = Date.now();
   const freshBySig = {};
   const failBySig = {}; // creatives our capture couldn't feed the scorer: dropped, never shown as broken
-  let scoreError = null, rateLimited = false;
+  let scoreError = null, rateLimited = false, cacheWriteFailed = false;
   if (toScore.length) {
     try {
       const scored = await scoreAds(toScore, icp);
@@ -939,7 +939,14 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
       Object.assign(freshBySig, built.freshBySig);
       Object.assign(failBySig, built.failBySig);
       const writes = built.entries.map(e => redis.set(e.key, JSON.stringify(e.val), { ex: e.ex }));
-      try { await Promise.all(writes); } catch (e) { /* best-effort */ }
+      // A score that cannot be cached is paid again on the next call: with Upstash full (27 nov 2026,
+      // "ERR DB capacity quota exceeded") the client's re-call loop re-scored the SAME first batch
+      // every few seconds (one board 14 times in 7 minutes). Detect it and stop the loop below.
+      const settled = await Promise.allSettled(writes);
+      if (settled.some(r => r.status === 'rejected')) {
+        cacheWriteFailed = true;
+        console.error('[scoreAdsCached] score cache write failed, stopping the re-score loop:', String((settled.find(r => r.status === 'rejected') || {}).reason || '').slice(0, 120));
+      }
       try { await Promise.all(toScore.map(a => redis.del(lockOf(a)))); } catch (e) { /* expires on its own */ }
     } catch (e) {
       try { await Promise.all(toScore.map(a => redis.del(lockOf(a)))); } catch (e2) { /* expires on its own */ }
@@ -990,7 +997,9 @@ export async function scoreAdsCached(ads, icp, redis, { force = false, limit = 0
   // creative doesn't loop the client's re-score forever waiting on an ad that can never score.
   const scoredNew = Object.keys(freshBySig).length;
   const failedNew = Object.keys(failBySig).length;
-  return { ads: outChecked, scoredNew, reused: Object.keys(cachedBySig).length, pending: Math.max(0, need.length - scoredNew - failedNew - need.filter(a => cachedBySig[creativeSig(a)]).length), scoreError, rateLimited };
+  const _pending = Math.max(0, need.length - scoredNew - failedNew - need.filter(a => cachedBySig[creativeSig(a)]).length);
+  // pending 0 when the cache would not take the scores: the next call would re-buy this same batch.
+  return { ads: outChecked, scoredNew, reused: Object.keys(cachedBySig).length, pending: cacheWriteFailed ? 0 : _pending, scoreError: scoreError || (cacheWriteFailed ? 'score_cache_write_failed' : null), rateLimited, cacheWriteFailed };
 }
 
 // --- Batch API pre-scoring (admin only; nothing calls it until the outreach engine does) ----------
@@ -1420,6 +1429,28 @@ export function metaImgKey(url) {
 // scorer uses (_fetchImgB64). Best-effort and bounded: it runs only on a real Apify run (not a cache
 // hit), over the <=12 ads we're about to show, in parallel, and `nx` so a re-pull never re-writes a copy
 // that's already there. No tokens, no Apify -- just the image bytes, which we'd fetch to render anyway.
+// The stored copy is only DISPLAYED (a board card a few hundred px wide), never scored, so it does not
+// need the scorer's 800px / q88. Measured 27 nov 2026: meta:img held 136 MB of the 250 MB Upstash
+// free tier at ~98 KB a copy and filled the database in 12 days, which made every write fail (scores
+// stopped caching, boards re-scored on every open). 480px WebP q70 lands around 20-30 KB. Any sharp
+// failure keeps the scorer-sized bytes: a larger copy beats a missing image.
+const META_IMG_STORE_EDGE = 480;
+async function _storeCopy(b) {
+  try {
+    if (_sharp === undefined) {
+      try { _sharp = (await import('sharp')).default; } catch (e) { _sharp = null; }
+    }
+    if (!_sharp) return b;
+    const out = await _sharp(Buffer.from(b.data, 'base64'), { animated: false, failOn: 'none' })
+      .resize({ width: META_IMG_STORE_EDGE, height: META_IMG_STORE_EDGE, fit: 'inside', withoutEnlargement: true })
+      .flatten({ background: '#ffffff' })
+      .webp({ quality: 70 })
+      .toBuffer();
+    if (!out || !out.length) return b;
+    const data = out.toString('base64');
+    return data.length < b.data.length ? { media_type: 'image/webp', data } : b;
+  } catch (e) { return b; }
+}
 async function persistMetaImgs(redis, ads) {
   if (!redis || !Array.isArray(ads) || !ads.length) return;
   await Promise.all(ads.slice(0, 12).map(async (a) => {
@@ -1427,7 +1458,10 @@ async function persistMetaImgs(redis, ads) {
     if (!key) return;
     try {
       const b = await _fetchImgB64(a.img);
-      if (b && b.data) await redis.set(key, JSON.stringify({ ct: b.media_type, data: b.data }), { ex: META_IMG_TTL, nx: true });
+      if (b && b.data) {
+        const st = await _storeCopy(b);
+        await redis.set(key, JSON.stringify({ ct: st.media_type, data: st.data }), { ex: META_IMG_TTL, nx: true });
+      }
     } catch (e) {}
   }));
 }
